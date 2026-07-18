@@ -18,7 +18,13 @@ public class EasySession : ModuleRules
 			"CoreOnline",
 			"Engine",
 			"OnlineSubsystem",
-			"OnlineSubsystemUtils"
+			"OnlineSubsystemUtils",
+			"DeveloperSettings"
+		});
+
+		PrivateDependencyModuleNames.AddRange(new string[]
+		{
+			"OnlineBase"
 		});
 	}
 }
