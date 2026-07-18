@@ -6,7 +6,13 @@
 #include "Subsystems/GameInstanceSubsystem.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "EasySessionTypes.h"
+#include "Containers/Ticker.h"
 #include "EasySessionSubsystem.generated.h"
+
+namespace ENetworkFailure
+{
+	enum Type : int;
+}
 
 class FEasySessionRequest;
 
@@ -192,7 +198,7 @@ private:
 	TArray<TSharedRef<FEasySessionRequest>> PendingRequests;
 
 	/** The native search object of the find operation in flight. */
-	TSharedPtr<class FOnlineSessionSearch> ActiveSearch;
+	TSharedPtr<FOnlineSessionSearch> ActiveSearch;
 
 	/** Cached results of the most recent search. */
 	TArray<FEasySessionSearchResult> LastSearchResults;
