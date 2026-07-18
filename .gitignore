@@ -1,0 +1,12 @@
+# Build artifacts
+Binaries/
+Intermediate/
+DerivedDataCache/
+
+# IDE
+.vs/
+.idea/
+*.sln
+*.suo
+*.VC.db
+*.VC.opendb
