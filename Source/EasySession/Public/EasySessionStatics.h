@@ -1,0 +1,50 @@
+// Copyright Langerak. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "EasySessionTypes.h"
+#include "EasySessionStatics.generated.h"
+
+class UEasySessionSubsystem;
+
+/**
+ * Blueprint function library for quick access to EasySession state.
+ * Session operations themselves are async nodes (Create/Find/Join/Leave/Update Easy Session).
+ */
+UCLASS()
+class EASYSESSION_API UEasySessionStatics : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+
+	/** Get the EasySession subsystem. Use this to bind session events like On Session Failure. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static UEasySessionSubsystem* GetEasySessionSubsystem(const UObject* WorldContextObject);
+
+	/** Check whether the local player is currently in a session. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsInEasySession(const UObject* WorldContextObject);
+
+	/** Check whether the local player is hosting the current session. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasySessionHost(const UObject* WorldContextObject);
+
+	/** Check whether a session operation is currently running or queued. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasySessionBusy(const UObject* WorldContextObject);
+
+	/** Get the results of the most recent session search. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static TArray<FEasySessionSearchResult> GetLastEasySearchResults(const UObject* WorldContextObject);
+
+	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);
+
+	/** Convert a session result value to a human readable string. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (DisplayName = "To String (EasySessionResult)", CompactNodeTitle = "->"))
+	static FString ResultToString(EEasySessionResult Result);
+};
