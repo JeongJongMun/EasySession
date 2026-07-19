@@ -214,9 +214,12 @@ private:
 	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 
+	/** Make sure the host is (or becomes) a listen server after creating a session. */
+	void EnsureHostIsListening(const FEasySessionHostParams& HostParams);
+
 	/** Travel helpers executed after successful create/join. */
 	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
-	void TravelToJoinedSession();
+	void TravelToJoinedSession(const FString& ConnectString);
 
 	/** Create the automatic session when running as a dedicated server. */
 	void AutoHostDedicatedServerSession();
@@ -251,4 +254,7 @@ private:
 
 	/** Ticker waiting for a valid world before auto hosting on a dedicated server. */
 	FTSTicker::FDelegateHandle DedicatedAutoHostTickerHandle;
+
+	/** Ticker that verifies the host became a listen server shortly after creating a session. */
+	FTSTicker::FDelegateHandle ListenCheckTickerHandle;
 };

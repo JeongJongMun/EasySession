@@ -125,6 +125,14 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bIsLANMatch = false;
 
+	/**
+	 * Automatically make this game a listen server so clients can connect.
+	 * Travels to Map Name with the ?listen option, or starts listening on the
+	 * current map when Map Name is empty. Disable only if you manage listening yourself.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	bool bStartListening = true;
+
 	/** Whether the session is advertised to other players. Disable for private sessions. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bShouldAdvertise = true;

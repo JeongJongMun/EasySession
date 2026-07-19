@@ -135,6 +135,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Host.SessionDisplayName = TEXT("EasySession QuickPlay Test");
 	Params.Host.bIsLANMatch = true;
+	Params.Host.bStartListening = false;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
 

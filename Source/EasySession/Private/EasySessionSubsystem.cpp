@@ -96,6 +96,12 @@ void UEasySessionSubsystem::Deinitialize()
 		DedicatedAutoHostTickerHandle.Reset();
 	}
 
+	if (ListenCheckTickerHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(ListenCheckTickerHandle);
+		ListenCheckTickerHandle.Reset();
+	}
+
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (Sessions.IsValid())
 	{
@@ -565,7 +571,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 	CompleteActiveRequest(EEasySessionResult::Success);
-	TravelToOwnSession(HostParams);
+	EnsureHostIsListening(HostParams);
 }
 
 void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
@@ -658,12 +664,29 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 			return;
 	}
 
+	// Resolve the host address before reporting success, so a dead host fails loudly
+	// instead of the client hanging on a connection timeout.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	FString ConnectString;
+	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(NAME_GameSession, ConnectString) && !ConnectString.IsEmpty();
+
+	if (!bResolved || ConnectString.EndsWith(TEXT(":0")))
+	{
+		CompleteActiveRequest(EEasySessionResult::ResolveFailure, FString::Printf(
+			TEXT("The host address '%s' is not connectable - the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled or travels to a map with the ?listen option."),
+			*ConnectString));
+
+		// Leave the half-joined session so the player can immediately search and join again.
+		DestroyEasySession();
+		return;
+	}
+
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 	CompleteActiveRequest(EEasySessionResult::Success);
 
 	if (bTravelOnSuccess)
 	{
-		TravelToJoinedSession();
+		TravelToJoinedSession(ConnectString);
 	}
 }
 
@@ -720,6 +743,58 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	}
 }
 
+void UEasySessionSubsystem::EnsureHostIsListening(const FEasySessionHostParams& HostParams)
+{
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	const bool bIsDedicated = HostParams.HostMode == EEasySessionHostMode::DedicatedServer;
+
+	if (!HostParams.MapName.IsEmpty())
+	{
+		TravelToOwnSession(HostParams);
+	}
+	else if (!bIsDedicated && HostParams.bStartListening && World->GetNetMode() == NM_Standalone)
+	{
+		// No map to travel to - start listening on the current map so clients can connect.
+		FURL ListenURL;
+		if (World->Listen(ListenURL))
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
+		}
+		else
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("Failed to start a listen server on the current map. Clients will not be able to connect."));
+			OnSessionFailure.Broadcast(TEXT("Failed to start a listen server on the current map."));
+		}
+	}
+
+	// Verify shortly after that we actually became a listen server - the most common
+	// beginner pitfall is a session that is advertised but not connectable.
+	if (!bIsDedicated && HostParams.bStartListening)
+	{
+		if (ListenCheckTickerHandle.IsValid())
+		{
+			FTSTicker::GetCoreTicker().RemoveTicker(ListenCheckTickerHandle);
+		}
+
+		ListenCheckTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float DeltaTime)
+		{
+			ListenCheckTickerHandle.Reset();
+
+			const UWorld* CurrentWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+			if (CurrentWorld != nullptr && CurrentWorld->GetNetMode() == NM_Standalone && IsInSession() && IsHost())
+			{
+				UE_LOG(LogEasySession, Warning, TEXT("The session is advertised but this game is still not a listen server - clients will fail to connect. If you are testing in PIE, disable 'Run Under One Process' or use Standalone Game windows, and make sure the travel map path is valid."));
+			}
+			return false;
+		}), 3.0f);
+	}
+}
+
 void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& HostParams)
 {
 	if (HostParams.MapName.IsEmpty())
@@ -734,31 +809,21 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 	}
 
 	FString TravelURL = HostParams.MapName;
-	if (HostParams.HostMode == EEasySessionHostMode::ListenServer && !TravelURL.Contains(TEXT("?listen")))
+	if (HostParams.HostMode == EEasySessionHostMode::ListenServer && HostParams.bStartListening && !TravelURL.Contains(TEXT("?listen")))
 	{
 		TravelURL += TEXT("?listen");
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
-	World->ServerTravel(TravelURL);
+	if (!World->ServerTravel(TravelURL))
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ServerTravel to '%s' failed. Check that the map path is valid (e.g. /Game/Maps/Lobby)."), *TravelURL);
+		OnSessionFailure.Broadcast(FString::Printf(TEXT("ServerTravel to '%s' failed."), *TravelURL));
+	}
 }
 
-void UEasySessionSubsystem::TravelToJoinedSession()
+void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString)
 {
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid())
-	{
-		return;
-	}
-
-	FString ConnectString;
-	if (!Sessions->GetResolvedConnectString(NAME_GameSession, ConnectString) || ConnectString.IsEmpty())
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("Could not resolve the connect string for the joined session. Travel aborted."));
-		OnSessionFailure.Broadcast(TEXT("Could not resolve the host address."));
-		return;
-	}
-
 	APlayerController* PlayerController = GetGameInstance() ? GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
 	if (PlayerController == nullptr)
 	{

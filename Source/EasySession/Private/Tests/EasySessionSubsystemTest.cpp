@@ -102,6 +102,7 @@ bool FEasySessionQueueTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession Queue Test");
 	HostParams.MaxPlayers = 4;
 	HostParams.bIsLANMatch = true;
+	HostParams.bStartListening = false;
 
 	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString& ErrorMessage)

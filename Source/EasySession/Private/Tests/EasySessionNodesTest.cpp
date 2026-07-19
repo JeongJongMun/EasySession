@@ -105,6 +105,7 @@ bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Nodes Test");
 	HostParams.bIsLANMatch = true;
+	HostParams.bStartListening = false;
 
 	UEasyCreateSessionNode* CreateNode = UEasyCreateSessionNode::CreateEasySession(State->GameInstance.Get(), HostParams);
 	if (!TestNotNull(TEXT("Create node was constructed"), CreateNode))
