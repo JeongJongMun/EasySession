@@ -18,6 +18,8 @@ namespace EasySession
 			case EEasySessionResult::NoSessionExists:			return TEXT("NoSessionExists");
 			case EEasySessionResult::CreateFailure:				return TEXT("CreateFailure");
 			case EEasySessionResult::SearchFailure:				return TEXT("SearchFailure");
+			case EEasySessionResult::NoSessionsFound:			return TEXT("NoSessionsFound");
+			case EEasySessionResult::MatchmakingAlreadyInProgress: return TEXT("MatchmakingAlreadyInProgress");
 			case EEasySessionResult::JoinFailure:				return TEXT("JoinFailure");
 			case EEasySessionResult::JoinSessionFull:			return TEXT("JoinSessionFull");
 			case EEasySessionResult::JoinSessionDoesNotExist:	return TEXT("JoinSessionDoesNotExist");

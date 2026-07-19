@@ -7,6 +7,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 #include "EasySessionTypes.h"
 #include "Containers/Ticker.h"
+#include "Templates/SubclassOf.h"
 #include "EasySessionSubsystem.generated.h"
 
 namespace ENetworkFailure
@@ -15,6 +16,7 @@ namespace ENetworkFailure
 }
 
 class FEasySessionRequest;
+class UEasyMatchmakingPolicy;
 
 /** Multicast event fired when a session operation completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasySessionEvent, EEasySessionResult, Result, const FString&, ErrorMessage);
@@ -67,6 +69,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionUpdated;
 
+	/** Fired when a QuickPlay matchmaking run completes. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionEvent OnMatchmakingComplete;
+
 	/** Fired when the connection to the session is lost or a network error occurs. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionFailureEvent OnSessionFailure;
@@ -116,7 +122,33 @@ public:
 	 */
 	void UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
+	/**
+	 * Start QuickPlay matchmaking: search for sessions, join the best one, and
+	 * optionally host a new session when nothing is found.
+	 *
+	 * @param QuickPlayParams Parameters describing the search and the fallback host session.
+	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when null.
+	 * @param OnComplete Called when matchmaking completes.
+	 */
+	void StartQuickPlay(const FEasyQuickPlayParams& QuickPlayParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
 public:
+
+	/** Cancel the running QuickPlay matchmaking. Does nothing when no matchmaking is running. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession")
+	void CancelMatchmaking();
+
+	/** Check whether QuickPlay matchmaking is currently running. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	bool IsMatchmaking() const;
+
+	/** Get the state of the running QuickPlay matchmaking. Idle when none is running. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	EEasyMatchmakingState GetMatchmakingState() const;
+
+	/** Get the running matchmaking policy. Use this to bind its On State Changed event. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const { return ActiveMatchmakingPolicy; }
 
 	/** Check whether the local player is currently in a session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
@@ -190,6 +222,10 @@ private:
 	void AutoHostDedicatedServerSession();
 
 private:
+
+	/** The matchmaking policy currently running QuickPlay. Null when idle. */
+	UPROPERTY()
+	TObjectPtr<UEasyMatchmakingPolicy> ActiveMatchmakingPolicy;
 
 	/** The request currently being executed. Only one request runs at a time. */
 	TSharedPtr<FEasySessionRequest> ActiveRequest;

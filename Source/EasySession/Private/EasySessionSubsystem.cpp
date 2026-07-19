@@ -2,6 +2,7 @@
 
 #include "EasySessionSubsystem.h"
 
+#include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
@@ -105,6 +106,7 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
 	}
 
+	ActiveMatchmakingPolicy = nullptr;
 	ActiveRequest.Reset();
 	PendingRequests.Empty();
 	ActiveSearch.Reset();
@@ -150,6 +152,44 @@ void UEasySessionSubsystem::UpdateEasySession(const FEasySessionHostParams& NewH
 	Request->HostParams = NewHostParams;
 	Request->OnComplete = MoveTemp(OnComplete);
 	EnqueueRequest(Request);
+}
+
+void UEasySessionSubsystem::StartQuickPlay(const FEasyQuickPlayParams& QuickPlayParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
+{
+	if (IsMatchmaking())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::MatchmakingAlreadyInProgress, TEXT("Matchmaking is already running. Cancel it first."));
+		return;
+	}
+
+	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
+	ActiveMatchmakingPolicy = Policy;
+
+	Policy->Start(*this, QuickPlayParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		[this, UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			ActiveMatchmakingPolicy = nullptr;
+			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
+			OnMatchmakingComplete.Broadcast(Result, ErrorMessage);
+		}));
+}
+
+void UEasySessionSubsystem::CancelMatchmaking()
+{
+	if (ActiveMatchmakingPolicy != nullptr)
+	{
+		ActiveMatchmakingPolicy->Cancel();
+	}
+}
+
+bool UEasySessionSubsystem::IsMatchmaking() const
+{
+	return ActiveMatchmakingPolicy != nullptr && ActiveMatchmakingPolicy->GetState() != EEasyMatchmakingState::Idle && ActiveMatchmakingPolicy->GetState() != EEasyMatchmakingState::Complete;
+}
+
+EEasyMatchmakingState UEasySessionSubsystem::GetMatchmakingState() const
+{
+	return ActiveMatchmakingPolicy != nullptr ? ActiveMatchmakingPolicy->GetState() : EEasyMatchmakingState::Idle;
 }
 
 bool UEasySessionSubsystem::IsInSession() const

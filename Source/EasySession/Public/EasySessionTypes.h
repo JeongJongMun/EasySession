@@ -47,6 +47,12 @@ enum class EEasySessionResult : uint8
 	/** The online service failed to search for sessions. */
 	SearchFailure,
 
+	/** The search completed but no joinable session was found. */
+	NoSessionsFound,
+
+	/** Matchmaking is already running. Cancel it before starting a new one. */
+	MatchmakingAlreadyInProgress,
+
 	/** The online service failed to join the session. */
 	JoinFailure,
 
@@ -230,6 +236,62 @@ struct EASYSESSION_API FEasySessionSearchResult
 
 	/** Build an EasySession search result from a native online subsystem result. */
 	static FEasySessionSearchResult FromNative(const FOnlineSessionSearchResult& InNativeResult);
+};
+
+/**
+ * State of a running QuickPlay matchmaking pass.
+ */
+UENUM(BlueprintType)
+enum class EEasyMatchmakingState : uint8
+{
+	/** No matchmaking is running. */
+	Idle,
+
+	/** Searching for sessions. */
+	Searching,
+
+	/** Joining the best available session. */
+	Joining,
+
+	/** No session was found - creating our own session instead. */
+	Hosting,
+
+	/** Matchmaking has finished. Check the completion result for the outcome. */
+	Complete
+};
+
+/**
+ * Parameters for QuickPlay matchmaking.
+ * All values have sensible defaults - an empty FEasyQuickPlayParams searches for any
+ * public session and hosts a 4 player listen session if none is found.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasyQuickPlayParams
+{
+	GENERATED_BODY()
+
+	/** Filters describing which sessions to search for. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	FEasySessionSearchParams Search;
+
+	/** Session to host when no session is found. Ignored when Allow Host Fallback is false. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	FEasySessionHostParams Host;
+
+	/**
+	 * Whether to host our own session when no session is found.
+	 * Disable in dedicated server games - clients should only search and join.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	bool bAllowHostFallback = true;
+
+	/** How many search passes to run before giving up or hosting. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 1))
+	int32 MaxSearchPasses = 3;
+
+	/** Delay between search passes, in seconds. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 0.0))
+	float DelayBetweenPassesSeconds = 2.0f;
 };
 
 /** Delegate fired when a session operation completes. */
