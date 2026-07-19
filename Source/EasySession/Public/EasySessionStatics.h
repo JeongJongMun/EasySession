@@ -40,6 +40,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionSearchResult> GetLastEasySearchResults(const UObject* WorldContextObject);
 
+	/**
+	 * Get the display names of all players currently in the session, including the local player.
+	 * Names come from the replicated player states, so the list is available on both the host and clients.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static TArray<FString> GetEasySessionPlayerNames(const UObject* WorldContextObject);
+
+	/** Get the number of players currently in the session. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetEasySessionPlayerCount(const UObject* WorldContextObject);
+
+	/** Get the maximum number of players allowed in the current session. Returns 0 when no session exists. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetEasySessionMaxPlayers(const UObject* WorldContextObject);
+
 	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);

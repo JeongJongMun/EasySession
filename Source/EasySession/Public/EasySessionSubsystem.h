@@ -158,6 +158,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsHost() const;
 
+	/**
+	 * Get the display names of all players currently in the session, including the local player.
+	 * Names come from the replicated player states, so the list is available on both the host and clients.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	TArray<FString> GetSessionPlayerNames() const;
+
+	/** Get the number of players currently in the session. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	int32 GetSessionPlayerCount() const;
+
+	/** Get the maximum number of players allowed in the current session. Returns 0 when no session exists. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	int32 GetSessionMaxPlayers() const;
+
 	/** Check whether a session operation is currently running or queued. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsBusy() const;

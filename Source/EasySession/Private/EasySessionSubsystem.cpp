@@ -9,7 +9,9 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
@@ -215,6 +217,42 @@ bool UEasySessionSubsystem::IsHost() const
 
 	const FNamedOnlineSession* NamedSession = Sessions->GetNamedSession(NAME_GameSession);
 	return NamedSession != nullptr && NamedSession->bHosting;
+}
+
+TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
+{
+	TArray<FString> PlayerNames;
+
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+	if (GameState == nullptr)
+	{
+		return PlayerNames;
+	}
+
+	for (const APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		if (PlayerState != nullptr)
+		{
+			PlayerNames.Add(PlayerState->GetPlayerName());
+		}
+	}
+
+	return PlayerNames;
+}
+
+int32 UEasySessionSubsystem::GetSessionPlayerCount() const
+{
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+	return GameState ? GameState->PlayerArray.Num() : 0;
+}
+
+int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	return NamedSession ? NamedSession->SessionSettings.NumPublicConnections : 0;
 }
 
 bool UEasySessionSubsystem::IsBusy() const
