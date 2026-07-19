@@ -214,6 +214,13 @@ private:
 	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 
+	/**
+	 * Register / unregister the local player in the current session.
+	 * Registration is what drives the advertised open slot count of a session.
+	 */
+	void RegisterLocalPlayerInSession();
+	void UnregisterLocalPlayerFromSession();
+
 	/** Make sure the host is (or becomes) a listen server after creating a session. */
 	void EnsureHostIsListening(const FEasySessionHostParams& HostParams);
 

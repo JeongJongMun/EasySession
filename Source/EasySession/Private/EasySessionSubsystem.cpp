@@ -7,6 +7,7 @@
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
+#include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "Online/OnlineSessionNames.h"
@@ -499,6 +500,8 @@ void UEasySessionSubsystem::ExecuteDestroy()
 		return;
 	}
 
+	UnregisterLocalPlayerFromSession();
+
 	DestroyCompleteHandle = Sessions->AddOnDestroySessionCompleteDelegate_Handle(
 		FOnDestroySessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleDestroySessionComplete));
 
@@ -570,6 +573,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
+	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 	EnsureHostIsListening(HostParams);
 }
@@ -682,6 +686,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
+	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 
 	if (bTravelOnSuccess)
@@ -741,6 +746,37 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	{
 		DestroyEasySession();
 	}
+}
+
+void UEasySessionSubsystem::RegisterLocalPlayerInSession()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+	const FUniqueNetIdRepl PlayerId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
+
+	if (!Sessions.IsValid() || !PlayerId.IsValid())
+	{
+		return;
+	}
+
+	if (Sessions->RegisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Registered local player in the session."));
+	}
+}
+
+void UEasySessionSubsystem::UnregisterLocalPlayerFromSession()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+	const FUniqueNetIdRepl PlayerId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
+
+	if (!Sessions.IsValid() || !PlayerId.IsValid() || Sessions->GetNamedSession(NAME_GameSession) == nullptr)
+	{
+		return;
+	}
+
+	Sessions->UnregisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() });
 }
 
 void UEasySessionSubsystem::EnsureHostIsListening(const FEasySessionHostParams& HostParams)
