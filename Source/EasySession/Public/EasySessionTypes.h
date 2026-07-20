@@ -81,6 +81,37 @@ enum class EEasySessionResult : uint8
 	UnknownFailure
 };
 
+/**
+ * Lifecycle state of the current session, mirroring the online subsystem's session state.
+ */
+UENUM(BlueprintType)
+enum class EEasySessionState : uint8
+{
+	/** There is no session. */
+	NoSession,
+
+	/** The session is being created. */
+	Creating,
+
+	/** The session exists but the match has not started yet. */
+	Pending,
+
+	/** The match is starting. */
+	Starting,
+
+	/** The match is in progress. */
+	InProgress,
+
+	/** The match is ending. */
+	Ending,
+
+	/** The match has ended. Call Start Easy Session to play again. */
+	Ended,
+
+	/** The session is being destroyed. */
+	Destroying
+};
+
 namespace EasySession
 {
 	/** Convert a result value to a human readable string. */
@@ -88,7 +119,19 @@ namespace EasySession
 
 	/** Custom session setting key holding the session display name. */
 	EASYSESSION_API extern const FName SettingKey_DisplayName;
+
+	/** Custom session setting key marking a hidden session (advertised but excluded from searches). */
+	EASYSESSION_API extern const FName SettingKey_Hidden;
+
+	/** Custom session setting key marking a password protected session. The password itself is never advertised. */
+	EASYSESSION_API extern const FName SettingKey_PasswordProtected;
+
+	/** Travel URL option carrying the password a client supplies when joining. */
+	EASYSESSION_API extern const TCHAR* TravelOption_Password;
 }
+
+/** Native hook fired before a travel URL is used, allowing C++ code to modify it in place. */
+DECLARE_MULTICAST_DELEGATE_OneParam(FEasyModifyTravelURLDelegate, FString& /*TravelURL*/);
 
 /**
  * Parameters for hosting a session.
@@ -136,6 +179,28 @@ struct EASYSESSION_API FEasySessionHostParams
 	/** Whether the session is advertised to other players. Disable for private sessions. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bShouldAdvertise = true;
+
+	/**
+	 * Hidden sessions are advertised to the online service but excluded from Find Easy Sessions
+	 * results, so they can only be joined through invites or a direct search result.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	bool bHidden = false;
+
+	/**
+	 * Password required to join the session. Leave empty for no password.
+	 * Only a "password protected" flag is advertised - the password itself never leaves the host.
+	 * Clients pass the password to Join Easy Session; mismatches are kicked by the host.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	FString Password;
+
+	/**
+	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
+	 * Read them on the server with Parse Option / Get Game Mode option parsing.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	FString AdditionalTravelOptions;
 
 	/** Whether players can join while the match is already in progress. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
@@ -231,6 +296,13 @@ struct EASYSESSION_API FEasySessionSearchResult
 	/** Whether the session is hosted by a dedicated server. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsDedicatedServer = false;
+
+	/** Whether a password is required to join this session. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bPasswordProtected = false;
+
+	/** Whether the session is hidden from searches. Hidden sessions are filtered out of Find results. */
+	bool bIsHidden = false;
 
 	/** Custom key-value data advertised with the session. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")

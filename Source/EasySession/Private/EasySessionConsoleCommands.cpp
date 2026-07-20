@@ -5,10 +5,12 @@
 //
 //   EasySession.Host [Map]      Create a session, optionally traveling to the map.
 //   EasySession.Find            Search for sessions and list the results.
-//   EasySession.Join [Index]    Join a result of the last search (default 0).
+//   EasySession.Join [Index] [Password]  Join a result of the last search (default index 0).
 //   EasySession.QuickPlay [Map] Search, join the best session, or host one.
 //   EasySession.Travel <Map>    ServerTravel the current session to a new map.
 //   EasySession.Leave           Leave / destroy the current session.
+//   EasySession.Start           Start the match (session state -> InProgress).
+//   EasySession.End             End the match (session state -> Ended).
 //   EasySession.Cancel          Cancel the running matchmaking.
 //   EasySession.Status          Print the current session state.
 
@@ -127,8 +129,9 @@ namespace EasySessionConsole
 					return;
 				}
 
+				const FString Password = Args.Num() > 1 ? Args[1] : FString();
 				Print(FString::Printf(TEXT("Joining '%s'..."), *Results[Index].SessionDisplayName));
-				Subsystem->JoinEasySession(Results[Index], true, MakePrintDelegate(TEXT("Join")));
+				Subsystem->JoinEasySession(Results[Index], true, Password, FString(), MakePrintDelegate(TEXT("Join")));
 			}
 		}));
 
@@ -178,6 +181,30 @@ namespace EasySessionConsole
 			{
 				Print(TEXT("Leaving session..."));
 				Subsystem->DestroyEasySession(MakePrintDelegate(TEXT("Leave")));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GStartCommand(
+		TEXT("EasySession.Start"),
+		TEXT("Start the match (session state -> InProgress)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				Print(TEXT("Starting session..."));
+				Subsystem->StartEasySession(MakePrintDelegate(TEXT("Start")));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GEndCommand(
+		TEXT("EasySession.End"),
+		TEXT("End the match (session state -> Ended)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				Print(TEXT("Ending session..."));
+				Subsystem->EndEasySession(MakePrintDelegate(TEXT("End")));
 			}
 		}));
 

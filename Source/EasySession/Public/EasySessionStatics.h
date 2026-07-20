@@ -32,6 +32,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionHost(const UObject* WorldContextObject);
 
+	/** Get the lifecycle state of the current session (Pending, InProgress, Ended, ...). */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionState GetEasySessionState(const UObject* WorldContextObject);
+
 	/** Check whether a session operation is currently running or queued. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);

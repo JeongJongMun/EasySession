@@ -7,6 +7,15 @@ namespace EasySession
 	/** Custom session setting key holding the session display name. */
 	const FName SettingKey_DisplayName = TEXT("EASYDISPLAYNAME");
 
+	/** Custom session setting key marking a hidden session. */
+	const FName SettingKey_Hidden = TEXT("EASYHIDDEN");
+
+	/** Custom session setting key marking a password protected session. */
+	const FName SettingKey_PasswordProtected = TEXT("EASYPASSWORDPROTECTED");
+
+	/** Travel URL option carrying the password a client supplies when joining. */
+	const TCHAR* TravelOption_Password = TEXT("EasySessionPassword");
+
 	FString ResultToString(EEasySessionResult Result)
 	{
 		switch (Result)
@@ -63,6 +72,14 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		if (Setting.Key == EasySession::SettingKey_DisplayName)
 		{
 			Result.SessionDisplayName = Setting.Value.Data.ToString();
+		}
+		else if (Setting.Key == EasySession::SettingKey_Hidden)
+		{
+			Result.bIsHidden = true;
+		}
+		else if (Setting.Key == EasySession::SettingKey_PasswordProtected)
+		{
+			Result.bPasswordProtected = true;
 		}
 		else
 		{

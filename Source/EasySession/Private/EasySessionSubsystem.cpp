@@ -10,11 +10,15 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "Engine/NetConnection.h"
+#include "Engine/NetDriver.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameSession.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
 #include "Kismet/GameplayStatics.h"
+#include "Misc/PackageName.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
@@ -35,7 +39,9 @@ public:
 		Find,
 		Join,
 		Destroy,
-		Update
+		Update,
+		Start,
+		End
 	};
 
 	explicit FEasySessionRequest(EType InType)
@@ -48,6 +54,8 @@ public:
 	FEasySessionSearchParams SearchParams;
 	FEasySessionSearchResult JoinTarget;
 	bool bTravelOnSuccess = true;
+	FString JoinPassword;
+	FString JoinTravelOptions;
 	FEasySessionCompleteDelegate OnComplete;
 	FEasySessionFindCompleteDelegate OnFindComplete;
 };
@@ -72,7 +80,9 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &UEasySessionSubsystem::HandleTravelFailure);
 	}
 
+	PreLoginHandle = FGameModeEvents::GameModePreLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePreLogin);
 	PostLoginHandle = FGameModeEvents::GameModePostLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePostLogin);
+	LogoutHandle = FGameModeEvents::GameModeLogoutEvent.AddUObject(this, &UEasySessionSubsystem::HandleLogout);
 
 	if (IsRunningDedicatedServer() && GetDefault<UEasySessionSettings>()->bAutoHostOnDedicatedServer)
 	{
@@ -105,10 +115,22 @@ void UEasySessionSubsystem::Deinitialize()
 		TravelFailureHandle.Reset();
 	}
 
+	if (PreLoginHandle.IsValid())
+	{
+		FGameModeEvents::GameModePreLoginEvent.Remove(PreLoginHandle);
+		PreLoginHandle.Reset();
+	}
+
 	if (PostLoginHandle.IsValid())
 	{
 		FGameModeEvents::GameModePostLoginEvent.Remove(PostLoginHandle);
 		PostLoginHandle.Reset();
+	}
+
+	if (LogoutHandle.IsValid())
+	{
+		FGameModeEvents::GameModeLogoutEvent.Remove(LogoutHandle);
+		LogoutHandle.Reset();
 	}
 
 	if (DedicatedAutoHostTickerHandle.IsValid())
@@ -131,6 +153,8 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
 		Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle);
 		Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
+		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle);
+		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
 	}
 
 	ActiveMatchmakingPolicy = nullptr;
@@ -157,11 +181,27 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	EnqueueRequest(Request);
 }
 
-void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Join);
 	Request->JoinTarget = SearchResult;
 	Request->bTravelOnSuccess = bTravelOnSuccess;
+	Request->JoinPassword = Password;
+	Request->JoinTravelOptions = AdditionalTravelOptions;
+	Request->OnComplete = MoveTemp(OnComplete);
+	EnqueueRequest(Request);
+}
+
+void UEasySessionSubsystem::StartEasySession(FEasySessionCompleteDelegate OnComplete)
+{
+	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Start);
+	Request->OnComplete = MoveTemp(OnComplete);
+	EnqueueRequest(Request);
+}
+
+void UEasySessionSubsystem::EndEasySession(FEasySessionCompleteDelegate OnComplete)
+{
+	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::End);
 	Request->OnComplete = MoveTemp(OnComplete);
 	EnqueueRequest(Request);
 }
@@ -223,6 +263,28 @@ bool UEasySessionSubsystem::IsInSession() const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	return Sessions.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr;
+}
+
+EEasySessionState UEasySessionSubsystem::GetSessionState() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return EEasySessionState::NoSession;
+	}
+
+	switch (NamedSession->SessionState)
+	{
+		case EOnlineSessionState::Creating:		return EEasySessionState::Creating;
+		case EOnlineSessionState::Pending:		return EEasySessionState::Pending;
+		case EOnlineSessionState::Starting:		return EEasySessionState::Starting;
+		case EOnlineSessionState::InProgress:	return EEasySessionState::InProgress;
+		case EOnlineSessionState::Ending:		return EEasySessionState::Ending;
+		case EOnlineSessionState::Ended:		return EEasySessionState::Ended;
+		case EOnlineSessionState::Destroying:	return EEasySessionState::Destroying;
+		default:								return EEasySessionState::NoSession;
+	}
 }
 
 bool UEasySessionSubsystem::IsHost() const
@@ -344,6 +406,8 @@ void UEasySessionSubsystem::ProcessNextRequest()
 		case FEasySessionRequest::EType::Join:		ExecuteJoin(); break;
 		case FEasySessionRequest::EType::Destroy:	ExecuteDestroy(); break;
 		case FEasySessionRequest::EType::Update:	ExecuteUpdate(); break;
+		case FEasySessionRequest::EType::Start:		ExecuteStart(); break;
+		case FEasySessionRequest::EType::End:		ExecuteEnd(); break;
 		default: CompleteActiveRequest(EEasySessionResult::UnknownFailure, TEXT("Unknown request type.")); break;
 	}
 }
@@ -365,6 +429,8 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 			case FEasySessionRequest::EType::Join:		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle); break;
 			case FEasySessionRequest::EType::Destroy:	Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle); break;
 			case FEasySessionRequest::EType::Update:	Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle); break;
+			case FEasySessionRequest::EType::Start:		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle); break;
+			case FEasySessionRequest::EType::End:		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle); break;
 			default: break;
 		}
 	}
@@ -402,6 +468,16 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 		case FEasySessionRequest::EType::Update:
 			CompletedRequest->OnComplete.ExecuteIfBound(Result, ErrorMessage);
 			OnSessionUpdated.Broadcast(Result, ErrorMessage);
+			break;
+
+		case FEasySessionRequest::EType::Start:
+			CompletedRequest->OnComplete.ExecuteIfBound(Result, ErrorMessage);
+			OnSessionStarted.Broadcast(Result, ErrorMessage);
+			break;
+
+		case FEasySessionRequest::EType::End:
+			CompletedRequest->OnComplete.ExecuteIfBound(Result, ErrorMessage);
+			OnSessionEnded.Broadcast(Result, ErrorMessage);
 			break;
 
 		default:
@@ -455,6 +531,16 @@ void UEasySessionSubsystem::ExecuteCreate()
 	if (!Params.MapName.IsEmpty())
 	{
 		Settings.Set(SETTING_MAPNAME, Params.MapName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+	if (Params.bHidden)
+	{
+		// Advertised to the service so invites and direct joins still work, but Find filters it out.
+		Settings.Set(EasySession::SettingKey_Hidden, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+	if (!Params.Password.IsEmpty())
+	{
+		// Only the protection flag is advertised - the password itself never leaves the host.
+		Settings.Set(EasySession::SettingKey_PasswordProtected, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
@@ -629,6 +715,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
+	CurrentSessionPassword = HostParams.Password.TrimStartAndEnd();
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 	EnsureHostIsListening(HostParams);
@@ -660,6 +747,11 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 
 		FEasySessionSearchResult Result = FEasySessionSearchResult::FromNative(NativeResult);
 
+		// Hidden sessions are advertised for invites/direct joins but never listed in searches.
+		if (Result.bIsHidden)
+		{
+			continue;
+		}
 		if (Result.OpenSlots < Params.MinOpenSlots)
 		{
 			continue;
@@ -701,6 +793,8 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	}
 
 	const bool bTravelOnSuccess = ActiveRequest->bTravelOnSuccess;
+	const FString JoinPassword = ActiveRequest->JoinPassword;
+	const FString JoinTravelOptions = ActiveRequest->JoinTravelOptions;
 
 	switch (JoinResult)
 	{
@@ -747,7 +841,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 
 	if (bTravelOnSuccess)
 	{
-		TravelToJoinedSession(ConnectString);
+		TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
 	}
 }
 
@@ -765,6 +859,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
+	CurrentSessionPassword.Empty();
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
@@ -785,12 +880,111 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
+void UEasySessionSubsystem::ExecuteStart()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		CompleteActiveRequest(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		return;
+	}
+
+	if (Sessions->GetNamedSession(NAME_GameSession) == nullptr)
+	{
+		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to start."));
+		return;
+	}
+
+	StartCompleteHandle = Sessions->AddOnStartSessionCompleteDelegate_Handle(
+		FOnStartSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleStartSessionComplete));
+
+	UE_LOG(LogEasySession, Log, TEXT("Starting session."));
+
+	if (!Sessions->StartSession(NAME_GameSession))
+	{
+		CompleteActiveRequest(EEasySessionResult::StateChangeFailure, TEXT("StartSession request was rejected by the online subsystem. The session may already be in progress."));
+	}
+}
+
+void UEasySessionSubsystem::ExecuteEnd()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		CompleteActiveRequest(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		return;
+	}
+
+	if (Sessions->GetNamedSession(NAME_GameSession) == nullptr)
+	{
+		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to end."));
+		return;
+	}
+
+	EndCompleteHandle = Sessions->AddOnEndSessionCompleteDelegate_Handle(
+		FOnEndSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleEndSessionComplete));
+
+	UE_LOG(LogEasySession, Log, TEXT("Ending session."));
+
+	if (!Sessions->EndSession(NAME_GameSession))
+	{
+		CompleteActiveRequest(EEasySessionResult::StateChangeFailure, TEXT("EndSession request was rejected by the online subsystem. The session may not be in progress."));
+	}
+}
+
+void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (SessionName != NAME_GameSession || !ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Start)
+	{
+		return;
+	}
+
+	if (!bWasSuccessful)
+	{
+		CompleteActiveRequest(EEasySessionResult::StateChangeFailure, TEXT("The online subsystem failed to start the session."));
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Session started."));
+	CompleteActiveRequest(EEasySessionResult::Success);
+}
+
+void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWasSuccessful)
+{
+	if (SessionName != NAME_GameSession || !ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::End)
+	{
+		return;
+	}
+
+	if (!bWasSuccessful)
+	{
+		CompleteActiveRequest(EEasySessionResult::StateChangeFailure, TEXT("The online subsystem failed to end the session."));
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Session ended."));
+	CompleteActiveRequest(EEasySessionResult::Success);
+}
+
 void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
 {
 	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World != OwnWorld)
+	if (World != nullptr)
 	{
-		return;
+		if (World != OwnWorld)
+		{
+			return;
+		}
+	}
+	else
+	{
+		// Pending-connection failures (e.g. the server refusing the login) broadcast
+		// with a null world. Only react when this instance actually joined a session,
+		// i.e. it was the one traveling to a host.
+		if (!IsInSession())
+		{
+			return;
+		}
 	}
 
 	const FString Reason = FString::Printf(TEXT("%s: %s"), ENetworkFailure::ToString(FailureType), *ErrorString);
@@ -805,7 +999,9 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	}
 
 	// The connection to the host is gone - record the reason and recover to the menu.
-	NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(Reason));
+	// Prefer the raw error text for the popup (e.g. "Wrong session password.").
+	const FString PopupText = !ErrorString.IsEmpty() ? ErrorString : Reason;
+	NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(PopupText));
 }
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
@@ -874,10 +1070,74 @@ void UEasySessionSubsystem::ReturnToConfiguredMenu()
 	}
 
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World != nullptr)
+	if (World == nullptr)
 	{
-		UE_LOG(LogEasySession, Log, TEXT("Returning to the configured menu map: %s"), *MenuMap);
-		UGameplayStatics::OpenLevel(World, FName(*MenuMap));
+		return;
+	}
+
+	// The engine may have already browsed back to the menu (e.g. after a refused
+	// pending connection) - avoid reloading the same map on top of it.
+	if (World->GetName() == FPackageName::GetShortName(MenuMap))
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Already on the menu map - skipping the return travel."));
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Returning to the configured menu map: %s"), *MenuMap);
+	UGameplayStatics::OpenLevel(World, FName(*MenuMap));
+}
+
+void UEasySessionSubsystem::HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage)
+{
+	// Fires on the server only (game modes do not exist on clients).
+	UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (GameMode == nullptr || OwnWorld == nullptr || GameMode->GetWorld() != OwnWorld)
+	{
+		return;
+	}
+
+	// Another handler may already be rejecting this player - do not overwrite the reason.
+	if (!ErrorMessage.IsEmpty() || CurrentSessionPassword.IsEmpty())
+	{
+		return;
+	}
+
+	// The engine sets Connection->PlayerId before PreLogin, so the pending
+	// connection can be found by id and its travel URL inspected.
+	const UNetConnection* PendingConnection = nullptr;
+	if (const UNetDriver* NetDriver = OwnWorld->GetNetDriver())
+	{
+		for (const TObjectPtr<UNetConnection>& ClientConnection : NetDriver->ClientConnections)
+		{
+			if (ClientConnection != nullptr && ClientConnection->PlayerId == NewPlayer)
+			{
+				PendingConnection = ClientConnection;
+				break;
+			}
+		}
+	}
+
+	if (PendingConnection == nullptr)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: could not find the pending connection for '%s'. Rejecting to protect the password session."), *NewPlayer.ToString());
+		ErrorMessage = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
+		return;
+	}
+
+	// The engine rebuilds RequestURL with the map path in front (e.g. "/Game/Maps/Menu?Pw=x"),
+	// but ParseOption only works on strings starting at the first '?' - skip to it,
+	// exactly like the engine does before calling PreLogin.
+	FString URLOptions = PendingConnection->RequestURL;
+	const int32 OptionsStart = URLOptions.Find(TEXT("?"), ESearchCase::CaseSensitive);
+	URLOptions = OptionsStart != INDEX_NONE ? URLOptions.Mid(OptionsStart) : FString();
+
+	const FString SuppliedPassword = UGameplayStatics::ParseOption(URLOptions, EasySession::TravelOption_Password).TrimStartAndEnd();
+
+	if (!SuppliedPassword.Equals(CurrentSessionPassword, ESearchCase::CaseSensitive))
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - wrong or missing session password (expected %d chars, got %d chars, url options: %s)."),
+			*NewPlayer.ToString(), CurrentSessionPassword.Len(), SuppliedPassword.Len(), *PendingConnection->RequestURL);
+		ErrorMessage = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
 	}
 }
 
@@ -892,10 +1152,52 @@ void UEasySessionSubsystem::HandlePostLogin(AGameModeBase* GameMode, APlayerCont
 
 	// Attach the RPC carrier so the host can later send this client back to the
 	// menu with a reason (EndSessionForEveryone) without a custom PlayerController.
-	if (NewPlayer->FindComponentByClass<UEasySessionClientComponent>() == nullptr)
+	UEasySessionClientComponent* Component = NewPlayer->FindComponentByClass<UEasySessionClientComponent>();
+	if (Component == nullptr)
 	{
-		UEasySessionClientComponent* Component = NewObject<UEasySessionClientComponent>(NewPlayer);
+		Component = NewObject<UEasySessionClientComponent>(NewPlayer);
 		Component->RegisterComponent();
+	}
+
+	if (NewPlayer->IsLocalController())
+	{
+		// The hosting player registers itself right after creating the session.
+		return;
+	}
+
+	// Register the remote player so the advertised open slot count stays accurate.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const APlayerState* PlayerState = NewPlayer->PlayerState;
+	const FUniqueNetIdRepl PlayerId = PlayerState ? PlayerState->GetUniqueId() : FUniqueNetIdRepl();
+
+	if (Sessions.IsValid() && PlayerId.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr)
+	{
+		if (Sessions->RegisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Registered remote player '%s' in the session."), *NewPlayer->GetName());
+		}
+	}
+}
+
+void UEasySessionSubsystem::HandleLogout(AGameModeBase* GameMode, AController* Exiting)
+{
+	// Fires on the server only. Unregister remote players so their slot frees up.
+	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (GameMode == nullptr || Exiting == nullptr || GameMode->GetWorld() != OwnWorld || Exiting->IsLocalController())
+	{
+		return;
+	}
+
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const APlayerState* PlayerState = Exiting->PlayerState;
+	const FUniqueNetIdRepl PlayerId = PlayerState ? PlayerState->GetUniqueId() : FUniqueNetIdRepl();
+
+	if (Sessions.IsValid() && PlayerId.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr)
+	{
+		if (Sessions->UnregisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Unregistered remote player '%s' from the session."), *Exiting->GetName());
+		}
 	}
 }
 
@@ -1038,6 +1340,8 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 	{
 		TravelURL += TEXT("?listen");
 	}
+	AppendTravelOptions(TravelURL, HostParams.AdditionalTravelOptions);
+	OnModifyServerTravelURL.Broadcast(TravelURL);
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
 	if (!World->ServerTravel(TravelURL))
@@ -1047,7 +1351,7 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 	}
 }
 
-void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString)
+void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions)
 {
 	APlayerController* PlayerController = GetGameInstance() ? GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
 	if (PlayerController == nullptr)
@@ -1056,8 +1360,29 @@ void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString)
 		return;
 	}
 
+	FString TravelURL = ConnectString;
+	const FString TrimmedPassword = Password.TrimStartAndEnd();
+	if (!TrimmedPassword.IsEmpty())
+	{
+		TravelURL += FString::Printf(TEXT("?%s=%s"), EasySession::TravelOption_Password, *TrimmedPassword);
+	}
+	AppendTravelOptions(TravelURL, AdditionalTravelOptions);
+	OnModifyClientTravelURL.Broadcast(TravelURL);
+
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to host at '%s'"), *ConnectString);
-	PlayerController->ClientTravel(ConnectString, TRAVEL_Absolute);
+	PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
+}
+
+void UEasySessionSubsystem::AppendTravelOptions(FString& InOutURL, const FString& Options)
+{
+	if (Options.IsEmpty())
+	{
+		return;
+	}
+
+	FString Normalized = Options;
+	Normalized.RemoveFromStart(TEXT("?"));
+	InOutURL += TEXT("?") + Normalized;
 }
 
 void UEasySessionSubsystem::AutoHostDedicatedServerSession()

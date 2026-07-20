@@ -26,6 +26,12 @@ bool UEasySessionStatics::IsEasySessionHost(const UObject* WorldContextObject)
 	return Subsystem != nullptr && Subsystem->IsHost();
 }
 
+EEasySessionState UEasySessionStatics::GetEasySessionState(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetSessionState() : EEasySessionState::NoSession;
+}
+
 bool UEasySessionStatics::IsEasySessionBusy(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

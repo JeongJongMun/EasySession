@@ -111,6 +111,12 @@ void UEasyMatchmakingPolicy::BuildCandidateListAndJoin(const TArray<FEasySession
 	Candidates.Empty();
 	for (const FEasySessionSearchResult& Result : Results)
 	{
+		// QuickPlay cannot supply a password, so protected sessions are never candidates.
+		if (Result.bPasswordProtected)
+		{
+			continue;
+		}
+
 		if (!FailedSessionKeys.Contains(GetSessionKey(Result)))
 		{
 			Candidates.Add(Result);
@@ -168,7 +174,7 @@ void UEasyMatchmakingPolicy::TryJoinNextCandidate()
 
 	const FEasySessionSearchResult& Candidate = Candidates[NextCandidateIndex];
 	UE_LOG(LogEasySession, Log, TEXT("QuickPlay joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
-	SubsystemPtr->JoinEasySession(Candidate, true, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
+	SubsystemPtr->JoinEasySession(Candidate, true, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
 }
 
 void UEasyMatchmakingPolicy::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)

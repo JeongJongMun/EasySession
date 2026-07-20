@@ -1,0 +1,43 @@
+// Copyright Langerak. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Nodes/EasySessionNodeBase.h"
+#include "EasySessionSubsystem.h"
+#include "EasyStartSessionNode.generated.h"
+
+/**
+ * Async node that starts the match, transitioning the session to InProgress.
+ */
+UCLASS()
+class EASYSESSION_API UEasyStartSessionNode : public UEasySessionNodeBase
+{
+	GENERATED_BODY()
+
+public:
+
+	/** Called when the session was started successfully. */
+	UPROPERTY(BlueprintAssignable)
+	FEasySessionEvent OnSuccess;
+
+	/** Called when the session could not be started. */
+	UPROPERTY(BlueprintAssignable)
+	FEasySessionEvent OnFailure;
+
+	/**
+	 * Start the match: transitions the session to InProgress. When Allow Join In Progress
+	 * is disabled, new players can no longer join until the match ends.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Start Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
+	static UEasyStartSessionNode* StartEasySession(UObject* WorldContextObject);
+
+	//~ Begin UBlueprintAsyncActionBase Interface
+	virtual void Activate() override;
+	//~ End UBlueprintAsyncActionBase Interface
+
+private:
+
+	/** Called when the subsystem finishes the start operation. */
+	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
+};

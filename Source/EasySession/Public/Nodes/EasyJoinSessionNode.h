@@ -30,9 +30,11 @@ public:
 	 *
 	 * @param SearchResult A search result returned by Find Easy Sessions.
 	 * @param bTravelOnSuccess Whether to travel to the host once joined.
+	 * @param Password Password for password protected sessions (see Password Protected on the search result).
+	 * @param AdditionalTravelOptions Extra options appended to the travel URL (e.g. "Team=1?MyOption=2").
 	 */
-	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Join Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "SearchResult"))
-	static UEasyJoinSessionNode* JoinEasySession(UObject* WorldContextObject, const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess = true);
+	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Join Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "SearchResult", AdvancedDisplay = "Password,AdditionalTravelOptions"))
+	static UEasyJoinSessionNode* JoinEasySession(UObject* WorldContextObject, const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess = true, const FString& Password = TEXT(""), const FString& AdditionalTravelOptions = TEXT(""));
 
 	//~ Begin UBlueprintAsyncActionBase Interface
 	virtual void Activate() override;
@@ -48,4 +50,10 @@ private:
 
 	/** Whether to travel to the host once joined. */
 	bool bTravelOnSuccess = true;
+
+	/** Password for password protected sessions. */
+	FString Password;
+
+	/** Extra options appended to the travel URL. */
+	FString AdditionalTravelOptions;
 };

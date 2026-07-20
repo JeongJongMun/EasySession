@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Subsystems/GameInstanceSubsystem.h"
+#include "GameFramework/OnlineReplStructs.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "EasySessionTypes.h"
 #include "Containers/Ticker.h"
@@ -20,6 +21,7 @@ namespace ETravelFailure
 	enum Type : int;
 }
 
+class AController;
 class AGameModeBase;
 class APlayerController;
 class FEasySessionRequest;
@@ -76,6 +78,14 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionUpdated;
 
+	/** Fired when a Start Session operation completes. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionEvent OnSessionStarted;
+
+	/** Fired when an End Session operation completes. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionEvent OnSessionEnded;
+
 	/** Fired when a QuickPlay matchmaking run completes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnMatchmakingComplete;
@@ -109,9 +119,26 @@ public:
 	 *
 	 * @param SearchResult A search result returned by FindEasySessions.
 	 * @param bTravelOnSuccess Whether to client travel to the host once joined.
+	 * @param Password Password for password protected sessions. Ignored otherwise.
+	 * @param AdditionalTravelOptions Extra options appended to the client travel URL (e.g. "Name=Player?Team=1").
 	 * @param OnComplete Called when the operation completes.
 	 */
-	void JoinEasySession(const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess = true, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void JoinEasySession(const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess = true, const FString& Password = FString(), const FString& AdditionalTravelOptions = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
+	 * Start the match: transitions the session to InProgress. When Allow Join In Progress is
+	 * disabled, new players can no longer join until the match ends.
+	 *
+	 * @param OnComplete Called when the operation completes.
+	 */
+	void StartEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
+	 * End the match: transitions the session back to Ended so a new match can be started.
+	 *
+	 * @param OnComplete Called when the operation completes.
+	 */
+	void EndEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Destroy the current session, leaving it if we are a client.
@@ -160,6 +187,10 @@ public:
 	/** Check whether the local player is currently in a session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsInSession() const;
+
+	/** Get the lifecycle state of the current session (Pending, InProgress, Ended, ...). */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	EEasySessionState GetSessionState() const;
 
 	/** Check whether the local player is hosting the current session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
@@ -228,6 +259,14 @@ public:
 	 */
 	void NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText);
 
+public:
+
+	/** C++ hook: modify the server travel URL (hosting / server travel) before it is used. */
+	FEasyModifyTravelURLDelegate OnModifyServerTravelURL;
+
+	/** C++ hook: modify the client travel URL (joining a host) before it is used. */
+	FEasyModifyTravelURLDelegate OnModifyClientTravelURL;
+
 private:
 
 	/** Resolve the session interface for the current world context. */
@@ -251,6 +290,8 @@ private:
 	void ExecuteJoin();
 	void ExecuteDestroy();
 	void ExecuteUpdate();
+	void ExecuteStart();
+	void ExecuteEnd();
 
 	/** Online subsystem delegate handlers. */
 	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
@@ -258,11 +299,23 @@ private:
 	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult);
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);
+	void HandleStartSessionComplete(FName SessionName, bool bWasSuccessful);
+	void HandleEndSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
 
-	/** Attach the client RPC component to players logging in on the server. */
+	/**
+	 * Verify the session password before a player is allowed to log in on the server.
+	 * Filling ErrorMessage makes the engine refuse the connection and send the text
+	 * to the client, so wrong-password players never enter the map.
+	 */
+	void HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage);
+
+	/** Attach the client RPC component and register players logging in on the server. */
 	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
+
+	/** Unregister remote players logging out on the server. */
+	void HandleLogout(AGameModeBase* GameMode, AController* Exiting);
 
 	/** Travel back to the menu map configured in the settings. No-op when unset. */
 	void ReturnToConfiguredMenu();
@@ -279,7 +332,10 @@ private:
 
 	/** Travel helpers executed after successful create/join. */
 	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
-	void TravelToJoinedSession(const FString& ConnectString);
+	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
+
+	/** Append a travel option string ("A=1?B=2") to a URL, normalizing the '?' separators. */
+	static void AppendTravelOptions(FString& InOutURL, const FString& Options);
 
 	/** Create the automatic session when running as a dedicated server. */
 	void AutoHostDedicatedServerSession();
@@ -308,6 +364,14 @@ private:
 	FDelegateHandle JoinCompleteHandle;
 	FDelegateHandle DestroyCompleteHandle;
 	FDelegateHandle UpdateCompleteHandle;
+	FDelegateHandle StartCompleteHandle;
+	FDelegateHandle EndCompleteHandle;
+
+	/** Delegate handle for server-side player logouts. Bound for the subsystem lifetime. */
+	FDelegateHandle LogoutHandle;
+
+	/** Password of the session we are hosting. Never advertised; used to verify joining clients. */
+	FString CurrentSessionPassword;
 
 	/** Info about the most recent disconnect. Kept until consumed so it survives map travel. */
 	FEasyDisconnectInfo LastDisconnectInfo;
@@ -320,6 +384,9 @@ private:
 
 	/** Delegate handle for engine-level travel failures. Bound for the subsystem lifetime. */
 	FDelegateHandle TravelFailureHandle;
+
+	/** Delegate handle for server-side pre-login checks. Bound for the subsystem lifetime. */
+	FDelegateHandle PreLoginHandle;
 
 	/** Delegate handle for server-side player logins. Bound for the subsystem lifetime. */
 	FDelegateHandle PostLoginHandle;
