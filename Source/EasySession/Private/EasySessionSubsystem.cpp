@@ -4,14 +4,17 @@
 
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
+#include "EasySessionClientComponent.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
+#include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "Kismet/GameplayStatics.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
@@ -66,7 +69,10 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	if (GEngine != nullptr)
 	{
 		NetworkFailureHandle = GEngine->OnNetworkFailure().AddUObject(this, &UEasySessionSubsystem::HandleNetworkFailure);
+		TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &UEasySessionSubsystem::HandleTravelFailure);
 	}
+
+	PostLoginHandle = FGameModeEvents::GameModePostLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePostLogin);
 
 	if (IsRunningDedicatedServer() && GetDefault<UEasySessionSettings>()->bAutoHostOnDedicatedServer)
 	{
@@ -91,6 +97,18 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		GEngine->OnNetworkFailure().Remove(NetworkFailureHandle);
 		NetworkFailureHandle.Reset();
+	}
+
+	if (GEngine != nullptr && TravelFailureHandle.IsValid())
+	{
+		GEngine->OnTravelFailure().Remove(TravelFailureHandle);
+		TravelFailureHandle.Reset();
+	}
+
+	if (PostLoginHandle.IsValid())
+	{
+		FGameModeEvents::GameModePostLoginEvent.Remove(PostLoginHandle);
+		PostLoginHandle.Reset();
 	}
 
 	if (DedicatedAutoHostTickerHandle.IsValid())
@@ -779,11 +797,144 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	UE_LOG(LogEasySession, Warning, TEXT("Network failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
 
-	// Clean up the dead session so the player can host or join again right away.
+	if (IsHost())
+	{
+		// A failure on the host usually concerns a single client connection - the session
+		// itself is still alive, so the host stays where it is.
+		return;
+	}
+
+	// The connection to the host is gone - record the reason and recover to the menu.
+	NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(Reason));
+}
+
+void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
+{
+	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World != OwnWorld)
+	{
+		return;
+	}
+
+	const FString Reason = FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(FailureType), *ErrorString);
+	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
+	OnSessionFailure.Broadcast(Reason);
+
+	NotifyDisconnectedFromSession(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));
+}
+
+void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText)
+{
+	// First reason wins: a recovery is already underway and follow-up failures
+	// (e.g. the connection dropping while we leave) would overwrite the real cause.
+	if (bHasPendingDisconnectInfo)
+	{
+		return;
+	}
+
+	LastDisconnectInfo.Reason = Reason;
+	LastDisconnectInfo.ReasonText = ReasonText;
+	bHasPendingDisconnectInfo = true;
+
+	const bool bReturnToMenu = GetDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect;
+
 	if (IsInSession())
 	{
-		DestroyEasySession();
+		// Clean up the dead session so the player can host or join again right away.
+		DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+			[this, bReturnToMenu](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
+			{
+				if (bReturnToMenu)
+				{
+					ReturnToConfiguredMenu();
+				}
+			}));
 	}
+	else if (bReturnToMenu)
+	{
+		ReturnToConfiguredMenu();
+	}
+}
+
+FEasyDisconnectInfo UEasySessionSubsystem::ConsumeLastDisconnectInfo()
+{
+	const FEasyDisconnectInfo Info = LastDisconnectInfo;
+	LastDisconnectInfo = FEasyDisconnectInfo();
+	bHasPendingDisconnectInfo = false;
+	return Info;
+}
+
+void UEasySessionSubsystem::ReturnToConfiguredMenu()
+{
+	const FString MenuMap = GetDefault<UEasySessionSettings>()->ReturnToMenuMap;
+	if (MenuMap.IsEmpty())
+	{
+		// No menu map configured - the engine's default-map behavior applies.
+		return;
+	}
+
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World != nullptr)
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Returning to the configured menu map: %s"), *MenuMap);
+		UGameplayStatics::OpenLevel(World, FName(*MenuMap));
+	}
+}
+
+void UEasySessionSubsystem::HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer)
+{
+	// Fires on the server only (game modes do not exist on clients).
+	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (GameMode == nullptr || NewPlayer == nullptr || GameMode->GetWorld() != OwnWorld)
+	{
+		return;
+	}
+
+	// Attach the RPC carrier so the host can later send this client back to the
+	// menu with a reason (EndSessionForEveryone) without a custom PlayerController.
+	if (NewPlayer->FindComponentByClass<UEasySessionClientComponent>() == nullptr)
+	{
+		UEasySessionClientComponent* Component = NewObject<UEasySessionClientComponent>(NewPlayer);
+		Component->RegisterComponent();
+	}
+}
+
+void UEasySessionSubsystem::EndSessionForEveryone(FText Reason)
+{
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World == nullptr || !IsHost())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("EndSessionForEveryone can only be called by the session host."));
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Ending the session for everyone: %s"), *Reason.ToString());
+
+	// Tell every remote client to leave with the reason before the session goes down.
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PlayerController = It->Get();
+		if (PlayerController == nullptr || PlayerController->IsLocalController())
+		{
+			continue;
+		}
+
+		if (UEasySessionClientComponent* Component = PlayerController->FindComponentByClass<UEasySessionClientComponent>())
+		{
+			Component->ClientReturnToMenu(Reason);
+		}
+	}
+
+	// Give the RPCs a moment to reach the clients, then take the host down as well.
+	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
+	{
+		DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+			[this](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
+			{
+				ReturnToConfiguredMenu();
+			}));
+		return false;
+	}), 0.5f);
 }
 
 void UEasySessionSubsystem::RegisterLocalPlayerInSession()

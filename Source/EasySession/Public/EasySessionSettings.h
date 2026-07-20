@@ -23,6 +23,21 @@ public:
 	//~ End UDeveloperSettings Interface
 
 	/**
+	 * Automatically clean up the session and travel back to Return To Menu Map when
+	 * the connection to a session is lost or traveling to a session fails.
+	 * The reason is preserved and can be read on the menu with Consume Last Disconnect Info.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Recovery")
+	bool bAutoReturnToMenuOnDisconnect = true;
+
+	/**
+	 * Map to travel to after a disconnect (e.g. /Game/Maps/MainMenu).
+	 * Leave empty to fall back to the engine's default behavior (game default map).
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Recovery", meta = (EditCondition = "bAutoReturnToMenuOnDisconnect"))
+	FString ReturnToMenuMap;
+
+	/**
 	 * Automatically create and advertise a session when running as a dedicated server.
 	 * The session is created with the Dedicated Server Host Params below.
 	 */

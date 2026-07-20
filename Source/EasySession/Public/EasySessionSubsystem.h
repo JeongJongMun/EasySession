@@ -15,6 +15,13 @@ namespace ENetworkFailure
 	enum Type : int;
 }
 
+namespace ETravelFailure
+{
+	enum Type : int;
+}
+
+class AGameModeBase;
+class APlayerController;
 class FEasySessionRequest;
 class UEasyMatchmakingPolicy;
 
@@ -197,6 +204,30 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
 	bool ServerTravelToMap(const FString& MapName);
 
+	/**
+	 * End the session for every player: remote clients are sent back to the menu with the
+	 * given reason (shown by their menu popup), then the host leaves as well.
+	 * Only the session host can call this.
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
+	void EndSessionForEveryone(FText Reason);
+
+	/** Check whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	bool HasPendingDisconnectInfo() const { return bHasPendingDisconnectInfo; }
+
+	/** Get the last disconnect info and clear the pending flag. Survives map travel. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession")
+	FEasyDisconnectInfo ConsumeLastDisconnectInfo();
+
+	/**
+	 * Record a disconnect and run the recovery flow: destroy the dead session and travel
+	 * back to the menu map configured in the EasySession project settings.
+	 * Called automatically on network and travel failures; call it manually only if you
+	 * detect disconnects yourself. The first recorded reason wins until it is consumed.
+	 */
+	void NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText);
+
 private:
 
 	/** Resolve the session interface for the current world context. */
@@ -228,6 +259,13 @@ private:
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
+	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+
+	/** Attach the client RPC component to players logging in on the server. */
+	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
+
+	/** Travel back to the menu map configured in the settings. No-op when unset. */
+	void ReturnToConfiguredMenu();
 
 	/**
 	 * Register / unregister the local player in the current session.
@@ -271,8 +309,20 @@ private:
 	FDelegateHandle DestroyCompleteHandle;
 	FDelegateHandle UpdateCompleteHandle;
 
+	/** Info about the most recent disconnect. Kept until consumed so it survives map travel. */
+	FEasyDisconnectInfo LastDisconnectInfo;
+
+	/** Whether LastDisconnectInfo has not been consumed yet. */
+	bool bHasPendingDisconnectInfo = false;
+
 	/** Delegate handle for engine-level network failures. Bound for the subsystem lifetime. */
 	FDelegateHandle NetworkFailureHandle;
+
+	/** Delegate handle for engine-level travel failures. Bound for the subsystem lifetime. */
+	FDelegateHandle TravelFailureHandle;
+
+	/** Delegate handle for server-side player logins. Bound for the subsystem lifetime. */
+	FDelegateHandle PostLoginHandle;
 
 	/** Ticker waiting for a valid world before auto hosting on a dedicated server. */
 	FTSTicker::FDelegateHandle DedicatedAutoHostTickerHandle;

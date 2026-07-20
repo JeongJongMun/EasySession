@@ -56,6 +56,18 @@ int32 UEasySessionStatics::GetEasySessionMaxPlayers(const UObject* WorldContextO
 	return Subsystem != nullptr ? Subsystem->GetSessionMaxPlayers() : 0;
 }
 
+bool UEasySessionStatics::HasPendingEasyDisconnectInfo(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->HasPendingDisconnectInfo();
+}
+
+FEasyDisconnectInfo UEasySessionStatics::ConsumeLastEasyDisconnectInfo(const UObject* WorldContextObject)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->ConsumeLastDisconnectInfo() : FEasyDisconnectInfo();
+}
+
 FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

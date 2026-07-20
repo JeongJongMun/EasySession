@@ -55,6 +55,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasySessionMaxPlayers(const UObject* WorldContextObject);
 
+	/** Check whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool HasPendingEasyDisconnectInfo(const UObject* WorldContextObject);
+
+	/** Get the last disconnect info and clear the pending flag. Survives map travel. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FEasyDisconnectInfo ConsumeLastEasyDisconnectInfo(const UObject* WorldContextObject);
+
 	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);

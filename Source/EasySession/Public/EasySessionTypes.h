@@ -302,6 +302,43 @@ struct EASYSESSION_API FEasyQuickPlayParams
 	float DelayBetweenPassesSeconds = 2.0f;
 };
 
+/**
+ * Why the local player was disconnected from a session.
+ */
+UENUM(BlueprintType)
+enum class EEasyDisconnectReason : uint8
+{
+	/** No disconnect has been recorded. */
+	None,
+
+	/** The connection to the host was lost (host quit, crashed, or the network dropped). */
+	ConnectionLost,
+
+	/** The host ended the session and sent everyone back to the menu. */
+	HostEndedSession,
+
+	/** Traveling to the session's map failed. */
+	TravelFailure
+};
+
+/**
+ * Information about the most recent disconnect from a session.
+ * Preserved across map travel, so the menu level can read it and show a popup.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasyDisconnectInfo
+{
+	GENERATED_BODY()
+
+	/** Why the player was disconnected. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	EEasyDisconnectReason Reason = EEasyDisconnectReason::None;
+
+	/** Human readable description, suitable for showing in a popup. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FText ReasonText;
+};
+
 /** Delegate fired when a session operation completes. */
 DECLARE_DELEGATE_TwoParams(FEasySessionCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/);
 
