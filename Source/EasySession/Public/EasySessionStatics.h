@@ -51,6 +51,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FString> GetEasySessionPlayerNames(const UObject* WorldContextObject);
 
+	/** Get the display name of the current session. Empty when no session exists. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FString GetEasySessionDisplayName(const UObject* WorldContextObject);
+
 	/** Get the number of players currently in the session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasySessionPlayerCount(const UObject* WorldContextObject);

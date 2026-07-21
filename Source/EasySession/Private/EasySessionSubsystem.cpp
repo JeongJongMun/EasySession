@@ -321,6 +321,20 @@ TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
 	return PlayerNames;
 }
 
+FString UEasySessionSubsystem::GetSessionDisplayName() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return FString();
+	}
+
+	FString DisplayName;
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_DisplayName, DisplayName);
+	return DisplayName;
+}
+
 int32 UEasySessionSubsystem::GetSessionPlayerCount() const
 {
 	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;

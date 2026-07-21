@@ -203,6 +203,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	TArray<FString> GetSessionPlayerNames() const;
 
+	/** Get the display name of the current session. Empty when no session exists. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	FString GetSessionDisplayName() const;
+
 	/** Get the number of players currently in the session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	int32 GetSessionPlayerCount() const;
