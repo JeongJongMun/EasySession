@@ -102,6 +102,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static bool ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
 
+	/** Open the platform profile overlay (e.g. Steam) for a player in the session. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
+	static bool ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player);
+
 	/** Convert a session result value to a human readable string. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (DisplayName = "To String (EasySessionResult)", CompactNodeTitle = "->"))
 	static FString ResultToString(EEasySessionResult Result);

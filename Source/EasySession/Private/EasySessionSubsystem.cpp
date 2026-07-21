@@ -394,6 +394,7 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 		Info.PlayerName = PlayerState->GetPlayerName();
 		Info.bIsLocalPlayer = PlayerState == LocalPlayerState;
 		Info.bIsHost = HostId.IsValid() && PlayerId.GetUniqueNetId().IsValid() && *PlayerId.GetUniqueNetId() == *HostId;
+		Info.NativeId = PlayerId.GetUniqueNetId();
 	}
 
 	return Infos;
@@ -1294,18 +1295,28 @@ bool UEasySessionSubsystem::ShowInviteUI()
 
 bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
 {
+	return ShowProfileUIInternal(Friend.NativeId);
+}
+
+bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
+{
+	return ShowProfileUIInternal(Player.NativeId);
+}
+
+bool UEasySessionSubsystem::ShowProfileUIInternal(const FUniqueNetIdPtr& TargetId)
+{
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
 	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
 	const IOnlineIdentityPtr Identity = OnlineSub ? OnlineSub->GetIdentityInterface() : nullptr;
 	const FUniqueNetIdPtr LocalId = Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr;
 
-	if (!ExternalUI.IsValid() || !LocalId.IsValid() || !Friend.IsValid())
+	if (!ExternalUI.IsValid() || !LocalId.IsValid() || !TargetId.IsValid())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ShowProfileUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
 		return false;
 	}
 
-	return ExternalUI->ShowProfileUI(*LocalId, *Friend.NativeId, FOnProfileUIClosedDelegate());
+	return ExternalUI->ShowProfileUI(*LocalId, *TargetId, FOnProfileUIClosedDelegate());
 }
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)

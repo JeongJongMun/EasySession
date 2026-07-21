@@ -124,6 +124,12 @@ bool UEasySessionStatics::ShowEasyProfileUI(const UObject* WorldContextObject, c
 	return Subsystem != nullptr && Subsystem->ShowProfileUI(Friend);
 }
 
+bool UEasySessionStatics::ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->ShowProfileUIForPlayer(Player);
+}
+
 FString UEasySessionStatics::ResultToString(EEasySessionResult Result)
 {
 	return EasySession::ResultToString(Result);

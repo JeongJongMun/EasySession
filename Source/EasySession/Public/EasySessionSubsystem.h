@@ -302,6 +302,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
 	bool ShowProfileUI(const FEasySessionFriend& Friend);
 
+	/** Open the platform profile overlay (e.g. Steam) for a player in the session. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
+	bool ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player);
+
 	/**
 	 * Read the local player's friends list. Not supported on the NULL (LAN) subsystem.
 	 *
@@ -379,6 +383,9 @@ private:
 
 	/** Leave the current session if needed, then join the given one. */
 	void JoinInvitedSession(const FEasySessionSearchResult& Session);
+
+	/** Open the platform profile overlay for the given id. */
+	bool ShowProfileUIInternal(const FUniqueNetIdPtr& TargetId);
 
 	/**
 	 * Verify the session password before a player is allowed to log in on the server.

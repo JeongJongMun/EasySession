@@ -437,6 +437,9 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	/** Whether this player is hosting the session. Always false on dedicated servers. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsHost = false;
+
+	/** The player's unique id. Not exposed to Blueprint. */
+	FUniqueNetIdPtr NativeId;
 };
 
 /**
