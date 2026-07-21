@@ -36,6 +36,15 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasySessionFindEvent, EEasySessi
 /** Multicast event fired when the connection to the session is lost. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionFailureEvent, const FString&, Reason);
 
+/** Multicast event fired when a session invite is received. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteEvent, const FEasySessionInvite&, Invite);
+
+/** Multicast event fired when the player accepts an invite from the platform overlay. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, const FEasySessionSearchResult&, Session);
+
+/** Multicast event fired when reading the friends list completes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionFriend>&, Friends);
+
 /**
  * Core subsystem of the EasySession plugin.
  * Automatically created for each game instance - no custom GameInstance class required.
@@ -93,6 +102,18 @@ public:
 	/** Fired when the connection to the session is lost or a network error occurs. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionFailureEvent OnSessionFailure;
+
+	/** Fired when a session invite is received. The invite is also added to the pending list. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionInviteEvent OnSessionInviteReceived;
+
+	/**
+	 * Fired when the player accepts an invite from the platform overlay.
+	 * When Auto Join Accepted Invites is enabled the session is joined automatically
+	 * right after this event.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionInviteAcceptedEvent OnSessionInviteAccepted;
 
 public:
 
@@ -254,6 +275,40 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
 	void EndSessionForEveryone(FText Reason);
 
+	/** Get the session invites received so far. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Invites")
+	const TArray<FEasySessionInvite>& GetPendingSessionInvites() const { return PendingInvites; }
+
+	/**
+	 * Join the session an invite points to, leaving the current session first if needed.
+	 * The invite is removed from the pending list.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
+	void AcceptSessionInvite(const FEasySessionInvite& Invite);
+
+	/** Remove all received invites from the pending list. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
+	void ClearPendingSessionInvites() { PendingInvites.Empty(); }
+
+	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
+	bool SendSessionInviteToFriend(const FEasySessionFriend& Friend);
+
+	/** Open the platform invite overlay (e.g. Steam) for the current session. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
+	bool ShowInviteUI();
+
+	/** Open the platform profile overlay (e.g. Steam) for the given friend. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
+	bool ShowProfileUI(const FEasySessionFriend& Friend);
+
+	/**
+	 * Read the local player's friends list. Not supported on the NULL (LAN) subsystem.
+	 *
+	 * @param OnComplete Called with the friends when the read completes.
+	 */
+	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete = FEasyFriendsCompleteDelegate());
+
 	/** Check whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool HasPendingDisconnectInfo() const { return bHasPendingDisconnectInfo; }
@@ -314,6 +369,16 @@ private:
 	void HandleEndSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+
+	/** Invite delegate handlers. */
+	void HandleSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult);
+	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
+
+	/** Bind the invite delegates once the session interface is available. */
+	void BindInviteDelegates();
+
+	/** Leave the current session if needed, then join the given one. */
+	void JoinInvitedSession(const FEasySessionSearchResult& Session);
 
 	/**
 	 * Verify the session password before a player is allowed to log in on the server.
@@ -389,6 +454,20 @@ private:
 
 	/** Password of the session we are hosting. Never advertised; used to verify joining clients. */
 	FString CurrentSessionPassword;
+
+	/** Session invites received so far. */
+	UPROPERTY()
+	TArray<FEasySessionInvite> PendingInvites;
+
+	/** Whether a friends list read is in flight. */
+	bool bReadingFriends = false;
+
+	/** Delegate handles for the invite notifications. Bound once the interface is ready. */
+	FDelegateHandle InviteReceivedHandle;
+	FDelegateHandle InviteAcceptedHandle;
+
+	/** Ticker that waits for the session interface before binding the invite delegates. */
+	FTSTicker::FDelegateHandle InviteBindTickerHandle;
 
 	/** Info about the most recent disconnect. Kept until consumed so it survives map travel. */
 	FEasyDisconnectInfo LastDisconnectInfo;

@@ -17,6 +17,10 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/PlayerState.h"
+#include "Interfaces/OnlineExternalUIInterface.h"
+#include "Interfaces/OnlineFriendsInterface.h"
+#include "Interfaces/OnlineIdentityInterface.h"
+#include "Interfaces/OnlinePresenceInterface.h"
 #include "Kismet/GameplayStatics.h"
 #include "Misc/PackageName.h"
 #include "Online/OnlineSessionNames.h"
@@ -79,6 +83,19 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		NetworkFailureHandle = GEngine->OnNetworkFailure().AddUObject(this, &UEasySessionSubsystem::HandleNetworkFailure);
 		TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &UEasySessionSubsystem::HandleTravelFailure);
 	}
+
+	// The session interface may not be reachable until the world exists - retry until it is.
+	InviteBindTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
+	{
+		if (!GetSessionInterface().IsValid())
+		{
+			return true;
+		}
+
+		BindInviteDelegates();
+		InviteBindTickerHandle.Reset();
+		return false;
+	}), 0.5f);
 
 	PreLoginHandle = FGameModeEvents::GameModePreLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePreLogin);
 	PostLoginHandle = FGameModeEvents::GameModePostLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePostLogin);
@@ -145,6 +162,12 @@ void UEasySessionSubsystem::Deinitialize()
 		ListenCheckTickerHandle.Reset();
 	}
 
+	if (InviteBindTickerHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(InviteBindTickerHandle);
+		InviteBindTickerHandle.Reset();
+	}
+
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (Sessions.IsValid())
 	{
@@ -153,6 +176,8 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
 		Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle);
 		Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
+		Sessions->ClearOnSessionInviteReceivedDelegate_Handle(InviteReceivedHandle);
+		Sessions->ClearOnSessionUserInviteAcceptedDelegate_Handle(InviteAcceptedHandle);
 		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle);
 		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
 	}
@@ -1152,6 +1177,191 @@ void UEasySessionSubsystem::ReturnToConfiguredMenu()
 
 	UE_LOG(LogEasySession, Log, TEXT("Returning to the configured menu map: %s"), *MenuMap);
 	UGameplayStatics::OpenLevel(World, FName(*MenuMap));
+}
+
+void UEasySessionSubsystem::BindInviteDelegates()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		return;
+	}
+
+	InviteReceivedHandle = Sessions->AddOnSessionInviteReceivedDelegate_Handle(
+		FOnSessionInviteReceivedDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleSessionInviteReceived));
+	InviteAcceptedHandle = Sessions->AddOnSessionUserInviteAcceptedDelegate_Handle(
+		FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleSessionUserInviteAccepted));
+}
+
+void UEasySessionSubsystem::HandleSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult)
+{
+	if (!InviteResult.IsValid())
+	{
+		return;
+	}
+
+	FEasySessionInvite Invite;
+	Invite.FromUserId = FromId.ToString();
+	Invite.Session = FEasySessionSearchResult::FromNative(InviteResult);
+	PendingInvites.Add(Invite);
+
+	UE_LOG(LogEasySession, Log, TEXT("Session invite received from '%s' for session '%s'."), *Invite.FromUserId, *Invite.Session.SessionDisplayName);
+	OnSessionInviteReceived.Broadcast(Invite);
+}
+
+void UEasySessionSubsystem::HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
+{
+	if (!bWasSuccessful || !InviteResult.IsValid())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("An invite was accepted but the session it points to is not valid."));
+		return;
+	}
+
+	const FEasySessionSearchResult Session = FEasySessionSearchResult::FromNative(InviteResult);
+	UE_LOG(LogEasySession, Log, TEXT("Invite accepted for session '%s'."), *Session.SessionDisplayName);
+	OnSessionInviteAccepted.Broadcast(Session);
+
+	if (GetDefault<UEasySessionSettings>()->bAutoJoinAcceptedInvites)
+	{
+		JoinInvitedSession(Session);
+	}
+}
+
+void UEasySessionSubsystem::JoinInvitedSession(const FEasySessionSearchResult& Session)
+{
+	// The request queue serializes these, so the destroy always finishes first.
+	if (IsInSession())
+	{
+		DestroyEasySession();
+	}
+
+	JoinEasySession(Session, /*bTravelOnSuccess*/ true);
+}
+
+void UEasySessionSubsystem::AcceptSessionInvite(const FEasySessionInvite& Invite)
+{
+	if (!Invite.Session.IsValid())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("AcceptSessionInvite: the invite does not point to a valid session."));
+		return;
+	}
+
+	PendingInvites.RemoveAll([&Invite](const FEasySessionInvite& Pending)
+	{
+		return Pending.FromUserId == Invite.FromUserId && Pending.Session.SessionDisplayName == Invite.Session.SessionDisplayName;
+	});
+
+	JoinInvitedSession(Invite.Session);
+}
+
+bool UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid() || !Friend.IsValid())
+	{
+		return false;
+	}
+
+	if (!IsInSession())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: there is no session to invite to."));
+		return false;
+	}
+
+	if (!Sessions->SendSessionInviteToFriend(0, NAME_GameSession, *Friend.NativeId))
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend failed. The online subsystem may not support invites (e.g. NULL/LAN)."));
+		return false;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Session invite sent to '%s'."), *Friend.DisplayName);
+	return true;
+}
+
+bool UEasySessionSubsystem::ShowInviteUI()
+{
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
+
+	if (!ExternalUI.IsValid() || !ExternalUI->ShowInviteUI(0, NAME_GameSession))
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ShowInviteUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
+		return false;
+	}
+
+	return true;
+}
+
+bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
+{
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
+	const IOnlineIdentityPtr Identity = OnlineSub ? OnlineSub->GetIdentityInterface() : nullptr;
+	const FUniqueNetIdPtr LocalId = Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr;
+
+	if (!ExternalUI.IsValid() || !LocalId.IsValid() || !Friend.IsValid())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ShowProfileUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
+		return false;
+	}
+
+	return ExternalUI->ShowProfileUI(*LocalId, *Friend.NativeId, FOnProfileUIClosedDelegate());
+}
+
+void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
+{
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+	const IOnlineFriendsPtr Friends = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
+
+	if (!Friends.IsValid())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The current online subsystem does not support friends lists (e.g. NULL/LAN)."), {});
+		return;
+	}
+
+	if (bReadingFriends)
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::UnknownFailure, TEXT("A friends list read is already in progress."), {});
+		return;
+	}
+
+	bReadingFriends = true;
+
+	const FString ListName = EFriendsLists::ToString(EFriendsLists::Default);
+	Friends->ReadFriendsList(0, ListName, FOnReadFriendsListComplete::CreateWeakLambda(this,
+		[this, UserDelegate = MoveTemp(OnComplete)](int32 /*LocalUserNum*/, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
+		{
+			bReadingFriends = false;
+
+			if (!bWasSuccessful)
+			{
+				UserDelegate.ExecuteIfBound(EEasySessionResult::UnknownFailure, ErrorStr, {});
+				return;
+			}
+
+			const IOnlineSubsystem* CallbackSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+			const IOnlineFriendsPtr CallbackFriends = CallbackSub ? CallbackSub->GetFriendsInterface() : nullptr;
+
+			TArray<TSharedRef<FOnlineFriend>> FriendList;
+			if (CallbackFriends.IsValid())
+			{
+				CallbackFriends->GetFriendsList(0, ListName, FriendList);
+			}
+
+			TArray<FEasySessionFriend> Result;
+			Result.Reserve(FriendList.Num());
+			for (const TSharedRef<FOnlineFriend>& OnlineFriend : FriendList)
+			{
+				FEasySessionFriend& Entry = Result.AddDefaulted_GetRef();
+				Entry.DisplayName = OnlineFriend->GetDisplayName();
+				Entry.bIsOnline = OnlineFriend->GetPresence().bIsOnline;
+				Entry.bIsPlayingThisGame = OnlineFriend->GetPresence().bIsPlayingThisGame;
+				Entry.NativeId = OnlineFriend->GetUserId();
+			}
+
+			UE_LOG(LogEasySession, Log, TEXT("Friends list read: %d friend(s)."), Result.Num());
+			UserDelegate.ExecuteIfBound(EEasySessionResult::Success, FString(), Result);
+		}));
 }
 
 void UEasySessionSubsystem::MirrorSessionStateToClients(bool bStarted)

@@ -38,6 +38,14 @@ public:
 	FString ReturnToMenuMap;
 
 	/**
+	 * Automatically join the session when the player accepts an invite from the
+	 * platform overlay (e.g. Steam). Disable to only receive the
+	 * On Session Invite Accepted event and handle joining yourself.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Invites")
+	bool bAutoJoinAcceptedInvites = true;
+
+	/**
 	 * Automatically create and advertise a session when running as a dedicated server.
 	 * The session is created with the Dedicated Server Host Params below.
 	 */

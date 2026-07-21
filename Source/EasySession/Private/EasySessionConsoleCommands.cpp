@@ -13,6 +13,9 @@
 //   EasySession.End             End the match (session state -> Ended).
 //   EasySession.Cancel          Cancel the running matchmaking.
 //   EasySession.Status          Print the current session state.
+//   EasySession.Friends         Read and print the friends list.
+//   EasySession.Invites         Print the pending session invites.
+//   EasySession.InviteUI        Open the platform invite overlay.
 
 #if !UE_BUILD_SHIPPING
 
@@ -234,6 +237,60 @@ namespace EasySessionConsole
 					Subsystem->IsBusy() ? 1 : 0,
 					Subsystem->IsMatchmaking() ? 1 : 0,
 					Subsystem->GetLastSearchResults().Num()));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GFriendsCommand(
+		TEXT("EasySession.Friends"),
+		TEXT("Read and print the friends list."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				Subsystem->ReadFriends(FEasyFriendsCompleteDelegate::CreateLambda(
+					[](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionFriend>& Friends)
+					{
+						if (Result != EEasySessionResult::Success)
+						{
+							Print(FString::Printf(TEXT("Friends: %s (%s)"), *EasySession::ResultToString(Result), *ErrorMessage));
+							return;
+						}
+
+						Print(FString::Printf(TEXT("Friends: %d"), Friends.Num()));
+						for (int32 Index = 0; Index < Friends.Num(); ++Index)
+						{
+							Print(FString::Printf(TEXT("  [%d] %s | Online=%d | PlayingThisGame=%d"),
+								Index, *Friends[Index].DisplayName, Friends[Index].bIsOnline ? 1 : 0, Friends[Index].bIsPlayingThisGame ? 1 : 0));
+						}
+					}));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GInvitesCommand(
+		TEXT("EasySession.Invites"),
+		TEXT("Print the pending session invites."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const TArray<FEasySessionInvite>& Invites = Subsystem->GetPendingSessionInvites();
+				Print(FString::Printf(TEXT("Pending invites: %d"), Invites.Num()));
+				for (int32 Index = 0; Index < Invites.Num(); ++Index)
+				{
+					Print(FString::Printf(TEXT("  [%d] From=%s | Session='%s'"),
+						Index, *Invites[Index].FromUserId, *Invites[Index].Session.SessionDisplayName));
+				}
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GInviteUICommand(
+		TEXT("EasySession.InviteUI"),
+		TEXT("Open the platform invite overlay for the current session."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				Print(FString::Printf(TEXT("InviteUI: %s"), Subsystem->ShowInviteUI() ? TEXT("opened") : TEXT("not supported")));
 			}
 		}));
 }

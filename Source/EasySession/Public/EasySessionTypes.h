@@ -375,6 +375,50 @@ struct EASYSESSION_API FEasyQuickPlayParams
 };
 
 /**
+ * An online friend of the local player, as returned by Read Easy Friends.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasySessionFriend
+{
+	GENERATED_BODY()
+
+	/** Display name of the friend. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FString DisplayName;
+
+	/** Whether the friend is currently online. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsOnline = false;
+
+	/** Whether the friend is currently playing this game. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsPlayingThisGame = false;
+
+	/** The friend's unique id. Not exposed to Blueprint. */
+	FUniqueNetIdPtr NativeId;
+
+	/** Returns true if this friend can be used with invite functions. */
+	bool IsValid() const { return NativeId.IsValid(); }
+};
+
+/**
+ * A session invite the local player has received.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasySessionInvite
+{
+	GENERATED_BODY()
+
+	/** String form of the sender's unique id. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FString FromUserId;
+
+	/** The session the invite points to. Pass to Accept Session Invite to join it. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FEasySessionSearchResult Session;
+};
+
+/**
  * Information about a single player in the current session.
  */
 USTRUCT(BlueprintType)
@@ -437,3 +481,6 @@ DECLARE_DELEGATE_TwoParams(FEasySessionCompleteDelegate, EEasySessionResult /*Re
 
 /** Delegate fired when a session search completes. */
 DECLARE_DELEGATE_ThreeParams(FEasySessionFindCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/, const TArray<FEasySessionSearchResult>& /*Results*/);
+
+/** Delegate fired when reading the friends list completes. */
+DECLARE_DELEGATE_ThreeParams(FEasyFriendsCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/, const TArray<FEasySessionFriend>& /*Friends*/);
