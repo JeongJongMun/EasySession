@@ -207,6 +207,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	FString GetSessionDisplayName() const;
 
+	/**
+	 * Get per-player info for everyone in the session: name, whether it is the
+	 * local player on this machine, and whether it is the session host.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	TArray<FEasySessionPlayerInfo> GetSessionPlayerInfos() const;
+
 	/** Get the number of players currently in the session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	int32 GetSessionPlayerCount() const;

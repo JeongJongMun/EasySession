@@ -56,6 +56,12 @@ FString UEasySessionStatics::GetEasySessionDisplayName(const UObject* WorldConte
 	return Subsystem != nullptr ? Subsystem->GetSessionDisplayName() : FString();
 }
 
+TArray<FEasySessionPlayerInfo> UEasySessionStatics::GetEasySessionPlayerInfos(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetSessionPlayerInfos() : TArray<FEasySessionPlayerInfo>();
+}
+
 int32 UEasySessionStatics::GetEasySessionPlayerCount(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

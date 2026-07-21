@@ -375,6 +375,27 @@ struct EASYSESSION_API FEasyQuickPlayParams
 };
 
 /**
+ * Information about a single player in the current session.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasySessionPlayerInfo
+{
+	GENERATED_BODY()
+
+	/** Display name of the player. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FString PlayerName;
+
+	/** Whether this entry is the local player on this machine. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsLocalPlayer = false;
+
+	/** Whether this player is hosting the session. Always false on dedicated servers. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsHost = false;
+};
+
+/**
  * Why the local player was disconnected from a session.
  */
 UENUM(BlueprintType)

@@ -335,6 +335,45 @@ FString UEasySessionSubsystem::GetSessionDisplayName() const
 	return DisplayName;
 }
 
+TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() const
+{
+	TArray<FEasySessionPlayerInfo> Infos;
+
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+	if (GameState == nullptr)
+	{
+		return Infos;
+	}
+
+	const APlayerController* LocalController = GetGameInstance()->GetFirstLocalPlayerController();
+	const APlayerState* LocalPlayerState = LocalController ? LocalController->PlayerState : nullptr;
+
+	// The session owner's id identifies the host player. Ids are compared instead of
+	// names because the engine truncates player names on login (InitNewPlayer).
+	// Unset on dedicated servers, where no player row gets the host marker.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	const FUniqueNetIdPtr HostId = NamedSession ? NamedSession->OwningUserId : nullptr;
+
+	for (const APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		if (PlayerState == nullptr)
+		{
+			continue;
+		}
+
+		const FUniqueNetIdRepl& PlayerId = PlayerState->GetUniqueId();
+
+		FEasySessionPlayerInfo& Info = Infos.AddDefaulted_GetRef();
+		Info.PlayerName = PlayerState->GetPlayerName();
+		Info.bIsLocalPlayer = PlayerState == LocalPlayerState;
+		Info.bIsHost = HostId.IsValid() && PlayerId.GetUniqueNetId().IsValid() && *PlayerId.GetUniqueNetId() == *HostId;
+	}
+
+	return Infos;
+}
+
 int32 UEasySessionSubsystem::GetSessionPlayerCount() const
 {
 	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
