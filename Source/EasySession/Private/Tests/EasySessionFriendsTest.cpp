@@ -7,6 +7,7 @@
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
+#include "OnlineSubsystemNames.h"
 #include "UObject/StrongObjectPtr.h"
 
 /**
@@ -25,6 +26,15 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	{
 		GameInstance->Shutdown();
 		return false;
+	}
+
+	// This test verifies the NULL behavior - skip when another subsystem (e.g. Steam)
+	// is active, since friends would then genuinely be supported.
+	if (Subsystem->GetOnlineSubsystemName() != NULL_SUBSYSTEM)
+	{
+		AddInfo(FString::Printf(TEXT("Skipped: active subsystem is '%s', not NULL."), *Subsystem->GetOnlineSubsystemName().ToString()));
+		GameInstance->Shutdown();
+		return true;
 	}
 
 	// NULL has no friends interface - the callback must fire synchronously with a failure.

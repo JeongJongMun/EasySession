@@ -16,10 +16,12 @@
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.Invites         Print the pending session invites.
 //   EasySession.InviteUI        Open the platform invite overlay.
+//   EasySession.Diagnose        Run the online configuration diagnostics.
 
 #if !UE_BUILD_SHIPPING
 
 #include "EasySession.h"
+#include "EasySessionDiagnostics.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/Engine.h"
@@ -292,6 +294,14 @@ namespace EasySessionConsole
 			{
 				Print(FString::Printf(TEXT("InviteUI: %s"), Subsystem->ShowInviteUI() ? TEXT("opened") : TEXT("not supported")));
 			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GDiagnoseCommand(
+		TEXT("EasySession.Diagnose"),
+		TEXT("Run the online configuration diagnostics and log the results."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			EasySessionDiagnostics::RunDiagnostics(World);
 		}));
 }
 

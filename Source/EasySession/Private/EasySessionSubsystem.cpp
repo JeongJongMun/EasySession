@@ -5,6 +5,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionClientComponent.h"
+#include "EasySessionDiagnostics.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -93,6 +94,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		}
 
 		BindInviteDelegates();
+		EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
 		InviteBindTickerHandle.Reset();
 		return false;
 	}), 0.5f);
