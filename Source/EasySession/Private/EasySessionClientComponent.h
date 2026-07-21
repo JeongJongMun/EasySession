@@ -23,4 +23,12 @@ public:
 	/** Ask the owning client to leave the session and return to the menu, preserving the reason. */
 	UFUNCTION(Client, Reliable)
 	void ClientReturnToMenu(const FText& Reason);
+
+	/** Mirror the host's StartSession locally so the client's session state matches. */
+	UFUNCTION(Client, Reliable)
+	void ClientSessionStarted();
+
+	/** Mirror the host's EndSession locally so the client's session state matches. */
+	UFUNCTION(Client, Reliable)
+	void ClientSessionEnded();
 };

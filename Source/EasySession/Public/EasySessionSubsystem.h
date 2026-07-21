@@ -325,6 +325,12 @@ private:
 	void ReturnToConfiguredMenu();
 
 	/**
+	 * Mirror the host's Start/End Session on every remote client, so their local
+	 * session state (and any UI polling it) matches the host.
+	 */
+	void MirrorSessionStateToClients(bool bStarted);
+
+	/**
 	 * Register / unregister the local player in the current session.
 	 * Registration is what drives the advertised open slot count of a session.
 	 */

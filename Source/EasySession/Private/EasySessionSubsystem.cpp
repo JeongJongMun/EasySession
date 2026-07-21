@@ -960,6 +960,13 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session started."));
+
+	// The OSS only changes the local session copy - tell the clients to do the same.
+	if (IsHost())
+	{
+		MirrorSessionStateToClients(/*bStarted*/ true);
+	}
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
@@ -977,6 +984,13 @@ void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWa
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session ended."));
+
+	// The OSS only changes the local session copy - tell the clients to do the same.
+	if (IsHost())
+	{
+		MirrorSessionStateToClients(/*bStarted*/ false);
+	}
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
@@ -1101,6 +1115,36 @@ void UEasySessionSubsystem::ReturnToConfiguredMenu()
 	UGameplayStatics::OpenLevel(World, FName(*MenuMap));
 }
 
+void UEasySessionSubsystem::MirrorSessionStateToClients(bool bStarted)
+{
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* PlayerController = It->Get();
+		if (PlayerController == nullptr || PlayerController->IsLocalController())
+		{
+			continue;
+		}
+
+		if (UEasySessionClientComponent* Component = PlayerController->FindComponentByClass<UEasySessionClientComponent>())
+		{
+			if (bStarted)
+			{
+				Component->ClientSessionStarted();
+			}
+			else
+			{
+				Component->ClientSessionEnded();
+			}
+		}
+	}
+}
+
 void UEasySessionSubsystem::HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage)
 {
 	// Fires on the server only (game modes do not exist on clients).
@@ -1190,6 +1234,12 @@ void UEasySessionSubsystem::HandlePostLogin(AGameModeBase* GameMode, APlayerCont
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Registered remote player '%s' in the session."), *NewPlayer->GetName());
 		}
+	}
+
+	// A join-in-progress client starts with a Pending local session copy - catch it up.
+	if (GetSessionState() == EEasySessionState::InProgress)
+	{
+		Component->ClientSessionStarted();
 	}
 }
 
