@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "Engine/Engine.h"
+#include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "Misc/ConfigCacheIni.h"
@@ -54,7 +55,11 @@ namespace
 				{ TEXT("[OnlineSubsystemSteam]"), TEXT("bInitServerOnClient=true") });
 		}
 
-		// The game net driver must be the Steam one, or joins resolve to raw IPs and fail.
+		// The game net driver must be a Steam one, or joins resolve steam.<id> hosts as
+		// DNS names and fail. Mirror the engine's lookup exactly: it takes the FIRST
+		// definition named GameNetDriver, then silently falls back to the IP driver
+		// when that class fails to load (e.g. the legacy SteamNetDriver, which no
+		// longer exists in newer engine versions).
 		if (GEngine != nullptr)
 		{
 			const FNetDriverDefinition* GameDriver = GEngine->NetDriverDefinitions.FindByPredicate(
@@ -63,22 +68,34 @@ namespace
 					return Definition.DefName == FName(TEXT("GameNetDriver"));
 				});
 
-			const FString DriverClass = GameDriver ? GameDriver->DriverClassName.ToString() : FString();
-			if (!DriverClass.Contains(TEXT("SteamNetDriver")))
-			{
-				LogFix(TEXT("GameNetDriver is not the SteamNetDriver - sessions may be advertised but clients cannot connect."),
-					{ TEXT("[/Script/Engine.GameEngine]"),
-					  TEXT("+NetDriverDefinitions=(DefName=\"GameNetDriver\",DriverClassName=\"OnlineSubsystemSteam.SteamNetDriver\",DriverClassNameFallback=\"OnlineSubsystemUtils.IpNetDriver\")") });
-			}
-		}
+			const TArray<FString> SteamSocketsFix =
+				{ TEXT("[/Script/Engine.GameEngine]"),
+				  TEXT("!NetDriverDefinitions=ClearArray"),
+				  TEXT("+NetDriverDefinitions=(DefName=\"GameNetDriver\",DriverClassName=\"/Script/SteamSockets.SteamSocketsNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") };
 
-		FString ConnectionClass;
-		GConfig->GetString(TEXT("/Script/OnlineSubsystemSteam.SteamNetDriver"), TEXT("NetConnectionClassName"), ConnectionClass, GEngineIni);
-		if (!ConnectionClass.Contains(TEXT("SteamNetConnection")))
-		{
-			LogFix(TEXT("SteamNetDriver has no SteamNetConnection class configured."),
-				{ TEXT("[/Script/OnlineSubsystemSteam.SteamNetDriver]"),
-				  TEXT("NetConnectionClassName=\"OnlineSubsystemSteam.SteamNetConnection\"") });
+			const FString DriverClass = GameDriver ? GameDriver->DriverClassName.ToString() : FString();
+			if (!DriverClass.Contains(TEXT("Steam")))
+			{
+				LogFix(TEXT("GameNetDriver is not a Steam net driver - sessions are advertised but clients cannot connect."), SteamSocketsFix);
+				UE_LOG(LogEasySession, Warning, TEXT("      Also enable the 'SteamSockets' plugin in the .uproject."));
+			}
+			else if (StaticLoadClass(UNetDriver::StaticClass(), nullptr, *DriverClass, nullptr, LOAD_Quiet) == nullptr)
+			{
+				LogFix(FString::Printf(TEXT("GameNetDriver class '%s' does not exist, so the engine silently falls back to the IP driver and Steam joins fail. Use the SteamSockets plugin instead."), *DriverClass), SteamSocketsFix);
+				UE_LOG(LogEasySession, Warning, TEXT("      Also enable the 'SteamSockets' plugin in the .uproject."));
+			}
+			else if (DriverClass.Contains(TEXT("OnlineSubsystemSteam.SteamNetDriver")))
+			{
+				// Legacy driver on an engine that still ships it: it needs its connection class.
+				FString ConnectionClass;
+				GConfig->GetString(TEXT("/Script/OnlineSubsystemSteam.SteamNetDriver"), TEXT("NetConnectionClassName"), ConnectionClass, GEngineIni);
+				if (!ConnectionClass.Contains(TEXT("SteamNetConnection")))
+				{
+					LogFix(TEXT("SteamNetDriver has no SteamNetConnection class configured."),
+						{ TEXT("[/Script/OnlineSubsystemSteam.SteamNetDriver]"),
+						  TEXT("NetConnectionClassName=\"OnlineSubsystemSteam.SteamNetConnection\"") });
+				}
+			}
 		}
 
 		// Login state: the Steam client must be running and logged in.

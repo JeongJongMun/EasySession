@@ -664,6 +664,13 @@ void UEasySessionSubsystem::ExecuteFind()
 	ActiveSearch->bIsLanQuery = Params.bLANQuery || ShouldForceLAN();
 	ActiveSearch->TimeoutInSeconds = Params.TimeoutSeconds;
 
+	if (!ActiveSearch->bIsLanQuery)
+	{
+		// Steam only searches lobbies when this key is present; without it the query
+		// goes to the dedicated server master list and never sees lobby sessions.
+		ActiveSearch->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
+	}
+
 	FindCompleteHandle = Sessions->AddOnFindSessionsCompleteDelegate_Handle(
 		FOnFindSessionsCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindSessionsComplete));
 
