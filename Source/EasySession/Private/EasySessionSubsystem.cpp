@@ -1679,7 +1679,7 @@ void UEasySessionSubsystem::EnsureHostIsListening(const FEasySessionHostParams& 
 			const UWorld* CurrentWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 			if (CurrentWorld != nullptr && CurrentWorld->GetNetMode() == NM_Standalone && IsInSession() && IsHost())
 			{
-				UE_LOG(LogEasySession, Warning, TEXT("The session is advertised but this game is still not a listen server - clients will fail to connect. If you are testing in PIE, disable 'Run Under One Process' or use Standalone Game windows, and make sure the travel map path is valid."));
+				UE_LOG(LogEasySession, Warning, TEXT("The session is advertised but this game is still not a listen server - clients will fail to connect. Common causes: PIE with 'Run Under One Process' enabled, an invalid travel map path, or the starting map's game mode using seamless travel (seamless travel drops the ?listen option)."));
 			}
 			return false;
 		}), 3.0f);
@@ -1708,6 +1708,18 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 	OnModifyServerTravelURL.Broadcast(TravelURL);
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
+
+	// The very first travel must turn this standalone game into a listen server, but
+	// seamless travel never processes the ?listen option (only a hard map load does).
+	// If the current map's game mode uses seamless travel, force this one travel to be
+	// hard - later server travels between maps keep the listen state and can stay seamless.
+	AGameModeBase* GameMode = World->GetAuthGameMode();
+	if (World->GetNetMode() == NM_Standalone && GameMode != nullptr && GameMode->bUseSeamlessTravel && TravelURL.Contains(TEXT("?listen")))
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Current game mode uses seamless travel - forcing a hard travel so ?listen takes effect."));
+		GameMode->bUseSeamlessTravel = false;
+	}
+
 	if (!World->ServerTravel(TravelURL))
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerTravel to '%s' failed. Check that the map path is valid (e.g. /Game/Maps/Lobby)."), *TravelURL);
