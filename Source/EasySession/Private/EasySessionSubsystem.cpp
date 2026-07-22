@@ -804,6 +804,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 	CurrentSessionPassword = HostParams.Password.TrimStartAndEnd();
+	bCurrentSessionFriendsBypassPassword = HostParams.bFriendsBypassPassword;
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 	EnsureHostIsListening(HostParams);
@@ -948,6 +949,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
 	CurrentSessionPassword.Empty();
+	bCurrentSessionFriendsBypassPassword = false;
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
@@ -1462,6 +1464,20 @@ void UEasySessionSubsystem::HandlePreLogin(AGameModeBase* GameMode, const FUniqu
 
 	if (!SuppliedPassword.Equals(CurrentSessionPassword, ESearchCase::CaseSensitive))
 	{
+		// Invited players never carry the password (the invite flow has no password prompt),
+		// but platform invites can only be sent to friends - so a host-side friends check
+		// lets them in. Platform-verified: the joining id cannot fake being a friend.
+		if (bCurrentSessionFriendsBypassPassword && NewPlayer.IsValid())
+		{
+			const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(OwnWorld);
+			const IOnlineFriendsPtr Friends = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
+			if (Friends.IsValid() && Friends->IsFriend(0, *NewPlayer.GetUniqueNetId(), EFriendsLists::ToString(EFriendsLists::Default)))
+			{
+				UE_LOG(LogEasySession, Log, TEXT("PreLogin: '%s' joins without the password - friend of the host."), *NewPlayer.ToString());
+				return;
+			}
+		}
+
 		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - wrong or missing session password (expected %d chars, got %d chars, url options: %s)."),
 			*NewPlayer.ToString(), CurrentSessionPassword.Len(), SuppliedPassword.Len(), *PendingConnection->RequestURL);
 		ErrorMessage = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();

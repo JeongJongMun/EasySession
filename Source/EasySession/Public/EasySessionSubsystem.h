@@ -462,6 +462,9 @@ private:
 	/** Password of the session we are hosting. Never advertised; used to verify joining clients. */
 	FString CurrentSessionPassword;
 
+	/** Whether platform friends of the host may join the current session without its password. */
+	bool bCurrentSessionFriendsBypassPassword = false;
+
 	/** Session invites received so far. */
 	UPROPERTY()
 	TArray<FEasySessionInvite> PendingInvites;

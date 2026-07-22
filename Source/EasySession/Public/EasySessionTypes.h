@@ -190,10 +190,19 @@ struct EASYSESSION_API FEasySessionHostParams
 	/**
 	 * Password required to join the session. Leave empty for no password.
 	 * Only a "password protected" flag is advertised - the password itself never leaves the host.
-	 * Clients pass the password to Join Easy Session; mismatches are kicked by the host.
+	 * Clients pass the password to Join Easy Session; mismatches are rejected before entering the map.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FString Password;
+
+	/**
+	 * Lets platform friends of the host join a password protected session without the password.
+	 * Invites can only be sent to friends, so accepted invites always get in - without this,
+	 * invited players would be rejected because the invite flow never asks for a password.
+	 * Verified host-side against the platform friends list; no effect on NULL/LAN (no friends there).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	bool bFriendsBypassPassword = true;
 
 	/**
 	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
