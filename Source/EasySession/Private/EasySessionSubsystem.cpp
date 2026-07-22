@@ -323,7 +323,22 @@ bool UEasySessionSubsystem::IsHost() const
 	}
 
 	const FNamedOnlineSession* NamedSession = Sessions->GetNamedSession(NAME_GameSession);
-	return NamedSession != nullptr && NamedSession->bHosting;
+	if (NamedSession == nullptr)
+	{
+		return false;
+	}
+
+	// NULL sets bHosting when creating a session, but Steam never touches the flag -
+	// fall back to comparing the session owner's id with the local player (ids, not
+	// names, for the same reason as the host marker in GetSessionPlayerInfos).
+	if (NamedSession->bHosting)
+	{
+		return true;
+	}
+
+	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+	const FUniqueNetIdRepl LocalId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
+	return NamedSession->OwningUserId.IsValid() && LocalId.GetUniqueNetId().IsValid() && *LocalId.GetUniqueNetId() == *NamedSession->OwningUserId;
 }
 
 TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
