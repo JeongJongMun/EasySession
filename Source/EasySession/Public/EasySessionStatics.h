@@ -36,6 +36,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionState GetEasySessionState(const UObject* WorldContextObject);
 
+	/**
+	 * Get a display-friendly label for the current session state that pairs the
+	 * player-facing meaning with the raw state, e.g. "Waiting (Pending)",
+	 * "In Match (InProgress)", "Waiting (Ended)". Pending and Ended both mean
+	 * "in the lobby, ready to (re)start" - only the history differs.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FString GetEasySessionStateLabel(const UObject* WorldContextObject);
+
 	/** Check whether a session operation is currently running or queued. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);

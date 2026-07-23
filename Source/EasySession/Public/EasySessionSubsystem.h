@@ -229,6 +229,14 @@ public:
 	FString GetSessionDisplayName() const;
 
 	/**
+	 * Get the password of the session this game is hosting, e.g. to display it so the
+	 * host can share it. Empty on clients and for password-less sessions - the
+	 * password never leaves the host.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	FString GetSessionPassword() const;
+
+	/**
 	 * Get per-player info for everyone in the session: name, whether it is the
 	 * local player on this machine, and whether it is the session host.
 	 */

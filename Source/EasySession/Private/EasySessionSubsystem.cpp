@@ -363,6 +363,11 @@ TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
 	return PlayerNames;
 }
 
+FString UEasySessionSubsystem::GetSessionPassword() const
+{
+	return CurrentSessionPassword;
+}
+
 FString UEasySessionSubsystem::GetSessionDisplayName() const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();

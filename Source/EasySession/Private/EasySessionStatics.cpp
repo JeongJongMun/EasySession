@@ -32,6 +32,22 @@ EEasySessionState UEasySessionStatics::GetEasySessionState(const UObject* WorldC
 	return Subsystem != nullptr ? Subsystem->GetSessionState() : EEasySessionState::NoSession;
 }
 
+FString UEasySessionStatics::GetEasySessionStateLabel(const UObject* WorldContextObject)
+{
+	switch (GetEasySessionState(WorldContextObject))
+	{
+	case EEasySessionState::NoSession:  return TEXT("No Session");
+	case EEasySessionState::Creating:   return TEXT("Creating");
+	case EEasySessionState::Pending:    return TEXT("Waiting (Pending)");
+	case EEasySessionState::Starting:   return TEXT("Starting");
+	case EEasySessionState::InProgress: return TEXT("In Match (InProgress)");
+	case EEasySessionState::Ending:     return TEXT("Ending");
+	case EEasySessionState::Ended:      return TEXT("Waiting (Ended)");
+	case EEasySessionState::Destroying: return TEXT("Destroying");
+	}
+	return TEXT("Unknown");
+}
+
 bool UEasySessionStatics::IsEasySessionBusy(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
