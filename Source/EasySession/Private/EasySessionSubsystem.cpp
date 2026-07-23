@@ -1532,7 +1532,31 @@ void UEasySessionSubsystem::HandlePreLogin(AGameModeBase* GameMode, const FUniqu
 	}
 
 	// Another handler may already be rejecting this player - do not overwrite the reason.
-	if (!ErrorMessage.IsEmpty() || CurrentSessionPassword.IsEmpty())
+	if (!ErrorMessage.IsEmpty())
+	{
+		return;
+	}
+
+	// Join-in-progress gate: bAllowJoinInProgress only filters searches at the
+	// platform level (and not at all on NULL), so a stale search result or a direct
+	// connect would otherwise walk straight into a running match - the host is the
+	// authority on its own session and rejects here. New connections only: in-session
+	// map changes must use seamless travel (the plugin's own travels do), or
+	// reconnecting players would be caught by this gate too.
+	const IOnlineSessionPtr PreLoginSessions = GetSessionInterface();
+	const FNamedOnlineSession* PreLoginSession = PreLoginSessions.IsValid() ? PreLoginSessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (PreLoginSession != nullptr && !PreLoginSession->SessionSettings.bAllowJoinInProgress)
+	{
+		const EEasySessionState LocalState = GetLocalSessionState();
+		if (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress)
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - the match is in progress and join-in-progress is disabled."), *NewPlayer.ToString());
+			ErrorMessage = NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress.").ToString();
+			return;
+		}
+	}
+
+	if (CurrentSessionPassword.IsEmpty())
 	{
 		return;
 	}
