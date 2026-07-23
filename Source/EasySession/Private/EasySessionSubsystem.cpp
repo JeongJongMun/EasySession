@@ -4,7 +4,7 @@
 
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
-#include "EasySessionClientComponent.h"
+#include "EasySessionStateActor.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
@@ -102,6 +102,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	PreLoginHandle = FGameModeEvents::GameModePreLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePreLogin);
 	PostLoginHandle = FGameModeEvents::GameModePostLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePostLogin);
 	LogoutHandle = FGameModeEvents::GameModeLogoutEvent.AddUObject(this, &UEasySessionSubsystem::HandleLogout);
+	WorldInitializedActorsHandle = FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UEasySessionSubsystem::HandleWorldInitializedActors);
 
 	if (IsRunningDedicatedServer() && GetDefault<UEasySessionSettings>()->bAutoHostOnDedicatedServer)
 	{
@@ -150,6 +151,12 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		FGameModeEvents::GameModeLogoutEvent.Remove(LogoutHandle);
 		LogoutHandle.Reset();
+	}
+
+	if (WorldInitializedActorsHandle.IsValid())
+	{
+		FWorldDelegates::OnWorldInitializedActors.Remove(WorldInitializedActorsHandle);
+		WorldInitializedActorsHandle.Reset();
 	}
 
 	if (DedicatedAutoHostTickerHandle.IsValid())
@@ -293,6 +300,22 @@ bool UEasySessionSubsystem::IsInSession() const
 }
 
 EEasySessionState UEasySessionSubsystem::GetSessionState() const
+{
+	const EEasySessionState LocalState = GetLocalSessionState();
+
+	// Clients report the host's replicated state: the session lifecycle lives on the
+	// host, and every player should agree on it regardless of when they joined.
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (LocalState != EEasySessionState::NoSession && bHasReplicatedHostSessionState &&
+		World != nullptr && World->GetNetMode() == NM_Client)
+	{
+		return ReplicatedHostSessionState;
+	}
+
+	return LocalState;
+}
+
+EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
@@ -825,6 +848,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 	CurrentSessionPassword = HostParams.Password.TrimStartAndEnd();
 	bCurrentSessionFriendsBypassPassword = HostParams.bFriendsBypassPassword;
+	EnsureStateActor();
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 	EnsureHostIsListening(HostParams);
@@ -970,6 +994,16 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
 	CurrentSessionPassword.Empty();
 	bCurrentSessionFriendsBypassPassword = false;
+
+	// The session is gone - drop the replicated state carrier and cache with it.
+	if (AEasySessionStateActor* Actor = StateActor.Get())
+	{
+		Actor->Destroy();
+	}
+	StateActor.Reset();
+	ReplicatedHostSessionState = EEasySessionState::NoSession;
+	bHasReplicatedHostSessionState = false;
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
@@ -1057,10 +1091,11 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 
 	UE_LOG(LogEasySession, Log, TEXT("Session started."));
 
-	// The OSS only changes the local session copy - tell the clients to do the same.
+	// The OSS only changes the local session copy - replicate the new state so
+	// every client (present or future) converges on it.
 	if (IsHost())
 	{
-		MirrorSessionStateToClients(/*bStarted*/ true);
+		PushHostSessionState();
 	}
 
 	CompleteActiveRequest(EEasySessionResult::Success);
@@ -1081,10 +1116,11 @@ void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWa
 
 	UE_LOG(LogEasySession, Log, TEXT("Session ended."));
 
-	// The OSS only changes the local session copy - tell the clients to do the same.
+	// The OSS only changes the local session copy - replicate the new state so
+	// every client (present or future) converges on it.
 	if (IsHost())
 	{
-		MirrorSessionStateToClients(/*bStarted*/ false);
+		PushHostSessionState();
 	}
 
 	CompleteActiveRequest(EEasySessionResult::Success);
@@ -1406,33 +1442,83 @@ void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 		}));
 }
 
-void UEasySessionSubsystem::MirrorSessionStateToClients(bool bStarted)
+void UEasySessionSubsystem::EnsureStateActor()
 {
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
+	if (World == nullptr || World->GetNetMode() == NM_Client)
 	{
 		return;
 	}
 
-	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	if (StateActor.IsValid() && StateActor->GetWorld() == World)
 	{
-		APlayerController* PlayerController = It->Get();
-		if (PlayerController == nullptr || PlayerController->IsLocalController())
-		{
-			continue;
-		}
+		PushHostSessionState();
+		return;
+	}
 
-		if (UEasySessionClientComponent* Component = PlayerController->FindComponentByClass<UEasySessionClientComponent>())
-		{
-			if (bStarted)
-			{
-				Component->ClientSessionStarted();
-			}
-			else
-			{
-				Component->ClientSessionEnded();
-			}
-		}
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.ObjectFlags |= RF_Transient;
+	StateActor = World->SpawnActor<AEasySessionStateActor>(SpawnParams);
+	PushHostSessionState();
+}
+
+void UEasySessionSubsystem::PushHostSessionState()
+{
+	if (AEasySessionStateActor* Actor = StateActor.Get())
+	{
+		Actor->SetHostSessionState(GetLocalSessionState());
+	}
+}
+
+void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitializedParams& Params)
+{
+	// Every map load (hard or seamless) creates a fresh world, so the host respawns
+	// the replicated state carrier there and re-publishes the current state.
+	if (Params.World == nullptr || Params.World->GetGameInstance() != GetGameInstance())
+	{
+		return;
+	}
+
+	if (Params.World->GetNetMode() != NM_Client && IsInSession() && IsHost())
+	{
+		StateActor.Reset();
+		EnsureStateActor();
+	}
+}
+
+void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState HostState)
+{
+	if (bHasReplicatedHostSessionState && ReplicatedHostSessionState == HostState)
+	{
+		return;
+	}
+
+	ReplicatedHostSessionState = HostState;
+	bHasReplicatedHostSessionState = true;
+
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World == nullptr || World->GetNetMode() != NM_Client)
+	{
+		return;
+	}
+
+	// Best-effort: converge the local session copy on the host's state so platform
+	// hooks stay consistent. The displayed state already comes from the replicated
+	// value, so a failed local transition cannot desync what players see.
+	const EEasySessionState LocalState = GetLocalSessionState();
+	if (HostState == EEasySessionState::InProgress && LocalState == EEasySessionState::Pending)
+	{
+		StartEasySession();
+	}
+	else if (HostState == EEasySessionState::Ended && LocalState == EEasySessionState::InProgress)
+	{
+		EndEasySession();
+	}
+	else if (HostState == EEasySessionState::Ended && LocalState == EEasySessionState::Pending)
+	{
+		// Replay the host's history - the OSS only allows Pending -> InProgress -> Ended.
+		StartEasySession();
+		EndEasySession();
 	}
 }
 
@@ -1513,15 +1599,6 @@ void UEasySessionSubsystem::HandlePostLogin(AGameModeBase* GameMode, APlayerCont
 		return;
 	}
 
-	// Attach the RPC carrier so the host can later send this client back to the
-	// menu with a reason (EndSessionForEveryone) without a custom PlayerController.
-	UEasySessionClientComponent* Component = NewPlayer->FindComponentByClass<UEasySessionClientComponent>();
-	if (Component == nullptr)
-	{
-		Component = NewObject<UEasySessionClientComponent>(NewPlayer);
-		Component->RegisterComponent();
-	}
-
 	if (NewPlayer->IsLocalController())
 	{
 		// The hosting player registers itself right after creating the session.
@@ -1539,12 +1616,6 @@ void UEasySessionSubsystem::HandlePostLogin(AGameModeBase* GameMode, APlayerCont
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Registered remote player '%s' in the session."), *NewPlayer->GetName());
 		}
-	}
-
-	// A join-in-progress client starts with a Pending local session copy - catch it up.
-	if (GetSessionState() == EEasySessionState::InProgress)
-	{
-		Component->ClientSessionStarted();
 	}
 }
 
@@ -1582,18 +1653,9 @@ void UEasySessionSubsystem::EndSessionForEveryone(FText Reason)
 	UE_LOG(LogEasySession, Log, TEXT("Ending the session for everyone: %s"), *Reason.ToString());
 
 	// Tell every remote client to leave with the reason before the session goes down.
-	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
-		APlayerController* PlayerController = It->Get();
-		if (PlayerController == nullptr || PlayerController->IsLocalController())
-		{
-			continue;
-		}
-
-		if (UEasySessionClientComponent* Component = PlayerController->FindComponentByClass<UEasySessionClientComponent>())
-		{
-			Component->ClientReturnToMenu(Reason);
-		}
+		Actor->MulticastReturnToMenu(Reason);
 	}
 
 	// Give the RPCs a moment to reach the clients, then take the host down as well.

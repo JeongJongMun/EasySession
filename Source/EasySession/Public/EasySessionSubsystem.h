@@ -209,9 +209,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsInSession() const;
 
-	/** Get the lifecycle state of the current session (Pending, InProgress, Ended, ...). */
+	/**
+	 * Get the lifecycle state of the current session (Pending, InProgress, Ended, ...).
+	 * On the host this is the authoritative local state; on clients it is the host's
+	 * replicated state, so every player always sees the same value.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasySessionState GetSessionState() const;
+
+	/**
+	 * Internal: receive the host's replicated session state (called by the state
+	 * actor). Clients cache it for display and reconcile their local session copy.
+	 */
+	void HandleReplicatedHostSessionState(EEasySessionState HostState);
 
 	/** Check whether the local player is hosting the current session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
@@ -411,11 +421,20 @@ private:
 	/** Travel back to the menu map configured in the settings. No-op when unset. */
 	void ReturnToConfiguredMenu();
 
+	/** Session state as derived from the local online subsystem session copy. */
+	EEasySessionState GetLocalSessionState() const;
+
 	/**
-	 * Mirror the host's Start/End Session on every remote client, so their local
-	 * session state (and any UI polling it) matches the host.
+	 * Host: make sure the replicated state actor exists in the current world and
+	 * carries the current session state. Clients never spawn it.
 	 */
-	void MirrorSessionStateToClients(bool bStarted);
+	void EnsureStateActor();
+
+	/** Host: push the current local session state to the replicated state actor. */
+	void PushHostSessionState();
+
+	/** Spawn/refresh the state actor after every map load while hosting. */
+	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);
 
 	/**
 	 * Register / unregister the local player in the current session.
@@ -472,6 +491,18 @@ private:
 
 	/** Whether platform friends of the host may join the current session without its password. */
 	bool bCurrentSessionFriendsBypassPassword = false;
+
+	/** Replicated session-wide state actor. Spawned by the host, observed by clients. */
+	TWeakObjectPtr<class AEasySessionStateActor> StateActor;
+
+	/** Latest host session state received through replication (clients only). */
+	EEasySessionState ReplicatedHostSessionState = EEasySessionState::NoSession;
+
+	/** Whether a replicated host state has been received for the current session. */
+	bool bHasReplicatedHostSessionState = false;
+
+	/** Delegate handle for per-map state actor respawns. */
+	FDelegateHandle WorldInitializedActorsHandle;
 
 	/** Session invites received so far. */
 	UPROPERTY()
