@@ -1,14 +1,15 @@
 // Copyright Langerak. All Rights Reserved.
 
 #include "EasyExampleCharacter.h"
-
 #include "Camera/CameraComponent.h"
-#include "Components/CapsuleComponent.h"
-#include "Components/InputComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
-#include "InputCoreTypes.h"
+#include "InputActionValue.h"
+#include "Engine/LocalPlayer.h"
 
 AEasyExampleCharacter::AEasyExampleCharacter()
 {
@@ -35,59 +36,66 @@ AEasyExampleCharacter::AEasyExampleCharacter()
 	Camera->bUsePawnControlRotation = false;
 }
 
-void AEasyExampleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AEasyExampleCharacter::NotifyControllerChanged()
 {
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	Super::NotifyControllerChanged();
 
-	// Keys are bound directly so the example needs no input assets or project
-	// settings. Axis-key bindings deliver 1 every frame while the key is held.
-	PlayerInputComponent->BindAxisKey(EKeys::W, this, &AEasyExampleCharacter::MoveForward);
-	PlayerInputComponent->BindAxisKey(EKeys::S, this, &AEasyExampleCharacter::MoveBackward);
-	PlayerInputComponent->BindAxisKey(EKeys::D, this, &AEasyExampleCharacter::MoveRight);
-	PlayerInputComponent->BindAxisKey(EKeys::A, this, &AEasyExampleCharacter::MoveLeft);
-	PlayerInputComponent->BindAxisKey(EKeys::MouseX, this, &AEasyExampleCharacter::LookYaw);
-	PlayerInputComponent->BindAxisKey(EKeys::MouseY, this, &AEasyExampleCharacter::LookPitch);
-	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindKey(EKeys::SpaceBar, IE_Released, this, &ACharacter::StopJumping);
-}
-
-void AEasyExampleCharacter::MoveForward(float Value)
-{
-	AddControlSpaceMovement(EAxis::X, Value);
-}
-
-void AEasyExampleCharacter::MoveBackward(float Value)
-{
-	AddControlSpaceMovement(EAxis::X, -Value);
-}
-
-void AEasyExampleCharacter::MoveRight(float Value)
-{
-	AddControlSpaceMovement(EAxis::Y, Value);
-}
-
-void AEasyExampleCharacter::MoveLeft(float Value)
-{
-	AddControlSpaceMovement(EAxis::Y, -Value);
-}
-
-void AEasyExampleCharacter::LookYaw(float Value)
-{
-	AddControllerYawInput(Value);
-}
-
-void AEasyExampleCharacter::LookPitch(float Value)
-{
-	AddControllerPitchInput(Value);
-}
-
-void AEasyExampleCharacter::AddControlSpaceMovement(EAxis::Type Axis, float Value)
-{
-	if (Controller == nullptr || Value == 0.0f)
+	const APlayerController* PlayerController = Cast<APlayerController>(Controller);
+	if (PlayerController == nullptr || DefaultMappingContext == nullptr)
 	{
 		return;
 	}
 
+	if (UEnhancedInputLocalPlayerSubsystem* InputSubsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+	{
+		InputSubsystem->AddMappingContext(DefaultMappingContext, 0);
+	}
+}
+
+void AEasyExampleCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	if (EnhancedInput == nullptr)
+	{
+		return;
+	}
+
+	if (MoveAction != nullptr)
+	{
+		EnhancedInput->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AEasyExampleCharacter::Move);
+	}
+
+	if (LookAction != nullptr)
+	{
+		EnhancedInput->BindAction(LookAction, ETriggerEvent::Triggered, this, &AEasyExampleCharacter::Look);
+	}
+
+	if (JumpAction != nullptr)
+	{
+		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Started, this, &ACharacter::Jump);
+		EnhancedInput->BindAction(JumpAction, ETriggerEvent::Completed, this, &ACharacter::StopJumping);
+	}
+}
+
+void AEasyExampleCharacter::Move(const FInputActionValue& Value)
+{
+	if (Controller == nullptr)
+	{
+		return;
+	}
+
+	const FVector2D MovementVector = Value.Get<FVector2D>();
 	const FRotator YawRotation(0.0f, Controller->GetControlRotation().Yaw, 0.0f);
-	AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(Axis), Value);
+
+	AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X), MovementVector.Y);
+	AddMovementInput(FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y), MovementVector.X);
+}
+
+void AEasyExampleCharacter::Look(const FInputActionValue& Value)
+{
+	const FVector2D LookVector = Value.Get<FVector2D>();
+	AddControllerYawInput(LookVector.X);
+	AddControllerPitchInput(LookVector.Y);
 }

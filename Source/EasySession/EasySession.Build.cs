@@ -25,7 +25,8 @@ public class EasySession : ModuleRules
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
 			"OnlineBase",
-			"InputCore"
+			"InputCore",
+			"EnhancedInput"
 		});
 	}
 }

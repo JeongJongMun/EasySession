@@ -7,16 +7,19 @@
 #include "EasyExampleCharacter.generated.h"
 
 class UCameraComponent;
+class UInputAction;
+class UInputMappingContext;
 class USpringArmComponent;
+struct FInputActionValue;
 
 /**
- * Minimal third person character for the example content. Games are expected to
+ * Minimal third person character for the example content, wired up with Enhanced
+ * Input the same way the engine's character templates are. Games are expected to
  * replace it with their own character - it only exists so the example maps are
- * playable out of the box in any project.
+ * playable out of the box.
  *
- * Input is bound directly to keys (WASD + mouse + space) in
- * SetupPlayerInputComponent, so it works without any input mapping assets or
- * project input settings. Networked movement comes from ACharacter.
+ * The input assets live in the plugin's example content, so nothing has to be set
+ * up in the project. Networked movement comes from ACharacter.
  */
 UCLASS(Blueprintable, NotPlaceable)
 class AEasyExampleCharacter : public ACharacter
@@ -28,23 +31,35 @@ public:
 	AEasyExampleCharacter();
 
 	//~ Begin APawn Interface
+	virtual void NotifyControllerChanged() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	//~ End APawn Interface
 
+protected:
+
+	/** Mapping context added for the locally controlled player. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputMappingContext> DefaultMappingContext;
+
+	/** Move action, expects a 2D axis value (X = right, Y = forward). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> MoveAction;
+
+	/** Look action, expects a 2D axis value (X = yaw, Y = pitch). */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> LookAction;
+
+	/** Jump action. */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
+	TObjectPtr<UInputAction> JumpAction;
+
 private:
 
-	/** Move along the control rotation's yaw. Axis-key handlers receive 1 while held. */
-	void MoveForward(float Value);
-	void MoveBackward(float Value);
-	void MoveRight(float Value);
-	void MoveLeft(float Value);
+	/** Move relative to the control rotation. */
+	void Move(const FInputActionValue& Value);
 
-	/** Mouse look. */
-	void LookYaw(float Value);
-	void LookPitch(float Value);
-
-	/** Add movement along a horizontal axis of the control rotation. */
-	void AddControlSpaceMovement(EAxis::Type Axis, float Value);
+	/** Turn the view. */
+	void Look(const FInputActionValue& Value);
 
 	/** Third person camera boom. */
 	UPROPERTY(VisibleAnywhere, Category = "EasySession")
