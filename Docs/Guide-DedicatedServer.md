@@ -2,7 +2,7 @@
 
 EasySession supports dedicated servers end to end: the server advertises itself, clients find and join it like any other session.
 
-> Status note: dedicated flow validation on Steam/EOS is scheduled for Phase 4 of the roadmap. The LAN/NULL flow below reflects the current implementation.
+> Status note: dedicated flow validation on Steam is scheduled after the 1.0 release. The LAN/NULL flow below reflects the current implementation.
 
 ## What you need
 

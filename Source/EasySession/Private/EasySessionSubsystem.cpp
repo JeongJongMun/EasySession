@@ -1345,28 +1345,6 @@ void UEasySessionSubsystem::ReturnToMenu()
 // Invites, friends and the platform overlays are handled by FEasySessionSocial.
 // These stay here so Blueprints keep calling one subsystem.
 
-const TArray<FEasySessionInvite>& UEasySessionSubsystem::GetPendingSessionInvites() const
-{
-	static const TArray<FEasySessionInvite> Empty;
-	return Social.IsValid() ? Social->GetPendingInvites() : Empty;
-}
-
-void UEasySessionSubsystem::ClearPendingSessionInvites()
-{
-	if (Social.IsValid())
-	{
-		Social->ClearPendingInvites();
-	}
-}
-
-void UEasySessionSubsystem::AcceptSessionInvite(const FEasySessionInvite& Invite)
-{
-	if (Social.IsValid())
-	{
-		Social->AcceptInvite(Invite);
-	}
-}
-
 bool UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
 {
 	return Social.IsValid() && Social->SendInviteToFriend(Friend);
@@ -1377,14 +1355,16 @@ bool UEasySessionSubsystem::ShowInviteUI()
 	return Social.IsValid() && Social->ShowInviteUI();
 }
 
+// Two entry points for one overlay call: Blueprint cannot hold a unique id, so the
+// caller passes whichever struct it has and the id is taken out here.
 bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
 {
-	return Social.IsValid() && Social->ShowProfileUI(Friend);
+	return Social.IsValid() && Social->ShowProfileUI(Friend.NativeId);
 }
 
 bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
 {
-	return Social.IsValid() && Social->ShowProfileUIForPlayer(Player);
+	return Social.IsValid() && Social->ShowProfileUI(Player.NativeId);
 }
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)

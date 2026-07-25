@@ -38,9 +38,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasySessionFindEvent, EEasySessi
 /** Multicast event fired when the connection to the session is lost. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionFailureEvent, const FString&, Reason);
 
-/** Multicast event fired when a session invite is received. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteEvent, const FEasySessionInvite&, Invite);
-
 /** Multicast event fired when the player accepts an invite from the platform overlay. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, const FEasySessionSearchResult&, Session);
 
@@ -123,10 +120,6 @@ public:
 	/** Fired when the connection to the session is lost or a network error occurs. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionFailureEvent OnSessionFailure;
-
-	/** Fired when a session invite is received. The invite is also added to the pending list. */
-	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasySessionInviteEvent OnSessionInviteReceived;
 
 	/**
 	 * Fired when the player accepts an invite from the platform overlay.
@@ -331,21 +324,6 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
 	void DestroyEasySessionForEveryone(FText Reason);
-
-	/** Get the session invites received so far. */
-	UFUNCTION(BlueprintPure, Category = "EasySession|Invites")
-	const TArray<FEasySessionInvite>& GetPendingSessionInvites() const;
-
-	/**
-	 * Join the session an invite points to, leaving the current session first if needed.
-	 * The invite is removed from the pending list.
-	 */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
-	void AcceptSessionInvite(const FEasySessionInvite& Invite);
-
-	/** Remove all received invites from the pending list. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
-	void ClearPendingSessionInvites();
 
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")

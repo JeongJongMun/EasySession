@@ -8,7 +8,7 @@ Host, find, join and quick-play with just a few Blueprint nodes — no custom Ga
 
 - [Quick Start](Docs/QuickStart.md) — host and join in 5 minutes
 - [Concepts](Docs/Concepts.md) — sessions, OSS, listen vs dedicated, without the confusion
-- Setup: [LAN](Docs/Setup-LAN.md) · [Steam](Docs/Setup-Steam.md) · [EOS](Docs/Setup-EOS.md)
+- Setup: [LAN](Docs/Setup-LAN.md) · [Steam](Docs/Setup-Steam.md)
 - Guides: [Sessions](Docs/Guide-Sessions.md) · [Quick Play matchmaking](Docs/Guide-QuickPlay.md) · [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.md)
 - [FAQ & Troubleshooting](Docs/FAQ.md)
@@ -24,7 +24,9 @@ Host, find, join and quick-play with just a few Blueprint nodes — no custom Ga
 
 ## Status
 
-In development — session core, Blueprint API and Quick Play matchmaking are implemented and covered by automation tests on the NULL (LAN) subsystem. Steam/EOS validation and example content are in progress.
+In development — session core, Blueprint API and Quick Play matchmaking are implemented and covered by automation tests on the NULL (LAN) subsystem, and validated on Steam. Example content and documentation are in progress.
+
+Supported online subsystems are **NULL (LAN)** and **Steam**. EOS is not supported and is not planned.
 
 ## Engine support
 

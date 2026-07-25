@@ -10,7 +10,7 @@ Checked in order of likelihood:
 2. **PIE on one machine** — set Number of Players = 2, Net Mode = *Play Standalone*. If instances still can't see each other, disable *Run Under One Process*.
 3. **Firewall / VPN** — LAN discovery is UDP broadcast; allow the game in Windows Firewall, disable VPNs, or pass `-MultiHome=<LAN IP>`.
 4. **Steam: same account or same-machine test** — two different Steam accounts on two machines are required. With AppId 480, filter out strangers' test sessions using a custom setting (see [Steam setup](Setup-Steam.md)).
-5. **Wrong subsystem is running** — check the log: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM/EOS`. Packaged builds read the packaged ini, not your editor state.
+5. **Wrong subsystem is running** — check the log: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM`. Packaged builds read the packaged ini, not your editor state.
 
 ## "Session is found, but joining times out / fails with ResolveFailure"
 

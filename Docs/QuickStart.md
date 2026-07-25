@@ -70,8 +70,8 @@ If the windows cannot see each other's sessions, disable **Run Under One Process
 
 ## Next steps
 
-- [Concepts](Concepts.md) — what a session actually is, and what NULL/Steam/EOS mean
-- [Steam setup](Setup-Steam.md) / [EOS setup](Setup-EOS.md) — go online beyond LAN
+- [Concepts](Concepts.md) — what a session actually is, and what NULL and Steam mean
+- [Steam setup](Setup-Steam.md) — go online beyond LAN
 - [Session guide](Guide-Sessions.md) — custom session data, filters, updating sessions
 - [Quick Play guide](Guide-QuickPlay.md) — how the matchmaking picks a session, custom scoring
 - [FAQ](FAQ.md) — the questions everyone asks

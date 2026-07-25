@@ -27,13 +27,11 @@ UWorld* FEasySessionSocial::GetWorld() const
 void FEasySessionSocial::BindInviteDelegates()
 {
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
-	if (!Sessions.IsValid() || InviteReceivedHandle.IsValid())
+	if (!Sessions.IsValid() || InviteAcceptedHandle.IsValid())
 	{
 		return;
 	}
 
-	InviteReceivedHandle = Sessions->AddOnSessionInviteReceivedDelegate_Handle(
-		FOnSessionInviteReceivedDelegate::CreateRaw(this, &FEasySessionSocial::HandleSessionInviteReceived));
 	InviteAcceptedHandle = Sessions->AddOnSessionUserInviteAcceptedDelegate_Handle(
 		FOnSessionUserInviteAcceptedDelegate::CreateRaw(this, &FEasySessionSocial::HandleSessionUserInviteAccepted));
 }
@@ -43,35 +41,13 @@ void FEasySessionSocial::Shutdown()
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
 	if (Sessions.IsValid())
 	{
-		if (InviteReceivedHandle.IsValid())
-		{
-			Sessions->ClearOnSessionInviteReceivedDelegate_Handle(InviteReceivedHandle);
-		}
 		if (InviteAcceptedHandle.IsValid())
 		{
 			Sessions->ClearOnSessionUserInviteAcceptedDelegate_Handle(InviteAcceptedHandle);
 		}
 	}
 
-	InviteReceivedHandle.Reset();
 	InviteAcceptedHandle.Reset();
-	PendingInvites.Empty();
-}
-
-void FEasySessionSocial::HandleSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult)
-{
-	if (!InviteResult.IsValid())
-	{
-		return;
-	}
-
-	FEasySessionInvite Invite;
-	Invite.FromUserId = FromId.ToString();
-	Invite.Session = FEasySessionSearchResult::FromNative(InviteResult);
-	PendingInvites.Add(Invite);
-
-	UE_LOG(LogEasySession, Log, TEXT("Session invite received from '%s' for session '%s'."), *Invite.FromUserId, *Invite.Session.SessionDisplayName);
-	Owner.OnSessionInviteReceived.Broadcast(Invite);
 }
 
 void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
@@ -101,22 +77,6 @@ void FEasySessionSocial::JoinInvitedSession(const FEasySessionSearchResult& Sess
 	}
 
 	Owner.JoinEasySession(Session, /*bTravelOnSuccess*/ true);
-}
-
-void FEasySessionSocial::AcceptInvite(const FEasySessionInvite& Invite)
-{
-	if (!Invite.Session.IsValid())
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("AcceptSessionInvite: the invite does not point to a valid session."));
-		return;
-	}
-
-	PendingInvites.RemoveAll([&Invite](const FEasySessionInvite& Pending)
-	{
-		return Pending.FromUserId == Invite.FromUserId && Pending.Session.SessionDisplayName == Invite.Session.SessionDisplayName;
-	});
-
-	JoinInvitedSession(Invite.Session);
 }
 
 bool FEasySessionSocial::SendInviteToFriend(const FEasySessionFriend& Friend)
@@ -157,17 +117,7 @@ bool FEasySessionSocial::ShowInviteUI() const
 	return true;
 }
 
-bool FEasySessionSocial::ShowProfileUI(const FEasySessionFriend& Friend) const
-{
-	return ShowProfileUIInternal(Friend.NativeId);
-}
-
-bool FEasySessionSocial::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player) const
-{
-	return ShowProfileUIInternal(Player.NativeId);
-}
-
-bool FEasySessionSocial::ShowProfileUIInternal(const FUniqueNetIdPtr& TargetId) const
+bool FEasySessionSocial::ShowProfileUI(const FUniqueNetIdPtr& TargetId) const
 {
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
 	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;

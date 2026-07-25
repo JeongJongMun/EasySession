@@ -52,7 +52,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	// Invite helpers must report unsupported instead of crashing.
 	TestFalse(TEXT("ShowInviteUI unsupported on NULL"), Subsystem->ShowInviteUI());
 	TestFalse(TEXT("SendSessionInviteToFriend fails without a valid friend"), Subsystem->SendSessionInviteToFriend(FEasySessionFriend()));
-	TestEqual(TEXT("No pending invites"), Subsystem->GetPendingSessionInvites().Num(), 0);
+	TestFalse(TEXT("ShowProfileUI unsupported on NULL"), Subsystem->ShowProfileUI(FEasySessionFriend()));
 
 	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;

@@ -96,14 +96,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);
 
-	/** Get the session invites received so far. */
-	UFUNCTION(BlueprintPure, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
-	static TArray<FEasySessionInvite> GetPendingEasySessionInvites(const UObject* WorldContextObject);
-
-	/** Join the session an invite points to, leaving the current session first if needed. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
-	static void AcceptEasySessionInvite(const UObject* WorldContextObject, const FEasySessionInvite& Invite);
-
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static bool SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);

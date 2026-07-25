@@ -22,7 +22,6 @@ The **Online Subsystem** is Unreal's abstraction over platform online services. 
 
 - **NULL** — LAN only. No accounts, no setup. Sessions are found via UDP broadcast on the local network. This is the default and perfect for development.
 - **Steam** — sessions become Steam lobbies / server list entries. Requires the Steam client running and an AppId. See [Steam setup](Setup-Steam.md).
-- **EOS (Epic Online Services)** — Epic's free cross-platform service. Requires a (free) Dev Portal product. See [EOS setup](Setup-EOS.md).
 
 Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] DefaultPlatformService=...`), not by code. Your Blueprint graphs stay identical.
 
@@ -33,7 +32,7 @@ Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] Defaul
 
 ## Presence, LAN, and why some settings are ignored
 
-- **Presence** means "friends can see what you're playing and join you." It only exists on platform services (Steam/EOS) — on LAN it is meaningless, so EasySession ignores it there.
+- **Presence** means "friends can see what you're playing and join you." It only exists on a platform service such as Steam — on LAN it is meaningless, so EasySession ignores it there.
 - **LAN match** means the session is advertised by local broadcast instead of an online service. When the NULL subsystem is active, EasySession forces LAN mode automatically so things just work.
 - Dedicated server sessions never use presence (there is no "player" hosting them).
 

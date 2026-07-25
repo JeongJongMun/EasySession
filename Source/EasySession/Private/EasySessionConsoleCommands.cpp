@@ -269,23 +269,6 @@ namespace EasySessionConsole
 			}
 		}));
 
-	static FAutoConsoleCommandWithWorldAndArgs GInvitesCommand(
-		TEXT("EasySession.Invites"),
-		TEXT("Print the pending session invites."),
-		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
-		{
-			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
-			{
-				const TArray<FEasySessionInvite>& Invites = Subsystem->GetPendingSessionInvites();
-				Print(FString::Printf(TEXT("Pending invites: %d"), Invites.Num()));
-				for (int32 Index = 0; Index < Invites.Num(); ++Index)
-				{
-					Print(FString::Printf(TEXT("  [%d] From=%s | Session='%s'"),
-						Index, *Invites[Index].FromUserId, *Invites[Index].Session.SessionDisplayName));
-				}
-			}
-		}));
-
 	static FAutoConsoleCommandWithWorldAndArgs GInviteUICommand(
 		TEXT("EasySession.InviteUI"),
 		TEXT("Open the platform invite overlay for the current session."),

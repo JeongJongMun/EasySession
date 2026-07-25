@@ -108,20 +108,6 @@ FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObj
 	return Subsystem != nullptr ? Subsystem->GetOnlineSubsystemName() : NAME_None;
 }
 
-TArray<FEasySessionInvite> UEasySessionStatics::GetPendingEasySessionInvites(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetPendingSessionInvites() : TArray<FEasySessionInvite>();
-}
-
-void UEasySessionStatics::AcceptEasySessionInvite(const UObject* WorldContextObject, const FEasySessionInvite& Invite)
-{
-	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
-	{
-		Subsystem->AcceptSessionInvite(Invite);
-	}
-}
-
 bool UEasySessionStatics::SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

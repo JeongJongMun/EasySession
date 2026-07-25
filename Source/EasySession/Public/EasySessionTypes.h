@@ -418,23 +418,6 @@ struct EASYSESSION_API FEasySessionFriend
 };
 
 /**
- * A session invite the local player has received.
- */
-USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasySessionInvite
-{
-	GENERATED_BODY()
-
-	/** String form of the sender's unique id. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	FString FromUserId;
-
-	/** The session the invite points to. Pass to Accept Session Invite to join it. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	FEasySessionSearchResult Session;
-};
-
-/**
  * Information about a single player in the current session.
  */
 USTRUCT(BlueprintType)
