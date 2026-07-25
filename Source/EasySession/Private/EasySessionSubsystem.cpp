@@ -5,6 +5,8 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionRequest.h"
+#include "EasySessionServerGate.h"
+#include "EasySessionSocial.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionSettings.h"
@@ -31,6 +33,11 @@
 #include "OnlineSubsystemUtils.h"
 #include "UObject/UObjectGlobals.h"
 
+// Defined here, where the collaborator types are complete.
+UEasySessionSubsystem::UEasySessionSubsystem() = default;
+UEasySessionSubsystem::UEasySessionSubsystem(FVTableHelper& Helper) : Super(Helper) {}
+UEasySessionSubsystem::~UEasySessionSubsystem() = default;
+
 void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
@@ -44,6 +51,10 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	{
 		UE_LOG(LogEasySession, Log, TEXT("EasySessionSubsystem initialized. Online subsystem: %s"), *OnlineSub->GetSubsystemName().ToString());
 	}
+
+	Social = MakeUnique<FEasySessionSocial>(*this);
+	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
+	ServerGate->Initialize();
 
 	if (GEngine != nullptr)
 	{
@@ -65,15 +76,12 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 			return true;
 		}
 
-		BindInviteDelegates();
+		Social->BindInviteDelegates();
 		EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
 		InviteBindTickerHandle.Reset();
 		return false;
 	}), 0.5f);
 
-	PreLoginHandle = FGameModeEvents::GameModePreLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePreLogin);
-	PostLoginHandle = FGameModeEvents::GameModePostLoginEvent.AddUObject(this, &UEasySessionSubsystem::HandlePostLogin);
-	LogoutHandle = FGameModeEvents::GameModeLogoutEvent.AddUObject(this, &UEasySessionSubsystem::HandleLogout);
 	WorldInitializedActorsHandle = FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UEasySessionSubsystem::HandleWorldInitializedActors);
 
 	if (IsRunningDedicatedServer() && GetDefault<UEasySessionSettings>()->bAutoHostOnDedicatedServer)
@@ -113,24 +121,6 @@ void UEasySessionSubsystem::Deinitialize()
 		PostLoadMapHandle.Reset();
 	}
 
-	if (PreLoginHandle.IsValid())
-	{
-		FGameModeEvents::GameModePreLoginEvent.Remove(PreLoginHandle);
-		PreLoginHandle.Reset();
-	}
-
-	if (PostLoginHandle.IsValid())
-	{
-		FGameModeEvents::GameModePostLoginEvent.Remove(PostLoginHandle);
-		PostLoginHandle.Reset();
-	}
-
-	if (LogoutHandle.IsValid())
-	{
-		FGameModeEvents::GameModeLogoutEvent.Remove(LogoutHandle);
-		LogoutHandle.Reset();
-	}
-
 	if (WorldInitializedActorsHandle.IsValid())
 	{
 		FWorldDelegates::OnWorldInitializedActors.Remove(WorldInitializedActorsHandle);
@@ -163,13 +153,15 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
 		Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle);
 		Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
-		Sessions->ClearOnSessionInviteReceivedDelegate_Handle(InviteReceivedHandle);
-		Sessions->ClearOnSessionUserInviteAcceptedDelegate_Handle(InviteAcceptedHandle);
 		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle);
 		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
 	}
 
 	StopRequestWatchdog();
+
+	// Destroying these unbinds everything they registered.
+	Social.Reset();
+	ServerGate.Reset();
 
 	ActiveMatchmakingPolicy = nullptr;
 	ActiveRequest.Reset();
@@ -368,7 +360,7 @@ TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
 
 FString UEasySessionSubsystem::GetSessionPassword() const
 {
-	return CurrentSessionPassword;
+	return ServerGate.IsValid() ? ServerGate->GetSessionPassword() : FString();
 }
 
 FString UEasySessionSubsystem::GetSessionDisplayName() const
@@ -955,8 +947,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
-	CurrentSessionPassword = HostParams.Password.TrimStartAndEnd();
-	bCurrentSessionFriendsBypassPassword = HostParams.bFriendsBypassPassword;
+	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
@@ -1101,8 +1092,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
-	CurrentSessionPassword.Empty();
-	bCurrentSessionFriendsBypassPassword = false;
+	ServerGate->ClearSessionCredentials();
 
 	// The session is gone - drop the replicated state carrier and cache with it.
 	if (AEasySessionStateActor* Actor = StateActor.Get())
@@ -1352,199 +1342,60 @@ void UEasySessionSubsystem::ReturnToMenu()
 	MarkTravelStarted(TEXT("return to menu"));
 }
 
-void UEasySessionSubsystem::BindInviteDelegates()
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid())
-	{
-		return;
-	}
+// Invites, friends and the platform overlays are handled by FEasySessionSocial.
+// These stay here so Blueprints keep calling one subsystem.
 
-	InviteReceivedHandle = Sessions->AddOnSessionInviteReceivedDelegate_Handle(
-		FOnSessionInviteReceivedDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleSessionInviteReceived));
-	InviteAcceptedHandle = Sessions->AddOnSessionUserInviteAcceptedDelegate_Handle(
-		FOnSessionUserInviteAcceptedDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleSessionUserInviteAccepted));
+const TArray<FEasySessionInvite>& UEasySessionSubsystem::GetPendingSessionInvites() const
+{
+	static const TArray<FEasySessionInvite> Empty;
+	return Social.IsValid() ? Social->GetPendingInvites() : Empty;
 }
 
-void UEasySessionSubsystem::HandleSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult)
+void UEasySessionSubsystem::ClearPendingSessionInvites()
 {
-	if (!InviteResult.IsValid())
+	if (Social.IsValid())
 	{
-		return;
+		Social->ClearPendingInvites();
 	}
-
-	FEasySessionInvite Invite;
-	Invite.FromUserId = FromId.ToString();
-	Invite.Session = FEasySessionSearchResult::FromNative(InviteResult);
-	PendingInvites.Add(Invite);
-
-	UE_LOG(LogEasySession, Log, TEXT("Session invite received from '%s' for session '%s'."), *Invite.FromUserId, *Invite.Session.SessionDisplayName);
-	OnSessionInviteReceived.Broadcast(Invite);
-}
-
-void UEasySessionSubsystem::HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
-{
-	if (!bWasSuccessful || !InviteResult.IsValid())
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("An invite was accepted but the session it points to is not valid."));
-		return;
-	}
-
-	const FEasySessionSearchResult Session = FEasySessionSearchResult::FromNative(InviteResult);
-	UE_LOG(LogEasySession, Log, TEXT("Invite accepted for session '%s'."), *Session.SessionDisplayName);
-	OnSessionInviteAccepted.Broadcast(Session);
-
-	if (GetDefault<UEasySessionSettings>()->bAutoJoinAcceptedInvites)
-	{
-		JoinInvitedSession(Session);
-	}
-}
-
-void UEasySessionSubsystem::JoinInvitedSession(const FEasySessionSearchResult& Session)
-{
-	// The request queue serializes these, so the destroy always finishes first.
-	if (IsInSession())
-	{
-		DestroyEasySession();
-	}
-
-	JoinEasySession(Session, /*bTravelOnSuccess*/ true);
 }
 
 void UEasySessionSubsystem::AcceptSessionInvite(const FEasySessionInvite& Invite)
 {
-	if (!Invite.Session.IsValid())
+	if (Social.IsValid())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("AcceptSessionInvite: the invite does not point to a valid session."));
-		return;
+		Social->AcceptInvite(Invite);
 	}
-
-	PendingInvites.RemoveAll([&Invite](const FEasySessionInvite& Pending)
-	{
-		return Pending.FromUserId == Invite.FromUserId && Pending.Session.SessionDisplayName == Invite.Session.SessionDisplayName;
-	});
-
-	JoinInvitedSession(Invite.Session);
 }
 
 bool UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
 {
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid() || !Friend.IsValid())
-	{
-		return false;
-	}
-
-	if (!IsInSession())
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: there is no session to invite to."));
-		return false;
-	}
-
-	if (!Sessions->SendSessionInviteToFriend(0, NAME_GameSession, *Friend.NativeId))
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend failed. The online subsystem may not support invites (e.g. NULL/LAN)."));
-		return false;
-	}
-
-	UE_LOG(LogEasySession, Log, TEXT("Session invite sent to '%s'."), *Friend.DisplayName);
-	return true;
+	return Social.IsValid() && Social->SendInviteToFriend(Friend);
 }
 
 bool UEasySessionSubsystem::ShowInviteUI()
 {
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
-	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
-
-	if (!ExternalUI.IsValid() || !ExternalUI->ShowInviteUI(0, NAME_GameSession))
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("ShowInviteUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
-		return false;
-	}
-
-	return true;
+	return Social.IsValid() && Social->ShowInviteUI();
 }
 
 bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
 {
-	return ShowProfileUIInternal(Friend.NativeId);
+	return Social.IsValid() && Social->ShowProfileUI(Friend);
 }
 
 bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
 {
-	return ShowProfileUIInternal(Player.NativeId);
-}
-
-bool UEasySessionSubsystem::ShowProfileUIInternal(const FUniqueNetIdPtr& TargetId)
-{
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
-	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
-	const IOnlineIdentityPtr Identity = OnlineSub ? OnlineSub->GetIdentityInterface() : nullptr;
-	const FUniqueNetIdPtr LocalId = Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr;
-
-	if (!ExternalUI.IsValid() || !LocalId.IsValid() || !TargetId.IsValid())
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("ShowProfileUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
-		return false;
-	}
-
-	return ExternalUI->ShowProfileUI(*LocalId, *TargetId, FOnProfileUIClosedDelegate());
+	return Social.IsValid() && Social->ShowProfileUIForPlayer(Player);
 }
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 {
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
-	const IOnlineFriendsPtr Friends = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
-
-	if (!Friends.IsValid())
+	if (!Social.IsValid())
 	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The current online subsystem does not support friends lists (e.g. NULL/LAN)."), {});
+		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The session subsystem is shutting down."), {});
 		return;
 	}
 
-	if (bReadingFriends)
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::UnknownFailure, TEXT("A friends list read is already in progress."), {});
-		return;
-	}
-
-	bReadingFriends = true;
-
-	const FString ListName = EFriendsLists::ToString(EFriendsLists::Default);
-	Friends->ReadFriendsList(0, ListName, FOnReadFriendsListComplete::CreateWeakLambda(this,
-		[this, UserDelegate = MoveTemp(OnComplete)](int32 /*LocalUserNum*/, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
-		{
-			bReadingFriends = false;
-
-			if (!bWasSuccessful)
-			{
-				UserDelegate.ExecuteIfBound(EEasySessionResult::UnknownFailure, ErrorStr, {});
-				return;
-			}
-
-			const IOnlineSubsystem* CallbackSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
-			const IOnlineFriendsPtr CallbackFriends = CallbackSub ? CallbackSub->GetFriendsInterface() : nullptr;
-
-			TArray<TSharedRef<FOnlineFriend>> FriendList;
-			if (CallbackFriends.IsValid())
-			{
-				CallbackFriends->GetFriendsList(0, ListName, FriendList);
-			}
-
-			TArray<FEasySessionFriend> Result;
-			Result.Reserve(FriendList.Num());
-			for (const TSharedRef<FOnlineFriend>& OnlineFriend : FriendList)
-			{
-				FEasySessionFriend& Entry = Result.AddDefaulted_GetRef();
-				Entry.DisplayName = OnlineFriend->GetDisplayName();
-				Entry.bIsOnline = OnlineFriend->GetPresence().bIsOnline;
-				Entry.bIsPlayingThisGame = OnlineFriend->GetPresence().bIsPlayingThisGame;
-				Entry.NativeId = OnlineFriend->GetUserId();
-			}
-
-			UE_LOG(LogEasySession, Log, TEXT("Friends list read: %d friend(s)."), Result.Num());
-			UserDelegate.ExecuteIfBound(EEasySessionResult::Success, FString(), Result);
-		}));
+	Social->ReadFriends(MoveTemp(OnComplete));
 }
 
 void UEasySessionSubsystem::EnsureStateActor()
@@ -1624,149 +1475,6 @@ void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState H
 		// Replay the host's history - the OSS only allows Pending -> InProgress -> Ended.
 		StartEasySession();
 		EndEasySession();
-	}
-}
-
-void UEasySessionSubsystem::HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage)
-{
-	// Fires on the server only (game modes do not exist on clients).
-	UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (GameMode == nullptr || OwnWorld == nullptr || GameMode->GetWorld() != OwnWorld)
-	{
-		return;
-	}
-
-	// Another handler may already be rejecting this player - do not overwrite the reason.
-	if (!ErrorMessage.IsEmpty())
-	{
-		return;
-	}
-
-	// Join-in-progress gate: bAllowJoinInProgress only filters searches at the
-	// platform level (and not at all on NULL), so a stale search result or a direct
-	// connect would otherwise walk straight into a running match - the host is the
-	// authority on its own session and rejects here. New connections only: in-session
-	// map changes must use seamless travel (the plugin's own travels do), or
-	// reconnecting players would be caught by this gate too.
-	const IOnlineSessionPtr PreLoginSessions = GetSessionInterface();
-	const FNamedOnlineSession* PreLoginSession = PreLoginSessions.IsValid() ? PreLoginSessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (PreLoginSession != nullptr && !PreLoginSession->SessionSettings.bAllowJoinInProgress)
-	{
-		const EEasySessionState LocalState = GetLocalSessionState();
-		if (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - the match is in progress and join-in-progress is disabled."), *NewPlayer.ToString());
-			ErrorMessage = NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress.").ToString();
-			return;
-		}
-	}
-
-	if (CurrentSessionPassword.IsEmpty())
-	{
-		return;
-	}
-
-	// The engine sets Connection->PlayerId before PreLogin, so the pending
-	// connection can be found by id and its travel URL inspected.
-	const UNetConnection* PendingConnection = nullptr;
-	if (const UNetDriver* NetDriver = OwnWorld->GetNetDriver())
-	{
-		for (const TObjectPtr<UNetConnection>& ClientConnection : NetDriver->ClientConnections)
-		{
-			if (ClientConnection != nullptr && ClientConnection->PlayerId == NewPlayer)
-			{
-				PendingConnection = ClientConnection;
-				break;
-			}
-		}
-	}
-
-	if (PendingConnection == nullptr)
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: could not find the pending connection for '%s'. Rejecting to protect the password session."), *NewPlayer.ToString());
-		ErrorMessage = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
-		return;
-	}
-
-	// The engine rebuilds RequestURL with the map path in front (e.g. "/Game/Maps/Menu?Pw=x"),
-	// but ParseOption only works on strings starting at the first '?' - skip to it,
-	// exactly like the engine does before calling PreLogin.
-	FString URLOptions = PendingConnection->RequestURL;
-	const int32 OptionsStart = URLOptions.Find(TEXT("?"), ESearchCase::CaseSensitive);
-	URLOptions = OptionsStart != INDEX_NONE ? URLOptions.Mid(OptionsStart) : FString();
-
-	const FString SuppliedPassword = UGameplayStatics::ParseOption(URLOptions, EasySession::TravelOption_Password).TrimStartAndEnd();
-
-	if (!SuppliedPassword.Equals(CurrentSessionPassword, ESearchCase::CaseSensitive))
-	{
-		// Invited players never carry the password (the invite flow has no password prompt),
-		// but platform invites can only be sent to friends - so a host-side friends check
-		// lets them in. Platform-verified: the joining id cannot fake being a friend.
-		if (bCurrentSessionFriendsBypassPassword && NewPlayer.IsValid())
-		{
-			const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(OwnWorld);
-			const IOnlineFriendsPtr Friends = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
-			if (Friends.IsValid() && Friends->IsFriend(0, *NewPlayer.GetUniqueNetId(), EFriendsLists::ToString(EFriendsLists::Default)))
-			{
-				UE_LOG(LogEasySession, Log, TEXT("PreLogin: '%s' joins without the password - friend of the host."), *NewPlayer.ToString());
-				return;
-			}
-		}
-
-		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - wrong or missing session password (expected %d chars, got %d chars, url options: %s)."),
-			*NewPlayer.ToString(), CurrentSessionPassword.Len(), SuppliedPassword.Len(), *PendingConnection->RequestURL);
-		ErrorMessage = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
-	}
-}
-
-void UEasySessionSubsystem::HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer)
-{
-	// Fires on the server only (game modes do not exist on clients).
-	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (GameMode == nullptr || NewPlayer == nullptr || GameMode->GetWorld() != OwnWorld)
-	{
-		return;
-	}
-
-	if (NewPlayer->IsLocalController())
-	{
-		// The hosting player registers itself right after creating the session.
-		return;
-	}
-
-	// Register the remote player so the advertised open slot count stays accurate.
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const APlayerState* PlayerState = NewPlayer->PlayerState;
-	const FUniqueNetIdRepl PlayerId = PlayerState ? PlayerState->GetUniqueId() : FUniqueNetIdRepl();
-
-	if (Sessions.IsValid() && PlayerId.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr)
-	{
-		if (Sessions->RegisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Registered remote player '%s' in the session."), *NewPlayer->GetName());
-		}
-	}
-}
-
-void UEasySessionSubsystem::HandleLogout(AGameModeBase* GameMode, AController* Exiting)
-{
-	// Fires on the server only. Unregister remote players so their slot frees up.
-	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (GameMode == nullptr || Exiting == nullptr || GameMode->GetWorld() != OwnWorld || Exiting->IsLocalController())
-	{
-		return;
-	}
-
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const APlayerState* PlayerState = Exiting->PlayerState;
-	const FUniqueNetIdRepl PlayerId = PlayerState ? PlayerState->GetUniqueId() : FUniqueNetIdRepl();
-
-	if (Sessions.IsValid() && PlayerId.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr)
-	{
-		if (Sessions->UnregisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Unregistered remote player '%s' from the session."), *Exiting->GetName());
-		}
 	}
 }
 

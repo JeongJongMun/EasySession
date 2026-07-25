@@ -25,6 +25,8 @@ class AController;
 class AGameModeBase;
 class APlayerController;
 class FEasySessionRequest;
+class FEasySessionServerGate;
+class FEasySessionSocial;
 class UEasyMatchmakingPolicy;
 
 /** Multicast event fired when a session operation completes. */
@@ -58,7 +60,26 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
+	// Internal collaborators, not separate systems: they read the private queries this
+	// subsystem already has rather than forcing those onto the public API, where they
+	// would sit next to the ones users are meant to call and invite the wrong choice.
+	friend class FEasySessionSocial;
+	friend class FEasySessionServerGate;
+
 public:
+
+	/**
+	 * Declared here and defined in the .cpp on purpose. The collaborators below are
+	 * held by TUniquePtr to types this header only forward declares, and a compiler
+	 * generated constructor or destructor would have to instantiate their deleters
+	 * where those types are still incomplete - which is exactly where UHT puts the
+	 * constructors it generates, including the hot reload one. The engine's own
+	 * pimpl holders (UPrimitiveComponent, ULocalPlayer, UNetConnection) declare the
+	 * same three for the same reason.
+	 */
+	UEasySessionSubsystem();
+	UEasySessionSubsystem(FVTableHelper& Helper);
+	virtual ~UEasySessionSubsystem() override;
 
 	//~ Begin USubsystem Interface
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
@@ -313,7 +334,7 @@ public:
 
 	/** Get the session invites received so far. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Invites")
-	const TArray<FEasySessionInvite>& GetPendingSessionInvites() const { return PendingInvites; }
+	const TArray<FEasySessionInvite>& GetPendingSessionInvites() const;
 
 	/**
 	 * Join the session an invite points to, leaving the current session first if needed.
@@ -324,7 +345,7 @@ public:
 
 	/** Remove all received invites from the pending list. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
-	void ClearPendingSessionInvites() { PendingInvites.Empty(); }
+	void ClearPendingSessionInvites();
 
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
@@ -428,32 +449,6 @@ private:
 	void MarkTravelStarted(const TCHAR* Reason);
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 
-	/** Invite delegate handlers. */
-	void HandleSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult);
-	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
-
-	/** Bind the invite delegates once the session interface is available. */
-	void BindInviteDelegates();
-
-	/** Leave the current session if needed, then join the given one. */
-	void JoinInvitedSession(const FEasySessionSearchResult& Session);
-
-	/** Open the platform profile overlay for the given id. */
-	bool ShowProfileUIInternal(const FUniqueNetIdPtr& TargetId);
-
-	/**
-	 * Verify the session password before a player is allowed to log in on the server.
-	 * Filling ErrorMessage makes the engine refuse the connection and send the text
-	 * to the client, so wrong-password players never enter the map.
-	 */
-	void HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage);
-
-	/** Attach the client RPC component and register players logging in on the server. */
-	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
-
-	/** Unregister remote players logging out on the server. */
-	void HandleLogout(AGameModeBase* GameMode, AController* Exiting);
-
 	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
 	void ReturnToMenu();
 
@@ -519,15 +514,6 @@ private:
 	FDelegateHandle StartCompleteHandle;
 	FDelegateHandle EndCompleteHandle;
 
-	/** Delegate handle for server-side player logouts. Bound for the subsystem lifetime. */
-	FDelegateHandle LogoutHandle;
-
-	/** Password of the session we are hosting. Never advertised; used to verify joining clients. */
-	FString CurrentSessionPassword;
-
-	/** Whether platform friends of the host may join the current session without its password. */
-	bool bCurrentSessionFriendsBypassPassword = false;
-
 	/** Replicated session-wide state actor. Spawned by the host, observed by clients. */
 	TWeakObjectPtr<class AEasySessionStateActor> StateActor;
 
@@ -539,17 +525,6 @@ private:
 
 	/** Delegate handle for per-map state actor respawns. */
 	FDelegateHandle WorldInitializedActorsHandle;
-
-	/** Session invites received so far. */
-	UPROPERTY()
-	TArray<FEasySessionInvite> PendingInvites;
-
-	/** Whether a friends list read is in flight. */
-	bool bReadingFriends = false;
-
-	/** Delegate handles for the invite notifications. Bound once the interface is ready. */
-	FDelegateHandle InviteReceivedHandle;
-	FDelegateHandle InviteAcceptedHandle;
 
 	/** Ticker that waits for the session interface before binding the invite delegates. */
 	FTSTicker::FDelegateHandle InviteBindTickerHandle;
@@ -566,12 +541,6 @@ private:
 	/** Delegate handle for engine-level travel failures. Bound for the subsystem lifetime. */
 	FDelegateHandle TravelFailureHandle;
 
-	/** Delegate handle for server-side pre-login checks. Bound for the subsystem lifetime. */
-	FDelegateHandle PreLoginHandle;
-
-	/** Delegate handle for server-side player logins. Bound for the subsystem lifetime. */
-	FDelegateHandle PostLoginHandle;
-
 	/** Ticker waiting for a valid world before auto hosting on a dedicated server. */
 	FTSTicker::FDelegateHandle DedicatedAutoHostTickerHandle;
 
@@ -586,4 +555,12 @@ private:
 
 	/** Delegate handle for map loads, which end a travel. Bound for the subsystem lifetime. */
 	FDelegateHandle PostLoadMapHandle;
+
+	/**
+	 * Internal collaborators. Each owns the state and the engine delegates for one job,
+	 * so this subsystem stays the place users call and not the place everything lives.
+	 * Created in Initialize and destroyed in Deinitialize, which is what unbinds them.
+	 */
+	TUniquePtr<FEasySessionSocial> Social;
+	TUniquePtr<FEasySessionServerGate> ServerGate;
 };
