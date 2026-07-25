@@ -265,7 +265,8 @@ public:
 
 	/**
 	 * Check whether any session operation is in progress - a request running or queued,
-	 * or a Quick Play still working through its steps.
+	 * a Quick Play still working through its steps, or a travel this plugin started
+	 * that has not reached its map yet.
 	 * Bind session buttons to this to disable them while an operation runs; use
 	 * Is Matchmaking to ask specifically about Quick Play.
 	 */
@@ -417,6 +418,15 @@ private:
 	void HandleEndSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+
+	/**
+	 * Remember that this subsystem sent the player somewhere, and forget it once the
+	 * map is up. The online call that precedes a travel can finish in the same frame
+	 * - the NULL subsystem completes Start, End and Join inside the call itself - so
+	 * the queue alone reports "idle" while the player is still watching a level load.
+	 */
+	void MarkTravelStarted(const TCHAR* Reason);
+	void HandlePostLoadMap(UWorld* LoadedWorld);
 
 	/** Invite delegate handlers. */
 	void HandleSessionInviteReceived(const FUniqueNetId& UserId, const FUniqueNetId& FromId, const FString& AppId, const FOnlineSessionSearchResult& InviteResult);
@@ -570,4 +580,10 @@ private:
 
 	/** Ticker watching the active request for a timeout. Runs only while the queue is busy. */
 	FTSTicker::FDelegateHandle RequestWatchdogHandle;
+
+	/** Whether a travel this subsystem started is still on its way to a loaded map. */
+	bool bTravelInFlight = false;
+
+	/** Delegate handle for map loads, which end a travel. Bound for the subsystem lifetime. */
+	FDelegateHandle PostLoadMapHandle;
 };

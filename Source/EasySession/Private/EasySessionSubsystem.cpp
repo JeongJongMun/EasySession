@@ -29,6 +29,7 @@
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemNames.h"
 #include "OnlineSubsystemUtils.h"
+#include "UObject/UObjectGlobals.h"
 
 void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
@@ -49,6 +50,12 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		NetworkFailureHandle = GEngine->OnNetworkFailure().AddUObject(this, &UEasySessionSubsystem::HandleNetworkFailure);
 		TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &UEasySessionSubsystem::HandleTravelFailure);
 	}
+
+	// A map load ends a travel. The engine guarantees this fires however the load
+	// ends: UEngine::LoadMap broadcasts it from a scope guard's destructor "no matter
+	// how we exit", and seamless travel broadcasts it once the new world begins play.
+	// That guarantee is what makes it safe to hold state until it arrives.
+	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UEasySessionSubsystem::HandlePostLoadMap);
 
 	// The session interface may not be reachable until the world exists - retry until it is.
 	InviteBindTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
@@ -98,6 +105,12 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		GEngine->OnTravelFailure().Remove(TravelFailureHandle);
 		TravelFailureHandle.Reset();
+	}
+
+	if (PostLoadMapHandle.IsValid())
+	{
+		FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
+		PostLoadMapHandle.Reset();
 	}
 
 	if (PreLoginHandle.IsValid())
@@ -431,16 +444,22 @@ bool UEasySessionSubsystem::IsBusy() const
 	// Matchmaking is included on purpose. Quick Play is a policy state machine that
 	// enqueues one request per step, so the queue is briefly empty between steps -
 	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
-	return ActiveRequest.IsValid() || PendingRequests.Num() > 0 || IsMatchmaking();
+	// Travel is included for the same reason: hosting, joining and starting a match
+	// all end in a level load that the player experiences as part of the operation.
+	return ActiveRequest.IsValid() || PendingRequests.Num() > 0 || IsMatchmaking() || bTravelInFlight;
 }
 
 FString UEasySessionSubsystem::GetQueueStatusDescription() const
 {
 	if (!ActiveRequest.IsValid())
 	{
-		return PendingRequests.Num() > 0
-			? FString::Printf(TEXT("Idle, %d queued"), PendingRequests.Num())
-			: FString(TEXT("Idle"));
+		if (PendingRequests.Num() > 0)
+		{
+			return FString::Printf(TEXT("Idle, %d queued"), PendingRequests.Num());
+		}
+
+		// Say so rather than reporting "Idle" while Is Busy answers true.
+		return bTravelInFlight ? FString(TEXT("Idle, traveling")) : FString(TEXT("Idle"));
 	}
 
 	const double Elapsed = ActiveRequest->GetElapsedSeconds(FPlatformTime::Seconds());
@@ -488,7 +507,30 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("ServerTravel to '%s'"), *TravelURL);
-	return World->ServerTravel(TravelURL);
+	if (!World->ServerTravel(TravelURL))
+	{
+		return false;
+	}
+
+	MarkTravelStarted(TEXT("ServerTravelToMap"));
+	return true;
+}
+
+void UEasySessionSubsystem::MarkTravelStarted(const TCHAR* Reason)
+{
+	if (!bTravelInFlight)
+	{
+		UE_LOG(LogEasySession, Verbose, TEXT("Travel started (%s). Session operations report busy until the map is loaded."), Reason);
+	}
+	bTravelInFlight = true;
+}
+
+void UEasySessionSubsystem::HandlePostLoadMap(UWorld* /*LoadedWorld*/)
+{
+	// Fires for every map load, including a failed one, so the flag cannot outlive
+	// the travel that set it. A load nobody here asked for clears it just the same -
+	// whatever we were waiting for is over either way.
+	bTravelInFlight = false;
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
@@ -1239,6 +1281,10 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 		return;
 	}
 
+	// The travel is over even though no map was loaded. The recovery below may start
+	// a new one, which marks itself.
+	bTravelInFlight = false;
+
 	const FString Reason = FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(FailureType), *ErrorString);
 	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
@@ -1303,6 +1349,7 @@ void UEasySessionSubsystem::ReturnToMenu()
 	// already browsing to the default map.
 	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
 	GameInstance->ReturnToMainMenu();
+	MarkTravelStarted(TEXT("return to menu"));
 }
 
 void UEasySessionSubsystem::BindInviteDelegates()
@@ -1873,6 +1920,7 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 		}
 
 		PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
+		MarkTravelStarted(TEXT("host travel to own session"));
 		return;
 	}
 
@@ -1882,7 +1930,10 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerTravel to '%s' failed. Check that the map path is valid (e.g. /Game/Maps/Lobby)."), *TravelURL);
 		OnSessionFailure.Broadcast(FString::Printf(TEXT("ServerTravel to '%s' failed."), *TravelURL));
+		return;
 	}
+
+	MarkTravelStarted(TEXT("host travel to own session"));
 }
 
 void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions)
@@ -1905,6 +1956,7 @@ void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString, 
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to host at '%s'"), *ConnectString);
 	PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
+	MarkTravelStarted(TEXT("client travel to joined session"));
 }
 
 void UEasySessionSubsystem::AppendTravelOptions(FString& InOutURL, const FString& Options)

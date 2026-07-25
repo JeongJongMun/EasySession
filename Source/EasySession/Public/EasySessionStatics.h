@@ -47,7 +47,8 @@ public:
 
 	/**
 	 * Check whether any session operation is in progress - a request running or queued,
-	 * or a Quick Play still working through its steps.
+	 * a Quick Play still working through its steps, or a travel this plugin started
+	 * that has not reached its map yet.
 	 * Bind session buttons to this to disable them while an operation runs.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
