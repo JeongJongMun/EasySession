@@ -7,6 +7,7 @@
 #include "EasySession.h"
 #include "EasySessionStatics.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "Nodes/EasyCreateSessionNode.h"
 #include "Nodes/EasyDestroySessionNode.h"
@@ -38,7 +39,7 @@ bool FEasySessionWaitNodeCreate::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for the create node to complete."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
@@ -69,7 +70,7 @@ bool FEasySessionWaitNodeDestroy::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for the destroy node to complete."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
@@ -78,7 +79,7 @@ bool FEasySessionWaitNodeDestroy::Update()
 	CurrentTest->TestFalse(TEXT("Not in session after destroy node"), Subsystem->IsInSession());
 	CurrentTest->TestFalse(TEXT("Statics report not in-session"), UEasySessionStatics::IsInEasySession(State->GameInstance.Get()));
 
-	State->GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
@@ -98,7 +99,7 @@ bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 
@@ -110,7 +111,7 @@ bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 	UEasyCreateSessionNode* CreateNode = UEasyCreateSessionNode::CreateEasySession(State->GameInstance.Get(), HostParams);
 	if (!TestNotNull(TEXT("Create node was constructed"), CreateNode))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 	CreateNode->Activate();

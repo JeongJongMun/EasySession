@@ -6,6 +6,7 @@
 
 #include "EasySessionSettings.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "OnlineSubsystem.h"
@@ -69,7 +70,7 @@ bool FEasySessionWaitForQueueDrain::Update()
 		Settings->RequestTimeoutSeconds = State->OriginalTimeout;
 	}
 
-	State->GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
@@ -86,7 +87,7 @@ bool FEasySessionQueueDrainTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 

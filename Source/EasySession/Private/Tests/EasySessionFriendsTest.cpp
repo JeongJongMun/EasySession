@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "OnlineSubsystemNames.h"
@@ -24,7 +25,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(GameInstance.Get());
 		return false;
 	}
 
@@ -33,7 +34,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	if (Subsystem->GetOnlineSubsystemName() != NULL_SUBSYSTEM)
 	{
 		AddInfo(FString::Printf(TEXT("Skipped: active subsystem is '%s', not NULL."), *Subsystem->GetOnlineSubsystemName().ToString()));
-		GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(GameInstance.Get());
 		return true;
 	}
 
@@ -53,7 +54,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("SendSessionInviteToFriend fails without a valid friend"), Subsystem->SendSessionInviteToFriend(FEasySessionFriend()));
 	TestEqual(TEXT("No pending invites"), Subsystem->GetPendingSessionInvites().Num(), 0);
 
-	GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;
 }
 

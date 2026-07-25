@@ -7,6 +7,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -77,7 +78,7 @@ bool FEasyMatchmakingWaitHostFallback::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for QuickPlay to complete."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
@@ -100,13 +101,13 @@ bool FEasyMatchmakingWaitHostFallback::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for the cleanup destroy."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
 	}
 
-	State->GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
@@ -126,7 +127,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 
@@ -164,7 +165,7 @@ bool FEasyMatchmakingWaitNoFallback::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for QuickPlay to complete."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
@@ -174,7 +175,7 @@ bool FEasyMatchmakingWaitNoFallback::Update()
 	CurrentTest->TestEqual(TEXT("QuickPlay result"), State->QuickPlayResult.GetValue(), EEasySessionResult::NoSessionsFound);
 	CurrentTest->TestFalse(TEXT("No session was created"), Subsystem->IsInSession());
 
-	State->GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
@@ -194,7 +195,7 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 

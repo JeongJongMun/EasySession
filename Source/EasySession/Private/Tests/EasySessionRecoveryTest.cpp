@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
@@ -22,7 +23,7 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(GameInstance.Get());
 		return false;
 	}
 
@@ -50,7 +51,7 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Pending again after re-notify"), Subsystem->HasPendingDisconnectInfo());
 	TestEqual(TEXT("New reason recorded"), Subsystem->ConsumeLastDisconnectInfo().Reason, EEasyDisconnectReason::HostEndedSession);
 
-	GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;
 }
 

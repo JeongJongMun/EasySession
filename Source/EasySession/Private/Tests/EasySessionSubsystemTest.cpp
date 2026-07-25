@@ -6,6 +6,7 @@
 
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
@@ -41,7 +42,7 @@ bool FEasySessionWaitForQueue::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for the queued session operations to complete."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
@@ -74,7 +75,7 @@ bool FEasySessionWaitForQueue::Update()
 		CurrentTest->TestFalse(TEXT("Not busy after queue drained"), Subsystem->IsBusy());
 	}
 
-	State->GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
@@ -94,7 +95,7 @@ bool FEasySessionQueueTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 

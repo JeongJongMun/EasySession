@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionDiagnostics.h"
+#include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -22,7 +23,7 @@ bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
 	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
 	GameInstance->InitializeStandalone();
 	EasySessionDiagnostics::RunDiagnostics(GameInstance->GetWorld());
-	GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 
 	return true;
 }

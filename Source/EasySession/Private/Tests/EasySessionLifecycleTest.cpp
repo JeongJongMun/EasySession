@@ -6,6 +6,7 @@
 
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
@@ -42,7 +43,7 @@ bool FEasySessionWaitForLifecycle::Update()
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
 			CurrentTest->AddError(TEXT("Timed out waiting for the session lifecycle operations to complete."));
-			State->GameInstance->Shutdown();
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
 		return false;
@@ -63,7 +64,7 @@ bool FEasySessionWaitForLifecycle::Update()
 		CurrentTest->TestEqual(TEXT("NoSession after destroy"), Subsystem->GetSessionState(), EEasySessionState::NoSession);
 	}
 
-	State->GameInstance->Shutdown();
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
@@ -83,7 +84,7 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		State->GameInstance->Shutdown();
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 
