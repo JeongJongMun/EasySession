@@ -23,7 +23,6 @@
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "Interfaces/OnlinePresenceInterface.h"
 #include "Kismet/GameplayStatics.h"
-#include "Misc/PackageName.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
@@ -1202,13 +1201,13 @@ void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason 
 			{
 				if (bReturnToMenu)
 				{
-					ReturnToConfiguredMenu();
+					ReturnToMenu();
 				}
 			}));
 	}
 	else if (bReturnToMenu)
 	{
-		ReturnToConfiguredMenu();
+		ReturnToMenu();
 	}
 }
 
@@ -1220,31 +1219,22 @@ FEasyDisconnectInfo UEasySessionSubsystem::ConsumeLastDisconnectInfo()
 	return Info;
 }
 
-void UEasySessionSubsystem::ReturnToConfiguredMenu()
+void UEasySessionSubsystem::ReturnToMenu()
 {
-	const FString MenuMap = GetDefault<UEasySessionSettings>()->ReturnToMenuMap;
-	if (MenuMap.IsEmpty())
-	{
-		// No menu map configured - the engine's default-map behavior applies.
-		return;
-	}
-
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
+	UGameInstance* GameInstance = GetGameInstance();
+	if (GameInstance == nullptr || GameInstance->GetWorld() == nullptr)
 	{
 		return;
 	}
 
-	// The engine may have already browsed back to the menu (e.g. after a refused
-	// pending connection) - avoid reloading the same map on top of it.
-	if (World->GetName() == FPackageName::GetShortName(MenuMap))
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Already on the menu map - skipping the return travel."));
-		return;
-	}
-
-	UE_LOG(LogEasySession, Log, TEXT("Returning to the configured menu map: %s"), *MenuMap);
-	UGameplayStatics::OpenLevel(World, FName(*MenuMap));
+	// Hand this to the engine instead of opening a map ourselves: it cancels any
+	// pending net game, strips ?listen/?LAN from the last URL, drops the net driver
+	// and browses to the project's Game Default Map. Doing it by hand would skip
+	// that cleanup and add a second "where is the menu" setting next to the
+	// engine's own. Repeated calls are harmless - the engine no-ops once it is
+	// already browsing to the default map.
+	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
+	GameInstance->ReturnToMainMenu();
 }
 
 void UEasySessionSubsystem::BindInviteDelegates()
@@ -1689,7 +1679,7 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
 	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
 		{
-			ReturnToConfiguredMenu();
+			ReturnToMenu();
 		}));
 }
 

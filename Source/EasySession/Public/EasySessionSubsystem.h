@@ -420,8 +420,8 @@ private:
 	/** Unregister remote players logging out on the server. */
 	void HandleLogout(AGameModeBase* GameMode, AController* Exiting);
 
-	/** Travel back to the menu map configured in the settings. No-op when unset. */
-	void ReturnToConfiguredMenu();
+	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
+	void ReturnToMenu();
 
 	/** Session state as derived from the local online subsystem session copy. */
 	EEasySessionState GetLocalSessionState() const;
