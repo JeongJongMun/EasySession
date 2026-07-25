@@ -265,6 +265,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsBusy() const;
 
+	/**
+	 * Describe what the session queue is doing right now, e.g.
+	 * "Create (running 2.4s of 30s), 1 queued" or "Idle".
+	 * Meant for status UI, the EasySession.Status console command and bug reports.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	FString GetQueueStatusDescription() const;
+
 	/** Get the results of the most recent session search. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	const TArray<FEasySessionSearchResult>& GetLastSearchResults() const { return LastSearchResults; }
@@ -373,6 +381,15 @@ private:
 
 	/** Finish the active request and schedule the next one. */
 	void CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage = FString());
+
+	/**
+	 * Watchdog for the active request. Online services are not guaranteed to report
+	 * completion, and a request that never completes would stall every queued
+	 * request behind it - the watchdog fails it with Timeout so the queue drains.
+	 */
+	void StartRequestWatchdog();
+	void StopRequestWatchdog();
+	bool TickRequestWatchdog(float DeltaTime);
 
 	/** Per-operation entry points, called by ProcessNextRequest. */
 	void ExecuteCreate();
@@ -543,4 +560,7 @@ private:
 
 	/** Ticker that verifies the host became a listen server shortly after creating a session. */
 	FTSTicker::FDelegateHandle ListenCheckTickerHandle;
+
+	/** Ticker watching the active request for a timeout. Runs only while the queue is busy. */
+	FTSTicker::FDelegateHandle RequestWatchdogHandle;
 };

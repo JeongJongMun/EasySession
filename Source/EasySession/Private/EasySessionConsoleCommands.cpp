@@ -239,6 +239,7 @@ namespace EasySessionConsole
 					Subsystem->IsBusy() ? 1 : 0,
 					Subsystem->IsMatchmaking() ? 1 : 0,
 					Subsystem->GetLastSearchResults().Num()));
+				Print(FString::Printf(TEXT("Queue: %s"), *Subsystem->GetQueueStatusDescription()));
 			}
 		}));
 

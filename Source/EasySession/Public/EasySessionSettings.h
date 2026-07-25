@@ -40,6 +40,19 @@ public:
 	bool bAutoJoinAcceptedInvites = true;
 
 	/**
+	 * How long a session request may wait for the online service before it is
+	 * failed with the Timeout result and the queue moves on. Online services are
+	 * not required to ever call back - Steam's async tasks have no timeout of
+	 * their own - so without this a silent service would stall every request
+	 * behind it. Searching adds its own Timeout Seconds on top of this value.
+	 * A timeout means the outcome is unknown, not that nothing happened: if the
+	 * operation lands late and leaves a session behind, it is destroyed so the
+	 * next request starts clean. Set to 0 to wait forever.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Advanced", meta = (ClampMin = 0.0, UIMin = 0.0))
+	float RequestTimeoutSeconds = 30.0f;
+
+	/**
 	 * Automatically create and advertise a session when running as a dedicated server.
 	 * The session is created with the Dedicated Server Host Params below.
 	 */

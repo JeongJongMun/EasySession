@@ -78,7 +78,14 @@ enum class EEasySessionResult : uint8
 	Canceled,
 
 	/** The operation failed for an unknown reason. */
-	UnknownFailure
+	UnknownFailure,
+
+	/**
+	 * The online service never reported completion and the request timed out.
+	 * The queue moves on so later requests still run - see Request Timeout Seconds
+	 * in the project settings.
+	 */
+	Timeout
 };
 
 /**
