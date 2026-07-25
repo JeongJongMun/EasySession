@@ -286,12 +286,14 @@ public:
 	bool ServerTravelToMap(const FString& MapName);
 
 	/**
-	 * End the session for every player: remote clients are sent back to the menu with the
-	 * given reason (shown by their menu popup), then the host leaves as well.
+	 * Destroy the session for every player: remote clients are sent back to the menu
+	 * with the given reason (shown by their menu popup), then the host destroys the
+	 * session as well. Like Destroy Easy Session, the session is gone afterwards -
+	 * use End Easy Session to only finish the match and keep the session alive.
 	 * Only the session host can call this.
 	 */
 	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
-	void EndSessionForEveryone(FText Reason);
+	void DestroyEasySessionForEveryone(FText Reason);
 
 	/** Get the session invites received so far. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Invites")

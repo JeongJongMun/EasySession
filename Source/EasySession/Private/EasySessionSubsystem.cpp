@@ -1665,16 +1665,16 @@ void UEasySessionSubsystem::HandleLogout(AGameModeBase* GameMode, AController* E
 	}
 }
 
-void UEasySessionSubsystem::EndSessionForEveryone(FText Reason)
+void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
 {
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (World == nullptr || !IsHost())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("EndSessionForEveryone can only be called by the session host."));
+		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the session host."));
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Ending the session for everyone: %s"), *Reason.ToString());
+	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
 
 	// Tell every remote client to leave with the reason before the session goes down.
 	if (AEasySessionStateActor* Actor = StateActor.Get())

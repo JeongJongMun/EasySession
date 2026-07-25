@@ -8,7 +8,7 @@
 //   EasySession.Join [Index] [Password]  Join a result of the last search (default index 0).
 //   EasySession.QuickPlay [Map] Search, join the best session, or host one.
 //   EasySession.Travel <Map>    ServerTravel the current session to a new map.
-//   EasySession.Leave           Leave / destroy the current session.
+//   EasySession.Destroy         Destroy the current session (host closes it, client leaves).
 //   EasySession.Start           Start the match (session state -> InProgress).
 //   EasySession.End             End the match (session state -> Ended).
 //   EasySession.Cancel          Cancel the running matchmaking.
@@ -177,15 +177,15 @@ namespace EasySessionConsole
 			}
 		}));
 
-	static FAutoConsoleCommandWithWorldAndArgs GLeaveCommand(
-		TEXT("EasySession.Leave"),
-		TEXT("Leave / destroy the current session."),
+	static FAutoConsoleCommandWithWorldAndArgs GDestroyCommand(
+		TEXT("EasySession.Destroy"),
+		TEXT("Destroy the current session: the host closes it, a client leaves."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Print(TEXT("Leaving session..."));
-				Subsystem->DestroyEasySession(MakePrintDelegate(TEXT("Leave")));
+				Print(TEXT("Destroying session..."));
+				Subsystem->DestroyEasySession(MakePrintDelegate(TEXT("Destroy")));
 			}
 		}));
 

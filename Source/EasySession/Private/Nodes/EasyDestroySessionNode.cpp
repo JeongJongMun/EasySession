@@ -1,16 +1,16 @@
 // Copyright Langerak. All Rights Reserved.
 
-#include "Nodes/EasyLeaveSessionNode.h"
+#include "Nodes/EasyDestroySessionNode.h"
 
-UEasyLeaveSessionNode* UEasyLeaveSessionNode::LeaveEasySession(UObject* WorldContextObject)
+UEasyDestroySessionNode* UEasyDestroySessionNode::DestroyEasySession(UObject* WorldContextObject)
 {
-	UEasyLeaveSessionNode* Node = NewObject<UEasyLeaveSessionNode>();
+	UEasyDestroySessionNode* Node = NewObject<UEasyDestroySessionNode>();
 	Node->NodeWorldContext = WorldContextObject;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
 
-void UEasyLeaveSessionNode::Activate()
+void UEasyDestroySessionNode::Activate()
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
 	if (Subsystem == nullptr)
@@ -19,10 +19,10 @@ void UEasyLeaveSessionNode::Activate()
 		return;
 	}
 
-	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateUObject(this, &UEasyLeaveSessionNode::HandleComplete));
+	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateUObject(this, &UEasyDestroySessionNode::HandleComplete));
 }
 
-void UEasyLeaveSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)
+void UEasyDestroySessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
 	if (Result == EEasySessionResult::Success)
 	{

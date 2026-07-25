@@ -11,7 +11,7 @@ class UEasySessionSubsystem;
 
 /**
  * Blueprint function library for quick access to EasySession state.
- * Session operations themselves are async nodes (Create/Find/Join/Leave/Update Easy Session).
+ * Session operations themselves are async nodes (Create/Find/Join/Destroy/Update Easy Session).
  */
 UCLASS()
 class EASYSESSION_API UEasySessionStatics : public UBlueprintFunctionLibrary

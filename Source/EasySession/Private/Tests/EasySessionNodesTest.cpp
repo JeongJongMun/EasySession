@@ -9,7 +9,7 @@
 #include "EasySessionSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Nodes/EasyCreateSessionNode.h"
-#include "Nodes/EasyLeaveSessionNode.h"
+#include "Nodes/EasyDestroySessionNode.h"
 #include "UObject/StrongObjectPtr.h"
 
 namespace EasySessionNodesTest
@@ -48,16 +48,16 @@ bool FEasySessionWaitNodeCreate::Update()
 	CurrentTest->TestTrue(TEXT("Statics report in-session"), UEasySessionStatics::IsInEasySession(State->GameInstance.Get()));
 	CurrentTest->TestTrue(TEXT("Statics report host"), UEasySessionStatics::IsEasySessionHost(State->GameInstance.Get()));
 
-	// Leave the session through the leave node, exactly as a Blueprint graph would.
-	UEasyLeaveSessionNode* LeaveNode = UEasyLeaveSessionNode::LeaveEasySession(State->GameInstance.Get());
-	LeaveNode->Activate();
+	// Destroy the session through the node, exactly as a Blueprint graph would.
+	UEasyDestroySessionNode* DestroyNode = UEasyDestroySessionNode::DestroyEasySession(State->GameInstance.Get());
+	DestroyNode->Activate();
 
 	State->StartTime = FPlatformTime::Seconds();
 	return true;
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitNodeLeave, TSharedPtr<EasySessionNodesTest::FTestState>, State);
-bool FEasySessionWaitNodeLeave::Update()
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitNodeDestroy, TSharedPtr<EasySessionNodesTest::FTestState>, State);
+bool FEasySessionWaitNodeDestroy::Update()
 {
 	using namespace EasySessionNodesTest;
 
@@ -68,14 +68,14 @@ bool FEasySessionWaitNodeLeave::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for the leave node to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for the destroy node to complete."));
 			State->GameInstance->Shutdown();
 			return true;
 		}
 		return false;
 	}
 
-	CurrentTest->TestFalse(TEXT("Not in session after leave node"), Subsystem->IsInSession());
+	CurrentTest->TestFalse(TEXT("Not in session after destroy node"), Subsystem->IsInSession());
 	CurrentTest->TestFalse(TEXT("Statics report not in-session"), UEasySessionStatics::IsInEasySession(State->GameInstance.Get()));
 
 	State->GameInstance->Shutdown();
@@ -83,10 +83,10 @@ bool FEasySessionWaitNodeLeave::Update()
 }
 
 /**
- * Node plumbing test: drive the create and leave async nodes exactly like a Blueprint
+ * Node plumbing test: drive the create and destroy async nodes exactly like a Blueprint
  * graph would (factory function + Activate) and verify the session state transitions.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodesTest, "EasySession.Nodes.CreateAndLeave", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodesTest, "EasySession.Nodes.CreateAndDestroy", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionNodesTest;
@@ -117,7 +117,7 @@ bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitNodeCreate(State));
-	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitNodeLeave(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitNodeDestroy(State));
 	return true;
 }
 
