@@ -45,11 +45,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionStateLabel(const UObject* WorldContextObject);
 
-	/** Check whether a session operation is currently running or queued. */
+	/**
+	 * Check whether any session operation is in progress - a request running or queued,
+	 * or a Quick Play still working through its steps.
+	 * Bind session buttons to this to disable them while an operation runs.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);
 
-	/** Get the results of the most recent session search. */
+	/** Get the results of the most recent session search. Empty while a new search is running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionSearchResult> GetLastEasySearchResults(const UObject* WorldContextObject);
 

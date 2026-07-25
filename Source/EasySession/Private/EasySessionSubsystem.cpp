@@ -428,7 +428,10 @@ int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
 
 bool UEasySessionSubsystem::IsBusy() const
 {
-	return ActiveRequest.IsValid() || PendingRequests.Num() > 0;
+	// Matchmaking is included on purpose. Quick Play is a policy state machine that
+	// enqueues one request per step, so the queue is briefly empty between steps -
+	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
+	return ActiveRequest.IsValid() || PendingRequests.Num() > 0 || IsMatchmaking();
 }
 
 FString UEasySessionSubsystem::GetQueueStatusDescription() const
@@ -748,6 +751,11 @@ void UEasySessionSubsystem::ExecuteCreate()
 
 void UEasySessionSubsystem::ExecuteFind()
 {
+	// A new search invalidates the previous one. Dropping the results here rather
+	// than when the search completes means nothing can show sessions from the last
+	// search while a new one is running - those rooms may already be gone.
+	LastSearchResults.Empty();
+
 	const FEasySessionSearchParams& Params = ActiveRequest->SearchParams;
 	if (!Params.IsValid())
 	{
@@ -781,7 +789,6 @@ void UEasySessionSubsystem::ExecuteFind()
 
 	if (!Sessions->FindSessions(0, ActiveSearch.ToSharedRef()))
 	{
-		LastSearchResults.Empty();
 		CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindSessions request was rejected by the online subsystem."));
 	}
 }

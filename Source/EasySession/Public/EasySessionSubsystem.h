@@ -129,6 +129,8 @@ public:
 	/**
 	 * Search for sessions matching the given filters.
 	 * Results are also cached and can be read back via GetLastSearchResults.
+	 * Starting a search clears the previous results, so nothing can display
+	 * sessions from an older search while this one is running.
 	 *
 	 * @param SearchParams Parameters describing what to search for.
 	 * @param OnComplete Called with the filtered results when the search completes.
@@ -261,7 +263,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	int32 GetSessionMaxPlayers() const;
 
-	/** Check whether a session operation is currently running or queued. */
+	/**
+	 * Check whether any session operation is in progress - a request running or queued,
+	 * or a Quick Play still working through its steps.
+	 * Bind session buttons to this to disable them while an operation runs; use
+	 * Is Matchmaking to ask specifically about Quick Play.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsBusy() const;
 
