@@ -1682,16 +1682,15 @@ void UEasySessionSubsystem::EndSessionForEveryone(FText Reason)
 		Actor->MulticastReturnToMenu(Reason);
 	}
 
-	// Give the RPCs a moment to reach the clients, then take the host down as well.
-	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
-	{
-		DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
-			[this](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
-			{
-				ReturnToConfiguredMenu();
-			}));
-		return false;
-	}), 0.5f);
+	// No waiting: the multicast is reliable, so it is already queued on every client
+	// connection and the engine flushes those queues while closing the net driver.
+	// This mirrors AGameSession::ReturnToMainMenuHost, which notifies the clients and
+	// tears the host down in the same frame.
+	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		[this](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
+		{
+			ReturnToConfiguredMenu();
+		}));
 }
 
 void UEasySessionSubsystem::RegisterLocalPlayerInSession()
