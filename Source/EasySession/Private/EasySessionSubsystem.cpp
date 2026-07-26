@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #include "EasySessionSubsystem.h"
 
@@ -227,7 +227,7 @@ void UEasySessionSubsystem::UpdateEasySession(const FEasySessionHostParams& NewH
 	EnqueueRequest(Request);
 }
 
-void UEasySessionSubsystem::StartQuickPlay(const FEasyQuickPlayParams& QuickPlayParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::StartQuickMatch(const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
 {
 	if (IsMatchmaking())
 	{
@@ -238,7 +238,7 @@ void UEasySessionSubsystem::StartQuickPlay(const FEasyQuickPlayParams& QuickPlay
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
 	ActiveMatchmakingPolicy = Policy;
 
-	Policy->Start(*this, QuickPlayParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
+	Policy->Start(*this, QuickMatchParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			ActiveMatchmakingPolicy = nullptr;
@@ -433,7 +433,7 @@ int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
 
 bool UEasySessionSubsystem::IsBusy() const
 {
-	// Matchmaking is included on purpose. Quick Play is a policy state machine that
+	// Matchmaking is included on purpose. Quick Match is a policy state machine that
 	// enqueues one request per step, so the queue is briefly empty between steps -
 	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
 	// Travel is included for the same reason: hosting, joining and starting a match

@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #include "Nodes/EasySessionNodeBase.h"
 

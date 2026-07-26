@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #pragma once
 
@@ -47,7 +47,7 @@ public:
 
 	/**
 	 * Check whether any session operation is in progress - a request running or queued,
-	 * a Quick Play still working through its steps, or a travel this plugin started
+	 * a Quick Match still working through its steps, or a travel this plugin started
 	 * that has not reached its map yet.
 	 * Bind session buttons to this to disable them while an operation runs.
 	 */

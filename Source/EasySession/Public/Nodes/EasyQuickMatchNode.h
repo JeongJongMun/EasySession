@@ -1,19 +1,19 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "Nodes/EasySessionNodeBase.h"
 #include "EasySessionSubsystem.h"
-#include "EasyQuickPlayNode.generated.h"
+#include "EasyQuickMatchNode.generated.h"
 
 class UEasyMatchmakingPolicy;
 
 /**
- * Async node that runs QuickPlay matchmaking.
+ * Async node that runs QuickMatch matchmaking.
  */
 UCLASS()
-class EASYSESSION_API UEasyQuickPlayNode : public UEasySessionNodeBase
+class EASYSESSION_API UEasyQuickMatchNode : public UEasySessionNodeBase
 {
 	GENERATED_BODY()
 
@@ -31,15 +31,15 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Start QuickPlay matchmaking: search for sessions, join the best one, and
+	 * Start QuickMatch matchmaking: search for sessions, join the best one, and
 	 * optionally host a new session when nothing is found.
-	 * Cancel a running QuickPlay with Cancel Matchmaking on the subsystem.
+	 * Cancel a running QuickMatch with Cancel Matchmaking on the subsystem.
 	 *
-	 * @param QuickPlayParams Parameters describing the search and the fallback host session.
+	 * @param QuickMatchParams Parameters describing the search and the fallback host session.
 	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when empty.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Quick Play Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "QuickPlayParams"))
-	static UEasyQuickPlayNode* QuickPlayEasySession(UObject* WorldContextObject, const FEasyQuickPlayParams& QuickPlayParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr);
+	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Quick Match Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "QuickMatchParams"))
+	static UEasyQuickMatchNode* QuickMatchEasySession(UObject* WorldContextObject, const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr);
 
 	//~ Begin UBlueprintAsyncActionBase Interface
 	virtual void Activate() override;
@@ -51,7 +51,7 @@ private:
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** Parameters for the matchmaking run. */
-	FEasyQuickPlayParams QuickPlayParams;
+	FEasyQuickMatchParams QuickMatchParams;
 
 	/** Optional custom policy class. */
 	UPROPERTY()

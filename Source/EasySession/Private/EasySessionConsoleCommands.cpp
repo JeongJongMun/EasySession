@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 // Debug console commands for testing EasySession without any UI.
 // Available in PIE and development builds, stripped from shipping builds.
@@ -6,7 +6,7 @@
 //   EasySession.Host [Map]      Create a session, optionally traveling to the map.
 //   EasySession.Find            Search for sessions and list the results.
 //   EasySession.Join [Index] [Password]  Join a result of the last search (default index 0).
-//   EasySession.QuickPlay [Map] Search, join the best session, or host one.
+//   EasySession.QuickMatch [Map] Search, join the best session, or host one.
 //   EasySession.Travel <Map>    ServerTravel the current session to a new map.
 //   EasySession.Destroy         Destroy the current session (host closes it, client leaves).
 //   EasySession.Start           Start the match (session state -> InProgress).
@@ -140,22 +140,22 @@ namespace EasySessionConsole
 			}
 		}));
 
-	static FAutoConsoleCommandWithWorldAndArgs GQuickPlayCommand(
-		TEXT("EasySession.QuickPlay"),
+	static FAutoConsoleCommandWithWorldAndArgs GQuickMatchCommand(
+		TEXT("EasySession.QuickMatch"),
 		TEXT("Search, join the best session, or host one. Optional arg: map for the fallback host session."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				FEasyQuickPlayParams Params;
+				FEasyQuickMatchParams Params;
 				Params.Host.SessionDisplayName = FString::Printf(TEXT("%s's Session"), FPlatformProcess::UserName());
 				if (Args.Num() > 0)
 				{
 					Params.Host.MapName = Args[0];
 				}
 
-				Print(TEXT("QuickPlay started..."));
-				Subsystem->StartQuickPlay(Params, nullptr, MakePrintDelegate(TEXT("QuickPlay")));
+				Print(TEXT("QuickMatch started..."));
+				Subsystem->StartQuickMatch(Params, nullptr, MakePrintDelegate(TEXT("QuickMatch")));
 			}
 		}));
 

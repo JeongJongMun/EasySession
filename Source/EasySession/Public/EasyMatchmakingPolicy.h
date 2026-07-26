@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #pragma once
 
@@ -14,7 +14,7 @@ class UEasySessionSubsystem;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasyMatchmakingStateEvent, EEasyMatchmakingState, NewState);
 
 /**
- * QuickPlay matchmaking policy: search for sessions, join the best one, and
+ * QuickMatch matchmaking policy: search for sessions, join the best one, and
  * optionally host a new session when nothing is found.
  *
  * The best session is chosen by ScoreSession. The default implementation groups
@@ -63,7 +63,7 @@ public:
 public:
 
 	/** Start the matchmaking run. Called by the EasySessionSubsystem. */
-	void Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickPlayParams& InParams, FEasySessionCompleteDelegate InOnComplete);
+	void Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete);
 
 	/** Cancel the matchmaking run. The run finishes with the Canceled result. */
 	void Cancel();
@@ -109,7 +109,7 @@ private:
 	TWeakObjectPtr<UEasySessionSubsystem> Subsystem;
 
 	/** Parameters of this run. */
-	FEasyQuickPlayParams Params;
+	FEasyQuickMatchParams Params;
 
 	/** Fired once when the run completes. */
 	FEasySessionCompleteDelegate OnComplete;

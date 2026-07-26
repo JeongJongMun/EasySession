@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #include "EasyMatchmakingPolicy.h"
 
@@ -26,7 +26,7 @@ float UEasyMatchmakingPolicy::ScoreSession_Implementation(const FEasySessionSear
 	return (PingBucketsMs.Num() - BucketIndex) * 1000.0f + FillRatio * 100.0f;
 }
 
-void UEasyMatchmakingPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickPlayParams& InParams, FEasySessionCompleteDelegate InOnComplete)
+void UEasyMatchmakingPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete)
 {
 	if (State != EEasyMatchmakingState::Idle)
 	{
@@ -41,7 +41,7 @@ void UEasyMatchmakingPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEa
 	FailedSessionKeys.Empty();
 	bCancelRequested = false;
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickPlay started (MaxPasses=%d, HostFallback=%d)"), Params.MaxSearchPasses, Params.bAllowHostFallback ? 1 : 0);
+	UE_LOG(LogEasySession, Log, TEXT("QuickMatch started (MaxPasses=%d, HostFallback=%d)"), Params.MaxSearchPasses, Params.bAllowHostFallback ? 1 : 0);
 
 	SetState(EEasyMatchmakingState::Searching);
 	RunSearchPass();
@@ -85,7 +85,7 @@ void UEasyMatchmakingPolicy::RunSearchPass()
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickPlay search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
+	UE_LOG(LogEasySession, Log, TEXT("QuickMatch search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
 	SubsystemPtr->FindEasySessions(Params.Search, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleSearchComplete));
 }
 
@@ -111,7 +111,7 @@ void UEasyMatchmakingPolicy::BuildCandidateListAndJoin(const TArray<FEasySession
 	Candidates.Empty();
 	for (const FEasySessionSearchResult& Result : Results)
 	{
-		// QuickPlay cannot supply a password, so protected sessions are never candidates.
+		// QuickMatch cannot supply a password, so protected sessions are never candidates.
 		if (Result.bPasswordProtected)
 		{
 			continue;
@@ -173,7 +173,7 @@ void UEasyMatchmakingPolicy::TryJoinNextCandidate()
 	}
 
 	const FEasySessionSearchResult& Candidate = Candidates[NextCandidateIndex];
-	UE_LOG(LogEasySession, Log, TEXT("QuickPlay joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
+	UE_LOG(LogEasySession, Log, TEXT("QuickMatch joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
 	SubsystemPtr->JoinEasySession(Candidate, true, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
 }
 
@@ -243,7 +243,7 @@ void UEasyMatchmakingPolicy::HostFallbackSession()
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickPlay found no session - hosting our own."));
+	UE_LOG(LogEasySession, Log, TEXT("QuickMatch found no session - hosting our own."));
 	SetState(EEasyMatchmakingState::Hosting);
 	SubsystemPtr->CreateEasySession(Params.Host, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleHostComplete));
 }
@@ -266,7 +266,7 @@ void UEasyMatchmakingPolicy::Complete(EEasySessionResult Result, const FString& 
 		PassDelayTickerHandle.Reset();
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickPlay complete: %s"), *EasySession::ResultToString(Result));
+	UE_LOG(LogEasySession, Log, TEXT("QuickMatch complete: %s"), *EasySession::ResultToString(Result));
 	SetState(EEasyMatchmakingState::Complete);
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
 }

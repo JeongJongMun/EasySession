@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #pragma once
 
@@ -335,7 +335,7 @@ struct EASYSESSION_API FEasySessionSearchResult
 };
 
 /**
- * State of a running QuickPlay matchmaking pass.
+ * State of a running QuickMatch matchmaking pass.
  */
 UENUM(BlueprintType)
 enum class EEasyMatchmakingState : uint8
@@ -357,12 +357,12 @@ enum class EEasyMatchmakingState : uint8
 };
 
 /**
- * Parameters for QuickPlay matchmaking.
- * All values have sensible defaults - an empty FEasyQuickPlayParams searches for any
+ * Parameters for QuickMatch matchmaking.
+ * All values have sensible defaults - an empty FEasyQuickMatchParams searches for any
  * public session and hosts a 4 player listen session if none is found.
  */
 USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasyQuickPlayParams
+struct EASYSESSION_API FEasyQuickMatchParams
 {
 	GENERATED_BODY()
 

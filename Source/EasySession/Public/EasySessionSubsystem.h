@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #pragma once
 
@@ -113,7 +113,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionEnded;
 
-	/** Fired when a QuickPlay matchmaking run completes. */
+	/** Fired when a QuickMatch matchmaking run completes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnMatchmakingComplete;
 
@@ -194,26 +194,26 @@ public:
 	void UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Start QuickPlay matchmaking: search for sessions, join the best one, and
+	 * Start QuickMatch matchmaking: search for sessions, join the best one, and
 	 * optionally host a new session when nothing is found.
 	 *
-	 * @param QuickPlayParams Parameters describing the search and the fallback host session.
+	 * @param QuickMatchParams Parameters describing the search and the fallback host session.
 	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when null.
 	 * @param OnComplete Called when matchmaking completes.
 	 */
-	void StartQuickPlay(const FEasyQuickPlayParams& QuickPlayParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void StartQuickMatch(const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 public:
 
-	/** Cancel the running QuickPlay matchmaking. Does nothing when no matchmaking is running. */
+	/** Cancel the running QuickMatch matchmaking. Does nothing when no matchmaking is running. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession")
 	void CancelMatchmaking();
 
-	/** Check whether QuickPlay matchmaking is currently running. */
+	/** Check whether QuickMatch matchmaking is currently running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsMatchmaking() const;
 
-	/** Get the state of the running QuickPlay matchmaking. Idle when none is running. */
+	/** Get the state of the running QuickMatch matchmaking. Idle when none is running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasyMatchmakingState GetMatchmakingState() const;
 
@@ -279,10 +279,10 @@ public:
 
 	/**
 	 * Check whether any session operation is in progress - a request running or queued,
-	 * a Quick Play still working through its steps, or a travel this plugin started
+	 * a Quick Match still working through its steps, or a travel this plugin started
 	 * that has not reached its map yet.
 	 * Bind session buttons to this to disable them while an operation runs; use
-	 * Is Matchmaking to ask specifically about Quick Play.
+	 * Is Matchmaking to ask specifically about Quick Match.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsBusy() const;
@@ -467,7 +467,7 @@ private:
 
 private:
 
-	/** The matchmaking policy currently running QuickPlay. Null when idle. */
+	/** The matchmaking policy currently running QuickMatch. Null when idle. */
 	UPROPERTY()
 	TObjectPtr<UEasyMatchmakingPolicy> ActiveMatchmakingPolicy;
 

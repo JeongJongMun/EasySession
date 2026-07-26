@@ -1,4 +1,4 @@
-// Copyright Langerak. All Rights Reserved.
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 #include "Misc/AutomationTest.h"
 
@@ -13,14 +13,14 @@
 
 namespace EasyMatchmakingTest
 {
-	/** Maximum time to wait for a QuickPlay run before failing the test. */
+	/** Maximum time to wait for a QuickMatch run before failing the test. */
 	static constexpr double TimeoutSeconds = 30.0;
 
 	/** State shared between the test body and its latent commands. */
 	struct FTestState
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
-		TOptional<EEasySessionResult> QuickPlayResult;
+		TOptional<EEasySessionResult> QuickMatchResult;
 		bool bCleanupIssued = false;
 		double StartTime = 0.0;
 	};
@@ -73,11 +73,11 @@ bool FEasyMatchmakingWaitHostFallback::Update()
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 
-	if (!State->QuickPlayResult.IsSet())
+	if (!State->QuickMatchResult.IsSet())
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for QuickPlay to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for QuickMatch to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -86,7 +86,7 @@ bool FEasyMatchmakingWaitHostFallback::Update()
 
 	if (!State->bCleanupIssued)
 	{
-		CurrentTest->TestEqual(TEXT("QuickPlay result"), State->QuickPlayResult.GetValue(), EEasySessionResult::Success);
+		CurrentTest->TestEqual(TEXT("QuickMatch result"), State->QuickMatchResult.GetValue(), EEasySessionResult::Success);
 		CurrentTest->TestTrue(TEXT("Fell back to hosting"), Subsystem->IsHost());
 		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmaking());
 
@@ -112,7 +112,7 @@ bool FEasyMatchmakingWaitHostFallback::Update()
 }
 
 /**
- * Host fallback test: with no session on the LAN, QuickPlay must exhaust its
+ * Host fallback test: with no session on the LAN, QuickMatch must exhaust its
  * search passes and then host its own session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackTest, "EasySession.Matchmaking.HostFallback", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -131,19 +131,19 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	FEasyQuickPlayParams Params;
+	FEasyQuickMatchParams Params;
 	Params.Search.bLANQuery = true;
 	Params.Search.TimeoutSeconds = 5.0f;
-	Params.Host.SessionDisplayName = TEXT("EasySession QuickPlay Test");
+	Params.Host.SessionDisplayName = TEXT("EasySession QuickMatch Test");
 	Params.Host.bIsLANMatch = true;
 	Params.Host.bStartListening = false;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
 
-	Subsystem->StartQuickPlay(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			State->QuickPlayResult = Result;
+			State->QuickMatchResult = Result;
 		}));
 
 	TestTrue(TEXT("Matchmaking is running"), Subsystem->IsMatchmaking());
@@ -160,11 +160,11 @@ bool FEasyMatchmakingWaitNoFallback::Update()
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 
-	if (!State->QuickPlayResult.IsSet())
+	if (!State->QuickMatchResult.IsSet())
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for QuickPlay to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for QuickMatch to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -172,7 +172,7 @@ bool FEasyMatchmakingWaitNoFallback::Update()
 	}
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	CurrentTest->TestEqual(TEXT("QuickPlay result"), State->QuickPlayResult.GetValue(), EEasySessionResult::NoSessionsFound);
+	CurrentTest->TestEqual(TEXT("QuickMatch result"), State->QuickMatchResult.GetValue(), EEasySessionResult::NoSessionsFound);
 	CurrentTest->TestFalse(TEXT("No session was created"), Subsystem->IsInSession());
 
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
@@ -180,7 +180,7 @@ bool FEasyMatchmakingWaitNoFallback::Update()
 }
 
 /**
- * Dedicated-server-client mode: with host fallback disabled, QuickPlay must fail
+ * Dedicated-server-client mode: with host fallback disabled, QuickMatch must fail
  * with NoSessionsFound instead of creating a session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingNoFallbackTest, "EasySession.Matchmaking.NoFallbackFails", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -199,17 +199,17 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	FEasyQuickPlayParams Params;
+	FEasyQuickMatchParams Params;
 	Params.Search.bLANQuery = true;
 	Params.Search.TimeoutSeconds = 5.0f;
 	Params.bAllowHostFallback = false;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
 
-	Subsystem->StartQuickPlay(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			State->QuickPlayResult = Result;
+			State->QuickMatchResult = Result;
 		}));
 
 	State->StartTime = FPlatformTime::Seconds();
