@@ -16,57 +16,27 @@ Host, find, join and quick-play with a few Blueprint nodes - no custom `GameInst
 
 That is the whole setup for LAN play. The NULL online subsystem needs no accounts or keys. For Steam, follow [Steam setup](Docs/Setup-Steam.md).
 
-## What it looks like
+## Features
 
-Hosting, from a menu widget:
+- **Drops into an existing project** - no custom `GameInstance`, no required parent classes. Enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Keep the game mode and widgets you already have and add the nodes.
+- **Quick match in one node** - `Quick Match Easy Session` searches, joins the best room it finds, and hosts one when it finds none.
+- **The whole session lifecycle in Blueprint** - create, find, join, start the match, end it, leave and update settings, all as async nodes. Session state, the player list and open slots are one node away, and the same API is available from C++.
+- **Every operation reports its progress and result** - `Is Busy` covers the online work running or queued and the level load that follows hosting or joining, so binding it to a button's Is Enabled keeps that button locked for as long as the player is actually waiting. When the work finishes you get a result enum and a message you can show a player, and a request the online service never answers is failed after a timeout instead of blocking everything behind it.
+- **Overlapping calls are handled in order** - every operation goes through a queue and runs one at a time, so mashing a button produces results in order instead of errors.
+- **Passwords and join-in-progress enforced by the host** - checked as the player connects, so a stale search result or a direct connect cannot walk into a running match.
+- **Disconnect recovery** - when the host leaves or a travel fails, the session is cleaned up and the player is returned to the menu. The reason survives the map change so you can show it there.
+- **Steam invites and friends** - accepting Join Game from the overlay joins automatically, plus friend invites, the invite and profile overlays, and the friends list.
+- **A working example** - example maps and widgets with the full main menu -> lobby -> match cycle.
+- **Extensible matchmaking** - override one `ScoreSession` function to pick rooms your way.
 
-```
-[Button Clicked] -> [Create Easy Session]
-                      Session Display Name = "My First Session"
-                      Map Name = "/Game/Maps/Lobby"
-                      OnSuccess -> you are hosting, already traveled as a listen server
-                      OnFailure -> Result enum + human-readable Error Message
-```
+## Limitations
 
-Finding and joining:
-
-```
-[Button Clicked] -> [Find Easy Sessions] -> OnSuccess (Results) -> build your server list
-[Row Clicked]    -> [Join Easy Session]  -> OnSuccess -> traveling to the host
-```
-
-Or skip the browser entirely:
-
-```
-[Button Clicked] -> [Quick Match Easy Session]   <- searches, joins the best match, hosts if none
-```
-
-The same API in C++:
-
-```cpp
-UEasySessionSubsystem* Sessions = GetGameInstance()->GetSubsystem<UEasySessionSubsystem>();
-
-FEasySessionHostParams Params;
-Params.SessionDisplayName = TEXT("My First Session");
-Params.MapName = TEXT("/Game/Maps/Lobby");
-
-Sessions->CreateEasySession(Params, FEasySessionCompleteDelegate::CreateLambda(
-    [](EEasySessionResult Result, const FString& ErrorMessage)
-    {
-        // Result tells you exactly what happened; ErrorMessage is safe to show a player.
-    }));
-```
-
-The Blueprint nodes are thin wrappers over that subsystem, so both paths behave identically.
-
-## Highlights
-
-- **One node to play** - `Quick Match Easy Session` searches, joins the best session it finds, and hosts one when it finds none.
-- **Calls are sequenced, not rejected** - the online subsystem refuses a second call of the same kind, and does nothing about *different* operations overlapping. EasySession queues every operation and runs them one at a time, so a player mashing buttons gets their actions in order instead of errors.
-- **Busy means busy** - `Is Busy` covers queued work, multi-step Quick Match, and the level load that follows a host or join, so a UI bound to it stays correct for the whole operation a player perceives.
-- **Fails loudly and helpfully** - every operation reports a result enum and a message written for a player, instead of a silent 20-second timeout. A request that the online service never answers is failed by a watchdog rather than blocking everything behind it.
-- **Password and join-in-progress are enforced on the host** - checked in `PreLogin`, so a stale search result or a direct connect cannot walk into a running match.
-- **Extensible matchmaking** - override one `ScoreSession` function in Blueprint or C++ for custom criteria.
+- **One session at a time.** Everything uses the engine's `NAME_GameSession` slot, so running more than one session side by side is not supported.
+- **Not implemented yet.** `OnlineBeacon` based parties, seat reservations and reconnect are not in the plugin. The scope is a single session: create it, find it, join it, play.
+- **Local player 0 only.** Split-screen is not supported.
+- **Map changes during a match must use seamless travel.** The host-side join gate treats a new connection as a new player, so a hard travel mid-match would lock your own players out. The plugin's own travels already do the right thing.
+- **Rolling your own `ClientTravel` into a password session** means appending the password option yourself; the plugin only adds it on the travels it performs.
+- **Dedicated servers** have working code paths but are not validated yet - listen servers are the tested configuration.
 
 ## Supported online subsystems
 
@@ -76,14 +46,6 @@ The Blueprint nodes are thin wrappers over that subsystem, so both paths behave 
 | Steam | Supported |
 | EOS | Not supported |
 
-## Limitations
-
-- **One session at a time.** Everything uses the engine's `NAME_GameSession` slot; parties and multiple simultaneous sessions are not supported.
-- **Local player 0 only.** Split-screen is not supported.
-- **Map changes during a match must use seamless travel.** The host-side join gate treats a new connection as a new player, so a hard travel mid-match would lock your own players out. The plugin's own travels already do the right thing.
-- **Rolling your own `ClientTravel` into a password session** means appending the password option yourself; the plugin only adds it on the travels it performs.
-- **Dedicated servers** have working code paths but are not validated yet - listen servers are the tested configuration.
-
 ## Engine support
 
 - Primary development: **UE 5.8**
@@ -91,10 +53,12 @@ The Blueprint nodes are thin wrappers over that subsystem, so both paths behave 
 
 ## Documentation
 
+These guides are still being written and do not yet cover every feature.
+
 - [Quick Start](Docs/QuickStart.md) - host and join in 5 minutes
 - [Concepts](Docs/Concepts.md) - sessions, OSS, listen vs dedicated, without the confusion
 - Setup: [LAN](Docs/Setup-LAN.md) | [Steam](Docs/Setup-Steam.md)
-- Guides: [Sessions](Docs/Guide-Sessions.md) | [Quick Match matchmaking](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
+- Guides: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.md)
 - [FAQ & Troubleshooting](Docs/FAQ.md)
 

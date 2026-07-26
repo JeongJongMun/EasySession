@@ -16,57 +16,27 @@
 
 LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키도 필요 없습니다. 스팀은 [Steam 설정 문서](Docs/Setup-Steam.md)를 따르세요.
 
-## 어떻게 생겼나
-
-메뉴 위젯에서 방 만들기:
-
-```
-[버튼 클릭] -> [Create Easy Session]
-                 Session Display Name = "My First Session"
-                 Map Name = "/Game/Maps/Lobby"
-                 OnSuccess -> 이미 리슨 서버로 트래블까지 끝난 상태
-                 OnFailure -> 결과 enum + 사람이 읽을 수 있는 에러 메시지
-```
-
-찾아서 들어가기:
-
-```
-[버튼 클릭]   -> [Find Easy Sessions] -> OnSuccess (Results) -> 서버 목록 UI 구성
-[행 클릭]     -> [Join Easy Session]  -> OnSuccess -> 호스트로 트래블 중
-```
-
-서버 브라우저 없이 바로:
-
-```
-[버튼 클릭] -> [Quick Match Easy Session]   <- 검색 -> 최적 세션 참가 -> 없으면 직접 호스트
-```
-
-C++에서도 같은 API:
-
-```cpp
-UEasySessionSubsystem* Sessions = GetGameInstance()->GetSubsystem<UEasySessionSubsystem>();
-
-FEasySessionHostParams Params;
-Params.SessionDisplayName = TEXT("My First Session");
-Params.MapName = TEXT("/Game/Maps/Lobby");
-
-Sessions->CreateEasySession(Params, FEasySessionCompleteDelegate::CreateLambda(
-    [](EEasySessionResult Result, const FString& ErrorMessage)
-    {
-        // Result로 무슨 일이 있었는지 정확히 알 수 있고, ErrorMessage는 그대로 유저에게 보여줘도 됩니다.
-    }));
-```
-
-블루프린트 노드는 이 서브시스템을 얇게 감싼 것이라 양쪽 동작이 완전히 같습니다.
-
 ## 특징
 
-- **노드 하나로 플레이** - `Quick Match Easy Session`이 검색하고, 가장 적합한 세션에 참가하고, 없으면 직접 호스트가 됩니다.
-- **거부가 아니라 순서대로 처리** - OSS는 *같은 종류*의 중복 호출은 막지만, *서로 다른* 작업이 겹치는 건 막지 않습니다. EasySession은 모든 작업을 큐에 넣어 하나씩 실행하므로, 유저가 버튼을 연타해도 에러 대신 순서대로 처리됩니다.
-- **"작업 중"의 범위가 정확함** - `Is Busy`는 큐에 있는 작업, 여러 단계로 진행되는 퀵매치, 그리고 호스트나 참가 뒤에 이어지는 레벨 로드까지 포함합니다. 여기에 UI를 묶으면 유저가 체감하는 작업 전 구간 동안 정확하게 동작합니다.
-- **실패를 조용히 넘기지 않음** - 모든 작업이 결과 enum과 유저에게 보여줄 수 있는 메시지를 돌려줍니다. 온라인 서비스가 끝내 응답하지 않는 요청은 워치독이 실패시켜, 뒤에 쌓인 작업이 막히지 않게 합니다.
-- **비밀번호와 난입 차단을 호스트가 강제** - `PreLogin`에서 검사하므로, 오래된 검색 결과나 직접 접속으로 진행 중인 매치에 들어올 수 없습니다.
-- **확장 가능한 매치메이킹** - `ScoreSession` 함수 하나만 블루프린트나 C++로 오버라이드하면 원하는 기준을 넣을 수 있습니다.
+- **기존 프로젝트에 바로 얹힙니다** - 커스텀 `GameInstance`도, 지정된 부모 클래스도 필요 없습니다. 플러그인을 켜면 서브시스템이 자동으로 만들어지고, LAN은 설정 파일을 건드리지 않아도 바로 동작합니다. 이미 만들어둔 게임모드와 위젯을 그대로 쓰면서 노드만 추가하면 됩니다.
+- **빠른 매치 지원** - `Quick Match Easy Session` 노드 하나가 세션을 검색하고, 가장 적합한 방에 참가하고, 없으면 직접 호스트가 됩니다.
+- **세션 수명주기 전부 블루프린트로 지원** - 만들기, 찾기, 참가, 매치 시작, 매치 종료, 나가기, 설정 변경까지 비동기 노드로 제공합니다. 세션 상태와 참가자 목록, 남은 자리도 노드로 바로 조회되고, C++ API도 같은 형태로 열려 있습니다.
+- **작업 상태와 결과를 알 수 있음** - `Is Busy`로 진행 상황을 추적합니다. 대기 중인 작업은 물론 방을 만들거나 참가한 뒤 이어지는 레벨 로드까지 "작업 중"으로 보므로, 버튼의 Is Enabled에 연결해두면 플레이어가 기다리는 구간 내내 잠깁니다. 작업이 끝나면 결과 enum과 플레이어에게 그대로 보여줄 수 있는 메시지를 받습니다. 응답이 없는 요청도 정해진 시간이 지나면 실패로 처리되어, 뒤에 기다리던 작업이 멈추지 않습니다.
+- **겹친 호출도 순서대로 처리** - 모든 작업이 큐에 들어가 하나씩 실행됩니다. 버튼을 연타하거나 여러 작업이 겹쳐도 실패가 아니라 순서대로 처리됩니다.
+- **비밀번호와 난입 차단** - 호스트가 접속 시점에 직접 검사하므로, 오래된 검색 결과나 직접 접속으로 진행 중인 매치에 들어올 수 없습니다.
+- **연결 끊김 복구** - 호스트가 나가거나 트래블이 실패하면 세션을 정리하고 메뉴로 돌려보냅니다. 사유는 맵을 넘어 보존되어 메뉴에서 팝업으로 띄울 수 있습니다.
+- **스팀 초대와 친구 목록** - 오버레이에서 Join Game을 누르면 자동으로 참가합니다. 친구 초대, 초대 UI, 프로필 UI, 친구 목록을 지원합니다.
+- **바로 돌려보는 예제** - 메인 메뉴 -> 로비 -> 매치 순환이 완성된 맵과 위젯이 들어 있습니다.
+- **확장 가능한 매치메이킹** - `ScoreSession` 하나만 오버라이드하면 원하는 기준으로 방을 고를 수 있습니다.
+
+## 제약 사항
+
+- **세션은 한 번에 하나.** 엔진의 `NAME_GameSession` 슬롯을 사용하므로 동시에 여러 세션을 두는 구성은 지원하지 않습니다.
+- **아직 없는 기능.** `OnlineBeacon` 기반 파티, 좌석 예약, 재접속은 구현되어 있지 않습니다. 현재 범위는 세션 하나를 만들고, 찾고, 참가해서 플레이하는 흐름입니다.
+- **로컬 플레이어 0번만.** 스플릿스크린은 지원하지 않습니다.
+- **매치 중 맵 전환은 심리스 트래블이어야 합니다.** 호스트의 입장 게이트는 새 연결을 새 플레이어로 취급하므로, 매치 도중 하드 트래블을 하면 자기 플레이어들이 막힙니다. 플러그인이 수행하는 트래블은 이미 올바르게 처리합니다.
+- **직접 `ClientTravel`로 비밀번호 세션에 들어갈 때**는 비밀번호 옵션을 직접 붙여야 합니다. 플러그인은 자신이 수행하는 트래블에만 붙입니다.
+- **데디케이티드 서버**는 코드 경로는 있으나 아직 검증되지 않았습니다. 검증된 구성은 리슨 서버입니다.
 
 ## 지원하는 온라인 서브시스템
 
@@ -76,14 +46,6 @@ Sessions->CreateEasySession(Params, FEasySessionCompleteDelegate::CreateLambda(
 | Steam | 지원 |
 | EOS | 지원하지 않음 |
 
-## 제약 사항
-
-- **세션은 한 번에 하나.** 엔진의 `NAME_GameSession` 슬롯을 사용하므로 파티나 동시 다중 세션은 지원하지 않습니다.
-- **로컬 플레이어 0번만.** 스플릿스크린은 지원하지 않습니다.
-- **매치 중 맵 전환은 심리스 트래블이어야 합니다.** 호스트의 입장 게이트는 새 연결을 새 플레이어로 취급하므로, 매치 도중 하드 트래블을 하면 자기 플레이어들이 막힙니다. 플러그인이 수행하는 트래블은 이미 올바르게 처리합니다.
-- **직접 `ClientTravel`로 비밀번호 세션에 들어갈 때**는 비밀번호 옵션을 직접 붙여야 합니다. 플러그인은 자신이 수행하는 트래블에만 붙입니다.
-- **데디케이티드 서버**는 코드 경로는 있으나 아직 검증되지 않았습니다. 검증된 구성은 리슨 서버입니다.
-
 ## 엔진 지원
 
 - 주 개발 버전: **UE 5.8**
@@ -91,12 +53,12 @@ Sessions->CreateEasySession(Params, FEasySessionCompleteDelegate::CreateLambda(
 
 ## 문서
 
-문서는 영문으로 제공됩니다.
+문서는 영문으로 제공되며, 아직 완성되지 않았습니다. 최신 기능이 반영되지 않은 항목이 있습니다.
 
 - [Quick Start](Docs/QuickStart.md) - 5분 만에 방 만들고 참가하기
 - [Concepts](Docs/Concepts.md) - 세션, OSS, 리슨 서버와 데디케이티드의 차이
 - 설정: [LAN](Docs/Setup-LAN.md) | [Steam](Docs/Setup-Steam.md)
-- 가이드: [Sessions](Docs/Guide-Sessions.md) | [Quick Match matchmaking](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
+- 가이드: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.md)
 - [FAQ & Troubleshooting](Docs/FAQ.md)
 
