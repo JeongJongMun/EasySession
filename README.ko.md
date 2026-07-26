@@ -66,7 +66,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 
 | 모듈 | 타입 | 설명 |
 |---|---|---|
-| `EasySession` | Runtime | 코어 서브시스템, 세션 | 매치메이킹 API, 블루프린트 노드 |
+| `EasySession` | Runtime | 코어 서브시스템, 세션/매치메이킹 API, 블루프린트 노드 |
 | `EasySessionEditor` | Editor | 설정 검증 및 에디터 도구 |
 
 ## 라이선스

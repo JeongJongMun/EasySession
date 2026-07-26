@@ -65,7 +65,7 @@ Quick Match searches, joins the best session (good ping, fuller rooms first), an
 If the windows cannot see each other's sessions, disable **Run Under One Process** in the same settings - separate processes use the same networking path as packaged builds.
 
 > Tip: you can test everything without any UI using console commands (`~` key):
-> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.QuickMatch`, `EasySession.Leave`, `EasySession.Status`.
+> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.QuickMatch`, `EasySession.Destroy`, `EasySession.Status`.
 > They are available in development builds and automatically stripped from shipping.
 
 ## Next steps

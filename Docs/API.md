@@ -9,10 +9,10 @@ All nodes: `OnSuccess` / `OnFailure` exec pins with `Result` (`EEasySessionResul
 | Node | Inputs | Notes |
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Creates + advertises; ensures listen server; travels if Map Name set |
-| **Find Easy Sessions** | `SearchParams`, `OnSuccess` also carries `Results` array; results cached |
+| **Find Easy Sessions** | `SearchParams` | `OnSuccess` also carries `Results` array; results cached |
 | **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true` | Validates host address before success; auto ClientTravel |
 | **Update Easy Session** | `NewHostParams` | Host only; Map Name / Host Mode ignored |
-| **Leave Easy Session** | - | Destroys (host) / leaves (client) |
+| **Destroy Easy Session** | - | Destroys (host) / leaves (client) |
 | **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Search -> join best -> host fallback |
 
 ## Structs
@@ -63,4 +63,4 @@ Subclassable (BP/C++). Override **`ScoreSession(Session) -> float`** (BlueprintN
 
 ## Console commands *(development builds only)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Leave`, `EasySession.Cancel`, `EasySession.Status`
+`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.Invites`, `EasySession.InviteUI`, `EasySession.Diagnose`

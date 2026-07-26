@@ -60,7 +60,7 @@ EasySession validates the host address **before** reporting success - if the hos
 
 ## Leaving
 
-`Leave Easy Session` destroys the session on the host (kicking everyone back to their own worlds is the engine's default behavior) and leaves it on a client. After leaving you can immediately host or join again.
+`Destroy Easy Session` destroys the session on the host (kicking everyone back to their own worlds is the engine's default behavior) and leaves it on a client. After leaving you can immediately host or join again.
 
 ## Traveling mid-session
 
