@@ -104,6 +104,14 @@ public:
 
 	EType Type;
 
+	/**
+	 * The session every step of this request acts on: execution, the completion
+	 * filter, and the timeout cleanup all read it. Set once when the request is
+	 * enqueued and constant afterwards. One value today, since the plugin hosts a
+	 * single session per process.
+	 */
+	FName SessionName;
+
 	/** Time the request started executing. */
 	double StartTimeSeconds = 0.0;
 
