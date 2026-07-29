@@ -4,6 +4,7 @@
 
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
+#include "EasySessionAddress.h"
 #include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionSocial.h"
@@ -493,7 +494,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	}
 
 	FString TravelURL = MapName;
-	if (IsHost() && World->GetNetMode() != NM_DedicatedServer && !TravelURL.Contains(TEXT("?listen")))
+	if (IsHost() && World->GetNetMode() != NM_DedicatedServer && !EasySessionAddress::HasListenOption(TravelURL))
 	{
 		TravelURL += TEXT("?listen");
 	}
@@ -1057,7 +1058,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	FString ConnectString;
 	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(NAME_GameSession, ConnectString) && !ConnectString.IsEmpty();
 
-	if (!bResolved || ConnectString.EndsWith(TEXT(":0")))
+	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
 	{
 		CompleteActiveRequest(EEasySessionResult::ResolveFailure, FString::Printf(
 			TEXT("The host address '%s' is not connectable - the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled or travels to a map with the ?listen option."),
@@ -1583,7 +1584,7 @@ void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& Hos
 	}
 
 	FString TravelURL = HostParams.MapName;
-	if (HostParams.HostMode == EEasySessionHostMode::ListenServer && HostParams.bStartListening && !TravelURL.Contains(TEXT("?listen")))
+	if (HostParams.HostMode == EEasySessionHostMode::ListenServer && HostParams.bStartListening && !EasySessionAddress::HasListenOption(TravelURL))
 	{
 		TravelURL += TEXT("?listen");
 	}
