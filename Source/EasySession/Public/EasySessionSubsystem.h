@@ -221,7 +221,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const { return ActiveMatchmakingPolicy; }
 
-	/** Check whether the local player is currently in a session. */
+	/**
+	 * Check whether the local player is currently in a session.
+	 *
+	 * This and the queries below it answer about the game session - the one players
+	 * find, join and play in. There is one per process, so none of them take a
+	 * session argument. A later version adding a second kind of session (a party,
+	 * say) would give it its own queries rather than change what these mean.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsInSession() const;
 

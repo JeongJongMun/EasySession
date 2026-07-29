@@ -41,6 +41,18 @@ All nodes: `OnSuccess` / `OnFailure` exec pins with `Result` (`EEasySessionResul
 
 Get it with `Get Easy Session Subsystem` (BP) or `GetGameInstance()->GetSubsystem<UEasySessionSubsystem>()` (C++).
 
+> **Which session do these answer about?** The game session - the one players find,
+> join and play in. There is exactly one per process (see Limitations in the README),
+> so nothing here takes a session argument. Should a later version add a second kind
+> of session, such as a party that lives alongside the match, it will come with its
+> own nodes rather than change the meaning of these: `Is In Session` will keep
+> answering about the game session for as long as it exists.
+>
+> Some queries here are not about a session at all: `Is Busy` and `Get Queue Status
+> Description` describe the operation queue, and `Is Matchmaking`, `Get Matchmaking
+> State`, `Get Online Subsystem Name` and `Is Online Subsystem Available` describe
+> the process. Those keep their meaning whatever sessions exist.
+
 **Operations (C++, native delegates):** `CreateEasySession`, `FindEasySessions`, `JoinEasySession`, `DestroyEasySession`, `UpdateEasySession`, `StartQuickMatch`
 
 **Callable:** `CancelMatchmaking()`, `ServerTravelToMap(MapName)` *(host only)*
