@@ -738,6 +738,19 @@ void UEasySessionSubsystem::ExecuteCreate()
 
 	const bool bIsDedicated = Params.HostMode == EEasySessionHostMode::DedicatedServer;
 
+	// Dedicated hosting means this process is the server, so asking for it from a
+	// game that is not one leaves nobody to open a server: the session would be
+	// advertised with no way in. Refuse here instead of letting every client find
+	// out through a connection timeout. The world's net mode is what decides, not
+	// IsRunningDedicatedServer(), so a dedicated server running under PIE counts.
+	const UWorld* CreateWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (bIsDedicated && CreateWorld != nullptr && CreateWorld->GetNetMode() != NM_DedicatedServer)
+	{
+		CompleteActiveRequest(EEasySessionResult::InvalidParams,
+			TEXT("Host Mode is Dedicated Server, but this game is not running as one, so nothing would host the session. Use Listen Server, or run this build as a dedicated server."));
+		return;
+	}
+
 	FOnlineSessionSettings Settings;
 	Settings.NumPublicConnections = Params.MaxPlayers;
 	Settings.bIsDedicated = bIsDedicated;
