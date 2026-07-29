@@ -1298,16 +1298,17 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 
 void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText)
 {
-	// First reason wins: a recovery is already underway and follow-up failures
-	// (e.g. the connection dropping while we leave) would overwrite the real cause.
-	if (bHasPendingDisconnectInfo)
+	// First reason wins: tearing the session down can fail on its own (the connection
+	// dropping while we leave), and those follow-up failures would replace the real
+	// cause with a symptom. Only the reason is protected, though - reading it is
+	// optional, so a reason nobody collected must never stop a later disconnect from
+	// being cleaned up.
+	if (!bHasPendingDisconnectInfo)
 	{
-		return;
+		LastDisconnectInfo.Reason = Reason;
+		LastDisconnectInfo.ReasonText = ReasonText;
+		bHasPendingDisconnectInfo = true;
 	}
-
-	LastDisconnectInfo.Reason = Reason;
-	LastDisconnectInfo.ReasonText = ReasonText;
-	bHasPendingDisconnectInfo = true;
 
 	const bool bReturnToMenu = GetDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect;
 
