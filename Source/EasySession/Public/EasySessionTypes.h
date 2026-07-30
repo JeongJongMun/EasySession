@@ -175,26 +175,35 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bIsLANMatch = false;
 
+	// The fields below are folded behind the Make node's advanced arrow. Marking
+	// them is what keeps the fold line where we put it: from five fields up,
+	// UK2Node_MakeStruct leaves only the first two visible and folds the rest on
+	// its own, but only while no field carries AdvancedDisplay (AllocateDefaultPins
+	// in K2Node_MakeStruct.cpp) - so adding a field would otherwise move the line
+	// with nobody asking for it. Search and Quick Match params are marked for the
+	// same reason. A pin with a connection stays visible either way
+	// (SGraphPin::IsPinVisibleAsAdvanced), so folding one never hides live wiring.
+
 	/**
 	 * Open a listen server as part of hosting, so clients can connect: travels to
 	 * Map Name with the ?listen option, or starts listening on the current map when
 	 * Map Name is empty.
 	 *
-	 * Advanced. Turning this off still advertises the session, but leaves nothing
-	 * behind it for players to connect to until you open a server yourself.
+	 * Turning this off still advertises the session, but leaves nothing behind it
+	 * for players to connect to until you open a server yourself.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bStartListening = true;
 
 	/** Whether the session is advertised to other players. Disable for private sessions. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bShouldAdvertise = true;
 
 	/**
 	 * Hidden sessions are advertised to the online service but excluded from Find Easy Sessions
 	 * results, so they can only be joined through invites or a direct search result.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bHidden = false;
 
 	/**
@@ -202,7 +211,7 @@ struct EASYSESSION_API FEasySessionHostParams
 	 * Only a "password protected" flag is advertised - the password itself never leaves the host.
 	 * Clients pass the password to Join Easy Session; mismatches are rejected before entering the map.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString Password;
 
 	/**
@@ -211,33 +220,33 @@ struct EASYSESSION_API FEasySessionHostParams
 	 * invited players would be rejected because the invite flow never asks for a password.
 	 * Verified host-side against the platform friends list; no effect on NULL/LAN (no friends there).
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bFriendsBypassPassword = true;
 
 	/**
 	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
 	 * Read them on the server with Parse Option / Get Game Mode option parsing.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString AdditionalTravelOptions;
 
 	/** Whether players can join while the match is already in progress. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowJoinInProgress = true;
 
 	/** Whether players can invite friends to the session. Ignored on dedicated servers. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowInvites = true;
 
 	/**
 	 * Whether the session uses platform presence (friends can see and join it).
 	 * Ignored on dedicated servers and LAN matches.
 	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bUsePresence = true;
 
 	/** Custom key-value data advertised with the session (e.g. GameMode = Deathmatch). */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	TMap<FString, FString> CustomSettings;
 
 	/** Returns true if the host params are valid. */
@@ -253,8 +262,11 @@ struct EASYSESSION_API FEasySessionSearchParams
 {
 	GENERATED_BODY()
 
+	// Advanced fields are folded behind the Make node's advanced arrow, for the
+	// reason described in FEasySessionHostParams.
+
 	/** Maximum number of search results to return. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 1))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1))
 	int32 MaxResults = 50;
 
 	/**
@@ -265,7 +277,7 @@ struct EASYSESSION_API FEasySessionSearchParams
 	bool bLANQuery = false;
 
 	/** Maximum time to wait for search results, in seconds. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 1.0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1.0))
 	float TimeoutSeconds = 15.0f;
 
 	/** Only return sessions with at least this many open player slots. */
@@ -273,11 +285,11 @@ struct EASYSESSION_API FEasySessionSearchParams
 	int32 MinOpenSlots = 0;
 
 	/** Only return sessions with a ping below this value. 0 means no ping limit. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 0))
 	int32 MaxPingMs = 0;
 
 	/** Only return sessions whose custom settings match all of these key-value pairs exactly. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	TMap<FString, FString> RequiredCustomSettings;
 
 	/** Returns true if the search params are valid. */
@@ -384,12 +396,15 @@ struct EASYSESSION_API FEasyQuickMatchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bAllowHostFallback = true;
 
+	// Advanced fields are folded behind the Make node's advanced arrow, for the
+	// reason described in FEasySessionHostParams.
+
 	/** How many search passes to run before giving up or hosting. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 1))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1))
 	int32 MaxSearchPasses = 3;
 
 	/** Delay between search passes, in seconds. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 0.0))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 0.0))
 	float DelayBetweenPassesSeconds = 2.0f;
 };
 
