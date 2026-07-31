@@ -48,8 +48,8 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 
 ## Engine support
 
-- Primary development: **UE 5.8**
-- Target support: UE 5.5 - 5.8
+- **UE 5.8** only. This is the version the plugin is built and tested against.
+- Support for earlier versions is planned.
 
 ## Documentation
 
