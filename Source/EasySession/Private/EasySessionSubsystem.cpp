@@ -310,6 +310,17 @@ EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
 	}
 }
 
+bool UEasySessionSubsystem::IsNetworkServer() const
+{
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	return World != nullptr && World->GetNetMode() != NM_Client;
+}
+
+bool UEasySessionSubsystem::IsSessionAuthority() const
+{
+	return bCreatedActiveSession && IsInSession();
+}
+
 bool UEasySessionSubsystem::IsHost() const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
@@ -494,7 +505,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	}
 
 	FString TravelURL = MapName;
-	if (IsHost() && World->GetNetMode() != NM_DedicatedServer && !EasySessionAddress::HasListenOption(TravelURL))
+	if (IsSessionAuthority() && World->GetNetMode() != NM_DedicatedServer && !EasySessionAddress::HasListenOption(TravelURL))
 	{
 		TravelURL += TEXT("?listen");
 	}
@@ -966,6 +977,11 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
+
+	// This process made the session, so it is the one that serves it - on a dedicated
+	// server just as much as on a listen server.
+	bCreatedActiveSession = true;
+
 	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
 	RegisterLocalPlayerInSession();
@@ -1088,6 +1104,10 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
+
+	// Joining settles the question the other way: someone else serves this session.
+	bCreatedActiveSession = false;
+
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 
@@ -1111,6 +1131,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
+	bCreatedActiveSession = false;
 	ServerGate->ClearSessionCredentials();
 
 	// The session is gone - drop the replicated state carrier and cache with it.
@@ -1211,7 +1232,7 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 
 	// The OSS only changes the local session copy - replicate the new state so
 	// every client (present or future) converges on it.
-	if (IsHost())
+	if (IsSessionAuthority())
 	{
 		PushHostSessionState();
 	}
@@ -1236,7 +1257,7 @@ void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWa
 
 	// The OSS only changes the local session copy - replicate the new state so
 	// every client (present or future) converges on it.
-	if (IsHost())
+	if (IsSessionAuthority())
 	{
 		PushHostSessionState();
 	}
@@ -1269,10 +1290,12 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	UE_LOG(LogEasySession, Warning, TEXT("Network failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
 
-	if (IsHost())
+	if (IsSessionAuthority())
 	{
-		// A failure on the host usually concerns a single client connection - the session
-		// itself is still alive, so the host stays where it is.
+		// A failure on the server usually concerns a single client connection - the
+		// session itself is still alive, so the server stays where it is. The engine
+		// broadcasts here for a client that timed out too (UNetConnection::
+		// HandleConnectionTimeout), so this side must not read it as losing the host.
 		return;
 	}
 
@@ -1435,7 +1458,9 @@ void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitialize
 		return;
 	}
 
-	if (Params.World->GetNetMode() != NM_Client && IsInSession() && IsHost())
+	// The net mode is read from the world being initialized, not from IsNetworkServer:
+	// the game instance may not point at it yet when this fires.
+	if (Params.World->GetNetMode() != NM_Client && IsSessionAuthority())
 	{
 		StateActor.Reset();
 		EnsureStateActor();
@@ -1481,9 +1506,9 @@ void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState H
 void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
 {
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr || !IsHost())
+	if (World == nullptr || !IsSessionAuthority())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the session host."));
+		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the server that created the session."));
 		return;
 	}
 

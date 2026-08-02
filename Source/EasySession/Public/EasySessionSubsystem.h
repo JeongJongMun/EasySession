@@ -246,7 +246,10 @@ public:
 	 */
 	void HandleReplicatedHostSessionState(EEasySessionState HostState);
 
-	/** Check whether the local player is hosting the current session. */
+	/**
+	 * Check whether the local player is hosting the current session.
+	 * Always false on a dedicated server, which has no local player to be the host.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsHost() const;
 
@@ -441,6 +444,24 @@ private:
 	EEasySessionState GetLocalSessionState() const;
 
 	/**
+	 * Whether this process is the server of the current world. Every net mode below
+	 * NM_Client is a kind of server, so a listen server, a dedicated server and a
+	 * standalone game all answer true.
+	 */
+	bool IsNetworkServer() const;
+
+	/**
+	 * Whether this process created the session that exists now, and therefore serves
+	 * it. This is the question every server-side step of the session lifecycle asks:
+	 * replicating the state, spawning the state carrier, tearing the session down for
+	 * everyone, and deciding which side of a network failure this process is on.
+	 *
+	 * IsHost answers a different question - whether a local player owns the room - and
+	 * cannot stand in for this one, because a dedicated server has no local player.
+	 */
+	bool IsSessionAuthority() const;
+
+	/**
 	 * Host: make sure the replicated state actor exists in the current world and
 	 * carries the current session state. Clients never spawn it.
 	 */
@@ -480,6 +501,20 @@ private:
 
 	/** The request currently being executed. Only one request runs at a time. */
 	TSharedPtr<FEasySessionRequest> ActiveRequest;
+
+	/**
+	 * Whether the session that exists now was created by this process. Neither value
+	 * the engine offers can answer that: Steam never writes FNamedOnlineSession's
+	 * bHosting (only some services do, NULL among them), and comparing the session
+	 * owner against the local player fails on a dedicated server, which has none.
+	 * Every request passes through this queue, so creating a session is a fact this
+	 * plugin already knows and can simply record.
+	 *
+	 * Read it through IsSessionAuthority, never directly: that pairs it with the
+	 * session actually existing, so a session lost by any route takes the authority
+	 * with it.
+	 */
+	bool bCreatedActiveSession = false;
 
 	/** Requests waiting for the active request to finish. */
 	TArray<TSharedRef<FEasySessionRequest>> PendingRequests;
