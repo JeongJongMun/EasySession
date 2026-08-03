@@ -6,6 +6,7 @@
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionRequest.h"
+#include "EasySessionRequestQueue.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionSocial.h"
 #include "EasySessionStateActor.h"
@@ -53,6 +54,9 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		UE_LOG(LogEasySession, Log, TEXT("EasySessionSubsystem initialized. Online subsystem: %s"), *OnlineSub->GetSubsystemName().ToString());
 	}
 
+	RequestQueue = MakeUnique<FEasySessionRequestQueue>(
+		[this]() { ExecuteActiveRequest(); },
+		[this]() { HandleRequestDeadline(); });
 	Social = MakeUnique<FEasySessionSocial>(*this);
 	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
 	ServerGate->Initialize();
@@ -158,15 +162,12 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
 	}
 
-	StopRequestWatchdog();
-
-	// Destroying these unbinds everything they registered.
+	// Destroying these unbinds everything they registered, tickers included.
+	RequestQueue.Reset();
 	Social.Reset();
 	ServerGate.Reset();
 
 	ActiveMatchmakingPolicy = nullptr;
-	ActiveRequest.Reset();
-	PendingRequests.Empty();
 	ActiveSearch.Reset();
 
 	Super::Deinitialize();
@@ -450,39 +451,12 @@ bool UEasySessionSubsystem::IsBusy() const
 	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
 	// Travel is included for the same reason: hosting, joining and starting a match
 	// all end in a level load that the player experiences as part of the operation.
-	return ActiveRequest.IsValid() || PendingRequests.Num() > 0 || IsMatchmaking() || bTravelInFlight;
+	return !RequestQueue->IsIdle() || IsMatchmaking() || bTravelInFlight;
 }
 
 FString UEasySessionSubsystem::GetQueueStatusDescription() const
 {
-	if (!ActiveRequest.IsValid())
-	{
-		if (PendingRequests.Num() > 0)
-		{
-			return FString::Printf(TEXT("Idle, %d queued"), PendingRequests.Num());
-		}
-
-		// Say so rather than reporting "Idle" while Is Busy answers true.
-		return bTravelInFlight ? FString(TEXT("Idle, traveling")) : FString(TEXT("Idle"));
-	}
-
-	const double Elapsed = ActiveRequest->GetElapsedSeconds(FPlatformTime::Seconds());
-	FString Status = ActiveRequest->TimeoutSeconds > 0.0
-		? FString::Printf(TEXT("%s (running %.1fs of %.0fs)"), ActiveRequest->GetTypeName(), Elapsed, ActiveRequest->TimeoutSeconds)
-		: FString::Printf(TEXT("%s (running %.1fs, no timeout)"), ActiveRequest->GetTypeName(), Elapsed);
-
-	if (PendingRequests.Num() > 0)
-	{
-		TArray<FString> QueuedNames;
-		QueuedNames.Reserve(PendingRequests.Num());
-		for (const TSharedPtr<FEasySessionRequest>& Queued : PendingRequests)
-		{
-			QueuedNames.Add(Queued->GetTypeName());
-		}
-		Status += FString::Printf(TEXT(", queued: %s"), *FString::Join(QueuedNames, TEXT(", ")));
-	}
-
-	return Status;
+	return RequestQueue->DescribeStatus(bTravelInFlight);
 }
 
 FName UEasySessionSubsystem::GetOnlineSubsystemName() const
@@ -563,32 +537,17 @@ void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Reque
 	// reads it from the request rather than from a constant.
 	Request->SessionName = NAME_GameSession;
 
-	PendingRequests.Add(Request);
-	if (!ActiveRequest.IsValid())
-	{
-		ProcessNextRequest();
-	}
+	RequestQueue->Enqueue(Request);
 }
 
-void UEasySessionSubsystem::ProcessNextRequest()
+const TSharedPtr<FEasySessionRequest>& UEasySessionSubsystem::GetActiveRequest() const
 {
-	if (ActiveRequest.IsValid())
-	{
-		return;
-	}
+	return RequestQueue->GetActive();
+}
 
-	if (PendingRequests.IsEmpty())
-	{
-		StopRequestWatchdog();
-		return;
-	}
-
-	ActiveRequest = PendingRequests[0];
-	PendingRequests.RemoveAt(0);
-	ActiveRequest->MarkStarted(FPlatformTime::Seconds(), GetDefault<UEasySessionSettings>()->RequestTimeoutSeconds);
-	StartRequestWatchdog();
-
-	switch (ActiveRequest->Type)
+void UEasySessionSubsystem::ExecuteActiveRequest()
+{
+	switch (GetActiveRequest()->Type)
 	{
 		case FEasySessionRequest::EType::Create:	ExecuteCreate(); break;
 		case FEasySessionRequest::EType::Find:		ExecuteFind(); break;
@@ -601,9 +560,41 @@ void UEasySessionSubsystem::ProcessNextRequest()
 	}
 }
 
+void UEasySessionSubsystem::HandleRequestDeadline()
+{
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+	if (!Request.IsValid())
+	{
+		return;
+	}
+
+	// The online service never called back. Fail the request so the queue keeps
+	// draining, but remember that a timeout means "the outcome is unknown", not
+	// "nothing happened" - the operation may still land afterwards.
+	const bool bCouldHaveCreatedSession = Request->CouldHaveCreatedSession();
+	const FName TimedOutSessionName = Request->SessionName;
+	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online service. Continuing with the next request."),
+		Request->GetTypeName(), Request->GetElapsedSeconds(FPlatformTime::Seconds()));
+
+	CompleteActiveRequest(EEasySessionResult::Timeout, TEXT("The online service did not respond in time."));
+
+	// A create or join that lands late leaves a session nobody asked for, which
+	// would then block the next create with "session already exists". Check for it
+	// and clean it up instead of leaving the player stuck.
+	if (bCouldHaveCreatedSession)
+	{
+		const IOnlineSessionPtr Sessions = GetSessionInterface();
+		if (Sessions.IsValid() && Sessions->GetNamedSession(TimedOutSessionName) != nullptr)
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("The timed out request did leave a session behind - destroying it so the next request starts clean."));
+			DestroyEasySession();
+		}
+	}
+}
+
 void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	if (!ActiveRequest.IsValid())
+	if (!GetActiveRequest().IsValid())
 	{
 		return;
 	}
@@ -611,7 +602,7 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (Sessions.IsValid())
 	{
-		switch (ActiveRequest->Type)
+		switch (GetActiveRequest()->Type)
 		{
 			case FEasySessionRequest::EType::Create:	Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle); break;
 			case FEasySessionRequest::EType::Find:		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle); break;
@@ -629,8 +620,7 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 		UE_LOG(LogEasySession, Warning, TEXT("Session operation failed: %s (%s)"), *EasySession::ResultToString(Result), *ErrorMessage);
 	}
 
-	const TSharedPtr<FEasySessionRequest> CompletedRequest = ActiveRequest;
-	ActiveRequest.Reset();
+	const TSharedPtr<FEasySessionRequest> CompletedRequest = RequestQueue->PopActive();
 
 	switch (CompletedRequest->Type)
 	{
@@ -672,76 +662,11 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 		default:
 			break;
 	}
-
-	// Defer the next request to the next tick so completion callbacks never nest OSS calls.
-	FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float DeltaTime)
-	{
-		ProcessNextRequest();
-		return false;
-	}));
-}
-
-void UEasySessionSubsystem::StartRequestWatchdog()
-{
-	if (!RequestWatchdogHandle.IsValid())
-	{
-		RequestWatchdogHandle = FTSTicker::GetCoreTicker().AddTicker(
-			FTickerDelegate::CreateUObject(this, &UEasySessionSubsystem::TickRequestWatchdog), 1.0f);
-	}
-}
-
-void UEasySessionSubsystem::StopRequestWatchdog()
-{
-	if (RequestWatchdogHandle.IsValid())
-	{
-		FTSTicker::GetCoreTicker().RemoveTicker(RequestWatchdogHandle);
-		RequestWatchdogHandle.Reset();
-	}
-}
-
-bool UEasySessionSubsystem::TickRequestWatchdog(float DeltaTime)
-{
-	if (!ActiveRequest.IsValid())
-	{
-		RequestWatchdogHandle.Reset();
-		return false;
-	}
-
-	const double Now = FPlatformTime::Seconds();
-	if (!ActiveRequest->HasTimedOut(Now))
-	{
-		return true;
-	}
-
-	// The online service never called back. Fail the request so the queue keeps
-	// draining, but remember that a timeout means "the outcome is unknown", not
-	// "nothing happened" - the operation may still land afterwards.
-	const bool bCouldHaveCreatedSession = ActiveRequest->CouldHaveCreatedSession();
-	const FName TimedOutSessionName = ActiveRequest->SessionName;
-	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online service. Continuing with the next request."),
-		ActiveRequest->GetTypeName(), ActiveRequest->GetElapsedSeconds(Now));
-
-	CompleteActiveRequest(EEasySessionResult::Timeout, TEXT("The online service did not respond in time."));
-
-	// A create or join that lands late leaves a session nobody asked for, which
-	// would then block the next create with "session already exists". Check for it
-	// and clean it up instead of leaving the player stuck.
-	if (bCouldHaveCreatedSession)
-	{
-		const IOnlineSessionPtr Sessions = GetSessionInterface();
-		if (Sessions.IsValid() && Sessions->GetNamedSession(TimedOutSessionName) != nullptr)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("The timed out request did leave a session behind - destroying it so the next request starts clean."));
-			DestroyEasySession();
-		}
-	}
-
-	return true;
 }
 
 void UEasySessionSubsystem::ExecuteCreate()
 {
-	const FEasySessionHostParams& Params = ActiveRequest->HostParams;
+	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
 	if (!Params.IsValid())
 	{
 		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Host params are invalid."));
@@ -755,7 +680,7 @@ void UEasySessionSubsystem::ExecuteCreate()
 		return;
 	}
 
-	if (Sessions->GetNamedSession(ActiveRequest->SessionName) != nullptr)
+	if (Sessions->GetNamedSession(GetActiveRequest()->SessionName) != nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Destroy it first."));
 		return;
@@ -816,7 +741,7 @@ void UEasySessionSubsystem::ExecuteCreate()
 		Params.MaxPlayers,
 		Settings.bIsLANMatch ? 1 : 0);
 
-	if (!Sessions->CreateSession(0, ActiveRequest->SessionName, Settings))
+	if (!Sessions->CreateSession(0, GetActiveRequest()->SessionName, Settings))
 	{
 		CompleteActiveRequest(EEasySessionResult::CreateFailure, TEXT("CreateSession request was rejected by the online subsystem."));
 	}
@@ -829,7 +754,7 @@ void UEasySessionSubsystem::ExecuteFind()
 	// search while a new one is running - those rooms may already be gone.
 	LastSearchResults.Empty();
 
-	const FEasySessionSearchParams& Params = ActiveRequest->SearchParams;
+	const FEasySessionSearchParams& Params = GetActiveRequest()->SearchParams;
 	if (!Params.IsValid())
 	{
 		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Search params are invalid."));
@@ -868,7 +793,7 @@ void UEasySessionSubsystem::ExecuteFind()
 
 void UEasySessionSubsystem::ExecuteJoin()
 {
-	if (!ActiveRequest->JoinTarget.IsValid())
+	if (!GetActiveRequest()->JoinTarget.IsValid())
 	{
 		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("The search result to join is invalid."));
 		return;
@@ -881,7 +806,7 @@ void UEasySessionSubsystem::ExecuteJoin()
 		return;
 	}
 
-	if (Sessions->GetNamedSession(ActiveRequest->SessionName) != nullptr)
+	if (Sessions->GetNamedSession(GetActiveRequest()->SessionName) != nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Destroy it before joining another one."));
 		return;
@@ -890,9 +815,9 @@ void UEasySessionSubsystem::ExecuteJoin()
 	JoinCompleteHandle = Sessions->AddOnJoinSessionCompleteDelegate_Handle(
 		FOnJoinSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleJoinSessionComplete));
 
-	UE_LOG(LogEasySession, Log, TEXT("Joining session '%s' hosted by '%s'"), *ActiveRequest->JoinTarget.SessionDisplayName, *ActiveRequest->JoinTarget.HostName);
+	UE_LOG(LogEasySession, Log, TEXT("Joining session '%s' hosted by '%s'"), *GetActiveRequest()->JoinTarget.SessionDisplayName, *GetActiveRequest()->JoinTarget.HostName);
 
-	if (!Sessions->JoinSession(0, ActiveRequest->SessionName, ActiveRequest->JoinTarget.NativeResult))
+	if (!Sessions->JoinSession(0, GetActiveRequest()->SessionName, GetActiveRequest()->JoinTarget.NativeResult))
 	{
 		CompleteActiveRequest(EEasySessionResult::JoinFailure, TEXT("JoinSession request was rejected by the online subsystem."));
 	}
@@ -907,7 +832,7 @@ void UEasySessionSubsystem::ExecuteDestroy()
 		return;
 	}
 
-	if (Sessions->GetNamedSession(ActiveRequest->SessionName) == nullptr)
+	if (Sessions->GetNamedSession(GetActiveRequest()->SessionName) == nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to destroy."));
 		return;
@@ -920,7 +845,7 @@ void UEasySessionSubsystem::ExecuteDestroy()
 
 	UE_LOG(LogEasySession, Log, TEXT("Destroying session."));
 
-	if (!Sessions->DestroySession(ActiveRequest->SessionName))
+	if (!Sessions->DestroySession(GetActiveRequest()->SessionName))
 	{
 		CompleteActiveRequest(EEasySessionResult::DestroyFailure, TEXT("DestroySession request was rejected by the online subsystem."));
 	}
@@ -928,7 +853,7 @@ void UEasySessionSubsystem::ExecuteDestroy()
 
 void UEasySessionSubsystem::ExecuteUpdate()
 {
-	const FEasySessionHostParams& Params = ActiveRequest->HostParams;
+	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
 	if (!Params.IsValid())
 	{
 		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Update params are invalid."));
@@ -942,7 +867,7 @@ void UEasySessionSubsystem::ExecuteUpdate()
 		return;
 	}
 
-	const FNamedOnlineSession* NamedSession = Sessions->GetNamedSession(ActiveRequest->SessionName);
+	const FNamedOnlineSession* NamedSession = Sessions->GetNamedSession(GetActiveRequest()->SessionName);
 	if (NamedSession == nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to update."));
@@ -972,7 +897,7 @@ void UEasySessionSubsystem::ExecuteUpdate()
 
 	UE_LOG(LogEasySession, Log, TEXT("Updating session."));
 
-	if (!Sessions->UpdateSession(ActiveRequest->SessionName, UpdatedSettings, true))
+	if (!Sessions->UpdateSession(GetActiveRequest()->SessionName, UpdatedSettings, true))
 	{
 		CompleteActiveRequest(EEasySessionResult::UpdateFailure, TEXT("UpdateSession request was rejected by the online subsystem."));
 	}
@@ -980,12 +905,12 @@ void UEasySessionSubsystem::ExecuteUpdate()
 
 void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Create || SessionName != ActiveRequest->SessionName)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Create || SessionName != GetActiveRequest()->SessionName)
 	{
 		return;
 	}
 
-	const FEasySessionHostParams HostParams = ActiveRequest->HostParams;
+	const FEasySessionHostParams HostParams = GetActiveRequest()->HostParams;
 
 	if (!bWasSuccessful)
 	{
@@ -1008,7 +933,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Find)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Find)
 	{
 		return;
 	}
@@ -1022,7 +947,7 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		return;
 	}
 
-	const FEasySessionSearchParams& Params = ActiveRequest->SearchParams;
+	const FEasySessionSearchParams& Params = GetActiveRequest()->SearchParams;
 	for (const FOnlineSessionSearchResult& NativeResult : ActiveSearch->SearchResults)
 	{
 		if (!NativeResult.IsValid())
@@ -1072,14 +997,14 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 
 void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Join || SessionName != ActiveRequest->SessionName)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Join || SessionName != GetActiveRequest()->SessionName)
 	{
 		return;
 	}
 
-	const bool bTravelOnSuccess = ActiveRequest->bTravelOnSuccess;
-	const FString JoinPassword = ActiveRequest->JoinPassword;
-	const FString JoinTravelOptions = ActiveRequest->JoinTravelOptions;
+	const bool bTravelOnSuccess = GetActiveRequest()->bTravelOnSuccess;
+	const FString JoinPassword = GetActiveRequest()->JoinPassword;
+	const FString JoinTravelOptions = GetActiveRequest()->JoinTravelOptions;
 
 	switch (JoinResult)
 	{
@@ -1107,7 +1032,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	// instead of the client hanging on a connection timeout.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	FString ConnectString;
-	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(ActiveRequest->SessionName, ConnectString) && !ConnectString.IsEmpty();
+	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(GetActiveRequest()->SessionName, ConnectString) && !ConnectString.IsEmpty();
 
 	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
 	{
@@ -1136,7 +1061,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 
 void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Destroy || SessionName != ActiveRequest->SessionName)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Destroy || SessionName != GetActiveRequest()->SessionName)
 	{
 		return;
 	}
@@ -1165,7 +1090,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 
 void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Update || SessionName != ActiveRequest->SessionName)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Update || SessionName != GetActiveRequest()->SessionName)
 	{
 		return;
 	}
@@ -1189,7 +1114,7 @@ void UEasySessionSubsystem::ExecuteStart()
 		return;
 	}
 
-	if (Sessions->GetNamedSession(ActiveRequest->SessionName) == nullptr)
+	if (Sessions->GetNamedSession(GetActiveRequest()->SessionName) == nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to start."));
 		return;
@@ -1211,7 +1136,7 @@ void UEasySessionSubsystem::ExecuteStart()
 
 	UE_LOG(LogEasySession, Log, TEXT("Starting session."));
 
-	if (!Sessions->StartSession(ActiveRequest->SessionName))
+	if (!Sessions->StartSession(GetActiveRequest()->SessionName))
 	{
 		CompleteActiveRequest(EEasySessionResult::StateChangeFailure, TEXT("StartSession request was rejected by the online subsystem. The session may already be in progress."));
 	}
@@ -1226,7 +1151,7 @@ void UEasySessionSubsystem::ExecuteEnd()
 		return;
 	}
 
-	if (Sessions->GetNamedSession(ActiveRequest->SessionName) == nullptr)
+	if (Sessions->GetNamedSession(GetActiveRequest()->SessionName) == nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to end."));
 		return;
@@ -1245,7 +1170,7 @@ void UEasySessionSubsystem::ExecuteEnd()
 
 	UE_LOG(LogEasySession, Log, TEXT("Ending session."));
 
-	if (!Sessions->EndSession(ActiveRequest->SessionName))
+	if (!Sessions->EndSession(GetActiveRequest()->SessionName))
 	{
 		CompleteActiveRequest(EEasySessionResult::StateChangeFailure, TEXT("EndSession request was rejected by the online subsystem. The session may not be in progress."));
 	}
@@ -1253,7 +1178,7 @@ void UEasySessionSubsystem::ExecuteEnd()
 
 void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::Start || SessionName != ActiveRequest->SessionName)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Start || SessionName != GetActiveRequest()->SessionName)
 	{
 		return;
 	}
@@ -1278,7 +1203,7 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 
 void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (!ActiveRequest.IsValid() || ActiveRequest->Type != FEasySessionRequest::EType::End || SessionName != ActiveRequest->SessionName)
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::End || SessionName != GetActiveRequest()->SessionName)
 	{
 		return;
 	}

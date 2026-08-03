@@ -25,6 +25,7 @@ class AController;
 class AGameModeBase;
 class APlayerController;
 class FEasySessionRequest;
+class FEasySessionRequestQueue;
 class FEasySessionServerGate;
 class FEasySessionSocial;
 class UEasyMatchmakingPolicy;
@@ -405,22 +406,24 @@ private:
 	/** Add a request to the queue and start processing if idle. */
 	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
 
-	/** Start the next queued request if no request is active. */
-	void ProcessNextRequest();
+	/** The request the queue is running right now. Null while the queue is idle. */
+	const TSharedPtr<FEasySessionRequest>& GetActiveRequest() const;
+
+	/** Queue callback: dispatch the request that just became active to its executor. */
+	void ExecuteActiveRequest();
+
+	/**
+	 * Queue callback: the active request outlived its deadline. Online services are
+	 * not guaranteed to report completion, and a request that never completes would
+	 * stall every queued request behind it - this fails it with Timeout so the queue
+	 * drains, then cleans up any session the late operation may still have created.
+	 */
+	void HandleRequestDeadline();
 
 	/** Finish the active request and schedule the next one. */
 	void CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage = FString());
 
-	/**
-	 * Watchdog for the active request. Online services are not guaranteed to report
-	 * completion, and a request that never completes would stall every queued
-	 * request behind it - the watchdog fails it with Timeout so the queue drains.
-	 */
-	void StartRequestWatchdog();
-	void StopRequestWatchdog();
-	bool TickRequestWatchdog(float DeltaTime);
-
-	/** Per-operation entry points, called by ProcessNextRequest. */
+	/** Per-operation entry points, called by ExecuteActiveRequest. */
 	void ExecuteCreate();
 	void ExecuteFind();
 	void ExecuteJoin();
@@ -511,9 +514,6 @@ private:
 	UPROPERTY()
 	TObjectPtr<UEasyMatchmakingPolicy> ActiveMatchmakingPolicy;
 
-	/** The request currently being executed. Only one request runs at a time. */
-	TSharedPtr<FEasySessionRequest> ActiveRequest;
-
 	/**
 	 * Whether the session that exists now was created by this process. Neither value
 	 * the engine offers can answer that: Steam never writes FNamedOnlineSession's
@@ -527,9 +527,6 @@ private:
 	 * with it.
 	 */
 	bool bCreatedActiveSession = false;
-
-	/** Requests waiting for the active request to finish. */
-	TArray<TSharedRef<FEasySessionRequest>> PendingRequests;
 
 	/** The native search object of the find operation in flight. */
 	TSharedPtr<FOnlineSessionSearch> ActiveSearch;
@@ -579,9 +576,6 @@ private:
 	/** Ticker that verifies the host became a listen server shortly after creating a session. */
 	FTSTicker::FDelegateHandle ListenCheckTickerHandle;
 
-	/** Ticker watching the active request for a timeout. Runs only while the queue is busy. */
-	FTSTicker::FDelegateHandle RequestWatchdogHandle;
-
 	/** Whether a travel this subsystem started is still on its way to a loaded map. */
 	bool bTravelInFlight = false;
 
@@ -593,6 +587,7 @@ private:
 	 * so this subsystem stays the place users call and not the place everything lives.
 	 * Created in Initialize and destroyed in Deinitialize, which is what unbinds them.
 	 */
+	TUniquePtr<FEasySessionRequestQueue> RequestQueue;
 	TUniquePtr<FEasySessionSocial> Social;
 	TUniquePtr<FEasySessionServerGate> ServerGate;
 };
