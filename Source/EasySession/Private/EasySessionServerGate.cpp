@@ -86,12 +86,15 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 
 	UWorld* OwnWorld = Owner.GetGameInstance()->GetWorld();
 
-	// Join-in-progress gate: bAllowJoinInProgress only filters searches at the
-	// platform level (and not at all on NULL), so a stale search result or a direct
-	// connect would otherwise walk straight into a running match - the host is the
-	// authority on its own session and rejects here. New connections only: in-session
-	// map changes must use seamless travel (the plugin's own travels do), or
-	// reconnecting players would be caught by this gate too.
+	// Join-in-progress gate. Searching already hides a started session - NULL
+	// refuses to answer LAN queries for one (IsSessionJoinable, called from
+	// OnValidQueryPacketReceived in OnlineSessionInterfaceNull.cpp) - but that
+	// leaves two ways in: a result fetched before the match started still joins
+	// fine (a NULL join never asks the host), and a direct connect skips searching
+	// entirely. The host is the authority on its own session and rejects here.
+	// New connections only: in-session map changes must use seamless travel (the
+	// plugin's own travels do), or reconnecting players would be caught by this
+	// gate too.
 	const IOnlineSessionPtr PreLoginSessions = Online::GetSessionInterface(OwnWorld);
 	const FNamedOnlineSession* PreLoginSession = PreLoginSessions.IsValid() ? PreLoginSessions->GetNamedSession(NAME_GameSession) : nullptr;
 	if (PreLoginSession != nullptr && !PreLoginSession->SessionSettings.bAllowJoinInProgress)
