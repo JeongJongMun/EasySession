@@ -10,6 +10,7 @@
 #include "EasySessionServerGate.h"
 #include "EasySessionSocial.h"
 #include "EasySessionStateActor.h"
+#include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
@@ -57,6 +58,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	RequestQueue = MakeUnique<FEasySessionRequestQueue>(
 		[this]() { ExecuteActiveRequest(); },
 		[this]() { HandleRequestDeadline(); });
+	Travel = MakeUnique<FEasySessionTravel>(*this);
 	Social = MakeUnique<FEasySessionSocial>(*this);
 	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
 	ServerGate->Initialize();
@@ -138,12 +140,6 @@ void UEasySessionSubsystem::Deinitialize()
 		DedicatedAutoHostTickerHandle.Reset();
 	}
 
-	if (ListenCheckTickerHandle.IsValid())
-	{
-		FTSTicker::GetCoreTicker().RemoveTicker(ListenCheckTickerHandle);
-		ListenCheckTickerHandle.Reset();
-	}
-
 	if (InviteBindTickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(InviteBindTickerHandle);
@@ -164,6 +160,7 @@ void UEasySessionSubsystem::Deinitialize()
 
 	// Destroying these unbinds everything they registered, tickers included.
 	RequestQueue.Reset();
+	Travel.Reset();
 	Social.Reset();
 	ServerGate.Reset();
 
@@ -451,12 +448,12 @@ bool UEasySessionSubsystem::IsBusy() const
 	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
 	// Travel is included for the same reason: hosting, joining and starting a match
 	// all end in a level load that the player experiences as part of the operation.
-	return !RequestQueue->IsIdle() || IsMatchmaking() || bTravelInFlight;
+	return !RequestQueue->IsIdle() || IsMatchmaking() || Travel->IsTraveling();
 }
 
 FString UEasySessionSubsystem::GetQueueStatusDescription() const
 {
-	return RequestQueue->DescribeStatus(bTravelInFlight);
+	return RequestQueue->DescribeStatus(Travel->IsTraveling());
 }
 
 FName UEasySessionSubsystem::GetOnlineSubsystemName() const
@@ -499,25 +496,13 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 		return false;
 	}
 
-	MarkTravelStarted(TEXT("ServerTravelToMap"));
+	Travel->MarkStarted(TEXT("ServerTravelToMap"));
 	return true;
-}
-
-void UEasySessionSubsystem::MarkTravelStarted(const TCHAR* Reason)
-{
-	if (!bTravelInFlight)
-	{
-		UE_LOG(LogEasySession, Verbose, TEXT("Travel started (%s). Session operations report busy until the map is loaded."), Reason);
-	}
-	bTravelInFlight = true;
 }
 
 void UEasySessionSubsystem::HandlePostLoadMap(UWorld* /*LoadedWorld*/)
 {
-	// Fires for every map load, including a failed one, so the flag cannot outlive
-	// the travel that set it. A load nobody here asked for clears it just the same -
-	// whatever we were waiting for is over either way.
-	bTravelInFlight = false;
+	Travel->NotifyMapLoaded();
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
@@ -928,7 +913,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	EnsureStateActor();
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
-	EnsureHostIsListening(HostParams);
+	Travel->EnsureHostIsListening(HostParams);
 }
 
 void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
@@ -1055,7 +1040,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 
 	if (bTravelOnSuccess)
 	{
-		TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
+		Travel->TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
 	}
 }
 
@@ -1276,7 +1261,7 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 
 	// The travel is over even though no map was loaded. The recovery below may start
 	// a new one, which marks itself.
-	bTravelInFlight = false;
+	Travel->NotifyTravelFailed();
 
 	const FString Reason = FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(FailureType), *ErrorString);
 	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
@@ -1343,7 +1328,7 @@ void UEasySessionSubsystem::ReturnToMenu()
 	// already browsing to the default map.
 	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
 	GameInstance->ReturnToMainMenu();
-	MarkTravelStarted(TEXT("return to menu"));
+	Travel->MarkStarted(TEXT("return to menu"));
 }
 
 // Invites, friends and the platform overlays are handled by FEasySessionSocial.
@@ -1521,148 +1506,6 @@ void UEasySessionSubsystem::UnregisterLocalPlayerFromSession()
 	}
 
 	Sessions->UnregisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() });
-}
-
-void UEasySessionSubsystem::EnsureHostIsListening(const FEasySessionHostParams& HostParams)
-{
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
-	{
-		return;
-	}
-
-	const bool bIsDedicated = HostParams.HostMode == EEasySessionHostMode::DedicatedServer;
-
-	if (!HostParams.MapName.IsEmpty())
-	{
-		TravelToOwnSession(HostParams);
-	}
-	else if (!bIsDedicated && HostParams.bStartListening && World->GetNetMode() == NM_Standalone)
-	{
-		// No map to travel to - start listening on the current map so clients can connect.
-		FURL ListenURL;
-		if (World->Listen(ListenURL))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
-		}
-		else
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("Failed to start a listen server on the current map. Clients will not be able to connect."));
-			OnSessionFailure.Broadcast(TEXT("Failed to start a listen server on the current map."));
-		}
-	}
-
-	// Verify shortly after that we actually became a listen server - the most common
-	// beginner pitfall is a session that is advertised but not connectable.
-	if (!bIsDedicated && HostParams.bStartListening)
-	{
-		if (ListenCheckTickerHandle.IsValid())
-		{
-			FTSTicker::GetCoreTicker().RemoveTicker(ListenCheckTickerHandle);
-		}
-
-		ListenCheckTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float DeltaTime)
-		{
-			ListenCheckTickerHandle.Reset();
-
-			const UWorld* CurrentWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-			if (CurrentWorld != nullptr && CurrentWorld->GetNetMode() == NM_Standalone && IsInSession() && IsHost())
-			{
-				UE_LOG(LogEasySession, Warning, TEXT("The session is advertised but this game is still not a listen server - clients will fail to connect. Common causes: PIE with 'Run Under One Process' enabled, an invalid travel map path, or the starting map's game mode using seamless travel (seamless travel drops the ?listen option)."));
-			}
-			return false;
-		}), 3.0f);
-	}
-}
-
-void UEasySessionSubsystem::TravelToOwnSession(const FEasySessionHostParams& HostParams)
-{
-	if (HostParams.MapName.IsEmpty())
-	{
-		return;
-	}
-
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
-	{
-		return;
-	}
-
-	FString TravelURL = HostParams.MapName;
-	if (HostParams.HostMode == EEasySessionHostMode::ListenServer && HostParams.bStartListening && !EasySessionAddress::HasListenOption(TravelURL))
-	{
-		TravelURL += TEXT("?listen");
-	}
-	AppendTravelOptions(TravelURL, HostParams.AdditionalTravelOptions);
-	OnModifyServerTravelURL.Broadcast(TravelURL);
-
-	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
-
-	// From a standalone game - the very first travel that turns the host into a
-	// listen server - use an absolute client travel: it always performs a hard map
-	// load, so ?listen is guaranteed to take effect. ServerTravel would consult the
-	// current game mode's bUseSeamlessTravel, and seamless travel silently drops
-	// ?listen - the travel must not depend on (or mutate) the game's configuration.
-	if (World->GetNetMode() == NM_Standalone)
-	{
-		APlayerController* PlayerController = GetGameInstance()->GetFirstLocalPlayerController();
-		if (PlayerController == nullptr)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("No local player controller to travel with. Travel to '%s' aborted."), *TravelURL);
-			OnSessionFailure.Broadcast(FString::Printf(TEXT("Travel to '%s' failed."), *TravelURL));
-			return;
-		}
-
-		PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
-		MarkTravelStarted(TEXT("host travel to own session"));
-		return;
-	}
-
-	// Already a server (listen or dedicated): a regular server travel moves every
-	// connected player along, and may be seamless.
-	if (!World->ServerTravel(TravelURL))
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("ServerTravel to '%s' failed. Check that the map path is valid (e.g. /Game/Maps/Lobby)."), *TravelURL);
-		OnSessionFailure.Broadcast(FString::Printf(TEXT("ServerTravel to '%s' failed."), *TravelURL));
-		return;
-	}
-
-	MarkTravelStarted(TEXT("host travel to own session"));
-}
-
-void UEasySessionSubsystem::TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions)
-{
-	APlayerController* PlayerController = GetGameInstance() ? GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
-	if (PlayerController == nullptr)
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("No local player controller to travel with. Travel aborted."));
-		return;
-	}
-
-	FString TravelURL = ConnectString;
-	const FString TrimmedPassword = Password.TrimStartAndEnd();
-	if (!TrimmedPassword.IsEmpty())
-	{
-		TravelURL += FString::Printf(TEXT("?%s=%s"), EasySession::TravelOption_Password, *TrimmedPassword);
-	}
-	AppendTravelOptions(TravelURL, AdditionalTravelOptions);
-	OnModifyClientTravelURL.Broadcast(TravelURL);
-
-	UE_LOG(LogEasySession, Log, TEXT("Traveling to host at '%s'"), *ConnectString);
-	PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
-	MarkTravelStarted(TEXT("client travel to joined session"));
-}
-
-void UEasySessionSubsystem::AppendTravelOptions(FString& InOutURL, const FString& Options)
-{
-	if (Options.IsEmpty())
-	{
-		return;
-	}
-
-	FString Normalized = Options;
-	Normalized.RemoveFromStart(TEXT("?"));
-	InOutURL += TEXT("?") + Normalized;
 }
 
 void UEasySessionSubsystem::AutoHostDedicatedServerSession()

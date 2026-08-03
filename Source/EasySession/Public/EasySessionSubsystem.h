@@ -28,6 +28,7 @@ class FEasySessionRequest;
 class FEasySessionRequestQueue;
 class FEasySessionServerGate;
 class FEasySessionSocial;
+class FEasySessionTravel;
 class UEasyMatchmakingPolicy;
 
 /** Multicast event fired when a session operation completes. */
@@ -443,13 +444,7 @@ private:
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
 
-	/**
-	 * Remember that this subsystem sent the player somewhere, and forget it once the
-	 * map is up. The online call that precedes a travel can finish in the same frame
-	 * - the NULL subsystem completes Start, End and Join inside the call itself - so
-	 * the queue alone reports "idle" while the player is still watching a level load.
-	 */
-	void MarkTravelStarted(const TCHAR* Reason);
+	/** A map load ended whatever travel was in flight - forwards to the travel helper. */
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 
 	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
@@ -494,16 +489,6 @@ private:
 	 */
 	void RegisterLocalPlayerInSession();
 	void UnregisterLocalPlayerFromSession();
-
-	/** Make sure the host is (or becomes) a listen server after creating a session. */
-	void EnsureHostIsListening(const FEasySessionHostParams& HostParams);
-
-	/** Travel helpers executed after successful create/join. */
-	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
-	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
-
-	/** Append a travel option string ("A=1?B=2") to a URL, normalizing the '?' separators. */
-	static void AppendTravelOptions(FString& InOutURL, const FString& Options);
 
 	/** Create the automatic session when running as a dedicated server. */
 	void AutoHostDedicatedServerSession();
@@ -573,12 +558,6 @@ private:
 	/** Ticker waiting for a valid world before auto hosting on a dedicated server. */
 	FTSTicker::FDelegateHandle DedicatedAutoHostTickerHandle;
 
-	/** Ticker that verifies the host became a listen server shortly after creating a session. */
-	FTSTicker::FDelegateHandle ListenCheckTickerHandle;
-
-	/** Whether a travel this subsystem started is still on its way to a loaded map. */
-	bool bTravelInFlight = false;
-
 	/** Delegate handle for map loads, which end a travel. Bound for the subsystem lifetime. */
 	FDelegateHandle PostLoadMapHandle;
 
@@ -588,6 +567,7 @@ private:
 	 * Created in Initialize and destroyed in Deinitialize, which is what unbinds them.
 	 */
 	TUniquePtr<FEasySessionRequestQueue> RequestQueue;
+	TUniquePtr<FEasySessionTravel> Travel;
 	TUniquePtr<FEasySessionSocial> Social;
 	TUniquePtr<FEasySessionServerGate> ServerGate;
 };
