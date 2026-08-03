@@ -18,6 +18,13 @@
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.Diagnose        Run the online configuration diagnostics.
 
+// UE_BUILD_SHIPPING only exists after Misc/Build.h fills in the configuration
+// macros UBT did not pass. Testing it before any include works in a unity build,
+// where some earlier file's includes land first, but compiles this file against
+// an undefined macro when it is built standalone - which the packaging build
+// treats as an error (C4668).
+#include "Misc/Build.h"
+
 #if !UE_BUILD_SHIPPING
 
 #include "EasySession.h"
