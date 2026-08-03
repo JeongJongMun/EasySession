@@ -165,6 +165,7 @@ public:
 	/**
 	 * Start the match: transitions the session to InProgress. When Allow Join In Progress is
 	 * disabled, new players can no longer join until the match ends.
+	 * Needs session authority - only the game serving the session can start the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
@@ -172,6 +173,7 @@ public:
 
 	/**
 	 * End the match: transitions the session back to Ended so a new match can be started.
+	 * Needs session authority - only the game serving the session can end the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
@@ -186,7 +188,7 @@ public:
 
 	/**
 	 * Update the advertised properties of the current session.
-	 * Only the host can update the session.
+	 * Needs session authority - only the game serving the session can update it.
 	 *
 	 * @param NewHostParams New parameters to advertise. Map Name and Host Mode are ignored.
 	 * @param OnComplete Called when the operation completes.
@@ -253,6 +255,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsHost() const;
 
+#if WITH_DEV_AUTOMATION_TESTS
+	/**
+	 * Test only: pretend this process did or did not create the active session.
+	 * Joining is what normally clears the fact, but a headless test has no second
+	 * process to join, so it sets the outcome of that path directly.
+	 */
+	void SetCreatedActiveSessionForTesting(bool bCreated) { bCreatedActiveSession = bCreated; }
+#endif
+
 	/**
 	 * Get the display names of all players currently in the session, including the local player.
 	 * Names come from the replicated player states, so the list is available on both the host and clients.
@@ -318,7 +329,8 @@ public:
 	bool IsOnlineSubsystemAvailable() const;
 
 	/**
-	 * ServerTravel the current session to a new map. Only the host can travel the session.
+	 * ServerTravel the current session to a new map. Needs session authority - only the
+	 * game serving the session can travel it, and other games get false back.
 	 * Additional travel options can be appended with '?'. The ?listen option is added
 	 * automatically when hosting a listen server session.
 	 */

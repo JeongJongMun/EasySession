@@ -85,7 +85,14 @@ enum class EEasySessionResult : uint8
 	 * The queue moves on so later requests still run - see Request Timeout Seconds
 	 * in the project settings.
 	 */
-	Timeout
+	Timeout,
+
+	/**
+	 * Only the game serving the session can do this - the host player's game on a
+	 * listen server, or the server itself on a dedicated server. Gate the button
+	 * with Is Easy Session Host so other players never see it.
+	 */
+	RequiresSessionAuthority
 };
 
 /**

@@ -504,8 +504,17 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 		return false;
 	}
 
+	// UWorld::ServerTravel does not refuse a client - with no game mode it still sets
+	// NextURL and returns true - and BlueprintAuthorityOnly has no runtime effect on a
+	// subsystem, so this entry check is the only real gate.
+	if (!IsSessionAuthority())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session."));
+		return false;
+	}
+
 	FString TravelURL = MapName;
-	if (IsSessionAuthority() && World->GetNetMode() != NM_DedicatedServer && !EasySessionAddress::HasListenOption(TravelURL))
+	if (World->GetNetMode() != NM_DedicatedServer && !EasySessionAddress::HasListenOption(TravelURL))
 	{
 		TravelURL += TEXT("?listen");
 	}
@@ -940,6 +949,14 @@ void UEasySessionSubsystem::ExecuteUpdate()
 		return;
 	}
 
+	// Same gate as ExecuteStart, for the same reason.
+	if (!IsSessionAuthority())
+	{
+		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
+			TEXT("Only the game hosting the session can update it."));
+		return;
+	}
+
 	FOnlineSessionSettings UpdatedSettings = NamedSession->SessionSettings;
 	UpdatedSettings.NumPublicConnections = Params.MaxPlayers;
 	UpdatedSettings.bShouldAdvertise = Params.bShouldAdvertise;
@@ -1178,6 +1195,17 @@ void UEasySessionSubsystem::ExecuteStart()
 		return;
 	}
 
+	// Without this gate the call would still "succeed" - StartSession flips the local
+	// session copy - while the real session on the server stays Pending. This check is
+	// the only thing standing: BlueprintAuthorityOnly has no runtime effect on a
+	// subsystem (only AActor::GetFunctionCallspace enforces it).
+	if (!IsSessionAuthority())
+	{
+		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
+			TEXT("Only the game hosting the session can start the match. Gate this button with Is Easy Session Host so clients do not see it."));
+		return;
+	}
+
 	StartCompleteHandle = Sessions->AddOnStartSessionCompleteDelegate_Handle(
 		FOnStartSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleStartSessionComplete));
 
@@ -1201,6 +1229,14 @@ void UEasySessionSubsystem::ExecuteEnd()
 	if (Sessions->GetNamedSession(ActiveRequest->SessionName) == nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::NoSessionExists, TEXT("There is no session to end."));
+		return;
+	}
+
+	// Same gate as ExecuteStart, for the same reason.
+	if (!IsSessionAuthority())
+	{
+		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
+			TEXT("Only the game hosting the session can end the match. Gate this button with Is Easy Session Host so clients do not see it."));
 		return;
 	}
 

@@ -27,6 +27,9 @@ public:
 
 	/**
 	 * End the match: transitions the session back to Ended so a new match can be started.
+	 *
+	 * Only the game hosting the session can end the match - clients get a
+	 * Requires Session Authority failure. Gate the button with Is Easy Session Host.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "End Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyEndSessionNode* EndEasySession(UObject* WorldContextObject);

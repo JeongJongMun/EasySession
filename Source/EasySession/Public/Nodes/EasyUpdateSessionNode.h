@@ -27,7 +27,9 @@ public:
 
 	/**
 	 * Update the advertised properties of the current session.
-	 * Only the host can update the session.
+	 *
+	 * Only the game hosting the session can update it - clients get a
+	 * Requires Session Authority failure.
 	 *
 	 * @param NewHostParams New parameters to advertise. Map Name and Host Mode are ignored.
 	 */

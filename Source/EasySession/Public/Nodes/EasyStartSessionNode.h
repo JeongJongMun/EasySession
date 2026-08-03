@@ -28,6 +28,9 @@ public:
 	/**
 	 * Start the match: transitions the session to InProgress. When Allow Join In Progress
 	 * is disabled, new players can no longer join until the match ends.
+	 *
+	 * Only the game hosting the session can start the match - clients get a
+	 * Requires Session Authority failure. Gate the button with Is Easy Session Host.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Start Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyStartSessionNode* StartEasySession(UObject* WorldContextObject);

@@ -11,9 +11,16 @@ All nodes: `OnSuccess` / `OnFailure` exec pins with `Result` (`EEasySessionResul
 | **Create Easy Session** | `HostParams` | Creates + advertises; ensures listen server; travels if Map Name set |
 | **Find Easy Sessions** | `SearchParams` | `OnSuccess` also carries `Results` array; results cached |
 | **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true` | Validates host address before success; auto ClientTravel |
-| **Update Easy Session** | `NewHostParams` | Host only; Map Name / Host Mode ignored |
+| **Start Easy Session** | - | Session authority only; Pending -> InProgress |
+| **End Easy Session** | - | Session authority only; InProgress -> Ended |
+| **Update Easy Session** | `NewHostParams` | Session authority only; Map Name / Host Mode ignored |
 | **Destroy Easy Session** | - | Destroys (host) / leaves (client) |
 | **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Search -> join best -> host fallback |
+
+> **Session authority only** means the game that created the session: the host player's
+> game on a listen server, or the server itself on a dedicated server. Anyone else gets
+> a `RequiresSessionAuthority` failure. `Server Travel To Map` needs it too and returns
+> false without it. Gate these buttons with `Is Easy Session Host`.
 
 ## Structs
 
@@ -31,7 +38,7 @@ All nodes: `OnSuccess` / `OnFailure` exec pins with `Result` (`EEasySessionResul
 
 ## Enums
 
-**EEasySessionResult** - `Success`, `NoOnlineSubsystem`, `InvalidParams`, `SessionAlreadyExists`, `NoSessionExists`, `CreateFailure`, `SearchFailure`, `NoSessionsFound`, `MatchmakingAlreadyInProgress`, `JoinFailure`, `JoinSessionFull`, `JoinSessionDoesNotExist`, `ResolveFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure`, `Canceled`, `UnknownFailure`
+**EEasySessionResult** - `Success`, `NoOnlineSubsystem`, `InvalidParams`, `SessionAlreadyExists`, `NoSessionExists`, `CreateFailure`, `SearchFailure`, `NoSessionsFound`, `MatchmakingAlreadyInProgress`, `JoinFailure`, `JoinSessionFull`, `JoinSessionDoesNotExist`, `ResolveFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure`, `Canceled`, `UnknownFailure`, `Timeout`, `RequiresSessionAuthority`
 
 **EEasyMatchmakingState** - `Idle`, `Searching`, `Joining`, `Hosting`, `Complete`
 
