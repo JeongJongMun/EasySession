@@ -18,12 +18,15 @@ public class EasySession : ModuleRules
 			"CoreOnline",
 			"Engine",
 			"OnlineSubsystem",
-			"OnlineSubsystemUtils",
 			"DeveloperSettings"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
 		{
+			// Public headers only expose OnlineSubsystem types (IOnlineSessionPtr,
+			// FOnlineSessionSearchResult); the Online::Get* helpers from
+			// OnlineSubsystemUtils are called in Private/ alone.
+			"OnlineSubsystemUtils",
 			"OnlineBase",
 			"InputCore",
 			"EnhancedInput"
