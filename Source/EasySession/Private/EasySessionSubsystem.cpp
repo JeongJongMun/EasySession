@@ -532,6 +532,18 @@ const TSharedPtr<FEasySessionRequest>& UEasySessionSubsystem::GetActiveRequest()
 
 void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
 {
+	// Only the game connection concerns the session. The engine broadcasts every
+	// net driver's failures through this one delegate - a beacon query timing out
+	// or a replay driver hiccup must not tear the session down. Two names are the
+	// game connection: the world's driver, and the pending driver a client uses
+	// while still traveling (UPendingNetGame names it NAME_PendingNetDriver).
+	if (NetDriver != nullptr &&
+		NetDriver->NetDriverName != NAME_GameNetDriver &&
+		NetDriver->NetDriverName != NAME_PendingNetDriver)
+	{
+		return;
+	}
+
 	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (World != nullptr)
 	{
@@ -565,9 +577,24 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	}
 
 	// The connection to the host is gone - record the reason and recover to the menu.
-	// Prefer the raw error text for the popup (e.g. "Wrong session password.").
-	const FString PopupText = !ErrorString.IsEmpty() ? ErrorString : Reason;
-	NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(PopupText));
+	// The popup text depends on who wrote the string: a timeout or a dropped link
+	// carries the engine's debug dump (driver names, thresholds), which no player
+	// should read - the log line above keeps it. Every other failure prefers the
+	// carried text, because a host refusing a login sends a human sentence there
+	// (e.g. "Wrong session password.").
+	FText PopupText;
+	if (FailureType == ENetworkFailure::ConnectionTimeout ||
+		FailureType == ENetworkFailure::ConnectionLost ||
+		ErrorString.IsEmpty())
+	{
+		PopupText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
+	}
+	else
+	{
+		PopupText = FText::FromString(ErrorString);
+	}
+
+	NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, PopupText);
 }
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
