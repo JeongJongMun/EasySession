@@ -292,7 +292,10 @@ namespace EasySessionConsole
 		TEXT("Run the online configuration diagnostics and log the results."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			EasySessionDiagnostics::RunDiagnostics(World);
+			// The findings go to the log; put the headline on screen too, so the
+			// command answers "did my service come up?" without a log window.
+			Print(FString::Printf(TEXT("Diagnose: %s (details in the log)"),
+				*EasySessionDiagnostics::RunDiagnostics(World)));
 		}));
 }
 

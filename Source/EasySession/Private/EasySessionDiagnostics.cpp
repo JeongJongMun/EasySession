@@ -117,7 +117,7 @@ namespace
 	}
 }
 
-void EasySessionDiagnostics::RunDiagnostics(UWorld* World)
+FString EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 {
 	FString ConfiguredService;
 	GConfig->GetString(TEXT("OnlineSubsystem"), TEXT("DefaultPlatformService"), ConfiguredService, GEngineIni);
@@ -125,14 +125,16 @@ void EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(World);
 	const FName ActualService = OnlineSub ? OnlineSub->GetSubsystemName() : NAME_None;
 
-	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics (configured: %s, active: %s) ====="),
+	const FString Summary = FString::Printf(TEXT("configured: %s, active: %s"),
 		ConfiguredService.IsEmpty() ? TEXT("<unset>") : *ConfiguredService, *ActualService.ToString());
+
+	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics (%s) ====="), *Summary);
 
 	if (OnlineSub == nullptr)
 	{
 		LogFix(TEXT("No online subsystem is active - sessions cannot work at all."),
 			{ TEXT("[OnlineSubsystem]"), TEXT("DefaultPlatformService=NULL") });
-		return;
+		return Summary;
 	}
 
 	// The configured service failed to load and something else took over.
@@ -157,4 +159,6 @@ void EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics complete ====="));
+
+	return Summary;
 }
