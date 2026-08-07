@@ -29,12 +29,16 @@
 
 #include "EasySession.h"
 #include "EasySessionDiagnostics.h"
+#include "EasySessionQueryBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Online/OnlineSessionNames.h"
+#include "OnlineBeaconHost.h"
+#include "OnlineSubsystemUtils.h"
 
 namespace EasySessionConsole
 {
@@ -296,6 +300,125 @@ namespace EasySessionConsole
 			// command answers "did my service come up?" without a log window.
 			Print(FString::Printf(TEXT("Diagnose: %s (details in the log)"),
 				*EasySessionDiagnostics::RunDiagnostics(World)));
+		}));
+
+	// SPIKE (ES-11): manual round-trip test for the pre-travel join query beacon.
+	// Removed (or replaced by the real join flow) once the beacon design lands.
+
+	/** The port both spike commands agree on. The real version advertises it instead. */
+	static constexpr int32 GSpikeBeaconPort = 15000;
+
+	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconHostCommand(
+		TEXT("EasySession.SpikeBeaconHost"),
+		TEXT("SPIKE: listen for join queries and advertise the beacon port. Optional arg: expected password."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (World == nullptr)
+			{
+				return;
+			}
+
+			AOnlineBeaconHost* Host = World->SpawnActor<AOnlineBeaconHost>();
+			if (Host == nullptr)
+			{
+				Print(TEXT("SpikeBeaconHost: could not spawn the beacon host."));
+				return;
+			}
+
+			Host->ListenPort = GSpikeBeaconPort;
+			if (!Host->InitHost())
+			{
+				Print(TEXT("SpikeBeaconHost: InitHost failed - is the BeaconNetDriver definition present, or is the port taken?"));
+				Host->Destroy();
+				return;
+			}
+
+			AEasySessionQueryBeaconHostObject* HostObject = World->SpawnActor<AEasySessionQueryBeaconHostObject>();
+			HostObject->ExpectedPassword = Args.Num() > 0 ? Args[0] : FString();
+			Host->RegisterHost(HostObject);
+			Host->PauseBeaconRequests(false);
+
+			// Publish the port on the session so a client can resolve a beacon address
+			// from a search result. SETTING_BEACONPORT is the key the online services
+			// read in GetResolvedConnectString(..., NAME_BeaconPort).
+			FString Advertised = TEXT("no session to advertise on");
+			if (const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World))
+			{
+				if (FNamedOnlineSession* Session = Sessions->GetNamedSession(NAME_GameSession))
+				{
+					Session->SessionSettings.Set(SETTING_BEACONPORT, Host->GetListenPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+					Sessions->UpdateSession(NAME_GameSession, Session->SessionSettings, true);
+					Advertised = TEXT("advertised on the session");
+				}
+			}
+
+			Print(FString::Printf(TEXT("SpikeBeaconHost: listening on port %d, %s (password '%s')."),
+				Host->GetListenPort(), *Advertised, *HostObject->ExpectedPassword));
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconJoinCommand(
+		TEXT("EasySession.SpikeBeaconJoin"),
+		TEXT("SPIKE: query the beacon of the last search's first result. Args: [password] [index]."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UEasySessionSubsystem* Subsystem = GetSubsystem(World);
+			if (Subsystem == nullptr)
+			{
+				return;
+			}
+
+			const FString Password = Args.Num() > 0 ? Args[0] : FString();
+			const int32 Index = Args.Num() > 1 ? FCString::Atoi(*Args[1]) : 0;
+
+			const TArray<FEasySessionSearchResult>& Results = Subsystem->GetLastSearchResults();
+			if (!Results.IsValidIndex(Index))
+			{
+				Print(TEXT("SpikeBeaconJoin: no search result at that index - run EasySession.Find first."));
+				return;
+			}
+
+			// Resolve the host's beacon address the way the real join flow will: from
+			// the search result, asking for the beacon port rather than the game port.
+			const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
+			FString ConnectString;
+			if (!Sessions.IsValid() || !Sessions->GetResolvedConnectString(Results[Index].NativeResult, NAME_BeaconPort, ConnectString))
+			{
+				Print(TEXT("SpikeBeaconJoin: could not resolve a beacon address - did the host advertise SETTING_BEACONPORT?"));
+				return;
+			}
+
+			// The resolved string carries the port; split it back off for InitClient.
+			FString Address = ConnectString;
+			int32 Port = GSpikeBeaconPort;
+			int32 ColonIndex = INDEX_NONE;
+			if (ConnectString.FindLastChar(TEXT(':'), ColonIndex))
+			{
+				const FString PortPart = ConnectString.Mid(ColonIndex + 1);
+				if (PortPart.IsNumeric())
+				{
+					Address = ConnectString.Left(ColonIndex);
+					Port = FCString::Atoi(*PortPart);
+				}
+			}
+
+			AEasySessionQueryBeaconClient* Client = World->SpawnActor<AEasySessionQueryBeaconClient>();
+			if (Client == nullptr)
+			{
+				Print(TEXT("SpikeBeaconJoin: could not spawn the beacon client."));
+				return;
+			}
+
+			Client->OnResponse.BindLambda([](bool bApproved, const FString& Reason)
+			{
+				Print(FString::Printf(TEXT("SpikeBeaconJoin: %s%s%s"),
+					bApproved ? TEXT("APPROVED") : TEXT("DENIED"),
+					Reason.IsEmpty() ? TEXT("") : TEXT(" - "), *Reason));
+			});
+
+			if (Client->Query(Address, Port, Password))
+			{
+				Print(FString::Printf(TEXT("SpikeBeaconJoin: querying %s:%d (resolved '%s')..."), *Address, Port, *ConnectString));
+			}
 		}));
 }
 
