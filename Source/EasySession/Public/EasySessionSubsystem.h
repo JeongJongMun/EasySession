@@ -264,6 +264,13 @@ public:
 	 * process to join, so it sets the outcome of that path directly.
 	 */
 	void SetCreatedActiveSessionForTesting(bool bCreated) { bCreatedActiveSession = bCreated; }
+
+	/**
+	 * Test only: the host state the replicated carrier last delivered. Get Session
+	 * State only surfaces this on an actual client, which a headless test world is
+	 * not, so a test reads the cache directly.
+	 */
+	EEasySessionState GetReplicatedHostSessionStateForTesting() const { return ReplicatedHostSessionState; }
 #endif
 
 	/**

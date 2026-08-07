@@ -761,6 +761,10 @@ void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitialize
 
 void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState HostState)
 {
+	// Record what the host reports; that is all a client does with it. Get Session
+	// State serves this value, and the client's own session copy is deliberately
+	// left alone: nothing reads its state on a client, and destroying works from
+	// any state.
 	if (bHasReplicatedHostSessionState && ReplicatedHostSessionState == HostState)
 	{
 		return;
@@ -768,32 +772,8 @@ void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState H
 
 	ReplicatedHostSessionState = HostState;
 	bHasReplicatedHostSessionState = true;
-
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr || World->GetNetMode() != NM_Client)
-	{
-		return;
-	}
-
-	// Best-effort: converge the local session copy on the host's state so platform
-	// hooks stay consistent. The displayed state already comes from the replicated
-	// value, so a failed local transition cannot desync what players see.
-	const EEasySessionState LocalState = GetLocalSessionState();
-	if (HostState == EEasySessionState::InProgress && LocalState == EEasySessionState::Pending)
-	{
-		StartEasySession();
-	}
-	else if (HostState == EEasySessionState::Ended && LocalState == EEasySessionState::InProgress)
-	{
-		EndEasySession();
-	}
-	else if (HostState == EEasySessionState::Ended && LocalState == EEasySessionState::Pending)
-	{
-		// Replay the host's history - the OSS only allows Pending -> InProgress -> Ended.
-		StartEasySession();
-		EndEasySession();
-	}
 }
+
 
 void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
 {
