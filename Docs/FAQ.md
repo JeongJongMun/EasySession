@@ -28,7 +28,17 @@ Not a session problem - your pawn has no client->server movement replication. Th
 
 ## "How is this different from the engine's built-in Create Session / Find Sessions nodes?"
 
-The engine ships minimal session nodes (`Create Session`, `Find Sessions`, ...). They work for quick prototypes, but they call the online service directly with almost no options and **no failure reasons** (their OnFailure pin carries nothing). EasySession's nodes route through its subsystem, which adds: operation queueing (calls can never overlap and corrupt the service), automatic listen-server setup, correct player/slot accounting, instant rich errors instead of timeouts, custom session data & filters, and Quick Match matchmaking. Both node sets can coexist in a project, but mixing them on the same session is not recommended - the engine nodes bypass all of the above.
+The engine ships minimal session nodes (`Create Session`, `Find Sessions`, ...). They work for quick prototypes, but they call the online service directly with almost no options and **no failure reasons** (their OnFailure pin carries nothing). EasySession's nodes route through its subsystem, which adds: operation queueing (EasySession's own calls can never overlap and corrupt the service), automatic listen-server setup, correct player/slot accounting, instant rich errors instead of timeouts, custom session data & filters, and Quick Match matchmaking.
+
+Pick one set and stay with it. The queueing only covers calls that go through EasySession, so an engine node running at the same time still reaches the service on its own - see the entry below.
+
+## "Another session search is already running, so this one was dropped"
+
+Something outside EasySession has a search running, and the online service only handles one at a time. It drops the second request and reports success, so nothing would ever call back - EasySession notices and fails immediately instead of leaving the node hanging until the timeout.
+
+Usually the other search is the engine's built-in `Find Sessions` node still wired up in an old widget, another session plugin, or session code left over from before you added EasySession. Search your project for direct `FindSessions` callers and route them through `Find Easy Sessions`, or make sure the two never run at once.
+
+Calling `Find Easy Sessions` several times in a row is not the problem - EasySession queues its own requests and runs them in order.
 
 ## "SessionAlreadyExists - but I don't think I'm in a session?"
 
