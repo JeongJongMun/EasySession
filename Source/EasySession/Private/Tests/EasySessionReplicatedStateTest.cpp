@@ -6,6 +6,7 @@
 
 #include "EasySessionSettings.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
@@ -66,7 +67,7 @@ bool FEasySessionWaitForReplicatedState::Update()
 	// Stand in for a client: a game that holds a session someone else serves. The
 	// join path is what normally clears this, and a headless test has no host to
 	// join, so the outcome of that path is set directly.
-	Subsystem->SetCreatedActiveSessionForTesting(false);
+	FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 	// Watch the events a game binds to. Nothing below is a user request, so nothing
 	// below should reach these.
@@ -78,7 +79,7 @@ bool FEasySessionWaitForReplicatedState::Update()
 	Subsystem->HandleReplicatedHostSessionState(EEasySessionState::InProgress);
 
 	CurrentTest->TestEqual(TEXT("A replicated match start is cached for the client to read"),
-		Subsystem->GetReplicatedHostSessionStateForTesting(), EEasySessionState::InProgress);
+		FEasySessionTestAccess::GetReplicatedHostSessionState(*Subsystem), EEasySessionState::InProgress);
 	CurrentTest->TestTrue(
 		FString::Printf(TEXT("A replicated match start raises no match events (saw: %s)"), *State->Listener->Describe()),
 		State->Listener->TotalEvents() == 0);
@@ -88,7 +89,7 @@ bool FEasySessionWaitForReplicatedState::Update()
 	Subsystem->HandleReplicatedHostSessionState(EEasySessionState::Ended);
 
 	CurrentTest->TestEqual(TEXT("A replicated match end is cached for the client to read"),
-		Subsystem->GetReplicatedHostSessionStateForTesting(), EEasySessionState::Ended);
+		FEasySessionTestAccess::GetReplicatedHostSessionState(*Subsystem), EEasySessionState::Ended);
 	CurrentTest->TestTrue(
 		FString::Printf(TEXT("A replicated match end raises no match events (saw: %s)"), *State->Listener->Describe()),
 		State->Listener->TotalEvents() == 0);

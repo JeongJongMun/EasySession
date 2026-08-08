@@ -6,6 +6,7 @@
 
 #include "EasySessionSettings.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -104,7 +105,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 
 			// Now the same calls from the other side of the fence: a game that holds a
 			// session it did not create - what a joined client looks like.
-			Subsystem->SetCreatedActiveSessionForTesting(false);
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 			Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)

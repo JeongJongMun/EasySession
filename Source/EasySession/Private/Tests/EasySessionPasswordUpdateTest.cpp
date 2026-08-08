@@ -6,6 +6,7 @@
 
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -89,8 +90,8 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			CurrentTest->TestFalse(TEXT("An open session does not advertise a password"), Subsystem->GetAdvertisedPasswordProtectedForTesting());
-			CurrentTest->TestEqual(TEXT("An open session enforces no password"), Subsystem->GetEnforcedSessionPasswordForTesting(), FString());
+			CurrentTest->TestFalse(TEXT("An open session does not advertise a password"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
+			CurrentTest->TestEqual(TEXT("An open session enforces no password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString());
 
 			// Reading the session back has to return what it was created with, or the
 			// read-modify-write below would quietly change fields nobody touched.
@@ -118,8 +119,8 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 
 			// The advertised flag and the password arriving players are checked against
 			// are set from two different places. Either one alone would be a lie.
-			CurrentTest->TestTrue(TEXT("A locked session advertises that it is protected"), Subsystem->GetAdvertisedPasswordProtectedForTesting());
-			CurrentTest->TestEqual(TEXT("A locked session enforces the new password"), Subsystem->GetEnforcedSessionPasswordForTesting(), FString(TEXT("1234")));
+			CurrentTest->TestTrue(TEXT("A locked session advertises that it is protected"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
+			CurrentTest->TestEqual(TEXT("A locked session enforces the new password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString(TEXT("1234")));
 
 			// Fields the caller did not touch have to survive the update.
 			const FEasySessionHostParams AfterLock = Subsystem->GetEasySessionHostParams();
@@ -146,8 +147,8 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Unlocking the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			CurrentTest->TestFalse(TEXT("An unlocked session stops advertising a password"), Subsystem->GetAdvertisedPasswordProtectedForTesting());
-			CurrentTest->TestEqual(TEXT("An unlocked session enforces no password"), Subsystem->GetEnforcedSessionPasswordForTesting(), FString());
+			CurrentTest->TestFalse(TEXT("An unlocked session stops advertising a password"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
+			CurrentTest->TestEqual(TEXT("An unlocked session enforces no password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString());
 
 			// Sessions live in the online service per process, so one left behind fails
 			// the next test's create.

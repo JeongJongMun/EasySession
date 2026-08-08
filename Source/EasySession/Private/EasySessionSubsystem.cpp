@@ -286,27 +286,6 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 	return LocalState;
 }
 
-#if WITH_DEV_AUTOMATION_TESTS
-FString UEasySessionSubsystem::GetEnforcedSessionPasswordForTesting() const
-{
-	return ServerGate.IsValid() ? ServerGate->GetSessionPassword() : FString();
-}
-
-bool UEasySessionSubsystem::GetAdvertisedPasswordProtectedForTesting() const
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return false;
-	}
-
-	int32 Protected = 0;
-	NamedSession->SessionSettings.Get(EasySession::SettingKey_PasswordProtected, Protected);
-	return Protected != 0;
-}
-#endif
-
 FEasySessionHostParams UEasySessionSubsystem::GetEasySessionHostParams() const
 {
 	FEasySessionHostParams Params;

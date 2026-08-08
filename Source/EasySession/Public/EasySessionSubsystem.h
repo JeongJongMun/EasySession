@@ -65,6 +65,11 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 	friend class FEasySessionSocial;
 	friend class FEasySessionServerGate;
 
+	// Lets the automation tests read private state without the subsystem carrying a
+	// test API of its own. Declared unconditionally: the class only exists alongside
+	// the tests, and befriending one that is absent is harmless.
+	friend class FEasySessionTestAccess;
+
 public:
 
 	/**
@@ -272,32 +277,6 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsHost() const;
-
-#if WITH_DEV_AUTOMATION_TESTS
-	/**
-	 * Test only: pretend this process did or did not create the active session.
-	 * Joining is what normally clears the fact, but a headless test has no second
-	 * process to join, so it sets the outcome of that path directly.
-	 */
-	void SetCreatedActiveSessionForTesting(bool bCreated) { bCreatedActiveSession = bCreated; }
-
-	/**
-	 * Test only: the host state the replicated carrier last delivered. Get Session
-	 * State only surfaces this on an actual client, which a headless test world is
-	 * not, so a test reads the cache directly.
-	 */
-	EEasySessionState GetReplicatedHostSessionStateForTesting() const { return ReplicatedHostSessionState; }
-
-	/**
-	 * Test only: the password arriving players are actually checked against. What a
-	 * session advertises and what it enforces at login are set from two different
-	 * places, so a test has to be able to read both to prove they agree.
-	 */
-	FString GetEnforcedSessionPasswordForTesting() const;
-
-	/** Test only: the password-protected flag as it is advertised to searching players. */
-	bool GetAdvertisedPasswordProtectedForTesting() const;
-#endif
 
 	/**
 	 * Get the display names of all players currently in the session, including the local player.
