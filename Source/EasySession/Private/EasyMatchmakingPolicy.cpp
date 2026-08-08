@@ -18,12 +18,21 @@ float UEasyMatchmakingPolicy::ScoreSession_Implementation(const FEasySessionSear
 		}
 	}
 
+	const float BucketScore = (PingBucketsMs.Num() - BucketIndex) * 1000.0f;
+
 	// Within the same bucket, fuller sessions win so that matches start sooner.
 	const float FillRatio = Session.MaxPlayers > 0
 		? static_cast<float>(Session.MaxPlayers - Session.OpenSlots) / static_cast<float>(Session.MaxPlayers)
 		: 0.0f;
 
-	return (PingBucketsMs.Num() - BucketIndex) * 1000.0f + FillRatio * 100.0f;
+	// Preferring fuller sessions scores a full one highest, and a full one always
+	// rejects the join. Ranked last rather than dropped: the count is a search
+	// snapshot, so it is worth one attempt before hosting a second session.
+	const float NoRoomPenalty = (Session.MaxPlayers > 0 && Session.OpenSlots <= 0)
+		? (PingBucketsMs.Num() + 1) * 1000.0f
+		: 0.0f;
+
+	return BucketScore + FillRatio * 100.0f - NoRoomPenalty;
 }
 
 void UEasyMatchmakingPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete)

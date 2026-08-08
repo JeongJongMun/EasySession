@@ -49,7 +49,8 @@ public:
 
 	/**
 	 * Score a session found by the search. Higher scores are joined first.
-	 * The default implementation scores by ping bucket first, then by fill ratio.
+	 * The default implementation scores by ping bucket first, then by fill ratio,
+	 * and ranks sessions with no open slot below every session that has room.
 	 * Override this to use custom criteria such as skill or map preference.
 	 */
 	UFUNCTION(BlueprintNativeEvent, Category = "EasySession")

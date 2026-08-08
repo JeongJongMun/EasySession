@@ -62,6 +62,23 @@ bool FEasyMatchmakingScoringTest::RunTest(const FString& Parameters)
 	const FEasySessionSearchResult PastBoundary = MakeFakeResult(51, 8, 1);
 	TestTrue(TEXT("Bucket boundary is inclusive"), Policy->ScoreSession(OnBoundary) > Policy->ScoreSession(PastBoundary));
 
+	// A full session cannot be joined. Preferring fuller sessions would otherwise
+	// make it the best candidate in its bucket, so it has to lose to any session
+	// with room - even one in the worst bucket.
+	const FEasySessionSearchResult FastFull = MakeFakeResult(10, 8, 0);
+	const FEasySessionSearchResult SlowWithRoom = MakeFakeResult(900, 8, 8);
+	TestTrue(TEXT("A full session loses to any session with room"), Policy->ScoreSession(SlowWithRoom) > Policy->ScoreSession(FastFull));
+
+	// Full sessions stay in the list as a last resort, so their order still matters.
+	const FEasySessionSearchResult SlowFullSession = MakeFakeResult(900, 8, 0);
+	TestTrue(TEXT("Among full sessions the closer one is still preferred"), Policy->ScoreSession(FastFull) > Policy->ScoreSession(SlowFullSession));
+
+	// Capacity is unknown, so nothing says the session is full - no penalty, same as
+	// the fill ratio treats it.
+	const FEasySessionSearchResult UnknownCapacity = MakeFakeResult(10, 0, 0);
+	const FEasySessionSearchResult SlowWithRoomAgain = MakeFakeResult(900, 8, 4);
+	TestTrue(TEXT("Unknown capacity is not treated as full"), Policy->ScoreSession(UnknownCapacity) > Policy->ScoreSession(SlowWithRoomAgain));
+
 	return true;
 }
 
