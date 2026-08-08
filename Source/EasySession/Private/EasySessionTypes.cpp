@@ -77,11 +77,16 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		}
 		else if (Setting.Key == EasySession::SettingKey_Hidden)
 		{
-			Result.bIsHidden = true;
+			// The value, not the key's presence - both flags are written either way.
+			int32 Hidden = 0;
+			Setting.Value.Data.GetValue(Hidden);
+			Result.bIsHidden = Hidden != 0;
 		}
 		else if (Setting.Key == EasySession::SettingKey_PasswordProtected)
 		{
-			Result.bPasswordProtected = true;
+			int32 Protected = 0;
+			Setting.Value.Data.GetValue(Protected);
+			Result.bPasswordProtected = Protected != 0;
 		}
 		else
 		{

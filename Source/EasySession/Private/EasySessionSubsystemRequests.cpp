@@ -214,16 +214,14 @@ void UEasySessionSubsystem::ExecuteCreate()
 	{
 		Settings.Set(SETTING_MAPNAME, Params.MapName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
-	if (Params.bHidden)
-	{
-		// Advertised to the service so invites and direct joins still work, but Find filters it out.
-		Settings.Set(EasySession::SettingKey_Hidden, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	}
-	if (!Params.Password.IsEmpty())
-	{
-		// Only the protection flag is advertised - the password itself never leaves the host.
-		Settings.Set(EasySession::SettingKey_PasswordProtected, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	}
+	// Written for both states: an absent key cannot be queried or cleared later.
+	// Hidden sessions stay advertised so invites still work; Find filters them out.
+	Settings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// Only the protection flag is advertised - the password itself never leaves the host.
+	// Trimmed for the same reason the gate trims what it stores: a whitespace-only
+	// password enforces nothing, so it must not advertise protection either.
+	Settings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
 		Settings.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -383,7 +381,15 @@ void UEasySessionSubsystem::ExecuteUpdate()
 	UpdatedSettings.NumPublicConnections = Params.MaxPlayers;
 	UpdatedSettings.bShouldAdvertise = Params.bShouldAdvertise;
 	UpdatedSettings.bAllowJoinInProgress = Params.bAllowJoinInProgress;
+	UpdatedSettings.bAllowInvites = !NamedSession->SessionSettings.bIsDedicated && Params.bAllowInvites;
 	UpdatedSettings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	UpdatedSettings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The advertised flag and the password ServerGate checks arriving players against
+	// have to move together. The flag goes out here; the gate's copy is set in
+	// HandleUpdateSessionComplete, once this request is known to have succeeded.
+	UpdatedSettings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
 		UpdatedSettings.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -599,6 +605,11 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session updated successfully."));
+
+	// Only now, so a rejected update leaves the gate matching what is advertised.
+	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
+	ServerGate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 

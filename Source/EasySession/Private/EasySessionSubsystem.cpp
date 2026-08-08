@@ -286,6 +286,86 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 	return LocalState;
 }
 
+#if WITH_DEV_AUTOMATION_TESTS
+FString UEasySessionSubsystem::GetEnforcedSessionPasswordForTesting() const
+{
+	return ServerGate.IsValid() ? ServerGate->GetSessionPassword() : FString();
+}
+
+bool UEasySessionSubsystem::GetAdvertisedPasswordProtectedForTesting() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return false;
+	}
+
+	int32 Protected = 0;
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_PasswordProtected, Protected);
+	return Protected != 0;
+}
+#endif
+
+FEasySessionHostParams UEasySessionSubsystem::GetEasySessionHostParams() const
+{
+	FEasySessionHostParams Params;
+
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr || !IsSessionAuthority())
+	{
+		return Params;
+	}
+
+	const FOnlineSessionSettings& Settings = NamedSession->SessionSettings;
+	Params.MaxPlayers = Settings.NumPublicConnections;
+	Params.bShouldAdvertise = Settings.bShouldAdvertise;
+	Params.bAllowJoinInProgress = Settings.bAllowJoinInProgress;
+	Params.bAllowInvites = Settings.bAllowInvites;
+	Params.bIsLANMatch = Settings.bIsLANMatch;
+	Params.bUsePresence = Settings.bUsesPresence;
+	Params.HostMode = Settings.bIsDedicated ? EEasySessionHostMode::DedicatedServer : EEasySessionHostMode::ListenServer;
+
+	for (const TPair<FName, FOnlineSessionSetting>& Setting : Settings.Settings)
+	{
+		if (Setting.Key == EasySession::SettingKey_DisplayName)
+		{
+			Params.SessionDisplayName = Setting.Value.Data.ToString();
+		}
+		else if (Setting.Key == SETTING_MAPNAME)
+		{
+			Params.MapName = Setting.Value.Data.ToString();
+		}
+		else if (Setting.Key == EasySession::SettingKey_Hidden)
+		{
+			int32 Hidden = 0;
+			Setting.Value.Data.GetValue(Hidden);
+			Params.bHidden = Hidden != 0;
+		}
+		else if (Setting.Key == EasySession::SettingKey_PasswordProtected)
+		{
+			// Skipped rather than swept into CustomSettings by the else below. There is
+			// nothing to read: the flag is derived from Password, which is filled from
+			// ServerGate further down.
+		}
+		else
+		{
+			Params.CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
+		}
+	}
+
+	// In the clear on purpose: this game already holds the password to check players
+	// against, and blanking it here would leave no way to remove one through Update.
+	if (ServerGate.IsValid())
+	{
+		Params.Password = ServerGate->GetSessionPassword();
+		Params.bFriendsBypassPassword = ServerGate->GetFriendsBypassPassword();
+	}
+
+	return Params;
+}
+
 EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();

@@ -51,6 +51,9 @@ public:
 	/** The password joining players must supply. Empty when the session is open. */
 	const FString& GetSessionPassword() const { return SessionPassword; }
 
+	/** Whether friends of the host may join a password session without it. */
+	bool GetFriendsBypassPassword() const { return bFriendsBypassPassword; }
+
 private:
 
 	/** Engine login event handlers. Server only. */

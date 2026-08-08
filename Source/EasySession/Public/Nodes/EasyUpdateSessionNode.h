@@ -31,7 +31,13 @@ public:
 	 * Only the game hosting the session can update it - clients get a
 	 * Requires Session Authority failure.
 	 *
-	 * @param NewHostParams New parameters to advertise. Map Name and Host Mode are ignored.
+	 * Every field is applied as given, including Password: pass params built by
+	 * Get Easy Session Host Params and change what you mean to change, or the
+	 * fields you left at their defaults overwrite the session with those defaults.
+	 *
+	 * @param NewHostParams New parameters to advertise. Map Name, Host Mode, Start
+	 *        Listening, LAN Match, Use Presence and Additional Travel Options are
+	 *        fixed when the session is created and are ignored here.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Update Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "NewHostParams"))
 	static UEasyUpdateSessionNode* UpdateEasySession(UObject* WorldContextObject, const FEasySessionHostParams& NewHostParams);

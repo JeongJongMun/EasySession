@@ -245,6 +245,22 @@ public:
 	EEasySessionState GetSessionState() const;
 
 	/**
+	 * Read back the parameters the current session is running with, so a change can
+	 * be made without restating everything else: get these, edit the one field, pass
+	 * them to Update Easy Session. Building fresh params instead resets every field
+	 * you did not fill in.
+	 *
+	 * Host only - the values come from the session this game serves. Returns defaults
+	 * when there is no session, or on a client.
+	 *
+	 * Map Name, Host Mode, Start Listening, LAN Match, Use Presence and Additional
+	 * Travel Options are fixed when the session is created; Update ignores them, and
+	 * what cannot be read back is returned as its default.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	FEasySessionHostParams GetEasySessionHostParams() const;
+
+	/**
 	 * Internal: receive the host's replicated session state (called by the state
 	 * actor). Clients cache it for display and reconcile their local session copy.
 	 */
@@ -271,6 +287,16 @@ public:
 	 * not, so a test reads the cache directly.
 	 */
 	EEasySessionState GetReplicatedHostSessionStateForTesting() const { return ReplicatedHostSessionState; }
+
+	/**
+	 * Test only: the password arriving players are actually checked against. What a
+	 * session advertises and what it enforces at login are set from two different
+	 * places, so a test has to be able to read both to prove they agree.
+	 */
+	FString GetEnforcedSessionPasswordForTesting() const;
+
+	/** Test only: the password-protected flag as it is advertised to searching players. */
+	bool GetAdvertisedPasswordProtectedForTesting() const;
 #endif
 
 	/**
