@@ -11,8 +11,8 @@
  * Why the serialization exists at all is documented on FEasySessionRequest.
  *
  * This class owns the mechanics only - the pending list, the active slot, the
- * watchdog that notices a request whose deadline passed, and the deferred kick
- * that starts the next request outside the completing one's callstack. What a
+ * watchdog that notices a request whose deadline passed, and the scheduling that
+ * starts every request outside the callstack that asked for it. What a
  * request *does* stays with the subsystem, reaching the queue through two
  * callbacks: one to execute the request that just became active, one to react
  * to a deadline. Completion is driven from the subsystem side too (it has to
@@ -34,13 +34,13 @@ public:
 	/** Tickers bound to a raw class do not expire with it - they are removed here. */
 	~FEasySessionRequestQueue();
 
-	/** Adds a request, and starts it right away when nothing is running. */
+	/** Adds a request. It starts on the next tick, never inside this call. */
 	void Enqueue(TSharedRef<FEasySessionRequest> Request);
 
 	/**
-	 * Takes the active request out of its slot and schedules the next one for the
-	 * next tick, so completion callbacks never nest OSS calls. Returns what was
-	 * active so the caller can finish delivering its callbacks.
+	 * Takes the active request out of its slot and schedules the next one, so
+	 * completion callbacks never nest OSS calls. Returns what was active so the
+	 * caller can finish delivering its callbacks.
 	 */
 	TSharedPtr<FEasySessionRequest> PopActive();
 
@@ -54,6 +54,7 @@ public:
 private:
 
 	void ProcessNext();
+	void ScheduleNext();
 	void StartWatchdog();
 	void StopWatchdog();
 	bool TickWatchdog(float DeltaTime);
@@ -65,5 +66,5 @@ private:
 	TArray<TSharedRef<FEasySessionRequest>> Pending;
 
 	FTSTicker::FDelegateHandle WatchdogHandle;
-	FTSTicker::FDelegateHandle DeferredKickHandle;
+	FTSTicker::FDelegateHandle NextRequestHandle;
 };

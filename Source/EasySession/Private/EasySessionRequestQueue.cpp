@@ -15,20 +15,17 @@ FEasySessionRequestQueue::~FEasySessionRequestQueue()
 {
 	StopWatchdog();
 
-	if (DeferredKickHandle.IsValid())
+	if (NextRequestHandle.IsValid())
 	{
-		FTSTicker::GetCoreTicker().RemoveTicker(DeferredKickHandle);
-		DeferredKickHandle.Reset();
+		FTSTicker::GetCoreTicker().RemoveTicker(NextRequestHandle);
+		NextRequestHandle.Reset();
 	}
 }
 
 void FEasySessionRequestQueue::Enqueue(TSharedRef<FEasySessionRequest> Request)
 {
 	Pending.Add(Request);
-	if (!Active.IsValid())
-	{
-		ProcessNext();
-	}
+	ScheduleNext();
 }
 
 TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::PopActive()
@@ -36,21 +33,30 @@ TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::PopActive()
 	TSharedPtr<FEasySessionRequest> Popped = Active;
 	Active.Reset();
 
-	// Defer the next request to the next tick so completion callbacks never nest
-	// OSS calls. One pending kick is enough however many completions land before
-	// it fires: ProcessNext is a no-op while a request is running, and the next
-	// completion schedules a fresh kick.
-	if (Popped.IsValid() && !DeferredKickHandle.IsValid())
+	if (Popped.IsValid())
 	{
-		DeferredKickHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float DeltaTime)
-		{
-			DeferredKickHandle.Reset();
-			ProcessNext();
-			return false;
-		}));
+		ScheduleNext();
 	}
 
 	return Popped;
+}
+
+void FEasySessionRequestQueue::ScheduleNext()
+{
+	// Never start inside the caller's callstack: a completion callback enqueues just
+	// as the slot empties, and the online call still returning would then land on
+	// whatever took the slot. One pending call is enough for any number of requests.
+	if (NextRequestHandle.IsValid())
+	{
+		return;
+	}
+
+	NextRequestHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float DeltaTime)
+	{
+		NextRequestHandle.Reset();
+		ProcessNext();
+		return false;
+	}));
 }
 
 FString FEasySessionRequestQueue::DescribeStatus(bool bIdleButTraveling) const

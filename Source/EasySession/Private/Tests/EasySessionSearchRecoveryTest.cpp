@@ -159,6 +159,39 @@ bool FEasySessionSearchRecoveryTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionInterruptOwnSearch, TSharedPtr<EasySessionSearchRecoveryTest::FTestState>, State);
+bool FEasySessionInterruptOwnSearch::Update()
+{
+	using namespace EasySessionSearchRecoveryTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	// Wait for the search to actually be running before interrupting it.
+	if (!FEasySessionTestAccess::HasActiveSearch(*Subsystem))
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > MaxWaitSeconds)
+		{
+			CurrentTest->AddError(TEXT("The search never started."));
+			return true;
+		}
+		return false;
+	}
+
+	// Stand in for any other search in the process finishing while ours runs.
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(State->GameInstance->GetWorld());
+	if (CurrentTest->TestTrue(TEXT("Session interface is available"), Sessions.IsValid()))
+	{
+		Sessions->TriggerOnFindSessionsCompleteDelegates(true);
+	}
+
+	CurrentTest->TestFalse(TEXT("A foreign completion does not end our search"), State->PendingResult.IsSet());
+	CurrentTest->TestTrue(TEXT("Our search is still running"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
+
+	State->StartTime = FPlatformTime::Seconds();
+	return true;
+}
+
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForOwnSearch, TSharedPtr<EasySessionSearchRecoveryTest::FTestState>, State);
 bool FEasySessionWaitForOwnSearch::Update()
 {
@@ -214,21 +247,10 @@ bool FEasySessionForeignSearchTest::RunTest(const FString& Parameters)
 			State->PendingResult = Result;
 		}));
 
-	TestTrue(TEXT("The search is running"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
-
-	// Stand in for any other search in the process finishing while ours runs.
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(State->GameInstance->GetWorld());
-	if (TestTrue(TEXT("Session interface is available"), Sessions.IsValid()))
-	{
-		Sessions->TriggerOnFindSessionsCompleteDelegates(true);
-	}
-
-	TestFalse(TEXT("A foreign completion does not end our search"), State->PendingResult.IsSet());
-	TestTrue(TEXT("Our search is still running"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
-
-	// Let it finish rather than abandoning it - a search left running would make the
-	// online service refuse the next test's.
+	// Requests start on a later tick, so the foreign completion has to be faked from
+	// a latent command rather than from here.
 	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionInterruptOwnSearch(State));
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForOwnSearch(State));
 	return true;
 }

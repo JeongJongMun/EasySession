@@ -23,6 +23,8 @@ namespace EasySessionReplicatedStateTest
 		TStrongObjectPtr<UGameInstance> GameInstance;
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 		TOptional<EEasySessionResult> CreateResult;
+		TOptional<EEasySessionResult> DestroyResult;
+		bool bCleanupIssued = false;
 		double StartTime = 0.0;
 		bool bAutoReturnWasEnabled = true;
 	};
@@ -50,6 +52,25 @@ bool FEasySessionWaitForReplicatedState::Update()
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	// Second pass onwards: waiting for the cleanup issued at the end of the first.
+	if (State->bCleanupIssued)
+	{
+		if (!State->DestroyResult.IsSet())
+		{
+			if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+			{
+				CurrentTest->AddError(TEXT("Timed out waiting for the session to be destroyed."));
+				Finish(*State);
+				return true;
+			}
+			return false;
+		}
+
+		CurrentTest->TestEqual(TEXT("Session destroyed"), State->DestroyResult.GetValue(), EEasySessionResult::Success);
+		Finish(*State);
+		return true;
+	}
 
 	if (!State->CreateResult.IsSet())
 	{
@@ -96,12 +117,18 @@ bool FEasySessionWaitForReplicatedState::Update()
 
 	// Destroying the game instance does not take the session with it - the online
 	// service holds sessions per process, so one left behind fails the next test's
-	// create with SessionAlreadyExists. Leaving is allowed without authority, which
-	// is what a client does anyway.
-	Subsystem->DestroyEasySession();
+	// create with SessionAlreadyExists. Waited on rather than fired and forgotten:
+	// requests start on a later tick, so returning here would end the test first.
+	TSharedPtr<FTestState> Shared = State;
+	State->bCleanupIssued = true;
+	State->StartTime = FPlatformTime::Seconds();
+	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+		[Shared](EEasySessionResult Result, const FString&)
+		{
+			Shared->DestroyResult = Result;
+		}));
 
-	Finish(*State);
-	return true;
+	return false;
 }
 
 /**
