@@ -69,8 +69,5 @@ private:
 
 	UEasySessionSubsystem& Owner;
 
-	/** Whether a friends list read is in flight - the interface allows only one. */
-	bool bReadingFriends = false;
-
 	FDelegateHandle InviteAcceptedHandle;
 };

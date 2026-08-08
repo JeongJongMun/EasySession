@@ -143,15 +143,7 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The current online subsystem does not support friends lists (e.g. NULL/LAN)."), {});
 		return;
 	}
-
-	if (bReadingFriends)
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::UnknownFailure, TEXT("A friends list read is already in progress."), {});
-		return;
-	}
-
-	bReadingFriends = true;
-
+	
 	const FString ListName = EFriendsLists::ToString(EFriendsLists::Default);
 
 	// Bound to the owning UObject: the read can outlive the world it started in, and
@@ -159,8 +151,6 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 	Friends->ReadFriendsList(0, ListName, FOnReadFriendsListComplete::CreateWeakLambda(&Owner,
 		[this, UserDelegate = MoveTemp(OnComplete)](int32 /*LocalUserNum*/, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
 		{
-			bReadingFriends = false;
-
 			if (!bWasSuccessful)
 			{
 				UserDelegate.ExecuteIfBound(EEasySessionResult::UnknownFailure, ErrorStr, {});
