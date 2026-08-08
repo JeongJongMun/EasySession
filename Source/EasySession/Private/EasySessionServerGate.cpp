@@ -160,8 +160,13 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 			}
 		}
 
-		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - wrong or missing session password (expected %d chars, got %d chars, url options: %s)."),
-			*NewPlayer.ToString(), SessionPassword.Len(), SuppliedPassword.Len(), *PendingConnection->RequestURL);
+		// The password and the URL carrying it stay out of the log - on a listen
+		// server that file belongs to a player. Which failure it was is enough.
+		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - %s."),
+			*NewPlayer.ToString(),
+			SuppliedPassword.IsEmpty()
+				? TEXT("no session password was supplied")
+				: TEXT("the supplied session password did not match"));
 		ErrorMessage = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
 	}
 }
