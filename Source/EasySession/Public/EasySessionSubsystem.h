@@ -401,7 +401,10 @@ public:
 	/** C++ hook: modify the server travel URL (hosting / server travel) before it is used. */
 	FEasyModifyTravelURLDelegate OnModifyServerTravelURL;
 
-	/** C++ hook: modify the client travel URL (joining a host) before it is used. */
+	/**
+	 * C++ hook: modify the client travel URL (joining a host) before it is used.
+	 * This URL carries the session password as an option - do not log it.
+	 */
 	FEasyModifyTravelURLDelegate OnModifyClientTravelURL;
 
 private:
