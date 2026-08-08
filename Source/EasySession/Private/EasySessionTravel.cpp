@@ -143,7 +143,8 @@ void FEasySessionTravel::TravelToJoinedSession(const FString& ConnectString, con
 	const FString TrimmedPassword = Password.TrimStartAndEnd();
 	if (!TrimmedPassword.IsEmpty())
 	{
-		TravelURL += FString::Printf(TEXT("?%s=%s"), EasySession::TravelOption_Password, *TrimmedPassword);
+		TravelURL += FString::Printf(TEXT("?%s=%s"), EasySession::TravelOption_Password,
+			*EasySessionAddress::EncodeTravelOptionValue(TrimmedPassword));
 	}
 	AppendTravelOptions(TravelURL, AdditionalTravelOptions);
 	Owner.OnModifyClientTravelURL.Broadcast(TravelURL);

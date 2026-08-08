@@ -109,12 +109,97 @@ bool FEasySessionAddressParseOptionTest::RunTest(const FString& Parameters)
 		{ TEXT("?Pw=a b"),                             TEXT("a b"),    TEXT("a space inside survives - the engine allows it on purpose") },
 		{ TEXT("?Pw=a=b"),                             TEXT("a=b"),    TEXT("only the first = splits key from value") },
 		{ TEXT("?Pwx=other?Pw=secret"),                TEXT("secret"), TEXT("a longer key that starts the same is a different option") },
+		{ TEXT("?Pw=a%3Fb"),                           TEXT("a%3Fb"), TEXT("encoded values come back encoded - decoding is a separate step") },
+
+		// Why senders encode: a raw ? ends the value early and the rest becomes
+		// its own option.
+		{ TEXT("?Pw=a?b"),                             TEXT("a"),      TEXT("a raw ? cuts the value in half") },
 	};
 
 	for (const FCase& Case : Cases)
 	{
 		const FString Actual = EasySessionAddress::ParseTravelOption(Case.RequestURL, TEXT("Pw"));
 		TestEqual(FString::Printf(TEXT("'%s' (%s)"), Case.RequestURL, Case.Why), Actual, FString(Case.Expected));
+	}
+
+	return true;
+}
+
+/**
+ * A session password is whatever the host typed, and it travels as a URL option.
+ * Encoding has to give the exact string back, or a host locks a room with a
+ * password nobody can enter - including the player who was told it correctly.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressEncodeOptionTest, "EasySession.Address.EncodeTravelOptionValue", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionAddressEncodeOptionTest::RunTest(const FString& Parameters)
+{
+	struct FCase
+	{
+		const TCHAR* Value;
+		const TCHAR* Encoded;
+		const TCHAR* Why;
+	};
+
+	static const FCase Cases[] =
+	{
+		{ TEXT("1234"),      TEXT("1234"),          TEXT("the ordinary case is left alone") },
+		{ TEXT(""),          TEXT(""),              TEXT("empty stays empty") },
+		{ TEXT("a b"),       TEXT("a b"),           TEXT("spaces need no escaping - the engine allows them") },
+		{ TEXT("a=b"),       TEXT("a=b"),           TEXT("only the first = splits an option, so = needs none either") },
+		{ TEXT("a?b"),       TEXT("a%3Fb"),         TEXT("? would end the option early") },
+		{ TEXT("a#b"),       TEXT("a%23b"),         TEXT("# would send the rest to the portal") },
+		{ TEXT("100%"),      TEXT("100%25"),        TEXT("% is the escape character and has to escape itself") },
+		{ TEXT("%3F"),       TEXT("%253F"),         TEXT("a value that already looks encoded must not decode to ?") },
+		{ TEXT("?#%"),       TEXT("%3F%23%25"),     TEXT("all three at once") },
+	};
+
+	for (const FCase& Case : Cases)
+	{
+		const FString Encoded = EasySessionAddress::EncodeTravelOptionValue(Case.Value);
+		TestEqual(FString::Printf(TEXT("encode '%s' (%s)"), Case.Value, Case.Why), Encoded, FString(Case.Encoded));
+
+		// The property that actually matters: whatever was typed comes back.
+		const FString RoundTripped = EasySessionAddress::DecodeTravelOptionValue(Encoded);
+		TestEqual(FString::Printf(TEXT("round trip '%s'"), Case.Value), RoundTripped, FString(Case.Value));
+	}
+
+	return true;
+}
+
+/**
+ * The same values through the engine's own URL parser, which is what splits an
+ * unencoded password in half. Testing our two functions against each other would
+ * agree with itself no matter what the engine does with the string in between.
+ *
+ * What this still cannot show: the trip over the wire from the joining client to
+ * the host's PendingConnection. That needs two running games.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressTravelURLTest, "EasySession.Address.EncodedOptionSurvivesTheEngineURL", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionAddressTravelURLTest::RunTest(const FString& Parameters)
+{
+	static const TCHAR* Passwords[] =
+	{
+		TEXT("1234"),
+		TEXT("a b"),
+		TEXT("a=b"),
+		TEXT("a?b"),
+		TEXT("a#b"),
+		TEXT("100%"),
+		TEXT("%3F"),
+		TEXT("?#%"),
+	};
+
+	for (const TCHAR* Password : Passwords)
+	{
+		// Built the way the joining client builds it.
+		const FString TravelURL = FString::Printf(TEXT("127.0.0.1:7777?Pw=%s"),
+			*EasySessionAddress::EncodeTravelOptionValue(Password));
+
+		// Parsed the way the engine parses it before the host sees a request URL.
+		const FURL URL(nullptr, *TravelURL, TRAVEL_Absolute);
+		const FString Recovered = EasySessionAddress::DecodeTravelOptionValue(URL.GetOption(TEXT("Pw="), TEXT("")));
+
+		TestEqual(FString::Printf(TEXT("'%s' survives FURL"), Password), Recovered, FString(Password));
 	}
 
 	return true;

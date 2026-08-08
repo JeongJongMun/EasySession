@@ -33,6 +33,20 @@ namespace EasySessionAddress
 	 * The value of one option in a travel URL, trimmed, or empty when the option
 	 * is absent. Accepts the whole request URL: the map path in front is skipped,
 	 * as the engine does before handing it to PreLogin.
+	 *
+	 * Returned as it appears in the URL. A value that went through
+	 * EncodeTravelOptionValue comes back still encoded.
 	 */
 	FString ParseTravelOption(const FString& RequestURL, const TCHAR* Key);
+
+	/**
+	 * Make a value safe to carry as a travel option. The engine splits options on
+	 * '?' and '#' (FURL.cpp, ValidNetChar), so a value holding either one arrives
+	 * cut in half; '%' goes with them to keep decoding unambiguous. Everything
+	 * else, spaces and '=' included, is left alone.
+	 */
+	FString EncodeTravelOptionValue(const FString& Value);
+
+	/** Undo EncodeTravelOptionValue. Leaves anything it did not write untouched. */
+	FString DecodeTravelOptionValue(const FString& Value);
 }

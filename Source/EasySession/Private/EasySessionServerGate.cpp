@@ -136,8 +136,8 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 		return;
 	}
 
-	const FString SuppliedPassword = EasySessionAddress::ParseTravelOption(
-		PendingConnection->RequestURL, EasySession::TravelOption_Password);
+	const FString SuppliedPassword = EasySessionAddress::DecodeTravelOptionValue(
+		EasySessionAddress::ParseTravelOption(PendingConnection->RequestURL, EasySession::TravelOption_Password));
 
 	if (!SuppliedPassword.Equals(SessionPassword, ESearchCase::CaseSensitive))
 	{
