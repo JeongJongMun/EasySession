@@ -3,6 +3,7 @@
 #include "EasySessionServerGate.h"
 
 #include "EasySession.h"
+#include "EasySessionAddress.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -135,14 +136,8 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 		return;
 	}
 
-	// The engine rebuilds RequestURL with the map path in front (e.g. "/Game/Maps/Menu?Pw=x"),
-	// but ParseOption only works on strings starting at the first '?' - skip to it,
-	// exactly like the engine does before calling PreLogin.
-	FString URLOptions = PendingConnection->RequestURL;
-	const int32 OptionsStart = URLOptions.Find(TEXT("?"), ESearchCase::CaseSensitive);
-	URLOptions = OptionsStart != INDEX_NONE ? URLOptions.Mid(OptionsStart) : FString();
-
-	const FString SuppliedPassword = UGameplayStatics::ParseOption(URLOptions, EasySession::TravelOption_Password).TrimStartAndEnd();
+	const FString SuppliedPassword = EasySessionAddress::ParseTravelOption(
+		PendingConnection->RequestURL, EasySession::TravelOption_Password);
 
 	if (!SuppliedPassword.Equals(SessionPassword, ESearchCase::CaseSensitive))
 	{

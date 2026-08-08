@@ -3,6 +3,7 @@
 #include "EasySessionAddress.h"
 
 #include "Engine/EngineBaseTypes.h"
+#include "Kismet/GameplayStatics.h"
 
 namespace
 {
@@ -52,4 +53,17 @@ bool EasySessionAddress::HasListenOption(const FString& TravelURL)
 {
 	const FURL URL(nullptr, *TravelURL, TRAVEL_Absolute);
 	return URL.HasOption(TEXT("listen"));
+}
+
+FString EasySessionAddress::ParseTravelOption(const FString& RequestURL, const TCHAR* Key)
+{
+	// ParseOption only reads from the first '?' onwards, and what arrives at
+	// PreLogin has the map path in front (e.g. "/Game/Maps/Menu?Pw=x").
+	const int32 OptionsStart = RequestURL.Find(TEXT("?"), ESearchCase::CaseSensitive);
+	if (OptionsStart == INDEX_NONE)
+	{
+		return FString();
+	}
+
+	return UGameplayStatics::ParseOption(RequestURL.Mid(OptionsStart), Key).TrimStartAndEnd();
 }

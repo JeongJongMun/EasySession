@@ -80,4 +80,44 @@ bool FEasySessionAddressListenOptionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * Reading an option out of the URL a joining player arrives with. This decides
+ * whether a password matches, so every shape the engine can hand us has to read
+ * the same way it does: the map path in front, several options, no options.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressParseOptionTest, "EasySession.Address.ParseTravelOption", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionAddressParseOptionTest::RunTest(const FString& Parameters)
+{
+	struct FCase
+	{
+		const TCHAR* RequestURL;
+		const TCHAR* Expected;
+		const TCHAR* Why;
+	};
+
+	static const FCase Cases[] =
+	{
+		{ TEXT("?Pw=secret"),                          TEXT("secret"), TEXT("options only") },
+		{ TEXT("/Game/Maps/Lobby?Pw=secret"),          TEXT("secret"), TEXT("map path in front, as PreLogin sees it") },
+		{ TEXT("/Game/Maps/Lobby?Team=1?Pw=secret"),   TEXT("secret"), TEXT("not the first option") },
+		{ TEXT("?Pw=secret?Team=1"),                   TEXT("secret"), TEXT("not the last option") },
+		{ TEXT("/Game/Maps/Lobby"),                    TEXT(""),       TEXT("no options at all") },
+		{ TEXT("?Team=1"),                             TEXT(""),       TEXT("option absent") },
+		{ TEXT("?Pw="),                                TEXT(""),       TEXT("option present but empty") },
+		{ TEXT("?Pw"),                                 TEXT(""),       TEXT("option present with no value") },
+		{ TEXT("?Pw=  secret  "),                      TEXT("secret"), TEXT("trimmed, matching what the sender trims") },
+		{ TEXT("?Pw=a b"),                             TEXT("a b"),    TEXT("a space inside survives - the engine allows it on purpose") },
+		{ TEXT("?Pw=a=b"),                             TEXT("a=b"),    TEXT("only the first = splits key from value") },
+		{ TEXT("?Pwx=other?Pw=secret"),                TEXT("secret"), TEXT("a longer key that starts the same is a different option") },
+	};
+
+	for (const FCase& Case : Cases)
+	{
+		const FString Actual = EasySessionAddress::ParseTravelOption(Case.RequestURL, TEXT("Pw"));
+		TestEqual(FString::Printf(TEXT("'%s' (%s)"), Case.RequestURL, Case.Why), Actual, FString(Case.Expected));
+	}
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

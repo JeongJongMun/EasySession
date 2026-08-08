@@ -28,4 +28,11 @@ namespace EasySessionAddress
 	 * option, so it is case insensitive and "?listenport=7777" does not count.
 	 */
 	bool HasListenOption(const FString& TravelURL);
+
+	/**
+	 * The value of one option in a travel URL, trimmed, or empty when the option
+	 * is absent. Accepts the whole request URL: the map path in front is skipped,
+	 * as the engine does before handing it to PreLogin.
+	 */
+	FString ParseTravelOption(const FString& RequestURL, const TCHAR* Key);
 }
