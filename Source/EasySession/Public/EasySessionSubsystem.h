@@ -64,10 +64,6 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 	// would sit next to the ones users are meant to call and invite the wrong choice.
 	friend class FEasySessionSocial;
 	friend class FEasySessionServerGate;
-
-	// Lets the automation tests read private state without the subsystem carrying a
-	// test API of its own. Declared unconditionally: the class only exists alongside
-	// the tests, and befriending one that is absent is harmless.
 	friend class FEasySessionTestAccess;
 
 public:
