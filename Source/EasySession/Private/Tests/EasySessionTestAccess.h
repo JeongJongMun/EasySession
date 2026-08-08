@@ -43,6 +43,12 @@ public:
 		return Subsystem.ReplicatedHostSessionState;
 	}
 
+	/** Whether the subsystem is still holding a search object. */
+	static bool HasActiveSearch(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.ActiveSearch.IsValid();
+	}
+
 	/** The password arriving players are actually checked against. */
 	static FString GetEnforcedSessionPassword(const UEasySessionSubsystem& Subsystem)
 	{

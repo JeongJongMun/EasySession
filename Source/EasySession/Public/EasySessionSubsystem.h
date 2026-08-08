@@ -432,8 +432,24 @@ private:
 	 */
 	void HandleRequestDeadline();
 
-	/** Finish the active request and schedule the next one. */
-	void CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage = FString());
+	/**
+	 * Finish the active request and schedule the next one.
+	 *
+	 * bAbandoned says the request is being given up on rather than reporting back,
+	 * which is what the watchdog does. See CleanupRequest for what changes.
+	 */
+	void CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage = FString(), bool bAbandoned = false);
+
+	/**
+	 * Undo what the request left behind, so the next one starts clean. Every
+	 * completion passes through here, which is what stops a request type from being
+	 * cleaned up on one path and forgotten on the other.
+	 *
+	 * A request that reported back has already told the online service it is over.
+	 * One that was abandoned has not, and the online service is still working on it -
+	 * the only case where the service itself has to be told to stop.
+	 */
+	void CleanupRequest(const FEasySessionRequest& Request, bool bAbandoned);
 
 	/** Per-operation entry points, called by ExecuteActiveRequest. */
 	void ExecuteCreate();

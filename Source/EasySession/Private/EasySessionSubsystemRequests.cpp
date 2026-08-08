@@ -67,55 +67,27 @@ void UEasySessionSubsystem::HandleRequestDeadline()
 
 	// The online service never called back. Fail the request so the queue keeps
 	// draining, but remember that a timeout means "the outcome is unknown", not
-	// "nothing happened" - the operation may still land afterwards.
-	const bool bCouldHaveCreatedSession = Request->CouldHaveCreatedSession();
-	const FName TimedOutSessionName = Request->SessionName;
+	// "nothing happened" - the operation may still land afterwards, which is what
+	// completing it as abandoned tells CleanupRequest to deal with.
 	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online service. Continuing with the next request."),
 		Request->GetTypeName(), Request->GetElapsedSeconds(FPlatformTime::Seconds()));
 
-	CompleteActiveRequest(EEasySessionResult::Timeout, TEXT("The online service did not respond in time."));
-
-	// A create or join that lands late leaves a session nobody asked for, which
-	// would then block the next create with "session already exists". Check for it
-	// and clean it up instead of leaving the player stuck.
-	if (bCouldHaveCreatedSession)
-	{
-		const IOnlineSessionPtr Sessions = GetSessionInterface();
-		if (Sessions.IsValid() && Sessions->GetNamedSession(TimedOutSessionName) != nullptr)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("The timed out request did leave a session behind - destroying it so the next request starts clean."));
-			DestroyEasySession();
-		}
-	}
+	CompleteActiveRequest(EEasySessionResult::Timeout, TEXT("The online service did not respond in time."), /*bAbandoned*/ true);
 }
 
-void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage)
+void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage, bool bAbandoned)
 {
 	if (!GetActiveRequest().IsValid())
 	{
 		return;
 	}
 
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (Sessions.IsValid())
-	{
-		switch (GetActiveRequest()->Type)
-		{
-			case FEasySessionRequest::EType::Create:	Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle); break;
-			case FEasySessionRequest::EType::Find:		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle); break;
-			case FEasySessionRequest::EType::Join:		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle); break;
-			case FEasySessionRequest::EType::Destroy:	Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle); break;
-			case FEasySessionRequest::EType::Update:	Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle); break;
-			case FEasySessionRequest::EType::Start:		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle); break;
-			case FEasySessionRequest::EType::End:		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle); break;
-			default: break;
-		}
-	}
-
 	if (Result != EEasySessionResult::Success)
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Session operation failed: %s (%s)"), *EasySession::ResultToString(Result), *ErrorMessage);
 	}
+
+	CleanupRequest(*GetActiveRequest(), bAbandoned);
 
 	const TSharedPtr<FEasySessionRequest> CompletedRequest = RequestQueue->PopActive();
 
@@ -158,6 +130,50 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 
 		default:
 			break;
+	}
+}
+
+void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, bool bAbandoned)
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		ActiveSearch.Reset();
+		return;
+	}
+
+	// Unbind first: an abandoned request tells the online service to stop below,
+	// and some of those paths report the operation as finished on the way out.
+	switch (Request.Type)
+	{
+		case FEasySessionRequest::EType::Create:	Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle); break;
+		case FEasySessionRequest::EType::Find:		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle); break;
+		case FEasySessionRequest::EType::Join:		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle); break;
+		case FEasySessionRequest::EType::Destroy:	Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle); break;
+		case FEasySessionRequest::EType::Update:	Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle); break;
+		case FEasySessionRequest::EType::Start:		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle); break;
+		case FEasySessionRequest::EType::End:		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle); break;
+		default: break;
+	}
+
+	if (Request.Type == FEasySessionRequest::EType::Find)
+	{
+		// The online service refuses a new search while it thinks one is running. Not
+		// queued: a queued cancel would run behind a search that is already waiting.
+		if (bAbandoned && ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("Cancelling the abandoned search so later searches are not refused."));
+			Sessions->CancelFindSessions();
+		}
+
+		ActiveSearch.Reset();
+	}
+
+	// A late create leaves a session that would block the next one.
+	if (bAbandoned && Request.CouldHaveCreatedSession() && Sessions->GetNamedSession(Request.SessionName) != nullptr)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("The abandoned request left a session behind - destroying it so the next request starts clean."));
+		DestroyEasySession();
 	}
 }
 
@@ -283,6 +299,16 @@ void UEasySessionSubsystem::ExecuteFind()
 	if (!Sessions->FindSessions(0, ActiveSearch.ToSharedRef()))
 	{
 		CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindSessions request was rejected by the online subsystem."));
+		return;
+	}
+
+	// The online service drops a search it cannot start and still reports success,
+	// leaving nothing to call back. It marks the one it did accept as in progress,
+	// so an untouched state means ours was the one dropped.
+	if (ActiveSearch->SearchState != EOnlineAsyncTaskState::InProgress)
+	{
+		CompleteActiveRequest(EEasySessionResult::SearchFailure,
+			TEXT("Another session search is already running, so this one was dropped by the online service."));
 	}
 }
 
@@ -441,11 +467,18 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		return;
 	}
 
+	// Every search in the process rings this delegate. The online service settles a
+	// search's state before ringing, so ours still in progress means this is not it.
+	if (ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
+	{
+		UE_LOG(LogEasySession, Verbose, TEXT("Ignoring a search completion that belongs to another search."));
+		return;
+	}
+
 	LastSearchResults.Empty();
 
 	if (!bWasSuccessful || !ActiveSearch.IsValid())
 	{
-		ActiveSearch.Reset();
 		CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("The online subsystem failed to search for sessions."));
 		return;
 	}
@@ -491,8 +524,6 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 
 		LastSearchResults.Add(MoveTemp(Result));
 	}
-
-	ActiveSearch.Reset();
 
 	UE_LOG(LogEasySession, Log, TEXT("Search complete. %d session(s) found after filtering."), LastSearchResults.Num());
 	CompleteActiveRequest(EEasySessionResult::Success);
