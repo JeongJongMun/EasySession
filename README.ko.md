@@ -54,13 +54,13 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 
 ## 문서
 
-문서는 영문으로 제공되며, 아직 완성되지 않았습니다. 최신 기능이 반영되지 않은 항목이 있습니다.
+API 레퍼런스는 한국어로도 제공됩니다. 나머지 문서는 영문이며, 아직 완성되지 않아 최신 기능이 반영되지 않은 항목이 있습니다.
 
 - [Quick Start](Docs/QuickStart.md) - 5분 만에 방 만들고 참가하기
 - [Concepts](Docs/Concepts.md) - 세션, OSS, 리슨 서버와 데디케이티드의 차이
 - 설정: [LAN](Docs/Setup-LAN.md) | [Steam](Docs/Setup-Steam.md)
 - 가이드: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
-- [API Reference](Docs/API.md)
+- [API 레퍼런스](Docs/API.ko.md)
 - [FAQ & Troubleshooting](Docs/FAQ.md)
 
 ## 모듈
