@@ -607,11 +607,9 @@ const TSharedPtr<FEasySessionRequest>& UEasySessionSubsystem::GetActiveRequest()
 
 void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
 {
-	// Only the game connection concerns the session. The engine broadcasts every
-	// net driver's failures through this one delegate - a beacon query timing out
-	// or a replay driver hiccup must not tear the session down. Two names are the
-	// game connection: the world's driver, and the pending driver a client uses
-	// while still traveling (UPendingNetGame names it NAME_PendingNetDriver).
+	// Every net driver reports here, so a beacon query timing out or a replay hiccup
+	// would otherwise tear the session down. Only the game connection counts: the
+	// world's driver, and the pending one a client uses while still traveling.
 	if (NetDriver != nullptr &&
 		NetDriver->NetDriverName != NAME_GameNetDriver &&
 		NetDriver->NetDriverName != NAME_PendingNetDriver)
@@ -629,9 +627,8 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	}
 	else
 	{
-		// Pending-connection failures (e.g. the server refusing the login) broadcast
-		// with a null world. Only react when this instance actually joined a session,
-		// i.e. it was the one traveling to a host.
+		// A pending-connection failure broadcasts with no world to match against.
+		// Being in a session is what says this instance was the one joining.
 		if (!IsInSession())
 		{
 			return;
@@ -644,32 +641,27 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 
 	if (IsSessionAuthority())
 	{
-		// A failure on the server usually concerns a single client connection - the
-		// session itself is still alive, so the server stays where it is. The engine
-		// broadcasts here for a client that timed out too (UNetConnection::
-		// HandleConnectionTimeout), so this side must not read it as losing the host.
+		// On the host this fires for a client whose connection died, not the host's
+		// own. The session is still alive, so returning keeps the host from sending
+		// itself back to the menu over someone else's disconnect.
 		return;
 	}
 
-	// The connection to the host is gone - record the reason and recover to the menu.
-	// The popup text depends on who wrote the string: a timeout or a dropped link
-	// carries the engine's debug dump (driver names, thresholds), which no player
-	// should read - the log line above keeps it. Every other failure prefers the
-	// carried text, because a host refusing a login sends a human sentence there
-	// (e.g. "Wrong session password.").
-	FText PopupText;
-	if (FailureType == ENetworkFailure::ConnectionTimeout ||
-		FailureType == ENetworkFailure::ConnectionLost ||
-		ErrorString.IsEmpty())
-	{
-		PopupText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
-	}
-	else
-	{
-		PopupText = FText::FromString(ErrorString);
-	}
+	// Only these two carry a sentence written for the player - a wrong password, a full
+	// match, a version mismatch. The first arrives while joining, the second once
+	// connected. Every other type leaves a debug dump, which belongs in the log.
+	const bool bHostRefused =
+		(FailureType == ENetworkFailure::PendingConnectionFailure ||
+			FailureType == ENetworkFailure::FailureReceived) &&
+		!ErrorString.IsEmpty();
 
-	NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, PopupText);
+	const FText PopupText = bHostRefused
+		? FText::FromString(ErrorString)
+		: NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
+
+	NotifyDisconnectedFromSession(
+		bHostRefused ? EEasyDisconnectReason::Rejected : EEasyDisconnectReason::ConnectionLost,
+		PopupText);
 }
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)

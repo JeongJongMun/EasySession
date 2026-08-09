@@ -487,7 +487,10 @@ enum class EEasyDisconnectReason : uint8
 	HostEndedSession,
 
 	/** Traveling to the session's map failed. */
-	TravelFailure
+	TravelFailure,
+
+	/** The host refused the connection (wrong password, not joinable) and Reason Text says why. */
+	Rejected
 };
 
 /**
