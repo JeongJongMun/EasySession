@@ -37,6 +37,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **Map changes during a match must use seamless travel.** The host-side join gate treats a new connection as a new player, so a hard travel mid-match would lock your own players out. The plugin's own travels already do the right thing.
 - **Rolling your own `ClientTravel` into a password session** means appending the password option yourself; the plugin only adds it on the travels it performs.
 - **Dedicated servers** have working code paths but are not validated yet - listen servers are the tested configuration.
+- **The example character borrows an engine asset.** It uses the engine's tutorial mannequin (`/Engine/Tutorial/...`) instead of shipping a mesh of its own, which keeps the plugin small. Everything else in the examples depends only on `/Engine/BasicShapes` and `/Engine/MapTemplates`. Swap in your own character if you build on the examples.
 
 ## Supported online subsystems
 
