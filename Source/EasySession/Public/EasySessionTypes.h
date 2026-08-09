@@ -7,7 +7,7 @@
 #include "EasySessionTypes.generated.h"
 
 /**
- * How the session host serves the game.
+ * How the session host runs the game.
  */
 UENUM(BlueprintType)
 enum class EEasySessionHostMode : uint8
@@ -80,18 +80,10 @@ enum class EEasySessionResult : uint8
 	/** The operation failed for an unknown reason. */
 	UnknownFailure,
 
-	/**
-	 * The online service never reported completion and the request timed out.
-	 * The queue moves on so later requests still run - see Request Timeout Seconds
-	 * in the project settings.
-	 */
+	/** The online service never answered and the request timed out. See Request Timeout Seconds. */
 	Timeout,
 
-	/**
-	 * Only the game serving the session can do this - the host player's game on a
-	 * listen server, or the server itself on a dedicated server. Gate the button
-	 * with Is Easy Session Host so other players never see it.
-	 */
+	/** Only the game that created the session can do this. Show the button only when Is Easy Session Authority is true. */
 	RequiresSessionAuthority
 };
 

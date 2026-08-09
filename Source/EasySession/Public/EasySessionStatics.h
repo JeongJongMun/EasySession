@@ -24,17 +24,52 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static UEasySessionSubsystem* GetEasySessionSubsystem(const UObject* WorldContextObject);
 
-	/** Check whether the local player is currently in a session. */
+	/**
+	 * Check whether the local player is currently in a session.
+	 *
+	 * This and the queries below it are all about the game session - the one players find,
+	 * join and play in. There is one per process, so none of them take a session argument.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsInEasySession(const UObject* WorldContextObject);
 
-	/** Check whether the local player is hosting the current session. */
+	/**
+	 * Check whether the local player is hosting the current session.
+	 * Always false on a dedicated server, which has no local player to be the host.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionHost(const UObject* WorldContextObject);
 
-	/** Get the lifecycle state of the current session (Pending, InProgress, Ended, ...). */
+	/**
+	 * Whether this game created the session it is in, so it may Start, End, Update, travel
+	 * or destroy it. Do not use Is Easy Session Host instead - it is false on a dedicated server.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasySessionAuthority(const UObject* WorldContextObject);
+
+	/**
+	 * Get the lifecycle state of the current session (Pending, InProgress, Ended, ...).
+	 * On the host this is the authoritative local state; on clients it is the host's
+	 * replicated state, so every player always sees the same value.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionState GetEasySessionState(const UObject* WorldContextObject);
+
+	/**
+	 * Get the password this game's session was created with, e.g. to show it so the host
+	 * can share it. Empty on clients and for password-less sessions - the password never
+	 * leaves the host.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FString GetEasySessionPassword(const UObject* WorldContextObject);
+
+	/** Check whether a Quick Match run is in progress. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasyMatchmaking(const UObject* WorldContextObject);
+
+	/** Get which step a Quick Match run is on: Searching, Joining, Hosting, Complete. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static EEasyMatchmakingState GetEasyMatchmakingState(const UObject* WorldContextObject);
 
 	/**
 	 * Get a display-friendly label for the current session state that pairs the
@@ -49,7 +84,8 @@ public:
 	 * Check whether any session operation is in progress - a request running or queued,
 	 * a Quick Match still working through its steps, or a travel this plugin started
 	 * that has not reached its map yet.
-	 * Bind session buttons to this to disable them while an operation runs.
+	 * Bind session buttons to this to disable them while an operation runs;
+	 * Is Easy Matchmaking asks specifically about Quick Match.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);

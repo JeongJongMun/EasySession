@@ -26,10 +26,34 @@ bool UEasySessionStatics::IsEasySessionHost(const UObject* WorldContextObject)
 	return Subsystem != nullptr && Subsystem->IsHost();
 }
 
+bool UEasySessionStatics::IsEasySessionAuthority(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsSessionAuthority();
+}
+
 EEasySessionState UEasySessionStatics::GetEasySessionState(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->GetSessionState() : EEasySessionState::NoSession;
+}
+
+FString UEasySessionStatics::GetEasySessionPassword(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetSessionPassword() : FString();
+}
+
+bool UEasySessionStatics::IsEasyMatchmaking(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsMatchmaking();
+}
+
+EEasyMatchmakingState UEasySessionStatics::GetEasyMatchmakingState(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetMatchmakingState() : EEasyMatchmakingState::Idle;
 }
 
 FString UEasySessionStatics::GetEasySessionStateLabel(const UObject* WorldContextObject)

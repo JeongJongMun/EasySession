@@ -168,7 +168,7 @@ public:
 	/**
 	 * Start the match: transitions the session to InProgress. When Allow Join In Progress is
 	 * disabled, new players can no longer join until the match ends.
-	 * Needs session authority - only the game serving the session can start the match.
+	 * Needs session authority - only the game that created the session can start the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
@@ -176,7 +176,7 @@ public:
 
 	/**
 	 * End the match: transitions the session back to Ended so a new match can be started.
-	 * Needs session authority - only the game serving the session can end the match.
+	 * Needs session authority - only the game that created the session can end the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
@@ -191,7 +191,7 @@ public:
 
 	/**
 	 * Update the advertised properties of the current session.
-	 * Needs session authority - only the game serving the session can update it.
+	 * Needs session authority - only the game that created the session can update it.
 	 *
 	 * @param NewHostParams New parameters to advertise. Map Name and Host Mode are ignored.
 	 * @param OnComplete Called when the operation completes.
@@ -215,11 +215,9 @@ public:
 	void CancelMatchmaking();
 
 	/** Check whether QuickMatch matchmaking is currently running. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsMatchmaking() const;
 
 	/** Get the state of the running QuickMatch matchmaking. Idle when none is running. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasyMatchmakingState GetMatchmakingState() const;
 
 	/** Get the running matchmaking policy. Use this to bind its On State Changed event. */
@@ -229,12 +227,11 @@ public:
 	/**
 	 * Check whether the local player is currently in a session.
 	 *
-	 * This and the queries below it answer about the game session - the one players
+	 * This and the queries below it are all about the game session - the one players
 	 * find, join and play in. There is one per process, so none of them take a
-	 * session argument. A later version adding a second kind of session (a party,
-	 * say) would give it its own queries rather than change what these mean.
+	 * session argument. A later version adding a second kind of session, such as a
+	 * party, would give it its own queries rather than change what these mean.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsInSession() const;
 
 	/**
@@ -242,7 +239,6 @@ public:
 	 * On the host this is the authoritative local state; on clients it is the host's
 	 * replicated state, so every player always sees the same value.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasySessionState GetSessionState() const;
 
 	/**
@@ -251,7 +247,7 @@ public:
 	 * them to Update Easy Session. Building fresh params instead resets every field
 	 * you did not fill in.
 	 *
-	 * Host only - the values come from the session this game serves. Returns defaults
+	 * Host only - the values come from the session this game created. Returns defaults
 	 * when there is no session, or on a client.
 	 *
 	 * Map Name, Host Mode, Start Listening, LAN Match, Use Presence and Additional
@@ -271,18 +267,21 @@ public:
 	 * Check whether the local player is hosting the current session.
 	 * Always false on a dedicated server, which has no local player to be the host.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsHost() const;
+
+	/**
+	 * Whether this game created the session it is in, so it may Start, End, Update, travel
+	 * or destroy it. Do not use Is Host instead - it is false on a dedicated server.
+	 */
+	bool IsSessionAuthority() const;
 
 	/**
 	 * Get the display names of all players currently in the session, including the local player.
 	 * Names come from the replicated player states, so the list is available on both the host and clients.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	TArray<FString> GetSessionPlayerNames() const;
 
 	/** Get the display name of the current session. Empty when no session exists. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	FString GetSessionDisplayName() const;
 
 	/**
@@ -290,22 +289,18 @@ public:
 	 * host can share it. Empty on clients and for password-less sessions - the
 	 * password never leaves the host.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	FString GetSessionPassword() const;
 
 	/**
 	 * Get per-player info for everyone in the session: name, whether it is the
 	 * local player on this machine, and whether it is the session host.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	TArray<FEasySessionPlayerInfo> GetSessionPlayerInfos() const;
 
 	/** Get the number of players currently in the session. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	int32 GetSessionPlayerCount() const;
 
 	/** Get the maximum number of players allowed in the current session. Returns 0 when no session exists. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	int32 GetSessionMaxPlayers() const;
 
 	/**
@@ -315,7 +310,6 @@ public:
 	 * Bind session buttons to this to disable them while an operation runs; use
 	 * Is Matchmaking to ask specifically about Quick Match.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsBusy() const;
 
 	/**
@@ -327,11 +321,9 @@ public:
 	FString GetQueueStatusDescription() const;
 
 	/** Get the results of the most recent session search. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	const TArray<FEasySessionSearchResult>& GetLastSearchResults() const { return LastSearchResults; }
 
 	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	FName GetOnlineSubsystemName() const;
 
 	/** Check whether an online subsystem is available and its session interface is valid. */
@@ -340,7 +332,7 @@ public:
 
 	/**
 	 * ServerTravel the current session to a new map. Needs session authority - only the
-	 * game serving the session can travel it, and other games get false back.
+	 * game that created the session can travel it, and it returns false for other games.
 	 * Additional travel options can be appended with '?'. The ?listen option is added
 	 * automatically when hosting a listen server session.
 	 */
@@ -358,19 +350,15 @@ public:
 	void DestroyEasySessionForEveryone(FText Reason);
 
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
 	bool SendSessionInviteToFriend(const FEasySessionFriend& Friend);
 
 	/** Open the platform invite overlay (e.g. Steam) for the current session. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
 	bool ShowInviteUI();
 
 	/** Open the platform profile overlay (e.g. Steam) for the given friend. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
 	bool ShowProfileUI(const FEasySessionFriend& Friend);
 
 	/** Open the platform profile overlay (e.g. Steam) for a player in the session. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites")
 	bool ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player);
 
 	/**
@@ -381,11 +369,9 @@ public:
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete = FEasyFriendsCompleteDelegate());
 
 	/** Check whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool HasPendingDisconnectInfo() const { return bHasPendingDisconnectInfo; }
 
 	/** Get the last disconnect info and clear the pending flag. Survives map travel. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession")
 	FEasyDisconnectInfo ConsumeLastDisconnectInfo();
 
 	/**
@@ -486,17 +472,6 @@ private:
 	 * standalone game all answer true.
 	 */
 	bool IsNetworkServer() const;
-
-	/**
-	 * Whether this process created the session that exists now, and therefore serves
-	 * it. This is the question every server-side step of the session lifecycle asks:
-	 * replicating the state, spawning the state carrier, tearing the session down for
-	 * everyone, and deciding which side of a network failure this process is on.
-	 *
-	 * IsHost answers a different question - whether a local player owns the room - and
-	 * cannot stand in for this one, because a dedicated server has no local player.
-	 */
-	bool IsSessionAuthority() const;
 
 	/**
 	 * Host: make sure the replicated state actor exists in the current world and
