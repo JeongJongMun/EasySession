@@ -7,10 +7,19 @@
 | Field | Default | Notes |
 |---|---|---|
 | Search | (defaults) | Same filters as Find Easy Sessions |
-| Host | (defaults) | Used when falling back to hosting |
+| Host | **Map Name required** | Used when falling back to hosting. See below |
 | Allow Host Fallback | true | **Set false for dedicated-server games** - clients then only search & join, and fail with `NoSessionsFound` when empty |
 | Max Search Passes | 3 | Search retries before giving up / hosting |
 | Delay Between Passes | 2.0s | |
+
+### Host > Map Name is required
+
+Matchmaking cannot pick where the match is played, so this one has no default. Hosting
+with an empty Map Name skips the travel, and that travel is what turns the host into a
+listen server - the session would be advertised with nobody able to connect. Quick Match
+refuses to start in that case and fails with `InvalidParams`.
+
+Turn off `Allow Host Fallback` if this game should only ever join.
 
 Progress can be shown by binding `OnStateChanged` on the policy (`Get Active Matchmaking Policy`): `Searching -> Joining -> Hosting -> Complete`.
 
