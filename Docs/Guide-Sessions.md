@@ -54,6 +54,59 @@ Each `FEasySessionSearchResult` exposes: display name, host name, ping, max play
 
 EasySession validates the host address **before** reporting success - if the host is not actually reachable (see [FAQ: port 0](FAQ.md)), you get an immediate `ResolveFailure` with an explanation instead of a 20-second connection timeout, and the half-joined session is cleaned up so you can retry right away.
 
+## Password protected sessions
+
+### Locking a session
+
+Set `Password` on the host params. That is the whole setup.
+
+```
+Create Easy Session
+  Host Params > Password = "1234"
+```
+
+The password itself is never advertised. Only a "password protected" flag goes out with
+the session, which `Find Easy Sessions` returns as `Password Protected` on each search
+result - use it to decide whether to prompt.
+
+### Joining a locked session
+
+Pass the player's answer to the `Password` pin on `Join Easy Session`. The plugin appends
+it to the travel URL for the travels it performs.
+
+### Reading the result
+
+**`On Success` does not mean you were let in.** It means the session accepted the join and
+the host address resolved. The password is checked by the host as the connection arrives,
+which happens after that.
+
+A refused connection arrives as a disconnect, which sends the player back to the menu
+level (`bAutoReturnToMenuOnDisconnect`, on by default). Read it there:
+
+```
+Event Construct
+  Has Pending Easy Disconnect Info ?
+    Consume Last Easy Disconnect Info  ->  Break Easy Disconnect Info
+                                             Reason      == Rejected
+                                             Reason Text == "Wrong session password."
+```
+
+The information survives the travel precisely so the menu can show it. `Reason Text` is
+written by the host and is safe to show the player.
+
+Check `Reason` rather than matching the text - a match that no longer accepts joins
+refuses with `Rejected` too, and only the text differs.
+
+`On Session Failure` fires at the moment of the failure if you need it earlier, but it
+carries the raw engine string, which can be a debug dump. Prefer the disconnect info.
+
+### Friends skip the password
+
+`Friends Bypass Password` defaults to **true**. Platform invites carry no password prompt,
+so an invited friend would otherwise be turned away by the session they were invited to.
+The host verifies friendship against the platform friends list, which the joining player
+cannot fake. This has no effect on NULL/LAN, where there are no friends.
+
 ## Updating
 
 `Update Easy Session` re-advertises the current session with new display name, max players, advertise flag, join-in-progress flag and custom settings. Host only. Map Name and Host Mode are ignored - you cannot change those live (travel instead).

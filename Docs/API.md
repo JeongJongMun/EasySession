@@ -10,7 +10,7 @@ All nodes: `OnSuccess` / `OnFailure` exec pins with `Result` (`EEasySessionResul
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Creates + advertises; ensures listen server; travels if Map Name set |
 | **Find Easy Sessions** | `SearchParams` | `OnSuccess` also carries `Results` array; results cached |
-| **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true` | Validates host address before success; auto ClientTravel |
+| **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true`, `Password` | Validates host address before success; auto ClientTravel. Success means the address resolved, not that the host let you in - a password or join-in-progress refusal arrives later as a `Rejected` disconnect ([guide](Guide-Sessions.md)) |
 | **Start Easy Session** | - | Session authority only; Pending -> InProgress |
 | **End Easy Session** | - | Session authority only; InProgress -> Ended |
 | **Update Easy Session** | `NewHostParams` | Session authority only; Map Name / Host Mode ignored |
@@ -43,6 +43,11 @@ All nodes: `OnSuccess` / `OnFailure` exec pins with `Result` (`EEasySessionResul
 **EEasyMatchmakingState** - `Idle`, `Searching`, `Joining`, `Hosting`, `Complete`
 
 **EEasySessionHostMode** - `ListenServer`, `DedicatedServer`
+
+**EEasyDisconnectReason** - `None`, `ConnectionLost`, `HostEndedSession`, `TravelFailure`, `Rejected`
+
+`Rejected` is the host turning the connection away with a sentence of its own (wrong
+password, match no longer joinable). Read it with `Consume Last Easy Disconnect Info`.
 
 ## UEasySessionSubsystem
 
