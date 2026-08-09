@@ -380,8 +380,9 @@ enum class EEasyMatchmakingState : uint8
 
 /**
  * Parameters for QuickMatch matchmaking.
- * All values have sensible defaults - an empty FEasyQuickMatchParams searches for any
- * public session and hosts a 4 player listen session if none is found.
+ * The search filters default to "any public session". Host > Map Name has no default
+ * and must be set: matchmaking cannot decide where the match is played, and hosting
+ * without a map leaves a session nobody can connect to.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasyQuickMatchParams
@@ -392,7 +393,11 @@ struct EASYSESSION_API FEasyQuickMatchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionSearchParams Search;
 
-	/** Session to host when no session is found. Ignored when Allow Host Fallback is false. */
+	/**
+	 * Session to host when no session is found. Map Name is required here, unlike in
+	 * Create Easy Session where an empty one means "stay put".
+	 * Ignored when Allow Host Fallback is false.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionHostParams Host;
 
