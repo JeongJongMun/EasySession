@@ -9,7 +9,8 @@ class UWorld;
 /**
  * Startup diagnostics that detect common online configuration mistakes and log
  * actionable fixes: missing ini entries, wrong net driver, login problems.
- * Runs once when the subsystem comes up and on demand via EasySession.Diagnose.
+ * Outside Shipping, runs once when the subsystem comes up; on demand via
+ * EasySession.Diagnose, which is itself Shipping-free.
  */
 namespace EasySessionDiagnostics
 {

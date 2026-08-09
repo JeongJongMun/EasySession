@@ -84,7 +84,12 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		}
 
 		Social->BindInviteDelegates();
+#if !UE_BUILD_SHIPPING
+		// The fixes it prints are for whoever builds the game, not whoever plays it.
+		// Packaged development builds keep it: that is where a service that works in
+		// the editor and not in a build gets diagnosed.
 		EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+#endif
 		InviteBindTickerHandle.Reset();
 		return false;
 	}), 0.5f);
