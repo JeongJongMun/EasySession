@@ -61,8 +61,9 @@ private:
 };
 
 /**
- * Host side of the approval request. Owns the policy: whether a given request may join
- * the session this host created.
+ * Host side of the approval request. The decision is not made here - it is made by
+ * FEasySessionServerGate, the same object PreLogin asks - this actor only carries
+ * the question over the beacon.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
 class AEasySessionJoinApprovalBeaconHostObject : public AOnlineBeaconHostObject
@@ -74,15 +75,8 @@ public:
 	AEasySessionJoinApprovalBeaconHostObject();
 
 	/**
-	 * Decide whether a join request is allowed. Returns the denial reason through
-	 * OutReason when it is not.
-	 *
-	 * SPIKE: compares against ExpectedPassword. The real version asks the
-	 * subsystem's server gate, which already owns the session credentials and the
-	 * join-in-progress policy.
+	 * Ask the ServerGate whether this player may join. Returns the denial reason
+	 * through OutReason. Refuses when there is no subsystem to ask.
 	 */
-	bool ApproveJoin(const FString& Password, FString& OutReason) const;
-
-	/** SPIKE: fixed credential for the round-trip test. Empty approves everyone. */
-	FString ExpectedPassword;
+	bool ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& Password, FString& OutReason) const;
 };

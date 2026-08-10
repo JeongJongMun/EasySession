@@ -3,6 +3,10 @@
 #include "EasySessionJoinApprovalBeacon.h"
 
 #include "EasySession.h"
+#include "EasySessionServerGate.h"
+#include "EasySessionSubsystem.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
 
 AEasySessionJoinApprovalBeaconClient::AEasySessionJoinApprovalBeaconClient()
 {
@@ -31,17 +35,19 @@ void AEasySessionJoinApprovalBeaconClient::OnConnected()
 
 void AEasySessionJoinApprovalBeaconClient::ServerRequestJoin_Implementation(const FString& Password)
 {
-	// Runs on the host's mirror of this actor, spawned by the host object.
+	// Runs on the host, on the copy of this actor that AOnlineBeaconHostObject::
+	// SpawnBeaconActor created for this connection. GetUniqueId is the id the joiner
+	// presented at beacon login - the engine already refused the connection if it was invalid.
 	FString Reason;
 	bool bApproved = false;
 
 	if (const AEasySessionJoinApprovalBeaconHostObject* HostObject = Cast<AEasySessionJoinApprovalBeaconHostObject>(GetBeaconOwner()))
 	{
-		bApproved = HostObject->ApproveJoin(Password, Reason);
+		bApproved = HostObject->ApproveJoin(GetUniqueId(), Password, Reason);
 	}
 	else
 	{
-		Reason = TEXT("The host is not answering join queries.");
+		Reason = TEXT("The host is not answering join requests.");
 	}
 
 	ClientReceiveResponse(bApproved, Reason);
@@ -76,13 +82,15 @@ AEasySessionJoinApprovalBeaconHostObject::AEasySessionJoinApprovalBeaconHostObje
 	BeaconTypeName = ClientBeaconActorClass->GetName();
 }
 
-bool AEasySessionJoinApprovalBeaconHostObject::ApproveJoin(const FString& Password, FString& OutReason) const
+bool AEasySessionJoinApprovalBeaconHostObject::ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& Password, FString& OutReason) const
 {
-	if (!ExpectedPassword.IsEmpty() && ExpectedPassword != Password.TrimStartAndEnd())
+	const UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
+	const UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
+	if (Subsystem == nullptr || !Subsystem->ServerGate.IsValid())
 	{
-		OutReason = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
+		OutReason = TEXT("The host is not answering join requests.");
 		return false;
 	}
 
-	return true;
+	return Subsystem->ServerGate->ApproveJoin(PlayerId, Password, OutReason);
 }

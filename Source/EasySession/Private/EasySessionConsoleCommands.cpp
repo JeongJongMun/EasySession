@@ -309,7 +309,7 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconHostCommand(
 		TEXT("EasySession.SpikeBeaconHost"),
-		TEXT("SPIKE: listen for join queries and advertise the beacon port. Optional arg: expected password."),
+		TEXT("SPIKE: listen for join requests, answered by the server gate's session credentials."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (World == nullptr)
@@ -333,7 +333,6 @@ namespace EasySessionConsole
 			}
 
 			AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>();
-			HostObject->ExpectedPassword = Args.Num() > 0 ? Args[0] : FString();
 			Host->RegisterHost(HostObject);
 			Host->PauseBeaconRequests(false);
 
@@ -351,8 +350,8 @@ namespace EasySessionConsole
 				}
 			}
 
-			Print(FString::Printf(TEXT("SpikeBeaconHost: listening on port %d, %s (password '%s')."),
-				Host->GetListenPort(), *Advertised, *HostObject->ExpectedPassword));
+			Print(FString::Printf(TEXT("SpikeBeaconHost: listening on port %d, %s."),
+				Host->GetListenPort(), *Advertised));
 		}));
 
 	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconJoinCommand(

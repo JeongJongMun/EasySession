@@ -11,16 +11,16 @@ class UEasySessionSubsystem;
 struct FUniqueNetIdRepl;
 
 /**
- * The host's door policy: who may connect, and who counts as being in the session.
+ * The host's door policy: who may join, and who counts as being in the session.
  *
- * Everything here runs on the server only - game modes do not exist on clients - and
- * reacts to engine events (PreLogin, PostLogin, Logout) rather than to anything the
- * local player asks for. That is a different job from driving the local session, so
- * it lives apart from the subsystem's own flow.
+ * Runs on the server only - game modes do not exist on clients. ApproveJoin makes
+ * the join decision; the approval beacon asks it before a client travels, and
+ * PreLogin asks it again when one arrives. PostLogin and Logout keep the session's
+ * player list matching who is actually connected.
  *
  * This object owns the session credentials because it is what enforces them: the
- * password is only ever compared here, and the subsystem hands it over when a
- * session is created and takes it back when one is destroyed.
+ * password is only ever compared here. The subsystem hands them over when a session
+ * is created or updated, and takes them back when it is destroyed.
  *
  * Owned by the subsystem and destroyed with it. Delegates are bound raw because this
  * object cannot outlive the owner that unbinds them in Shutdown.
@@ -53,6 +53,13 @@ public:
 
 	/** Whether friends of the host may join a password session without it. */
 	bool GetFriendsBypassPassword() const { return bFriendsBypassPassword; }
+
+	/**
+	 * Decide whether a player may join: checks the join-in-progress policy, then the
+	 * password, letting friends of the host through without one.
+	 * When refusing, OutReason carries the message shown to the player.
+	 */
+	bool ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
 
 private:
 

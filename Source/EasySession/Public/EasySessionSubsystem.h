@@ -66,6 +66,7 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 	friend class FEasySessionSocial;
 	friend class FEasySessionServerGate;
 	friend class FEasySessionJoinApproval;
+	friend class AEasySessionJoinApprovalBeaconHostObject;
 	friend class FEasySessionTestAccess;
 
 public:

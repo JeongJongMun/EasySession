@@ -71,6 +71,59 @@ bool FEasySessionServerGate::IsOwnWorld(const AGameModeBase* GameMode) const
 	return GameMode != nullptr && OwnWorld != nullptr && GameMode->GetWorld() == OwnWorld;
 }
 
+bool FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const
+{
+	UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
+
+	// Searching already hides a started session, but a result fetched before the match
+	// started and a direct connect both get past that - so the host rejects here too.
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(OwnWorld);
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession != nullptr && !NamedSession->SessionSettings.bAllowJoinInProgress)
+	{
+		const EEasySessionState LocalState = Owner.GetLocalSessionState();
+		if (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress)
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - the match is in progress and join-in-progress is disabled."), *PlayerId.ToString());
+			OutReason = NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress.").ToString();
+			return false;
+		}
+	}
+
+	if (SessionPassword.IsEmpty())
+	{
+		return true;
+	}
+
+	if (SuppliedPassword.TrimStartAndEnd().Equals(SessionPassword, ESearchCase::CaseSensitive))
+	{
+		return true;
+	}
+
+	// Invited players arrive without the password, and invites only go to friends -
+	// so being a friend of the host counts as knowing it.
+	if (bFriendsBypassPassword && PlayerId.IsValid())
+	{
+		const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(OwnWorld);
+		const IOnlineFriendsPtr Friends = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
+		if (Friends.IsValid() && Friends->IsFriend(0, *PlayerId.GetUniqueNetId(), EFriendsLists::ToString(EFriendsLists::Default)))
+		{
+			UE_LOG(LogEasySession, Log, TEXT("ServerGate: '%s' joins without the password - friend of the host."), *PlayerId.ToString());
+			return true;
+		}
+	}
+
+	// Never log the password: on a listen server the log file sits on a player's
+	// machine. Logging which kind of failure happened is enough.
+	UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - %s."),
+		*PlayerId.ToString(),
+		SuppliedPassword.IsEmpty()
+			? TEXT("no session password was supplied")
+			: TEXT("the supplied session password did not match"));
+	OutReason = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
+	return false;
+}
+
 void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage)
 {
 	// Fires on the server only (game modes do not exist on clients).
@@ -87,82 +140,40 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 
 	UWorld* OwnWorld = Owner.GetGameInstance()->GetWorld();
 
-	// Join-in-progress gate. Searching already hides a started session - NULL
-	// refuses to answer LAN queries for one (IsSessionJoinable, called from
-	// OnValidQueryPacketReceived in OnlineSessionInterfaceNull.cpp) - but that
-	// leaves two ways in: a result fetched before the match started still joins
-	// fine (a NULL join never asks the host), and a direct connect skips searching
-	// entirely. The host is the authority on its own session and rejects here.
-	// New connections only: in-session map changes must use seamless travel (the
-	// plugin's own travels do), or reconnecting players would be caught by this
-	// gate too.
-	const IOnlineSessionPtr PreLoginSessions = Online::GetSessionInterface(OwnWorld);
-	const FNamedOnlineSession* PreLoginSession = PreLoginSessions.IsValid() ? PreLoginSessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (PreLoginSession != nullptr && !PreLoginSession->SessionSettings.bAllowJoinInProgress)
+	// The password arrives in the travel URL. The engine sets Connection->PlayerId before
+	// PreLogin, so the joiner's connection can be found by id and its URL read. In-session
+	// map changes must use seamless travel, or players already in would be rejected here.
+	FString SuppliedPassword;
+	if (!SessionPassword.IsEmpty())
 	{
-		const EEasySessionState LocalState = Owner.GetLocalSessionState();
-		if (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress)
+		const UNetConnection* PendingConnection = nullptr;
+		if (const UNetDriver* NetDriver = OwnWorld->GetNetDriver())
 		{
-			UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - the match is in progress and join-in-progress is disabled."), *NewPlayer.ToString());
-			ErrorMessage = NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress.").ToString();
+			for (const TObjectPtr<UNetConnection>& ClientConnection : NetDriver->ClientConnections)
+			{
+				if (ClientConnection != nullptr && ClientConnection->PlayerId == NewPlayer)
+				{
+					PendingConnection = ClientConnection;
+					break;
+				}
+			}
+		}
+
+		if (PendingConnection == nullptr)
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("PreLogin: could not find the pending connection for '%s'. Rejecting to protect the password session."), *NewPlayer.ToString());
+			ErrorMessage = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
 			return;
 		}
+
+		SuppliedPassword = EasySessionAddress::DecodeTravelOptionValue(
+			EasySessionAddress::ParseTravelOption(PendingConnection->RequestURL, EasySession::TravelOption_Password));
 	}
 
-	if (SessionPassword.IsEmpty())
+	FString Reason;
+	if (!ApproveJoin(NewPlayer, SuppliedPassword, Reason))
 	{
-		return;
-	}
-
-	// The engine sets Connection->PlayerId before PreLogin, so the pending
-	// connection can be found by id and its travel URL inspected.
-	const UNetConnection* PendingConnection = nullptr;
-	if (const UNetDriver* NetDriver = OwnWorld->GetNetDriver())
-	{
-		for (const TObjectPtr<UNetConnection>& ClientConnection : NetDriver->ClientConnections)
-		{
-			if (ClientConnection != nullptr && ClientConnection->PlayerId == NewPlayer)
-			{
-				PendingConnection = ClientConnection;
-				break;
-			}
-		}
-	}
-
-	if (PendingConnection == nullptr)
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: could not find the pending connection for '%s'. Rejecting to protect the password session."), *NewPlayer.ToString());
-		ErrorMessage = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
-		return;
-	}
-
-	const FString SuppliedPassword = EasySessionAddress::DecodeTravelOptionValue(
-		EasySessionAddress::ParseTravelOption(PendingConnection->RequestURL, EasySession::TravelOption_Password));
-
-	if (!SuppliedPassword.Equals(SessionPassword, ESearchCase::CaseSensitive))
-	{
-		// Invited players never carry the password (the invite flow has no password prompt),
-		// but platform invites can only be sent to friends - so a host-side friends check
-		// lets them in. Platform-verified: the joining id cannot fake being a friend.
-		if (bFriendsBypassPassword && NewPlayer.IsValid())
-		{
-			const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(OwnWorld);
-			const IOnlineFriendsPtr Friends = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
-			if (Friends.IsValid() && Friends->IsFriend(0, *NewPlayer.GetUniqueNetId(), EFriendsLists::ToString(EFriendsLists::Default)))
-			{
-				UE_LOG(LogEasySession, Log, TEXT("PreLogin: '%s' joins without the password - friend of the host."), *NewPlayer.ToString());
-				return;
-			}
-		}
-
-		// The password and the URL carrying it stay out of the log - on a listen
-		// server that file belongs to a player. Which failure it was is enough.
-		UE_LOG(LogEasySession, Warning, TEXT("PreLogin: rejecting '%s' - %s."),
-			*NewPlayer.ToString(),
-			SuppliedPassword.IsEmpty()
-				? TEXT("no session password was supplied")
-				: TEXT("the supplied session password did not match"));
-		ErrorMessage = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
+		ErrorMessage = Reason;
 	}
 }
 
