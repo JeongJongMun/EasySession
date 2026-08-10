@@ -5,10 +5,10 @@
 #include "CoreMinimal.h"
 #include "OnlineBeaconClient.h"
 #include "OnlineBeaconHostObject.h"
-#include "EasySessionQueryBeacon.generated.h"
+#include "EasySessionJoinApprovalBeacon.generated.h"
 
-/** Answer to a pre-travel join query, delivered before any map load happens. */
-DECLARE_DELEGATE_TwoParams(FEasyQueryJoinResponse, bool /*bApproved*/, const FString& /*Reason*/);
+/** Answer to a pre-travel approval request, delivered before any map load happens. */
+DECLARE_DELEGATE_TwoParams(FEasyJoinApprovalResponse, bool /*bApproved*/, const FString& /*Reason*/);
 
 /**
  * Asks the host "may this player join?" over a beacon, before any travel starts.
@@ -24,21 +24,21 @@ DECLARE_DELEGATE_TwoParams(FEasyQueryJoinResponse, bool /*bApproved*/, const FSt
  * matchmaking backend, and this exchange is a single question and answer.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
-class AEasySessionQueryBeaconClient : public AOnlineBeaconClient
+class AEasySessionJoinApprovalBeaconClient : public AOnlineBeaconClient
 {
 	GENERATED_BODY()
 
 public:
 
-	AEasySessionQueryBeaconClient();
+	AEasySessionJoinApprovalBeaconClient();
 
 	/**
 	 * Connect to the host beacon and ask to join once connected.
 	 * The answer (or a connection failure) arrives through OnResponse exactly once.
 	 */
-	bool Query(const FString& Address, int32 Port, const FString& Password);
+	bool RequestApproval(const FString& Address, int32 Port, const FString& Password);
 
-	FEasyQueryJoinResponse OnResponse;
+	FEasyJoinApprovalResponse OnResponse;
 
 	UFUNCTION(Server, Reliable)
 	void ServerRequestJoin(const FString& Password);
@@ -53,7 +53,7 @@ public:
 
 private:
 
-	/** Held between Query and OnConnected, then sent to the host. */
+	/** Held between RequestApproval and OnConnected, then sent to the host. */
 	FString PendingPassword;
 
 	/** The response fires exactly once - a failure after an answer stays silent. */
@@ -61,17 +61,17 @@ private:
 };
 
 /**
- * Host side of the join query. Owns the policy: whether a given request may join
- * the session this host is serving.
+ * Host side of the approval request. Owns the policy: whether a given request may join
+ * the session this host created.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
-class AEasySessionQueryBeaconHostObject : public AOnlineBeaconHostObject
+class AEasySessionJoinApprovalBeaconHostObject : public AOnlineBeaconHostObject
 {
 	GENERATED_BODY()
 
 public:
 
-	AEasySessionQueryBeaconHostObject();
+	AEasySessionJoinApprovalBeaconHostObject();
 
 	/**
 	 * Decide whether a join request is allowed. Returns the denial reason through

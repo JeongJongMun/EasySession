@@ -28,7 +28,7 @@
 
 #include "EasySession.h"
 #include "EasySessionDiagnostics.h"
-#include "EasySessionQueryBeacon.h"
+#include "EasySessionJoinApprovalBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/Engine.h"
@@ -301,7 +301,7 @@ namespace EasySessionConsole
 				*EasySessionDiagnostics::RunDiagnostics(World)));
 		}));
 
-	// SPIKE (ES-11): manual round-trip test for the pre-travel join query beacon.
+	// SPIKE (ES-11): manual round-trip test for the pre-travel join approval beacon.
 	// Removed (or replaced by the real join flow) once the beacon design lands.
 
 	/** The port both spike commands agree on. The real version advertises it instead. */
@@ -332,7 +332,7 @@ namespace EasySessionConsole
 				return;
 			}
 
-			AEasySessionQueryBeaconHostObject* HostObject = World->SpawnActor<AEasySessionQueryBeaconHostObject>();
+			AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>();
 			HostObject->ExpectedPassword = Args.Num() > 0 ? Args[0] : FString();
 			Host->RegisterHost(HostObject);
 			Host->PauseBeaconRequests(false);
@@ -357,7 +357,7 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconJoinCommand(
 		TEXT("EasySession.SpikeBeaconJoin"),
-		TEXT("SPIKE: query the beacon of the last search's first result. Args: [password] [index]."),
+		TEXT("SPIKE: ask the beacon of the last search's first result. Args: [password] [index]."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			UEasySessionSubsystem* Subsystem = GetSubsystem(World);
@@ -400,7 +400,7 @@ namespace EasySessionConsole
 				}
 			}
 
-			AEasySessionQueryBeaconClient* Client = World->SpawnActor<AEasySessionQueryBeaconClient>();
+			AEasySessionJoinApprovalBeaconClient* Client = World->SpawnActor<AEasySessionJoinApprovalBeaconClient>();
 			if (Client == nullptr)
 			{
 				Print(TEXT("SpikeBeaconJoin: could not spawn the beacon client."));
@@ -414,7 +414,7 @@ namespace EasySessionConsole
 					Reason.IsEmpty() ? TEXT("") : TEXT(" - "), *Reason));
 			});
 
-			if (Client->Query(Address, Port, Password))
+			if (Client->RequestApproval(Address, Port, Password))
 			{
 				Print(FString::Printf(TEXT("SpikeBeaconJoin: querying %s:%d (resolved '%s')..."), *Address, Port, *ConnectString));
 			}
