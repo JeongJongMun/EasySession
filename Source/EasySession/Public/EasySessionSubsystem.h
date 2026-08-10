@@ -24,6 +24,7 @@ namespace ETravelFailure
 class AController;
 class AGameModeBase;
 class APlayerController;
+class FEasySessionJoinApproval;
 class FEasySessionRequest;
 class FEasySessionRequestQueue;
 class FEasySessionServerGate;
@@ -64,6 +65,7 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 	// would sit next to the ones users are meant to call and invite the wrong choice.
 	friend class FEasySessionSocial;
 	friend class FEasySessionServerGate;
+	friend class FEasySessionJoinApproval;
 	friend class FEasySessionTestAccess;
 
 public:
@@ -572,4 +574,5 @@ private:
 	TUniquePtr<FEasySessionTravel> Travel;
 	TUniquePtr<FEasySessionSocial> Social;
 	TUniquePtr<FEasySessionServerGate> ServerGate;
+	TUniquePtr<FEasySessionJoinApproval> JoinApproval;
 };

@@ -12,6 +12,7 @@
 #include "EasySessionStateActor.h"
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
+#include "EasySessionJoinApproval.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -62,6 +63,8 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Social = MakeUnique<FEasySessionSocial>(*this);
 	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
 	ServerGate->Initialize();
+	JoinApproval = MakeUnique<FEasySessionJoinApproval>(*this);
+	JoinApproval->Initialize();
 
 	if (GEngine != nullptr)
 	{
@@ -168,6 +171,7 @@ void UEasySessionSubsystem::Deinitialize()
 	Travel.Reset();
 	Social.Reset();
 	ServerGate.Reset();
+	JoinApproval.Reset();
 
 	ActiveMatchmakingPolicy = nullptr;
 	ActiveSearch.Reset();

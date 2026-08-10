@@ -132,6 +132,21 @@ namespace EasySession
 	/** Custom session setting key marking a password protected session. The password itself is never advertised. */
 	EASYSESSION_API extern const FName SettingKey_PasswordProtected;
 
+	/**
+	 * Custom session setting key marking a session whose host answers join approval
+	 * over a beacon. Approval covers every joining rule - password, room, joinable
+	 * state - not just passwords, so it is written for every session this plugin
+	 * hosts and there is no per-session switch.
+	 */
+	EASYSESSION_API extern const FName SettingKey_JoinApproval;
+
+	/**
+	 * The port a join approval beacon listens on, read from the AOnlineBeaconHost config
+	 * so a project can move it in DefaultEngine.ini. Advertised on the session, because
+	 * the beacon does not exist yet when the session is created.
+	 */
+	EASYSESSION_API int32 GetJoinApprovalBeaconPort();
+
 	/** Travel URL option carrying the password a client supplies when joining. */
 	EASYSESSION_API extern const TCHAR* TravelOption_Password;
 }

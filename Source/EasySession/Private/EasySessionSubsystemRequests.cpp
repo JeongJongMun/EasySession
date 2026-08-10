@@ -18,6 +18,7 @@
 #include "EasySessionStateActor.h"
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
+#include "EasySessionJoinApproval.h"
 #include "EasySessionSettings.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -225,19 +226,34 @@ void UEasySessionSubsystem::ExecuteCreate()
 	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
+	// The title a session browser lists. The service's own name field is the host account.
 	Settings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The map the host is on, under the engine's own key. Skipped when unnamed.
 	if (!Params.MapName.IsEmpty())
 	{
 		Settings.Set(SETTING_MAPNAME, Params.MapName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
-	// Written for both states: an absent key cannot be queried or cleared later.
-	// Hidden sessions stay advertised so invites still work; Find filters them out.
+
+	// Whether Find skips this session. Written even when false: an advertised key cannot be deleted later.
 	Settings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// Only the protection flag is advertised - the password itself never leaves the host.
-	// Trimmed for the same reason the gate trims what it stores: a whitespace-only
-	// password enforces nothing, so it must not advertise protection either.
+	// Whether joining needs a password. The joining game reads it back as
+	// FEasySessionSearchResult::bPasswordProtected and asks for one before joining.
+	// Trimmed like ServerGate's copy: a whitespace-only password enforces nothing.
 	Settings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The port joiners reach the join approval beacon on. Read from config rather than
+	// from a running beacon, because none exists yet - one is created per world, after
+	// each travel. GetResolvedConnectString reads this key to build the beacon address.
+	Settings.Set(SETTING_BEACONPORT, EasySession::GetJoinApprovalBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// Whether this host runs a join approval beacon. Joiners that find the key ask for
+	// approval before traveling, and the host itself reads it back after each travel to
+	// decide whether the new world needs a beacon of its own.
+	Settings.Set(EasySession::SettingKey_JoinApproval, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
 		Settings.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -455,6 +471,9 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
+	
+	// Hosting without a travel stays in this world - start the beacon here; every later world starts its own.
+	JoinApproval->EnsureHost();
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 	Travel->EnsureHostIsListening(HostParams);
@@ -609,6 +628,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
 	bCreatedActiveSession = false;
 	ServerGate->ClearSessionCredentials();
+	JoinApproval->StopHost();
 
 	// The session is gone - drop the replicated state carrier and cache with it.
 	if (AEasySessionStateActor* Actor = StateActor.Get())

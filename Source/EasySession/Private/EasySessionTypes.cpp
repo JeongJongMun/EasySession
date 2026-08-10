@@ -2,6 +2,8 @@
 
 #include "EasySessionTypes.h"
 
+#include "OnlineBeaconHost.h"
+
 namespace EasySession
 {
 	/** Custom session setting key holding the session display name. */
@@ -13,8 +15,16 @@ namespace EasySession
 	/** Custom session setting key marking a password protected session. */
 	const FName SettingKey_PasswordProtected = TEXT("EASYPASSWORDPROTECTED");
 
+	/** Custom session setting key marking a session whose host answers join approval over a beacon. */
+	const FName SettingKey_JoinApproval = TEXT("EASYJOINAPPROVAL");
+
 	/** Travel URL option carrying the password a client supplies when joining. */
 	const TCHAR* TravelOption_Password = TEXT("EasySessionPassword");
+
+	int32 GetJoinApprovalBeaconPort()
+	{
+		return GetDefault<AOnlineBeaconHost>()->ListenPort;
+	}
 
 	FString ResultToString(EEasySessionResult Result)
 	{

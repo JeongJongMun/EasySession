@@ -1,0 +1,199 @@
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
+
+#include "EasySessionJoinApproval.h"
+
+#include "EasySession.h"
+#include "EasySessionJoinApprovalBeacon.h"
+#include "EasySessionRequestQueue.h"
+#include "EasySessionSubsystem.h"
+#include "EasySessionTypes.h"
+#include "Engine/GameInstance.h"
+#include "Engine/World.h"
+#include "GameFramework/GameModeBase.h"
+#include "OnlineBeaconHost.h"
+#include "Online/OnlineSessionNames.h"
+#include "OnlineSessionSettings.h"
+#include "OnlineSubsystemUtils.h"
+
+FEasySessionJoinApproval::~FEasySessionJoinApproval()
+{
+	Shutdown();
+}
+
+void FEasySessionJoinApproval::Initialize()
+{
+	GameModeInitializedHandle = FGameModeEvents::GameModeInitializedEvent.AddRaw(this, &FEasySessionJoinApproval::HandleGameModeInitialized);
+}
+
+void FEasySessionJoinApproval::Shutdown()
+{
+	if (GameModeInitializedHandle.IsValid())
+	{
+		FGameModeEvents::GameModeInitializedEvent.Remove(GameModeInitializedHandle);
+		GameModeInitializedHandle.Reset();
+	}
+
+	if (AdvertiseTickerHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(AdvertiseTickerHandle);
+		AdvertiseTickerHandle.Reset();
+	}
+
+	StopHost();
+}
+
+bool FEasySessionJoinApproval::EnsureHost()
+{
+	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
+	if (World == nullptr || World->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+
+	// Run the beacon only when the session advertised it
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	int32 bJoinApproval = 0;
+	if (NamedSession == nullptr || !NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) || bJoinApproval == 0)
+	{
+		return false;
+	}
+
+	if (BeaconHost.IsValid() && BeaconHost->GetWorld() == World)
+	{
+		return true;
+	}
+
+	StopHost();
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.ObjectFlags |= RF_Transient;
+
+	AOnlineBeaconHost* Host = World->SpawnActor<AOnlineBeaconHost>(SpawnParams);
+	if (Host == nullptr)
+	{
+		return false;
+	}
+
+	// ListenPort is left as the class default so a project can move the beacon from DefaultEngine.ini.
+	if (!Host->InitHost())
+	{
+		UE_LOG(LogEasySession, Error,
+			TEXT("Could not start the join approval beacon. Players will not be told why a join is refused until they have already traveled. Check that a BeaconNetDriver definition exists - clearing NetDriverDefinitions removes the engine's."));
+		Host->DestroyBeacon();
+		return false;
+	}
+
+	AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>(SpawnParams);
+	if (HostObject == nullptr)
+	{
+		Host->DestroyBeacon();
+		return false;
+	}
+
+	Host->RegisterHost(HostObject);
+	Host->PauseBeaconRequests(false);
+
+	BeaconHost = Host;
+	BeaconHostObject = HostObject;
+
+	UE_LOG(LogEasySession, Log, TEXT("Join approval beacon listening on port %d."), Host->GetListenPort());
+
+	// Joiners connect to the advertised port, and the engine binds the next free one when
+	// the configured port is taken. Move the advertisement onto the port actually bound.
+	int32 AdvertisedPort = 0;
+	NamedSession->SessionSettings.Get(SETTING_BEACONPORT, AdvertisedPort);
+	if (AdvertisedPort != Host->GetListenPort() && !AdvertiseTickerHandle.IsValid())
+	{
+		AdvertiseTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
+			FTickerDelegate::CreateRaw(this, &FEasySessionJoinApproval::TickAdvertiseBoundPort));
+	}
+
+	return true;
+}
+
+bool FEasySessionJoinApproval::TickAdvertiseBoundPort(float DeltaTime)
+{
+	// A request in flight has its completion delegate bound, and this update would wake
+	// that handler and finish the wrong request. Keep ticking until the queue is idle -
+	// EnsureHost runs while the create it followed is still active.
+	if (!Owner.RequestQueue.IsValid() || !Owner.RequestQueue->IsIdle())
+	{
+		return true;
+	}
+
+	AdvertiseTickerHandle.Reset();
+
+	AOnlineBeaconHost* Host = BeaconHost.Get();
+	const UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
+	if (Host == nullptr || World == nullptr)
+	{
+		return false;
+	}
+
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return false;
+	}
+
+	// A later world may have bound the configured port after all, which the waiting
+	// ticker cannot know until it runs.
+	const int32 BoundPort = Host->GetListenPort();
+	int32 AdvertisedPort = 0;
+	NamedSession->SessionSettings.Get(SETTING_BEACONPORT, AdvertisedPort);
+	if (AdvertisedPort == BoundPort)
+	{
+		return false;
+	}
+
+	FOnlineSessionSettings Corrected = NamedSession->SessionSettings;
+	Corrected.Set(SETTING_BEACONPORT, BoundPort, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	if (Sessions->UpdateSession(NAME_GameSession, Corrected, true))
+	{
+		UE_LOG(LogEasySession, Log,
+			TEXT("Another process holds port %d, so the join approval beacon bound %d. The session now advertises %d."),
+			AdvertisedPort, BoundPort, BoundPort);
+	}
+	else
+	{
+		UE_LOG(LogEasySession, Warning,
+			TEXT("The join approval beacon bound port %d but the session still advertises %d, and the online service refused the correction. Joiners will ask whichever process holds port %d about joining this one."),
+			BoundPort, AdvertisedPort, AdvertisedPort);
+	}
+
+	return false;
+}
+
+void FEasySessionJoinApproval::StopHost()
+{
+	if (AEasySessionJoinApprovalBeaconHostObject* HostObject = BeaconHostObject.Get())
+	{
+		HostObject->Unregister();
+		HostObject->Destroy();
+	}
+	BeaconHostObject.Reset();
+
+	if (AOnlineBeaconHost* Host = BeaconHost.Get())
+	{
+		Host->DestroyBeacon();
+	}
+	BeaconHost.Reset();
+}
+
+void FEasySessionJoinApproval::HandleGameModeInitialized(AGameModeBase* GameMode)
+{
+	// Fires on the server for every world, ours or another PIE instance's.
+	const UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
+	if (GameMode == nullptr || OwnWorld == nullptr || GameMode->GetWorld() != OwnWorld)
+	{
+		return;
+	}
+
+	if (Owner.IsSessionAuthority())
+	{
+		EnsureHost();
+	}
+}
