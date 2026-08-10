@@ -8,7 +8,7 @@ at a time.
 
 Behavior lives in the guides - this page gives you the names and shapes, and links out.
 
-**New to the plugin?** [Quick Start](QuickStart.md) gets a host and a joiner talking with
+**New to the plugin?** [Quick Start](QuickStart.en.md) gets a host and a joiner talking with
 three nodes; come back here for the rest.
 
 **Where the nodes are.** Most of them appear when you right-click in a Blueprint graph and
