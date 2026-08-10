@@ -14,7 +14,6 @@
 //   EasySession.Cancel          Cancel the running matchmaking.
 //   EasySession.Status          Print the current session state.
 //   EasySession.Friends         Read and print the friends list.
-//   EasySession.Invites         Print the pending session invites.
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.Diagnose        Run the online configuration diagnostics.
 

@@ -291,4 +291,4 @@ options. For anything expressible as a static string, prefer `AdditionalTravelOp
 
 ## 10. Console commands *(development builds only)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.Invites`, `EasySession.InviteUI`, `EasySession.Diagnose`
+`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`

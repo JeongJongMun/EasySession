@@ -285,4 +285,4 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ## 10. 콘솔 명령 *(개발 빌드 전용)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.Invites`, `EasySession.InviteUI`, `EasySession.Diagnose`
+`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`
