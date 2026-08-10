@@ -35,9 +35,20 @@ bInitServerOnClient=true
 [/Script/Engine.GameEngine]
 !NetDriverDefinitions=ClearArray
 +NetDriverDefinitions=(DefName="GameNetDriver",DriverClassName="/Script/SteamSockets.SteamSocketsNetDriver",DriverClassNameFallback="/Script/OnlineSubsystemUtils.IpNetDriver")
++NetDriverDefinitions=(DefName="BeaconNetDriver",DriverClassName="/Script/SteamSockets.SteamSocketsNetDriver",DriverClassNameFallback="/Script/OnlineSubsystemUtils.IpNetDriver")
 ```
 
 The `!NetDriverDefinitions=ClearArray` line matters: the engine's base config already defines a `GameNetDriver` entry and the **first** matching entry wins, so appending without clearing leaves your Steam driver as dead config.
+
+That same line also wipes the engine's default **`BeaconNetDriver`**, which is why the block
+puts it back. Beacons are separate lightweight connections - the engine and other plugins
+create them for lobbies, seat reservations and queries - and creating one fails outright
+when no definition is left. Drop the line only if you are certain nothing in your project
+uses a beacon.
+
+> Watch the fallback when you test. If SteamSockets cannot start, the engine quietly drops
+> to `IpNetDriver` instead of failing. That passes on a LAN and then breaks over the
+> internet, so confirm the driver class in the log rather than trusting that it connected.
 
 ## 3. Test checklist
 
