@@ -500,7 +500,7 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 		Info.PlayerName = PlayerState->GetPlayerName();
 		Info.bIsLocalPlayer = PlayerState == LocalPlayerState;
 		Info.bIsHost = HostId.IsValid() && PlayerId.GetUniqueNetId().IsValid() && *PlayerId.GetUniqueNetId() == *HostId;
-		Info.NativeId = PlayerId.GetUniqueNetId();
+		Info.PlayerId = PlayerId;
 	}
 
 	return Infos;
@@ -770,7 +770,7 @@ bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
 
 bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
 {
-	return Social.IsValid() && Social->ShowProfileUI(Player.NativeId);
+	return Social.IsValid() && Social->ShowProfileUI(Player.PlayerId.GetUniqueNetId());
 }
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)

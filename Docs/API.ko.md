@@ -194,7 +194,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Search`(SearchParams), `Host`(HostParams - **Map Name 필수**), `bAllowHostFallback`, `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
 
 ### 5.5 FEasySessionPlayerInfo *(읽기 전용)*
-`PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false)
+`PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)
 
 ### 5.6 FEasySessionFriend *(읽기 전용)*
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`

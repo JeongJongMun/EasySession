@@ -203,7 +203,7 @@ store it, not just the name it displays.
 `Search` (SearchParams), `Host` (HostParams - **Map Name required**), `bAllowHostFallback`, `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
 
 ### 5.5 FEasySessionPlayerInfo *(read-only)*
-`PlayerName`, `bIsLocalPlayer`, `bIsHost` (always false on dedicated servers)
+`PlayerName`, `bIsLocalPlayer`, `bIsHost` (always false on dedicated servers), `PlayerId` (the online service id - names can repeat, this cannot)
 
 ### 5.6 FEasySessionFriend *(read-only)*
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`

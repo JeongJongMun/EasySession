@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameFramework/OnlineReplStructs.h"
 #include "OnlineSessionSettings.h"
 #include "EasySessionTypes.generated.h"
 
@@ -480,8 +481,9 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsHost = false;
 
-	/** The player's unique id. Not exposed to Blueprint. */
-	FUniqueNetIdPtr NativeId;
+	/** The player's id on the online service. Names can repeat between players; this cannot. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FUniqueNetIdRepl PlayerId;
 };
 
 /**
