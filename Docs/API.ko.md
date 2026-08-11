@@ -22,13 +22,13 @@
 
 1. [비동기 블루프린트 노드](#1-비동기-블루프린트-노드) - 만들기, 찾기, 참가, 퀵매치
 2. [조회 블루프린트 노드](#2-조회-블루프린트-노드) - 세션 상태, 참가자, 검색 결과
-3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - 트래블, 취소, 초대
+3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - Travel, 취소, 초대
 4. [이벤트](#4-이벤트) | 5. [구조체](#5-구조체) | 6. [열거형](#6-열거형)
 7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ 참고](#9-c-참고) | 10. [콘솔 명령](#10-콘솔-명령-개발-빌드-전용)
 
 ## 1. 비동기 블루프린트 노드
 
-이 노드들은 작업을 [온라인 서브시스템](Concepts.md)에 넘기고, 답은 나중에 돌아옵니다.
+이 노드들은 작업을 [온라인 서브시스템](Concepts.ko.md)에 넘기고, 답은 나중에 돌아옵니다.
 스팀처럼 인터넷 너머에 있는 서비스라면 수 초가 걸릴 수도 있습니다. 답이 늦게 오기 때문에 값을
 바로 돌려주는 노드가 하나도 없습니다. 각 노드는 `OnSuccess` 또는 `OnFailure` 실행 핀으로 끝나며, 두
 핀 모두 `Result`(`EEasySessionResult`)와 `ErrorMessage`(String)를 넘겨줍니다. 다만 서비스에
@@ -41,7 +41,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 
 | 노드 | 입력 | 비고 |
 |---|---|---|
-| **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Map Name으로 `?listen`을 붙여 트래블하므로 이 게임이 서버가 되고, Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
+| **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 되고, Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
 | **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true`, `Password`, `AdditionalTravelOptions` | 호스트에게 승인을 먼저 물은 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.md)) |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 세션 권한 필요 |
@@ -75,7 +75,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 |---|---|---|
 | Is In Easy Session | `IsInSession` | 세션에 들어가 있는가 |
 | Is Easy Session Host | `IsHost` | 로컬 플레이어가 호스트인가. 로컬 플레이어가 없는 데디케이티드 서버에서는 false입니다 |
-| Is Easy Session Authority | `IsSessionAuthority` | 지금 들어가 있는 세션을 이 게임이 만들었는가. 만들었다면 Start/End/Update/트래블/전체 종료를 할 수 있습니다. Is Easy Session Host와 달리 데디케이티드 서버에서도 true입니다 |
+| Is Easy Session Authority | `IsSessionAuthority` | 지금 들어가 있는 세션을 이 게임이 만들었는가. 만들었다면 Start/End/Update/Travel/전체 종료를 할 수 있습니다. Is Easy Session Host와 달리 데디케이티드 서버에서도 true입니다 |
 | Get Easy Session State | `GetSessionState` | 세션이 수명주기의 어디에 있는가. 클라이언트는 호스트가 복제한 값을 읽으므로 모든 플레이어가 같은 값을 봅니다 |
 | Get Easy Session State Label | - | 같은 상태를 바로 표시할 수 있는 문자열로. 예: "In Match (InProgress)" |
 | Is Easy Session Busy | `IsBusy` | 작업이나 그 뒤에 이어지는 레벨 로드가 진행 중인가. 버튼의 Is Enabled에 연결하세요 |
@@ -129,7 +129,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 | 노드 | C++ | 하는 일 |
 |---|---|---|
-| Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 트래블을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
+| Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |
@@ -175,7 +175,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 각 필드의 동작은 [세션 가이드](Guide-Sessions.md)에 있습니다. `bHidden`은 세션을 광고하되
 Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Password`와 `bFriendsBypassPassword`는
 [같은 가이드의 비밀번호 절](Guide-Sessions.md#password-protected-sessions)에서 다룹니다.
-`AdditionalTravelOptions`는 호스트의 트래블 URL 뒤에
+`AdditionalTravelOptions`는 호스트의 Travel URL 뒤에
 붙으며(예: `GameMode=Deathmatch?MyOption=1`), 서버에서 `Parse Option`으로 읽습니다.
 
 ### 5.2 FEasySessionSearchParams
@@ -269,7 +269,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 | 설정 | 기본값 | 효과 |
 |---|---|---|
-| `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 트래블이 실패하면 세션을 정리하고 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끄면 플레이어를 그 자리에 둡니다 |
+| `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 Travel이 실패하면 세션을 정리하고 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끄면 플레이어를 그 자리에 둡니다 |
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
 | `RequestTimeoutSeconds` | 30 | 요청이 온라인 서비스를 기다리다 `Timeout`으로 실패하기까지의 시간. **0이면 무한히 기다립니다.** 검색은 자기 Timeout Seconds를 이 값 위에 더합니다 |
 | `bAutoHostOnDedicatedServer` | true | 데디케이티드 서버가 맵을 띄우면 스스로를 광고합니다 |
@@ -282,7 +282,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `StartQuickMatch`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.
-트래블 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 고정된 문자열로 표현할 수 있는
+Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 고정된 문자열로 표현할 수 있는
 것이라면 `AdditionalTravelOptions` 쪽이 낫습니다.
 
 ## 10. 콘솔 명령 *(개발 빌드 전용)*

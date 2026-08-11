@@ -57,7 +57,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 These guides are still being written and do not yet cover every feature.
 
 - [Quick Start](Docs/QuickStart.en.md) - host and join in 5 minutes
-- [Concepts](Docs/Concepts.md) - sessions, OSS, listen vs dedicated, without the confusion
+- [Concepts](Docs/Concepts.en.md) - sessions, OSS, travel, listen vs dedicated, and how they fit together
 - Setup: [LAN](Docs/Setup-LAN.md) | [Steam](Docs/Setup-Steam.md)
 - Guides: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.en.md)

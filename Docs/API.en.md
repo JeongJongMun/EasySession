@@ -30,7 +30,7 @@ argument so they can find the world.
 
 ## 1. Async Blueprint nodes
 
-These nodes pass their work to the [online subsystem](Concepts.md), which answers later. Reaching a service across the internet, such as Steam, can take seconds. That is
+These nodes pass their work to the [online subsystem](Concepts.en.md), which answers later. Reaching a service across the internet, such as Steam, can take seconds. That is
 why none of them return a value directly: each one finishes through its `OnSuccess` or
 `OnFailure` execution pin, both carrying `Result` (`EEasySessionResult`) and
 `ErrorMessage` (String). A request rejected before it ever reaches the service - no
