@@ -62,6 +62,12 @@ enum class EEasySessionResult : uint8
 	/** Could not join because the session no longer exists. */
 	JoinSessionDoesNotExist,
 
+	/** The host refused the join because the supplied session password did not match. */
+	WrongPassword,
+
+	/** The host refused the join for another reason. The error message says which. */
+	JoinRefused,
+
 	/** Joined the session but could not resolve the host address to travel to. */
 	ResolveFailure,
 

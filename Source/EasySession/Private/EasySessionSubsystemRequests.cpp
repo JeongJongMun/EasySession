@@ -170,6 +170,13 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 		ActiveSearch.Reset();
 	}
 
+	// The join's approval ask may still be waiting for an answer. Stopping it here
+	// destroys the beacon client, so a late answer cannot reach a finished request.
+	if (Request.Type == FEasySessionRequest::EType::Join)
+	{
+		JoinApproval->StopClient();
+	}
+
 	// A late create leaves a session that would block the next one.
 	if (bAbandoned && Request.CouldHaveCreatedSession() && Sessions->GetNamedSession(Request.SessionName) != nullptr)
 	{
@@ -215,6 +222,25 @@ void UEasySessionSubsystem::ExecuteCreate()
 		return;
 	}
 
+	const FOnlineSessionSettings Settings = MakeCreateSettings(Params, bIsDedicated);
+
+	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
+		FOnCreateSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleCreateSessionComplete));
+
+	UE_LOG(LogEasySession, Log, TEXT("Creating session '%s' (%s, MaxPlayers=%d, LAN=%d)"),
+		*Params.SessionDisplayName,
+		bIsDedicated ? TEXT("dedicated") : TEXT("listen"),
+		Params.MaxPlayers,
+		Settings.bIsLANMatch ? 1 : 0);
+
+	if (!Sessions->CreateSession(0, GetActiveRequest()->SessionName, Settings))
+	{
+		CompleteActiveRequest(EEasySessionResult::CreateFailure, TEXT("CreateSession request was rejected by the online subsystem."));
+	}
+}
+
+FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySessionHostParams& Params, bool bIsDedicated)
+{
 	FOnlineSessionSettings Settings;
 	Settings.NumPublicConnections = Params.MaxPlayers;
 	Settings.bIsDedicated = bIsDedicated;
@@ -253,25 +279,12 @@ void UEasySessionSubsystem::ExecuteCreate()
 	// decide whether the new world needs a beacon of its own.
 	Settings.Set(EasySession::SettingKey_JoinApproval, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
 		Settings.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 
-	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
-		FOnCreateSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleCreateSessionComplete));
-
-	UE_LOG(LogEasySession, Log, TEXT("Creating session '%s' (%s, MaxPlayers=%d, LAN=%d)"),
-		*Params.SessionDisplayName,
-		bIsDedicated ? TEXT("dedicated") : TEXT("listen"),
-		Params.MaxPlayers,
-		Settings.bIsLANMatch ? 1 : 0);
-
-	if (!Sessions->CreateSession(0, GetActiveRequest()->SessionName, Settings))
-	{
-		CompleteActiveRequest(EEasySessionResult::CreateFailure, TEXT("CreateSession request was rejected by the online subsystem."));
-	}
+	return Settings;
 }
 
 void UEasySessionSubsystem::ExecuteFind()
@@ -346,6 +359,65 @@ void UEasySessionSubsystem::ExecuteJoin()
 	if (Sessions->GetNamedSession(GetActiveRequest()->SessionName) != nullptr)
 	{
 		CompleteActiveRequest(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Destroy it before joining another one."));
+		return;
+	}
+
+	// Sessions without the approval key are joined directly - PreLogin still decides,
+	// just after the travel instead of before it.
+	int32 bJoinApproval = 0;
+	if (GetActiveRequest()->JoinTarget.NativeResult.Session.SessionSettings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) && bJoinApproval != 0)
+	{
+		RequestJoinApproval();
+		return;
+	}
+
+	JoinOnlineSession();
+}
+
+void UEasySessionSubsystem::RequestJoinApproval()
+{
+	// Asked before the online service join, so a refusal costs no session slot and no map load.
+	JoinApproval->RequestJoinApproval(GetActiveRequest()->JoinTarget, GetActiveRequest()->JoinPassword,
+		FEasyJoinApprovalComplete::CreateUObject(this, &UEasySessionSubsystem::HandleJoinApprovalResponse));
+}
+
+void UEasySessionSubsystem::HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response)
+{
+	// The request may have timed out and been popped while the beacon was waiting.
+	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Join)
+	{
+		return;
+	}
+
+	switch (Response.Result)
+	{
+		case EEasyJoinApprovalResult::Approved:
+			JoinOnlineSession();
+			break;
+
+		case EEasyJoinApprovalResult::Unreachable:
+			// Join without asking: PreLogin runs the same ApproveJoin on arrival, 
+			// so an unreachable beacon can only delay a refusal, never skip one.
+			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the join approval beacon - joining directly. A refusal will now arrive after the travel instead of before it."));
+			JoinOnlineSession();
+			break;
+
+		case EEasyJoinApprovalResult::WrongPassword:
+			CompleteActiveRequest(EEasySessionResult::WrongPassword, Response.ReasonText);
+			break;
+
+		default:
+			CompleteActiveRequest(EEasySessionResult::JoinRefused, Response.ReasonText);
+			break;
+	}
+}
+
+void UEasySessionSubsystem::JoinOnlineSession()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		CompleteActiveRequest(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
 		return;
 	}
 

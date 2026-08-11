@@ -3,12 +3,29 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EasySessionServerGate.generated.h"
 
 class AController;
 class AGameModeBase;
 class APlayerController;
 class UEasySessionSubsystem;
 struct FUniqueNetIdRepl;
+
+/** Answer to "may this player join?". Decided by FEasySessionServerGate. */
+UENUM()
+enum class EEasyJoinApprovalResult : uint8
+{
+	Approved,
+
+	/** The supplied session password did not match. */
+	WrongPassword,
+
+	/** Refused for another reason. The reason text says which. */
+	Refused,
+
+	/** The asking side could not reach the host. A host never sends this - the beacon client fills it in itself. */
+	Unreachable
+};
 
 /**
  * The host's door policy: who may join, and who counts as being in the session.
@@ -56,10 +73,10 @@ public:
 
 	/**
 	 * Decide whether a player may join: checks the join-in-progress policy, then the
-	 * password, letting friends of the host through without one.
-	 * When refusing, OutReason carries the message shown to the player.
+	 * password, letting friends of the host through without one. Never returns
+	 * Unreachable. When refusing, OutReason carries the message shown to the player.
 	 */
-	bool ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
+	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
 
 private:
 

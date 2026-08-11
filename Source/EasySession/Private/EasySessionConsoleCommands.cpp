@@ -375,30 +375,6 @@ namespace EasySessionConsole
 				return;
 			}
 
-			// Resolve the host's beacon address the way the real join flow will: from
-			// the search result, asking for the beacon port rather than the game port.
-			const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
-			FString ConnectString;
-			if (!Sessions.IsValid() || !Sessions->GetResolvedConnectString(Results[Index].NativeResult, NAME_BeaconPort, ConnectString))
-			{
-				Print(TEXT("SpikeBeaconJoin: could not resolve a beacon address - did the host advertise SETTING_BEACONPORT?"));
-				return;
-			}
-
-			// The resolved string carries the port; split it back off for InitClient.
-			FString Address = ConnectString;
-			int32 Port = GSpikeBeaconPort;
-			int32 ColonIndex = INDEX_NONE;
-			if (ConnectString.FindLastChar(TEXT(':'), ColonIndex))
-			{
-				const FString PortPart = ConnectString.Mid(ColonIndex + 1);
-				if (PortPart.IsNumeric())
-				{
-					Address = ConnectString.Left(ColonIndex);
-					Port = FCString::Atoi(*PortPart);
-				}
-			}
-
 			AEasySessionJoinApprovalBeaconClient* Client = World->SpawnActor<AEasySessionJoinApprovalBeaconClient>();
 			if (Client == nullptr)
 			{
@@ -406,16 +382,15 @@ namespace EasySessionConsole
 				return;
 			}
 
-			Client->OnResponse.BindLambda([](bool bApproved, const FString& Reason)
+			if (Client->RequestApproval(Results[Index], Password,
+				FEasyJoinApprovalComplete::CreateLambda([](const FEasyJoinApprovalResponse& Response)
+				{
+					Print(FString::Printf(TEXT("SpikeBeaconJoin: %s%s%s"),
+						*UEnum::GetValueAsString(Response.Result),
+						Response.ReasonText.IsEmpty() ? TEXT("") : TEXT(" - "), *Response.ReasonText));
+				})))
 			{
-				Print(FString::Printf(TEXT("SpikeBeaconJoin: %s%s%s"),
-					bApproved ? TEXT("APPROVED") : TEXT("DENIED"),
-					Reason.IsEmpty() ? TEXT("") : TEXT(" - "), *Reason));
-			});
-
-			if (Client->RequestApproval(Address, Port, Password))
-			{
-				Print(FString::Printf(TEXT("SpikeBeaconJoin: querying %s:%d (resolved '%s')..."), *Address, Port, *ConnectString));
+				Print(TEXT("SpikeBeaconJoin: asking the host..."));
 			}
 		}));
 }

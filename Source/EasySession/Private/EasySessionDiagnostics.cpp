@@ -158,6 +158,17 @@ FString EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 		UE_LOG(LogEasySession, Log, TEXT("[NOTE] NULL (LAN) subsystem active - sessions work on the local network only, and invites/friends/presence are unsupported. This is the expected mode for local testing."));
 	}
 
+	// The join approval beacon needs a BeaconNetDriver definition. The engine ships one
+	// in BaseEngine.ini, but a project that clears NetDriverDefinitions (the Steam
+	// setup does) removes it along with the rest.
+	if (GEngine != nullptr && !GEngine->NetDriverDefinitions.ContainsByPredicate(
+		[](const FNetDriverDefinition& Definition) { return Definition.DefName == FName(TEXT("BeaconNetDriver")); }))
+	{
+		LogFix(TEXT("No BeaconNetDriver definition - the join approval beacon cannot start, so hosts fall back to refusing players after they have already traveled."),
+			{ TEXT("[/Script/Engine.GameEngine]"),
+			  TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"/Script/OnlineSubsystemUtils.IpNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") });
+	}
+
 	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics complete ====="));
 
 	return Summary;

@@ -4,12 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Containers/Ticker.h"
+#include "EasySessionJoinApprovalBeacon.h"
 #include "UObject/WeakObjectPtr.h"
 
 class AGameModeBase;
 class AOnlineBeaconHost;
-class AEasySessionJoinApprovalBeaconHostObject;
 class UEasySessionSubsystem;
+struct FEasySessionSearchResult;
 
 /**
  * The join approval beacon's transport: keeping the host side alive, and later
@@ -49,6 +50,16 @@ public:
 	/** Host: stop the beacon. Safe when none is running. */
 	void StopHost();
 
+	/**
+	 * Joiner: request Target's host to approve the local player joining. The answer
+	 * arrives through OnComplete exactly once, as Unreachable when the host cannot be
+	 * reached. A new request cancels a pending one.
+	 */
+	void RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete);
+
+	/** Joiner: cancel a pending request, so its answer never arrives. Safe when none is running. */
+	void StopClient();
+
 private:
 
 	/** Re-creates the beacon after a travel replaced the world. Server only. */
@@ -71,4 +82,7 @@ private:
 	/** Host side of the beacon. Lives exactly as long as the session, per world. */
 	TWeakObjectPtr<AOnlineBeaconHost> BeaconHost;
 	TWeakObjectPtr<AEasySessionJoinApprovalBeaconHostObject> BeaconHostObject;
+
+	/** Joiner side. Lives for one request, from RequestJoinApproval to its answer or StopClient. */
+	TWeakObjectPtr<AEasySessionJoinApprovalBeaconClient> BeaconClient;
 };

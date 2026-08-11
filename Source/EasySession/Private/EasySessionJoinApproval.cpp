@@ -40,6 +40,7 @@ void FEasySessionJoinApproval::Shutdown()
 	}
 
 	StopHost();
+	StopClient();
 }
 
 bool FEasySessionJoinApproval::EnsureHost()
@@ -181,6 +182,45 @@ void FEasySessionJoinApproval::StopHost()
 		Host->DestroyBeacon();
 	}
 	BeaconHost.Reset();
+}
+
+void FEasySessionJoinApproval::RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete)
+{
+	StopClient();
+
+	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
+	AEasySessionJoinApprovalBeaconClient* Client = nullptr;
+	if (World != nullptr)
+	{
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.ObjectFlags |= RF_Transient;
+		Client = World->SpawnActor<AEasySessionJoinApprovalBeaconClient>(SpawnParams);
+	}
+
+	if (Client == nullptr)
+	{
+		FEasyJoinApprovalResponse Response;
+		Response.Result = EEasyJoinApprovalResult::Unreachable;
+		Response.ReasonText = TEXT("Could not reach the host to ask about joining.");
+		OnComplete.ExecuteIfBound(Response);
+		return;
+	}
+
+	BeaconClient = Client;
+	if (!Client->RequestApproval(Target, Password, OnComplete))
+	{
+		// The delegate already fired with Unreachable - only the actor is left to clean up.
+		StopClient();
+	}
+}
+
+void FEasySessionJoinApproval::StopClient()
+{
+	if (AEasySessionJoinApprovalBeaconClient* Client = BeaconClient.Get())
+	{
+		Client->DestroyBeacon();
+	}
+	BeaconClient.Reset();
 }
 
 void FEasySessionJoinApproval::HandleGameModeInitialized(AGameModeBase* GameMode)

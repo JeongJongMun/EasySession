@@ -30,6 +30,7 @@ class FEasySessionRequestQueue;
 class FEasySessionServerGate;
 class FEasySessionSocial;
 class FEasySessionTravel;
+struct FEasyJoinApprovalResponse;
 class UEasyMatchmakingPolicy;
 
 /** Multicast event fired when a session operation completes. */
@@ -448,6 +449,18 @@ private:
 	void ExecuteUpdate();
 	void ExecuteStart();
 	void ExecuteEnd();
+
+	/** Build the settings a new session is created and advertised with. */
+	FOnlineSessionSettings MakeCreateSettings(const FEasySessionHostParams& Params, bool bIsDedicated);
+
+	/** Ask the host's approval beacon whether the local player may join. */
+	void RequestJoinApproval();
+
+	/** The beacon's answer: join the session, or fail the request with the reason. */
+	void HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response);
+
+	/** Ask the online service to join. Every join path ends in this step. */
+	void JoinOnlineSession();
 
 	/** Online subsystem delegate handlers. */
 	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
