@@ -65,10 +65,9 @@ Every failure pin gives you a `Result` enum and a message you can show a player.
 Keep the whole `SearchResult` on each row, not just the name it displays - `Join Easy
 Session` needs it back.
 
-`On Success` here means the host address resolved and travel started. A host can still
-turn the connection away afterwards, for a wrong password or a match that stopped taking
-players; that arrives as a disconnect the menu can read. See
-[password protected sessions](Guide-Sessions.md#password-protected-sessions).
+A wrong password or a match that stopped taking players fails the node right here, with
+`Result` saying which and `ErrorMessage` carrying the host's reason - no loading screen
+first. See [password protected sessions](Guide-Sessions.md#password-protected-sessions).
 
 ## 5. Or skip all of that with Quick Match
 

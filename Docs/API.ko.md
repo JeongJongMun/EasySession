@@ -43,7 +43,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 |---|---|---|
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Map Name으로 `?listen`을 붙여 트래블하므로 이 게임이 서버가 되고, Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
-| **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true`, `Password`, `AdditionalTravelOptions` | `JoinSession` 호출 후 호스트 주소를 해석하고 그 호스트로 이동합니다. 성공은 주소가 해석됐다는 뜻이지 호스트가 들여보냈다는 뜻이 아닙니다. 비밀번호나 난입 거절은 나중에 `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.md)) |
+| **Join Easy Session** | `SearchResult`, `bTravelOnSuccess=true`, `Password`, `AdditionalTravelOptions` | 호스트에게 승인을 먼저 물은 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.md)) |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
@@ -218,6 +218,8 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`NoSessionsFound`** | 검색은 정상이었고 결과가 없었습니다. 오류가 아니므로 직접 호스팅을 권하면 됩니다 |
 | **`JoinSessionFull`** | 검색과 참가 사이에 방이 찼습니다 |
 | **`JoinSessionDoesNotExist`** | 참가 시점에 방이 사라졌습니다. 다시 검색하세요 |
+| **`WrongPassword`** | 호스트가 거절했습니다: 비밀번호가 맞지 않습니다. 다시 입력받으세요 |
+| **`JoinRefused`** | 호스트가 다른 이유로 거절했습니다. 예: 더 이상 플레이어를 받지 않는 매치. `ErrorMessage`는 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
 | **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.md)) |
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |
 | **`Timeout`** | 온라인 서비스가 끝내 답하지 않았습니다. 결과를 알 수 없으므로 남은 것이 있으면 정리됩니다. `RequestTimeoutSeconds` 참고 |

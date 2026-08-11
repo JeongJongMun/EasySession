@@ -65,9 +65,9 @@
 각 행에는 표시할 이름만이 아니라 `SearchResult` 구조체를 통째로 들고 계세요.
 `Join Easy Session`이 그것을 다시 받습니다.
 
-여기서 `On Success`는 호스트 주소가 해석되어 이동이 시작됐다는 뜻입니다. 그 뒤에 호스트가
-비밀번호 불일치나 참가 마감을 이유로 접속을 거절할 수 있고, 그것은 메뉴가 읽을 수 있는
-디스커넥트로 도착합니다. [비밀번호로 잠근 세션](Guide-Sessions.md#password-protected-sessions)을 보세요.
+비밀번호가 틀리거나 매치가 참가를 마감했으면 노드가 바로 여기서 실패합니다. `Result`가
+어느 쪽인지 말해주고 `ErrorMessage`에 호스트가 쓴 이유가 담기며, 로딩 화면은 뜨지 않습니다.
+[비밀번호로 잠근 세션](Guide-Sessions.md#password-protected-sessions)을 보세요.
 
 ## 5. 아니면 Quick Match 하나로 끝내기
 

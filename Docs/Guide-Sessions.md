@@ -76,12 +76,31 @@ it to the travel URL for the travels it performs.
 
 ### Reading the result
 
-**`On Success` does not mean you were let in.** It means the session accepted the join and
-the host address resolved. The password is checked by the host as the connection arrives,
-which happens after that.
+The host is asked for approval before anything else happens. A wrong password fails the
+node with `WrongPassword`, and a match that no longer takes players with `JoinRefused` -
+in both cases no map has started loading, `ErrorMessage` carries the host's own sentence,
+and the player can retry immediately:
 
-A refused connection arrives as a disconnect, which sends the player back to the menu
-level (`bAutoReturnToMenuOnDisconnect`, on by default). Read it there:
+```
+Join Easy Session
+  OnFailure -> Result == WrongPassword ?
+                 true  -> reopen the password prompt, show ErrorMessage
+                 false -> show ErrorMessage
+```
+
+The example's password popup does exactly this - it stays available for a retype and
+shows the reason under the input (`WBP_JoinPasswordPopup`).
+
+### When the host cannot be asked
+
+Approval travels over a beacon, a second lightweight connection to the host. When that
+beacon cannot be reached - the port is blocked, or the project removed the engine's
+`BeaconNetDriver` definition ([Steam setup](Setup-Steam.md) shows the line that restores
+it, and `EasySession.Diagnose` checks for it) - the join proceeds directly and the host
+refuses the connection as it arrives instead.
+
+That late refusal is a disconnect, which sends the player back to the menu level
+(`bAutoReturnToMenuOnDisconnect`, on by default). Read it there:
 
 ```
 Event Construct
@@ -91,14 +110,10 @@ Event Construct
                                              Reason Text == "Wrong session password."
 ```
 
-The information survives the travel precisely so the menu can show it. `Reason Text` is
-written by the host and is safe to show the player.
-
-Check `Reason` rather than matching the text - a match that no longer accepts joins
-refuses with `Rejected` too, and only the text differs.
-
-`On Session Failure` fires at the moment of the failure if you need it earlier, but it
-carries the raw engine string, which can be a debug dump. Prefer the disconnect info.
+The information survives the travel precisely so the menu can show it. Check `Reason`
+rather than matching the text - a closed match refuses with `Rejected` too, and only the
+text differs. Keep this handler even with the beacon working: it is the safety net for
+every way a connection can end.
 
 ### Friends skip the password
 
