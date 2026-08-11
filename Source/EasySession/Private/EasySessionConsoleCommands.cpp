@@ -28,16 +28,12 @@
 
 #include "EasySession.h"
 #include "EasySessionDiagnostics.h"
-#include "EasySessionJoinApprovalBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
-#include "Online/OnlineSessionNames.h"
-#include "OnlineBeaconHost.h"
-#include "OnlineSubsystemUtils.h"
 
 namespace EasySessionConsole
 {
@@ -301,98 +297,6 @@ namespace EasySessionConsole
 				*EasySessionDiagnostics::RunDiagnostics(World)));
 		}));
 
-	// SPIKE (ES-11): manual round-trip test for the pre-travel join approval beacon.
-	// Removed (or replaced by the real join flow) once the beacon design lands.
-
-	/** The port both spike commands agree on. The real version advertises it instead. */
-	static constexpr int32 GSpikeBeaconPort = 15000;
-
-	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconHostCommand(
-		TEXT("EasySession.SpikeBeaconHost"),
-		TEXT("SPIKE: listen for join requests, answered by the server gate's session credentials."),
-		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
-		{
-			if (World == nullptr)
-			{
-				return;
-			}
-
-			AOnlineBeaconHost* Host = World->SpawnActor<AOnlineBeaconHost>();
-			if (Host == nullptr)
-			{
-				Print(TEXT("SpikeBeaconHost: could not spawn the beacon host."));
-				return;
-			}
-
-			Host->ListenPort = GSpikeBeaconPort;
-			if (!Host->InitHost())
-			{
-				Print(TEXT("SpikeBeaconHost: InitHost failed - is the BeaconNetDriver definition present, or is the port taken?"));
-				Host->Destroy();
-				return;
-			}
-
-			AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>();
-			Host->RegisterHost(HostObject);
-			Host->PauseBeaconRequests(false);
-
-			// Publish the port on the session so a client can resolve a beacon address
-			// from a search result. SETTING_BEACONPORT is the key the online services
-			// read in GetResolvedConnectString(..., NAME_BeaconPort).
-			FString Advertised = TEXT("no session to advertise on");
-			if (const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World))
-			{
-				if (FNamedOnlineSession* Session = Sessions->GetNamedSession(NAME_GameSession))
-				{
-					Session->SessionSettings.Set(SETTING_BEACONPORT, Host->GetListenPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-					Sessions->UpdateSession(NAME_GameSession, Session->SessionSettings, true);
-					Advertised = TEXT("advertised on the session");
-				}
-			}
-
-			Print(FString::Printf(TEXT("SpikeBeaconHost: listening on port %d, %s."),
-				Host->GetListenPort(), *Advertised));
-		}));
-
-	static FAutoConsoleCommandWithWorldAndArgs GSpikeBeaconJoinCommand(
-		TEXT("EasySession.SpikeBeaconJoin"),
-		TEXT("SPIKE: ask the beacon of the last search's first result. Args: [password] [index]."),
-		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
-		{
-			UEasySessionSubsystem* Subsystem = GetSubsystem(World);
-			if (Subsystem == nullptr)
-			{
-				return;
-			}
-
-			const FString Password = Args.Num() > 0 ? Args[0] : FString();
-			const int32 Index = Args.Num() > 1 ? FCString::Atoi(*Args[1]) : 0;
-
-			const TArray<FEasySessionSearchResult>& Results = Subsystem->GetLastSearchResults();
-			if (!Results.IsValidIndex(Index))
-			{
-				Print(TEXT("SpikeBeaconJoin: no search result at that index - run EasySession.Find first."));
-				return;
-			}
-
-			AEasySessionJoinApprovalBeaconClient* Client = World->SpawnActor<AEasySessionJoinApprovalBeaconClient>();
-			if (Client == nullptr)
-			{
-				Print(TEXT("SpikeBeaconJoin: could not spawn the beacon client."));
-				return;
-			}
-
-			if (Client->RequestApproval(Results[Index], Password,
-				FEasyJoinApprovalComplete::CreateLambda([](const FEasyJoinApprovalResponse& Response)
-				{
-					Print(FString::Printf(TEXT("SpikeBeaconJoin: %s%s%s"),
-						*UEnum::GetValueAsString(Response.Result),
-						Response.ReasonText.IsEmpty() ? TEXT("") : TEXT(" - "), *Response.ReasonText));
-				})))
-			{
-				Print(TEXT("SpikeBeaconJoin: asking the host..."));
-			}
-		}));
 }
 
 #endif // !UE_BUILD_SHIPPING
