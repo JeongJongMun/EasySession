@@ -2,7 +2,7 @@
 
 *[한국어](QuickStart.ko.md)*
 
-This guide takes you from an empty project to two game instances playing together on LAN, using only Blueprint. No custom GameInstance, no C++, no configuration files.
+This guide takes you from an empty project to two game instances playing together on LAN, using only Blueprint. No custom GameInstance, no C++, no config file editing.
 
 ## 1. Enable the plugin
 
@@ -17,9 +17,13 @@ The plugin ships a working main menu, lobby and match. Running it takes less tim
 wiring your first node, and it shows what the finished flow looks like.
 
 1. In the Content Browser, turn on **Settings -> Show Plugin Content**.
-2. Open `/EasySession/Examples/Maps/L_Example_MainMenu`.
-3. Set up two players as described in [step 6](#6-test-in-pie), then press Play.
-4. Host in one window, Find and Join in the other.
+2. **Project Settings -> Maps & Modes -> Game Default Map** = `L_Example_MainMenu`.
+   Leaving a session - or being disconnected - returns the player to the Game Default
+   Map. Point it at the example menu so the round trip ends where it started. The same
+   applies to your own game later: its menu map belongs here.
+3. Open `/EasySession/Examples/Maps/L_Example_MainMenu`.
+4. Set up two players as described in [step 6](#6-test-in-pie), then press Play.
+5. Host in one window, Find and Join in the other.
 
 The widgets behind it live in `/EasySession/Examples/UI/`. `WBP_MainMenu` is the one to
 read first - it uses every node in the steps below.

@@ -2,7 +2,7 @@
 
 *[English](QuickStart.en.md)*
 
-빈 프로젝트에서 두 게임 인스턴스가 LAN으로 함께 플레이하는 데까지, 블루프린트만으로 갑니다. 커스텀 GameInstance도, C++도, 설정 파일도 없습니다.
+빈 프로젝트에서 두 게임 인스턴스가 LAN으로 함께 플레이하는 데까지, 블루프린트만으로 갑니다. 커스텀 GameInstance도, C++도, 설정 파일을 직접 고칠 일도 없습니다.
 
 ## 1. 플러그인 켜기
 
@@ -17,9 +17,13 @@
 빠르고, 완성된 흐름이 어떤 모습인지 보여줍니다.
 
 1. 콘텐츠 브라우저에서 **Settings -> Show Plugin Content**를 켭니다.
-2. `/EasySession/Examples/Maps/L_Example_MainMenu`을 엽니다.
-3. [6단계](#6-pie로-테스트하기)대로 플레이어를 2명으로 맞추고 Play를 누릅니다.
-4. 한쪽 창에서 방을 만들고, 다른 창에서 Find와 Join을 합니다.
+2. **Project Settings -> Maps & Modes -> Game Default Map**을 `L_Example_MainMenu`로
+   설정합니다. 세션을 나가거나 연결이 끊기면 플레이어는 Game Default Map으로
+   돌아옵니다. 예제 메뉴를 가리켜야 왕복이 출발한 곳에서 끝납니다. 나중에 자기
+   게임에서도 같은 원리입니다 - 메뉴 맵이 이 자리에 들어갑니다.
+3. `/EasySession/Examples/Maps/L_Example_MainMenu`을 엽니다.
+4. [6단계](#6-pie로-테스트하기)대로 플레이어를 2명으로 맞추고 Play를 누릅니다.
+5. 한쪽 창에서 방을 만들고, 다른 창에서 Find와 Join을 합니다.
 
 이 예제를 구성하는 위젯은 `/EasySession/Examples/UI/`에 있습니다. `WBP_MainMenu`를 먼저
 보세요. 아래 단계에 나오는 노드를 전부 씁니다.
