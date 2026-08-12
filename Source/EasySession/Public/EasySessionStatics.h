@@ -132,6 +132,28 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);
 
+	/** @return Whether an online subsystem is available and its session interface is valid. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsOnlineSubsystemAvailable(const UObject* WorldContextObject);
+
+	/**
+	 * @return What the session queue is doing right now, e.g. "Create (running 2.4s of 30s), 1 queued" or "Idle".
+	 *         Meant for status UI and bug reports.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FString GetEasySessionQueueStatus(const UObject* WorldContextObject);
+
+	/**
+	 * @return The parameters the current session was created with, so one field can be changed and passed to Update Easy Session.
+	 *         Host only. Returns defaults on a client, and when there is no session.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);
+
+	/** Cancel the running Quick Match. Does nothing when no matchmaking is running. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static void CancelEasyMatchmaking(const UObject* WorldContextObject);
+
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static bool SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);

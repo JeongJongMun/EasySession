@@ -197,7 +197,12 @@ public:
 	 * Update the advertised properties of the current session.
 	 * Needs session authority - only the game that created the session can update it.
 	 *
-	 * @param NewHostParams New parameters to advertise. Map Name and Host Mode are ignored.
+	 * Every field is applied as given, including Password.
+	 * Pass params from GetEasySessionHostParams and change what you mean to change, or the fields you left at their defaults overwrite the session with those defaults.
+	 *
+	 * @param NewHostParams New parameters to advertise. Map Name, Host Mode, Start
+	 *        Listening, LAN Match, Use Presence and Additional Travel Options are
+	 *        fixed when the session is created and are ignored here.
 	 * @param OnComplete Called when the operation completes.
 	 */
 	void UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
@@ -215,7 +220,6 @@ public:
 public:
 
 	/** Cancel the running QuickMatch matchmaking. Does nothing when no matchmaking is running. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession")
 	void CancelMatchmaking();
 
 	/** Check whether QuickMatch matchmaking is currently running. */
@@ -246,19 +250,10 @@ public:
 	EEasySessionState GetSessionState() const;
 
 	/**
-	 * Read back the parameters the current session is running with, so a change can
-	 * be made without restating everything else: get these, edit the one field, pass
-	 * them to Update Easy Session. Building fresh params instead resets every field
-	 * you did not fill in.
-	 *
-	 * Host only - the values come from the session this game created. Returns defaults
-	 * when there is no session, or on a client.
-	 *
-	 * Map Name, Host Mode, Start Listening, LAN Match, Use Presence and Additional
-	 * Travel Options are fixed when the session is created; Update ignores them, and
-	 * what cannot be read back is returned as its default.
+	 * @return The parameters the current session is running with, so a change can be made without restating everything else.
+	 *         Get these, edit the one field, pass them to Update Easy Session - building fresh params instead resets every field you did not fill in.
+	 *         Host only. Returns defaults on a client, when there is no session, and for the fields Update cannot change.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	FEasySessionHostParams GetEasySessionHostParams() const;
 
 	/**
@@ -321,7 +316,6 @@ public:
 	 * "Create (running 2.4s of 30s), 1 queued" or "Idle".
 	 * Meant for status UI, the EasySession.Status console command and bug reports.
 	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	FString GetQueueStatusDescription() const;
 
 	/** Get the results of the most recent session search. */
@@ -331,7 +325,6 @@ public:
 	FName GetOnlineSubsystemName() const;
 
 	/** Check whether an online subsystem is available and its session interface is valid. */
-	UFUNCTION(BlueprintPure, Category = "EasySession")
 	bool IsOnlineSubsystemAvailable() const;
 
 	/**

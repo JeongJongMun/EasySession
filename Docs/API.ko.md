@@ -90,6 +90,9 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Matchmaking State | `GetMatchmakingState` | 어느 단계인가. Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
+| Is Online Subsystem Available | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
+| Get Easy Session Queue Status | `GetQueueStatusDescription` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용 |
+| Get Easy Session Host Params | `GetEasySessionHostParams` | 세션을 만들 때 쓴 파라미터. 한 필드만 바꿔 Update에 넘길 때 씁니다. 호스트 전용 |
 
 `To String (EasySessionResult)`(C++ `ResultToString`)는 결과 enum을 텍스트로 바꿉니다.
 
@@ -99,10 +102,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 | 노드 | 무엇을 답하는가 |
 |---|---|
-| Get Easy Session Host Params | 세션을 만들 때 쓴 파라미터. 한 필드만 바꿔 Update에 넘길 때 씁니다 |
 | Get Active Matchmaking Policy | 정책 객체. `OnStateChanged` 바인딩에 씁니다 |
-| Get Queue Status Description | 큐가 무엇을 하고 있는지 문자열로 |
-| Is Online Subsystem Available | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
 
 > **이 함수들은 어떤 세션에 대해 답하는가?** 플레이어가 찾고, 참가하고, 플레이하는 게임 세션입니다.
 > 프로세스당 정확히 하나만 존재하므로(README의 제약 사항 참고) 세션을 인자로 받는 함수가 없습니다.
@@ -130,6 +130,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 하는 일 |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Quick Match를 `Canceled`로 끝냅니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |
@@ -143,9 +144,10 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 | 노드 | 하는 일 |
 |---|---|
-| Cancel Matchmaking | 진행 중인 Quick Match를 `Canceled`로 끝냅니다 |
 | Server Travel To Map | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
 | Destroy Easy Session For Everyone | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 세션 권한 필요 |
+
+두 노드 모두 `BlueprintAuthorityOnly`입니다. 권한 없이 도는 그래프에서는 노드가 아무 일도 하지 않으므로, 클라이언트 쪽 위젯이 세션을 옮기거나 끝낼 수 없습니다.
 
 ## 4. 이벤트
 

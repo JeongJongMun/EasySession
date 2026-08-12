@@ -126,6 +126,32 @@ FEasyDisconnectInfo UEasySessionStatics::ConsumeLastEasyDisconnectInfo(const UOb
 	return Subsystem != nullptr ? Subsystem->ConsumeLastDisconnectInfo() : FEasyDisconnectInfo();
 }
 
+bool UEasySessionStatics::IsOnlineSubsystemAvailable(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsOnlineSubsystemAvailable();
+}
+
+FString UEasySessionStatics::GetEasySessionQueueStatus(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetQueueStatusDescription() : FString();
+}
+
+FEasySessionHostParams UEasySessionStatics::GetEasySessionHostParams(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetEasySessionHostParams() : FEasySessionHostParams();
+}
+
+void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObject)
+{
+	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
+	{
+		Subsystem->CancelMatchmaking();
+	}
+}
+
 FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

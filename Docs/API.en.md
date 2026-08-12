@@ -94,6 +94,9 @@ node name without spaces.
 | Get Easy Matchmaking State | `GetMatchmakingState` | Which step it is on: Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
+| Is Online Subsystem Available | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
+| Get Easy Session Queue Status | `GetQueueStatusDescription` | What the request queue is doing, as a string for status UI and bug reports |
+| Get Easy Session Host Params | `GetEasySessionHostParams` | The params the session was created with, so Update can change one field. Host only |
 
 `To String (EasySessionResult)` (C++ `ResultToString`) turns a result enum into text.
 
@@ -104,10 +107,7 @@ there is no C++ column.
 
 | Node | Answers |
 |---|---|
-| Get Easy Session Host Params | The params the session was created with, so Update can change one field |
 | Get Active Matchmaking Policy | The policy object, for binding `OnStateChanged` |
-| Get Queue Status Description | What the queue is doing, as a string |
-| Is Online Subsystem Available | Is a subsystem loaded with a valid session interface |
 
 > **Which session are these about?** The game session - the one players find,
 > join and play in. There is exactly one per process (see Limitations in the README),
@@ -136,6 +136,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Node | C++ | Does |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Quick Match run with `Canceled` |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |
@@ -150,9 +151,11 @@ there is no C++ column.
 
 | Node | Does |
 |---|---|
-| Cancel Matchmaking | Ends a Quick Match run with `Canceled` |
 | Server Travel To Map | Moves the whole session to a new map. Session authority only |
 | Destroy Easy Session For Everyone | Ends the session and sends every client back to the menu with a reason. Session authority only |
+
+Both are marked `BlueprintAuthorityOnly`: in a graph running without authority the node
+does nothing, so a client copy of your widget cannot travel or end the session.
 
 ## 4. Events
 
