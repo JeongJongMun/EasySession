@@ -28,12 +28,11 @@ public:
 	/**
 	 * Update the advertised properties of the current session.
 	 *
-	 * Only the game hosting the session can update it - clients get a
-	 * Requires Session Authority failure.
+	 * Only the game hosting the session can update it - clients get a Requires Session Authority failure.
 	 *
-	 * Every field is applied as given, including Password: pass params built by
-	 * Get Easy Session Host Params and change what you mean to change, or the
-	 * fields you left at their defaults overwrite the session with those defaults.
+	 * Every field is applied as given, including Password.
+	 * Pass params built by Get Easy Session Host Params and change only what you mean to change.
+	 * Otherwise the fields you left at their defaults overwrite the session with those defaults.
 	 *
 	 * @param NewHostParams New parameters to advertise. Map Name, Host Mode, Start
 	 *        Listening, LAN Match, Use Presence and Additional Travel Options are

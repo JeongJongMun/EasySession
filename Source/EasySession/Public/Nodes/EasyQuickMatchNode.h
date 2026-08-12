@@ -31,8 +31,7 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Start QuickMatch matchmaking: search for sessions, join the best one, and
-	 * optionally host a new session when nothing is found.
+	 * Start QuickMatch matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
 	 * Cancel a running QuickMatch with Cancel Matchmaking on the subsystem.
 	 *
 	 * @param QuickMatchParams Parameters describing the search and the fallback host session.

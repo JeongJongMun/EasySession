@@ -23,31 +23,29 @@ public:
 	//~ End UDeveloperSettings Interface
 
 	/**
-	 * Automatically clean up the session and return to the main menu (the project's
-	 * Game Default Map) when the connection to a session is lost or traveling to a
-	 * session fails. Disable to keep the player in place and handle it yourself.
+	 * Automatically clean up the session and return to the main menu, the project's Game Default Map.
+	 * Runs when the connection to a session is lost, or when traveling to a session fails.
+	 * Disable to keep the player in place and handle it yourself.
 	 * The reason is preserved and can be read on the menu with Consume Last Disconnect Info.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Recovery")
 	bool bAutoReturnToMenuOnDisconnect = true;
 
 	/**
-	 * Automatically join the session when the player accepts an invite from the
-	 * platform overlay (e.g. Steam). Disable to only receive the
-	 * On Session Invite Accepted event and handle joining yourself.
+	 * Automatically join the session when the player accepts an invite from the platform overlay (e.g. Steam).
+	 * Disable to only receive the On Session Invite Accepted event and handle joining yourself.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites")
 	bool bAutoJoinAcceptedInvites = true;
 
 	/**
-	 * How long a session request may wait for the online service before it is
-	 * failed with the Timeout result and the queue moves on. Online services are
-	 * not required to ever call back - Steam's async tasks have no timeout of
-	 * their own - so without this a silent service would stall every request
-	 * behind it. Searching adds its own Timeout Seconds on top of this value.
-	 * A timeout means the outcome is unknown, not that nothing happened: if the
-	 * operation lands late and leaves a session behind, it is destroyed so the
-	 * next request starts clean. Set to 0 to wait forever.
+	 * How long a session request may wait for the online service before it is failed with the Timeout result and the queue moves on.
+	 * Online services are not required to ever call back, and Steam's async tasks have no timeout of their own.
+	 * Without this, a silent service would stall every request behind it.
+	 * Searching adds its own Timeout Seconds on top of this value.
+	 * A timeout means the outcome is unknown, not that nothing happened.
+	 * If the operation completes after the timeout and leaves a session behind, it is destroyed so the next request starts clean.
+	 * Set to 0 to wait forever.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Advanced", meta = (ClampMin = 0.0, UIMin = 0.0))
 	float RequestTimeoutSeconds = 30.0f;

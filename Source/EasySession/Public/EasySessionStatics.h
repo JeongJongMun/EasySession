@@ -27,38 +27,36 @@ public:
 	/**
 	 * Check whether the local player is currently in a session.
 	 *
-	 * This and the queries below it are all about the game session - the one players find,
-	 * join and play in. There is one per process, so none of them take a session argument.
+	 * This and the queries below it are all about the game session - the one players find, join and play in.
+	 * There is one per process, so none of them take a session argument.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsInEasySession(const UObject* WorldContextObject);
 
 	/**
 	 * Check whether the local player is hosting the current session.
-	 * Always false on a dedicated server, which has no local player to be the host.
+	 * Always false on a dedicated server, which has no local player - use Is Easy Session Authority there instead.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionHost(const UObject* WorldContextObject);
 
 	/**
-	 * Whether this game created the session it is in, so it may Start, End, Update, travel
-	 * or destroy it. Do not use Is Easy Session Host instead - it is false on a dedicated server.
+	 * Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
+	 * Do not use Is Easy Session Host instead - it is false on a dedicated server.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionAuthority(const UObject* WorldContextObject);
 
 	/**
 	 * Get the lifecycle state of the current session (Pending, InProgress, Ended, ...).
-	 * On the host this is the authoritative local state; on clients it is the host's
-	 * replicated state, so every player always sees the same value.
+	 * The host reports its own state; a client reports the host's replicated state once it has arrived, and its own until then.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionState GetEasySessionState(const UObject* WorldContextObject);
 
 	/**
-	 * Get the password this game's session was created with, e.g. to show it so the host
-	 * can share it. Empty on clients and for password-less sessions - the password never
-	 * leaves the host.
+	 * Get the password this game's session was created with, e.g. to show it so the host can share it.
+	 * Empty on clients and for password-less sessions - the password never leaves the host.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionPassword(const UObject* WorldContextObject);
@@ -72,20 +70,17 @@ public:
 	static EEasyMatchmakingState GetEasyMatchmakingState(const UObject* WorldContextObject);
 
 	/**
-	 * Get a display-friendly label for the current session state that pairs the
-	 * player-facing meaning with the raw state, e.g. "Waiting (Pending)",
-	 * "In Match (InProgress)", "Waiting (Ended)". Pending and Ended both mean
-	 * "in the lobby, ready to (re)start" - only the history differs.
+	 * Get a display-friendly label for the current session state that pairs the player-facing meaning with the raw state.
+	 * For example "Waiting (Pending)", "In Match (InProgress)", "Waiting (Ended)".
+	 * Pending and Ended both mean "in the lobby, ready to (re)start" - only the history differs.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionStateLabel(const UObject* WorldContextObject);
 
 	/**
-	 * Check whether any session operation is in progress - a request running or queued,
-	 * a Quick Match still working through its steps, or a travel this plugin started
-	 * that has not reached its map yet.
-	 * Bind session buttons to this to disable them while an operation runs;
-	 * Is Easy Matchmaking asks specifically about Quick Match.
+	 * Check whether any session operation is in progress.
+	 * That covers a request running or queued, a Quick Match working through its steps, and a travel this plugin started that has not reached its map yet.
+	 * Bind session buttons to this to disable them while an operation runs; Is Easy Matchmaking asks specifically about Quick Match.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);
@@ -106,8 +101,7 @@ public:
 	static FString GetEasySessionDisplayName(const UObject* WorldContextObject);
 
 	/**
-	 * Get per-player info for everyone in the session: name, whether it is the
-	 * local player on this machine, and whether it is the session host.
+	 * Get per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionPlayerInfo> GetEasySessionPlayerInfos(const UObject* WorldContextObject);
@@ -132,20 +126,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);
 
-	/** @return Whether an online subsystem is available and its session interface is valid. */
+	/** Whether an online subsystem is available and its session interface is valid. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsOnlineSubsystemAvailable(const UObject* WorldContextObject);
 
 	/**
-	 * @return What the session queue is doing right now, e.g. "Create (running 2.4s of 30s), 1 queued" or "Idle".
-	 *         Meant for status UI and bug reports.
+	 * Get what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), 1 queued" or "Idle".
+	 * Meant for status UI and bug reports.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionQueueStatus(const UObject* WorldContextObject);
 
 	/**
-	 * @return The parameters the current session was created with, so one field can be changed and passed to Update Easy Session.
-	 *         Host only. Returns defaults on a client, and when there is no session.
+	 * Get the parameters the current session was created with, so one field can be changed and passed to Update Easy Session.
+	 * Host only. Returns defaults on a client, and when there is no session.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);

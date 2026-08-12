@@ -14,13 +14,11 @@ class UEasySessionSubsystem;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasyMatchmakingStateEvent, EEasyMatchmakingState, NewState);
 
 /**
- * QuickMatch matchmaking policy: search for sessions, join the best one, and
- * optionally host a new session when nothing is found.
+ * QuickMatch matchmaking policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
  *
- * The best session is chosen by ScoreSession. The default implementation groups
- * sessions into ping buckets and prefers fuller sessions within the same bucket.
- * Subclass this policy (in Blueprint or C++) and override ScoreSession to use
- * your own criteria such as skill or map preference.
+ * The best session is chosen by ScoreSession.
+ * The default implementation groups sessions into ping buckets and prefers fuller sessions within the same bucket.
+ * Subclass this policy (in Blueprint or C++) and override ScoreSession to use your own criteria such as skill or map preference.
  */
 UCLASS(Blueprintable, BlueprintType)
 class EASYSESSION_API UEasyMatchmakingPolicy : public UObject
@@ -41,16 +39,14 @@ public:
 	TArray<int32> PingBucketsMs = { 50, 100, 150 };
 
 	/**
-	 * The best N candidates are shuffled before join attempts, so that players
-	 * searching at the same time do not all pile onto the same session.
+	 * The best N candidates are shuffled before join attempts, so that players searching at the same time do not all try the same session first.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EasySession|Scoring", meta = (ClampMin = 1))
 	int32 TopCandidateRandomization = 3;
 
 	/**
 	 * Score a session found by the search. Higher scores are joined first.
-	 * The default implementation scores by ping bucket first, then by fill ratio,
-	 * and ranks sessions with no open slot below every session that has room.
+	 * The default implementation scores by ping bucket first, then by fill ratio, and ranks sessions with no open slot below every session that has room.
 	 * Override this to use custom criteria such as skill or map preference.
 	 */
 	UFUNCTION(BlueprintNativeEvent, Category = "EasySession")

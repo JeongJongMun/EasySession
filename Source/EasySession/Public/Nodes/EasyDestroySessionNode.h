@@ -27,8 +27,7 @@ public:
 
 	/**
 	 * Destroy the current session: the host closes it, a client simply leaves.
-	 * To also send the other players back to the menu with a reason, use
-	 * Destroy Easy Session For Everyone on the subsystem instead.
+	 * To also send the other players back to the menu with a reason, use Destroy Easy Session For Everyone on the subsystem instead.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Destroy Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyDestroySessionNode* DestroyEasySession(UObject* WorldContextObject);

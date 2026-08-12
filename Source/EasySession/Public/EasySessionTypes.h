@@ -140,17 +140,15 @@ namespace EasySession
 	EASYSESSION_API extern const FName SettingKey_PasswordProtected;
 
 	/**
-	 * Custom session setting key marking a session whose host answers join approval
-	 * over a beacon. Approval covers every joining rule - password, room, joinable
-	 * state - not just passwords, so it is written for every session this plugin
-	 * hosts and there is no per-session switch.
+	 * Custom session setting key marking a session whose host answers join approval over a beacon.
+	 * Approval covers every joining rule - password, room, joinable state - not just passwords.
+	 * It is written for every session this plugin hosts, so there is no per-session switch.
 	 */
 	EASYSESSION_API extern const FName SettingKey_JoinApproval;
 
 	/**
-	 * The port a join approval beacon listens on, read from the AOnlineBeaconHost config
-	 * so a project can move it in DefaultEngine.ini. Advertised on the session, because
-	 * the beacon does not exist yet when the session is created.
+	 * The port a join approval beacon listens on, read from the AOnlineBeaconHost config so a project can move it in DefaultEngine.ini.
+	 * Advertised on the session, because the beacon does not exist yet when the session is created.
 	 */
 	EASYSESSION_API int32 GetJoinApprovalBeaconPort();
 
@@ -196,22 +194,18 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bIsLANMatch = false;
 
-	// The fields below are folded behind the Make node's advanced arrow. Marking
-	// them is what keeps the fold line where we put it: from five fields up,
-	// UK2Node_MakeStruct leaves only the first two visible and folds the rest on
-	// its own, but only while no field carries AdvancedDisplay (AllocateDefaultPins
-	// in K2Node_MakeStruct.cpp) - so adding a field would otherwise move the line
-	// with nobody asking for it. Search and Quick Match params are marked for the
-	// same reason. A pin with a connection stays visible either way
-	// (SGraphPin::IsPinVisibleAsAdvanced), so folding one never hides live wiring.
+	//~ The fields below are folded behind the Make node's advanced arrow.
+	//~ Marking them is what keeps the fold line where we put it.
+	//~ From five fields up, UK2Node_MakeStruct leaves only the first two visible and folds the rest on its own (AllocateDefaultPins in K2Node_MakeStruct.cpp).
+	//~ It only does that while no field carries AdvancedDisplay, so without the markers adding a field would silently move the fold line.
+	//~ Search and Quick Match params are marked for the same reason.
+	//~ A pin with a connection stays visible either way (SGraphPin::IsPinVisibleAsAdvanced), so folding one never hides live wiring.
 
 	/**
-	 * Open a listen server as part of hosting, so clients can connect: travels to
-	 * Map Name with the ?listen option, or starts listening on the current map when
-	 * Map Name is empty.
+	 * Open a listen server as part of hosting, so clients can connect.
+	 * Travels to Map Name with the ?listen option, or starts listening on the current map when Map Name is empty.
 	 *
-	 * Turning this off still advertises the session, but leaves nothing behind it
-	 * for players to connect to until you open a server yourself.
+	 * Turning this off still advertises the session, but there is no server for players to connect to until you open one yourself.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bStartListening = true;
@@ -221,8 +215,8 @@ struct EASYSESSION_API FEasySessionHostParams
 	bool bShouldAdvertise = true;
 
 	/**
-	 * Hidden sessions are advertised to the online service but excluded from Find Easy Sessions
-	 * results, so they can only be joined through invites or a direct search result.
+	 * Hidden sessions are advertised to the online service but excluded from Find Easy Sessions results.
+	 * They can only be joined through invites or a direct search result.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bHidden = false;
@@ -237,8 +231,8 @@ struct EASYSESSION_API FEasySessionHostParams
 
 	/**
 	 * Lets platform friends of the host join a password protected session without the password.
-	 * Invites can only be sent to friends, so accepted invites always get in - without this,
-	 * invited players would be rejected because the invite flow never asks for a password.
+	 * Invites can only be sent to friends, so an accepted invite always comes from one and is let through.
+	 * Without this, invited players would be rejected because the invite flow never asks for a password.
 	 * Verified host-side against the platform friends list; no effect on NULL/LAN (no friends there).
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -283,8 +277,7 @@ struct EASYSESSION_API FEasySessionSearchParams
 {
 	GENERATED_BODY()
 
-	// Advanced fields are folded behind the Make node's advanced arrow, for the
-	// reason described in FEasySessionHostParams.
+	//~ Advanced fields are folded behind the Make node's advanced arrow, for the reason described in FEasySessionHostParams.
 
 	/** Maximum number of search results to return. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1))
@@ -353,7 +346,7 @@ struct EASYSESSION_API FEasySessionSearchResult
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bPasswordProtected = false;
 
-	/** Whether the session is hidden from searches. Hidden sessions are filtered out of Find results. */
+	/** Whether the session is hidden from searches. Hidden sessions are filtered out of Find results, so Blueprint never receives one. */
 	bool bIsHidden = false;
 
 	/** Custom key-value data advertised with the session. */
@@ -394,9 +387,9 @@ enum class EEasyMatchmakingState : uint8
 
 /**
  * Parameters for QuickMatch matchmaking.
- * The search filters default to "any public session". Host > Map Name has no default
- * and must be set: matchmaking cannot decide where the match is played, and hosting
- * without a map leaves a session nobody can connect to.
+ * The search filters default to "any public session".
+ * Host > Map Name has no default and must be set.
+ * Matchmaking cannot decide where the match is played, and hosting without a map leaves a session nobody can connect to.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasyQuickMatchParams
@@ -408,8 +401,8 @@ struct EASYSESSION_API FEasyQuickMatchParams
 	FEasySessionSearchParams Search;
 
 	/**
-	 * Session to host when no session is found. Map Name is required here, unlike in
-	 * Create Easy Session where an empty one means "stay put".
+	 * Session to host when no session is found.
+	 * Map Name is required here, unlike in Create Easy Session where an empty one means "stay put".
 	 * Ignored when Allow Host Fallback is false.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
@@ -422,8 +415,7 @@ struct EASYSESSION_API FEasyQuickMatchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bAllowHostFallback = true;
 
-	// Advanced fields are folded behind the Make node's advanced arrow, for the
-	// reason described in FEasySessionHostParams.
+	//~ Advanced fields are folded behind the Make node's advanced arrow, for the reason described in FEasySessionHostParams.
 
 	/** How many search passes to run before giving up or hosting. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1))
