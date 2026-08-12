@@ -11,7 +11,7 @@
  * Project-wide settings for the EasySession plugin.
  * Found in Project Settings > Plugins > EasySession.
  */
-UCLASS(config = Game, defaultconfig, meta = (DisplayName = "EasySession"))
+UCLASS(config = Game, defaultconfig, meta = (DisplayName = "EasySession Settings", ToolTip = "Project-wide settings for the EasySession plugin."))
 class EASYSESSION_API UEasySessionSettings : public UDeveloperSettings
 {
 	GENERATED_BODY()
