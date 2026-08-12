@@ -400,6 +400,14 @@ bool UEasySessionSubsystem::IsSessionAuthority() const
 
 bool UEasySessionSubsystem::IsHost() const
 {
+	// A dedicated server has no local player, so it can never be the hosting player.
+	// NULL sets bHosting when it creates a session (OnlineSessionInterfaceNull.cpp), which would otherwise report a LAN dedicated server as the host.
+	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	if (World != nullptr && World->GetNetMode() == NM_DedicatedServer)
+	{
+		return false;
+	}
+
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
