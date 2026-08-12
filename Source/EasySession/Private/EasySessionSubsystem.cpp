@@ -920,5 +920,11 @@ void UEasySessionSubsystem::AutoHostDedicatedServerSession()
 	HostParams.MapName.Empty();
 
 	UE_LOG(LogEasySession, Log, TEXT("Dedicated server detected. Auto hosting session '%s'."), *HostParams.SessionDisplayName);
-	CreateEasySession(HostParams);
+
+	CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		[this](EEasySessionResult Result, const FString& /*ErrorMessage*/)
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Dedicated server auto host finished: %s (IsHost=%d, IsSessionAuthority=%d)"),
+				*EasySession::ResultToString(Result), IsHost() ? 1 : 0, IsSessionAuthority() ? 1 : 0);
+		}));
 }
