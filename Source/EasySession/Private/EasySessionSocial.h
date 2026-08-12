@@ -11,17 +11,16 @@ class UEasySessionSubsystem;
 /**
  * Accepted invites, the friends list and the platform overlays.
  *
- * These talk to the identity, friends and external UI interfaces rather than the
- * session interface, and none of the session lifecycle depends on them - a game
- * with no social features never wakes any of this up.
+ * These use the identity, friends and external UI interfaces rather than the session interface, and no part of the session lifecycle depends on them.
+ * A game with no social features never calls into this object at all.
  *
- * There is deliberately no "invite received" list. Steam never tells the game about
- * an invite before the player acts on it: the overlay handles that itself and the
- * game only hears about it once the player has clicked Join Game. Only EOS reports
- * pending invites, and EOS is not a supported subsystem.
+ * There is deliberately no list of received invites.
+ * Steam does not report an invite to the game before the player acts on it.
+ * The overlay handles that itself, and the game is only told once the player has clicked Join Game.
+ * Only EOS reports pending invites, and EOS is not a supported subsystem.
  *
- * Owned by the subsystem and destroyed with it. Delegates are bound raw because
- * this object cannot outlive the owner that unbinds them in Shutdown.
+ * Owned by the subsystem and destroyed with it.
+ * Delegates are bound raw because this object cannot outlive the owner that unbinds them in Shutdown.
  */
 class FEasySessionSocial
 {
@@ -47,9 +46,9 @@ public:
 	bool ShowInviteUI() const;
 
 	/**
-	 * Open the platform profile overlay for a unique id. Callers pass the NativeId of
-	 * whichever struct they hold - the overlay only ever needed the id, and Blueprint
-	 * cannot carry one, which is why the subsystem keeps a typed entry point per struct.
+	 * Open the platform profile overlay for a unique id.
+	 * Callers pass the NativeId out of whichever struct they hold, because the overlay only ever needs the id.
+	 * Blueprint cannot hold a raw id, which is why the subsystem exposes one typed entry point per struct instead.
 	 */
 	bool ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
 
@@ -69,5 +68,6 @@ private:
 
 	UEasySessionSubsystem& Owner;
 
+	/** Handle for the accepted-invite delegate. Valid once BindInviteDelegates has run. */
 	FDelegateHandle InviteAcceptedHandle;
 };

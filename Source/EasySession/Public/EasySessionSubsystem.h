@@ -301,7 +301,7 @@ public:
 	bool IsBusy() const;
 
 	/**
-	 * Describe what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), 1 queued" or "Idle".
+	 * Describe what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle".
 	 * Meant for status UI, the EasySession.Status console command and bug reports.
 	 */
 	FString GetQueueStatusDescription() const;

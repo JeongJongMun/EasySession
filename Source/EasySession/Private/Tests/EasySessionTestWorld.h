@@ -15,20 +15,17 @@ namespace EasySessionTest
 	/**
 	 * Shut a test game instance down and destroy the world it brought with it.
 	 *
-	 * UGameInstance::InitializeStandalone creates a world context and a dummy world
-	 * ("/Temp/Untitled_N") to run in, but Shutdown() only clears the instance's own
-	 * pointer to them - the world stays alive and still initialized. Its world
-	 * subsystems (WorldPartition, Water, ...) then outlive the test, and when the
-	 * editor finally exits they are destroyed while still initialized:
+	 * UGameInstance::InitializeStandalone creates a world context and a dummy world ("/Temp/Untitled_N") to run in.
+	 * Shutdown() only clears the instance's own pointer to them, so the world stays alive and still initialized.
+	 * Its world subsystems (WorldPartition, Water, ...) then outlast the test, and when the editor finally exits they are destroyed while still initialized:
 	 *
 	 *   Ensure condition failed: !bInitialized  [WorldSubsystem.cpp:118]
 	 *   Tickable subsystem WorldPartitionSubsystem /Temp/Untitled_1 was destroyed
 	 *   while still initialized! Check for missing Super::Deinitialize call
 	 *
-	 * followed by an access violation on shutdown. A test that starts an instance
-	 * must therefore undo both halves. The order mirrors the engine's own test
-	 * helper (FTestWorldInstance::Teardown in NetTestHelpers.cpp): drop the net
-	 * driver, destroy the world, then remove its context.
+	 * That is followed by an access violation on shutdown, so a test that starts an instance must undo both halves.
+	 * The order mirrors the engine's own test helper, FTestWorldInstance::Teardown in NetTestHelpers.cpp.
+	 * Drop the net driver, destroy the world, then remove its context.
 	 */
 	inline void DestroyGameInstance(UGameInstance* GameInstance)
 	{

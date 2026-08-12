@@ -131,7 +131,7 @@ public:
 	static bool IsOnlineSubsystemAvailable(const UObject* WorldContextObject);
 
 	/**
-	 * Get what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), 1 queued" or "Idle".
+	 * Get what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle".
 	 * Meant for status UI and bug reports.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))

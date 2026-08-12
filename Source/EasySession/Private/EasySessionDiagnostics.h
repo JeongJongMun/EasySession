@@ -7,20 +7,18 @@
 class UWorld;
 
 /**
- * Startup diagnostics that detect common online configuration mistakes and log
- * actionable fixes: missing ini entries, wrong net driver, login problems.
- * Outside Shipping, runs once when the subsystem comes up; on demand via
- * EasySession.Diagnose, which is itself Shipping-free.
+ * Startup checks that find common online configuration mistakes and log how to fix them: missing ini entries, the wrong net driver, login problems.
+ * They run once when the subsystem starts, and again whenever EasySession.Diagnose is entered.
+ * Neither the checks nor that console command exist in a Shipping build.
  */
 namespace EasySessionDiagnostics
 {
 	/**
 	 * Run all checks for the given world and log the results.
 	 *
-	 * Returns a one-line summary of which service was asked for and which one
-	 * actually came up. The details only reach the log, which a packaged build
-	 * shows to nobody unless it was launched with -log, so callers that have a
-	 * screen (the console command) print this line as well.
+	 * @return One line naming the online service the project asked for and the one that actually loaded.
+	 *         The full findings only go to the log, which a packaged build shows to nobody unless it was
+	 *         launched with -log, so a caller that can print to the screen should print this line too.
 	 */
 	FString RunDiagnostics(UWorld* World);
 }

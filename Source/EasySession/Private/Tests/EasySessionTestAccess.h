@@ -16,18 +16,16 @@
 /**
  * The subsystem's private state, reached on behalf of the tests.
  *
- * Tests need to see things no game should: which of two places a value came from,
- * or a fact the join path would normally decide. Keeping those reads here instead
- * of on the subsystem means the plugin a user installs carries no test API, in any
- * build configuration.
+ * Tests need to read things no game should, such as which of two sources a value came from, or a flag the join path would normally set on its own.
+ * Keeping those reads here rather than on the subsystem means the plugin a user installs carries no test API in any build configuration.
  */
 class FEasySessionTestAccess
 {
 public:
 
 	/**
-	 * Pretend this process did or did not create the active session. Joining is what
-	 * normally settles it, and a headless test has no second process to join.
+	 * Pretend this process did or did not create the active session.
+	 * Creating or joining normally sets this, and a headless test has no second process to join.
 	 */
 	static void SetCreatedActiveSession(UEasySessionSubsystem& Subsystem, bool bCreated)
 	{
@@ -35,8 +33,8 @@ public:
 	}
 
 	/**
-	 * The host state the replicated carrier last delivered. Get Session State only
-	 * surfaces this on an actual client, which a headless test world is not.
+	 * The host state AEasySessionStateActor last replicated in.
+	 * GetSessionState only returns this on a real client, which a headless test world is not.
 	 */
 	static EEasySessionState GetReplicatedHostSessionState(const UEasySessionSubsystem& Subsystem)
 	{
@@ -56,8 +54,8 @@ public:
 	}
 
 	/**
-	 * The password-protected flag as it is advertised to searching players. Paired
-	 * with the enforced password above: a test proves the two agree by reading both.
+	 * The password-protected flag as it is advertised to searching players.
+	 * Read together with the enforced password above, a test can prove the two agree.
 	 */
 	static bool GetAdvertisedPasswordProtected(const UEasySessionSubsystem& Subsystem)
 	{

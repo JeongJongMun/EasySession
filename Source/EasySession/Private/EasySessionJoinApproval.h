@@ -13,16 +13,15 @@ class UEasySessionSubsystem;
 struct FEasySessionSearchResult;
 
 /**
- * The join approval beacon's transport: keeping the host side alive, and later
- * carrying the client's pre-travel question.
+ * Runs the connection the join approval beacon uses.
+ * The host side stays up for the life of the session; the client side carries one question and closes.
  *
- * Beacons are actors, so they die with their world. This object re-creates the host
- * beacon in every world the session reaches by watching game mode initialization,
- * which fires on the server once per map. Whether a request is approved is not
- * decided here - that is the server gate's job.
+ * Beacons are actors, so they are destroyed with their world.
+ * This object re-creates the host beacon in every world the session reaches by watching game mode initialization, which the server runs once per map.
+ * Whether a request is approved is decided by FEasySessionServerGate, not here.
  *
- * Owned by the subsystem and destroyed with it. Delegates are bound raw because this
- * object cannot outlive the owner that unbinds them in Shutdown.
+ * Owned by the subsystem and destroyed with it.
+ * Delegates are bound raw because this object cannot outlive the owner that unbinds them in Shutdown.
  */
 class FEasySessionJoinApproval
 {
@@ -51,9 +50,9 @@ public:
 	void StopHost();
 
 	/**
-	 * Joiner: request Target's host to approve the local player joining. The answer
-	 * arrives through OnComplete exactly once, as Unreachable when the host cannot be
-	 * reached. A new request cancels a pending one.
+	 * Joiner: ask Target's host to approve the local player joining.
+	 * The answer arrives through OnComplete exactly once, as Unreachable when the host cannot be reached.
+	 * A new request cancels a pending one.
 	 */
 	void RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete);
 
@@ -66,14 +65,15 @@ private:
 	void HandleGameModeInitialized(AGameModeBase* GameMode);
 
 	/**
-	 * Point the session at the port the beacon actually bound. Retries every frame until
-	 * the request queue is idle: EnsureHost can run while a request is still active, and
-	 * this update must not land then.
+	 * Advertise the port the beacon actually bound to, so joiners reach this host and not another one on the same machine.
+	 * Retries every frame until the request queue is idle.
+	 * EnsureHost can run while a request is still active, and this update would then complete that request instead of its own.
 	 */
 	bool TickAdvertiseBoundPort(float DeltaTime);
 
 	UEasySessionSubsystem& Owner;
 
+	/** Handle for the game mode initialization event, which is what re-creates the beacon per world. */
 	FDelegateHandle GameModeInitializedHandle;
 
 	/** Valid only while a re-advertisement is waiting for the queue. */

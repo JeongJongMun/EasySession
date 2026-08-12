@@ -15,6 +15,7 @@ struct FUniqueNetIdRepl;
 UENUM()
 enum class EEasyJoinApprovalResult : uint8
 {
+	/** The player may join. */
 	Approved,
 
 	/** The supplied session password did not match. */
@@ -23,24 +24,22 @@ enum class EEasyJoinApprovalResult : uint8
 	/** Refused for another reason. The reason text says which. */
 	Refused,
 
-	/** The asking side could not reach the host. A host never sends this - the beacon client fills it in itself. */
+	/** The joining client could not reach the host. A host never sends this - the beacon client fills it in itself. */
 	Unreachable
 };
 
 /**
- * The host's door policy: who may join, and who counts as being in the session.
+ * Decides who may join the session, and keeps the session's player list matching who is connected.
  *
- * Runs on the server only - game modes do not exist on clients. ApproveJoin makes
- * the join decision; the approval beacon asks it before a client travels, and
- * PreLogin asks it again when one arrives. PostLogin and Logout keep the session's
- * player list matching who is actually connected.
+ * Runs on the server only, because game modes do not exist on clients.
+ * ApproveJoin makes the join decision: the approval beacon asks it before a client travels, and PreLogin asks it again when that client arrives.
+ * PostLogin and Logout register and unregister players with the online service.
  *
- * This object owns the session credentials because it is what enforces them: the
- * password is only ever compared here. The subsystem hands them over when a session
- * is created or updated, and takes them back when it is destroyed.
+ * This object holds the session credentials because it is the only place the password is ever compared.
+ * The subsystem passes them in when a session is created or updated, and clears them when it is destroyed.
  *
- * Owned by the subsystem and destroyed with it. Delegates are bound raw because this
- * object cannot outlive the owner that unbinds them in Shutdown.
+ * Owned by the subsystem and destroyed with it.
+ * Delegates are bound raw because this object cannot outlive the owner that unbinds them in Shutdown.
  */
 class FEasySessionServerGate
 {
@@ -62,7 +61,7 @@ public:
 	/** Remember what the session this host just created expects from joining players. */
 	void SetSessionCredentials(const FString& InPassword, bool bInFriendsBypassPassword);
 
-	/** Forget them once the session is gone. */
+	/** Forget the credentials once the session is gone. */
 	void ClearSessionCredentials();
 
 	/** The password joining players must supply. Empty when the session is open. */
@@ -72,9 +71,11 @@ public:
 	bool GetFriendsBypassPassword() const { return bFriendsBypassPassword; }
 
 	/**
-	 * Decide whether a player may join: checks the join-in-progress policy, then the
-	 * password, letting friends of the host through without one. Never returns
-	 * Unreachable. When refusing, OutReason carries the message shown to the player.
+	 * Decide whether a player may join.
+	 * Checks the join-in-progress policy first, then the password, which friends of the host may skip.
+	 * Never returns Unreachable, which only the beacon client produces.
+	 *
+	 * @param OutReason Set to the message shown to the refused player. Untouched when the join is approved.
 	 */
 	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
 
@@ -85,7 +86,7 @@ private:
 	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
 	void HandleLogout(AGameModeBase* GameMode, AController* Exiting);
 
-	/** Whether the event belongs to the world this subsystem runs in. */
+	/** Whether the event belongs to the world this subsystem runs in. Ignores PIE instances other than our own. */
 	bool IsOwnWorld(const AGameModeBase* GameMode) const;
 
 	UEasySessionSubsystem& Owner;

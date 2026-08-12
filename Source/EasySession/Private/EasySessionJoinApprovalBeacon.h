@@ -31,6 +31,7 @@ struct FEasyJoinApprovalResponse
 {
 	GENERATED_BODY()
 
+	/** Whether the join was approved, and if not, why. Starts as Unreachable so an answer that never arrives reads correctly. */
 	UPROPERTY()
 	EEasyJoinApprovalResult Result = EEasyJoinApprovalResult::Unreachable;
 
@@ -38,7 +39,7 @@ struct FEasyJoinApprovalResponse
 	UPROPERTY()
 	FString ReasonText;
 
-	/** Unused in v1.0. Becomes the proof of a seat hold once reservations arrive. */
+	/** Unused in v1.0. Will identify a reserved player slot once reservations are added. */
 	UPROPERTY()
 	FString Token;
 };
@@ -49,15 +50,13 @@ DECLARE_DELEGATE_OneParam(FEasyJoinApprovalComplete, const FEasyJoinApprovalResp
 /**
  * Asks the host "may this player join?" over a beacon, before any travel starts.
  *
- * The game connection cannot answer that question early: it only exists once the
- * client is already traveling, which is why a PreLogin rejection used to arrive
- * seconds after the Join node reported success. A beacon is a second, lightweight
- * connection that exists exactly for pre-travel questions - the same mechanism a
- * party seat reservation will use later.
+ * The game connection cannot answer that question early enough, because it only exists once the client is already traveling.
+ * That is why a PreLogin rejection used to reach the player seconds after the Join node had already reported success.
+ * A beacon is a second, lightweight connection made for exactly this kind of pre-travel exchange.
+ * It is also the mechanism a party seat reservation will use later.
  *
- * A deliberately minimal beacon rather than the engine's APartyBeaconClient: that
- * class carries reservation lists, party members and timeouts shaped for a
- * matchmaking backend, and this exchange is a single question and answer.
+ * This is a minimal beacon rather than the engine's APartyBeaconClient.
+ * That class carries reservation lists, party members and timeouts shaped for a matchmaking backend, while this exchange is one question and one answer.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
 class AEasySessionJoinApprovalBeaconClient : public AOnlineBeaconClient
@@ -69,16 +68,17 @@ public:
 	AEasySessionJoinApprovalBeaconClient();
 
 	/**
-	 * Resolve Target's beacon address, connect, and ask to join. The answer arrives
-	 * through OnComplete exactly once - as Unreachable when the address does not
-	 * resolve, the connection fails, or the host never answers. Failures inside this
-	 * call are reported the same way, so the caller only handles one path.
+	 * Resolve Target's beacon address, connect, and ask to join.
+	 * The answer arrives through OnComplete exactly once, as Unreachable when the address does not resolve, the connection fails, or the host never answers.
+	 * A failure inside this call is reported the same way, so the caller only has one path to handle.
 	 */
 	bool RequestApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete);
 
+	/** Sends the request to the host once the beacon connects. */
 	UFUNCTION(Server, Reliable)
 	void ServerRequestJoinApproval(const FEasyJoinApprovalRequest& Request);
 
+	/** Delivers the host's answer back to the joiner. */
 	UFUNCTION(Client, Reliable)
 	void ClientReceiveJoinApproval(const FEasyJoinApprovalResponse& Response);
 
@@ -102,17 +102,20 @@ private:
 	/** Held between RequestApproval and OnConnected, then sent to the host. */
 	FEasyJoinApprovalRequest PendingRequest;
 
+	/** The caller's callback. Cleared as it is executed, so it can only run once. */
 	FEasyJoinApprovalComplete CompleteDelegate;
 
+	/** Timer for a host that connected but never answered. */
 	FTimerHandle ResponseTimeoutHandle;
 
+	/** Whether an answer has already been delivered. Later failures are then ignored. */
 	bool bCompleted = false;
 };
 
 /**
- * Host side of the approval request. This actor only carries the question over
- * the beacon - the decision belongs to FEasySessionServerGate, the same object
- * PreLogin asks, so the two answers can never disagree.
+ * Host side of the approval request.
+ * This actor only carries the question over the beacon; the decision belongs to FEasySessionServerGate.
+ * PreLogin asks that same object, so the beacon's answer and the one a joining client gets on arrival can never disagree.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
 class AEasySessionJoinApprovalBeaconHostObject : public AOnlineBeaconHostObject
@@ -124,8 +127,10 @@ public:
 	AEasySessionJoinApprovalBeaconHostObject();
 
 	/**
-	 * Ask the ServerGate whether this player may join. Returns the denial reason
-	 * through OutReason. Refuses when there is no subsystem to ask.
+	 * Ask FEasySessionServerGate whether this player may join.
+	 * Refuses when there is no subsystem to ask.
+	 *
+	 * @param OutReason Set to the message shown to the refused player.
 	 */
 	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& Password, FString& OutReason) const;
 };

@@ -13,13 +13,11 @@ class USpringArmComponent;
 struct FInputActionValue;
 
 /**
- * Minimal third person character for the example content, wired up with Enhanced
- * Input the same way the engine's character templates are. Games are expected to
- * replace it with their own character - it only exists so the example maps are
- * playable out of the box.
+ * Minimal third person character for the example content, set up with Enhanced Input the same way the engine's character templates are.
+ * A game is expected to use its own character instead; this one exists so the example maps can be played without any setup.
  *
- * The input assets live in the plugin's example content, so nothing has to be set
- * up in the project. Networked movement comes from ACharacter.
+ * The input assets live in the plugin's example content, so a project has nothing to configure.
+ * Networked movement comes from ACharacter.
  */
 UCLASS(Blueprintable, NotPlaceable)
 class AEasyExampleCharacter : public ACharacter
@@ -28,6 +26,7 @@ class AEasyExampleCharacter : public ACharacter
 
 public:
 
+	/** Builds the camera boom and camera, and sets the character to turn toward its movement while the camera follows the control rotation. */
 	AEasyExampleCharacter();
 
 	//~ Begin APawn Interface

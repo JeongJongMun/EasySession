@@ -8,23 +8,22 @@
 /**
  * A single queued session operation.
  *
- * Requests run strictly one at a time. The online subsystem already rejects a
- * second call of the *same* kind (a session name can only be created, joined or
- * destroyed once, and searches refuse to overlap), so the queue is not there to
- * prevent that. What it prevents is *different* operations crossing: Steam's
- * DestroySession, for example, only refuses while a destroy is already running -
- * it will happily tear down a session whose create is still in flight. Serializing
- * also turns "rejected because something else was running" into "runs next", which
- * is the behavior a caller expects from a beginner-friendly API.
+ * Requests run strictly one at a time.
+ * The online subsystem already rejects a second call of the same kind.
+ * A session name can only be created, joined or destroyed once, and searches refuse to overlap, so the queue is not there for that.
+ * What it prevents is two different operations overlapping.
+ * Steam's DestroySession only refuses while another destroy is running, so it will destroy a session whose create has not finished.
+ * Running them in order also turns "rejected because something else was running" into "runs next", which is what a caller expects from a beginner-friendly API.
  *
- * Each request owns its own deadline: the online service is not required to ever
- * call back (Steam tasks do not implement CancelWhenTimeout), so without a
- * deadline a silent service would stall every request behind it.
+ * Each request carries its own deadline.
+ * The online service is not required to ever call back, and Steam tasks do not implement CancelWhenTimeout.
+ * Without a deadline a silent service would stall every request behind it.
  */
 class FEasySessionRequest
 {
 public:
 
+	/** Which session operation a request performs. */
 	enum class EType : uint8
 	{
 		Create,
@@ -36,6 +35,7 @@ public:
 		End
 	};
 
+	/** Build a request of the given type. The caller fills in the payload fields it needs. */
 	explicit FEasySessionRequest(EType InType)
 		: Type(InType)
 	{
@@ -77,9 +77,10 @@ public:
 	}
 
 	/**
-	 * Deadline for this request. Searching runs its own timeout inside the online
-	 * service, so that budget is added on top or the watchdog would fire on a
-	 * perfectly healthy search. 0 (or a non-positive setting) disables the deadline.
+	 * Deadline for this request.
+	 * A search runs its own timeout inside the online service, so that time is added on top.
+	 * Otherwise the watchdog would fire on a search that is still working normally.
+	 * 0, or a non-positive setting, disables the deadline.
 	 */
 	double ComputeTimeoutSeconds(float ConfiguredTimeoutSeconds) const
 	{
@@ -102,13 +103,13 @@ public:
 		return Type == EType::Create || Type == EType::Join;
 	}
 
+	/** Which operation this request performs. Decides which of the payload fields below are read. */
 	EType Type;
 
 	/**
-	 * The session every step of this request acts on: execution, the completion
-	 * filter, and the timeout cleanup all read it. Set once when the request is
-	 * enqueued and constant afterwards. One value today, since the plugin hosts a
-	 * single session per process.
+	 * The session every step of this request acts on, read by the execution, the completion filter and the timeout cleanup alike.
+	 * Set once when the request is enqueued and constant afterwards.
+	 * It holds one value today, because the plugin hosts a single session per process.
 	 */
 	FName SessionName;
 
@@ -118,12 +119,27 @@ public:
 	/** Deadline for this run, frozen when the request starts. 0 = no deadline. */
 	double TimeoutSeconds = 0.0;
 
+	/** Create and Update: the settings to advertise for the session. */
 	FEasySessionHostParams HostParams;
+
+	/** Find: the filters to search with. */
 	FEasySessionSearchParams SearchParams;
+
+	/** Join: the session to join, as returned by a search. */
 	FEasySessionSearchResult JoinTarget;
+
+	/** Join: whether to travel to the host once the online service accepts the join. */
 	bool bTravelOnSuccess = true;
+
+	/** Join: the password sent to the host's approval beacon, and carried in the travel URL for PreLogin. */
 	FString JoinPassword;
+
+	/** Join: extra options appended to the client travel URL. */
 	FString JoinTravelOptions;
+
+	/** Called when the request finishes. Find reports through OnFindComplete instead. */
 	FEasySessionCompleteDelegate OnComplete;
+
+	/** Find: called with the filtered results when the search finishes. */
 	FEasySessionFindCompleteDelegate OnFindComplete;
 };

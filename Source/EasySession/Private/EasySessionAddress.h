@@ -5,48 +5,43 @@
 #include "CoreMinimal.h"
 
 /**
- * Reading the address and URL strings that the online subsystem and the travel
- * APIs hand us. Their shape is decided by the subsystem, not by us, so every
- * check here reports "nothing wrong" for a string it cannot understand: a wrong
- * complaint would block a join that was going to work.
+ * Reading and building the address and URL strings the online subsystem and the travel APIs use.
+ * The online subsystem decides their shape, so a check here that does not recognise a string reports no problem instead of guessing.
+ * Guessing wrong would refuse a join that would have worked.
  */
 namespace EasySessionAddress
 {
 	/**
-	 * Whether a resolved connect string advertises port 0, which means the host
-	 * never opened a game net driver - the session is advertised but nothing is
-	 * listening behind it. See Trouble_Shooting #04.
+	 * Whether a resolved connect string advertises port 0, which means the host never opened a game net driver.
+	 * The session is advertised, but no server is accepting connections.
+	 * See "Session is found, but joining times out" in Docs/FAQ.md.
 	 *
-	 * Only judges addresses whose port position is unambiguous: "host:port" and
-	 * "[ipv6]:port". A bare IPv6 address, or a connect string that is not an
-	 * address at all, returns false.
+	 * Only reads addresses whose port position is unambiguous: "host:port" and "[ipv6]:port".
+	 * A bare IPv6 address, or a connect string that is not an address at all, returns false.
 	 */
 	bool HasZeroPort(const FString& ConnectString);
 
 	/**
-	 * Whether a travel URL already carries the ?listen option. Matched as a URL
-	 * option, so it is case insensitive and "?listenport=7777" does not count.
+	 * Whether a travel URL already carries the ?listen option.
+	 * Matched as a whole URL option, so it is case insensitive and "?listenport=7777" does not count.
 	 */
 	bool HasListenOption(const FString& TravelURL);
 
 	/**
-	 * The value of one option in a travel URL, trimmed, or empty when the option
-	 * is absent. Accepts the whole request URL: the map path in front is skipped,
-	 * as the engine does before handing it to PreLogin.
+	 * The value of one option in a travel URL, trimmed, or empty when the option is absent.
+	 * Accepts the whole request URL: the map path in front is skipped, the same way the engine skips it before PreLogin.
 	 *
-	 * Returned as it appears in the URL. A value that went through
-	 * EncodeTravelOptionValue comes back still encoded.
+	 * The value comes back exactly as it appears in the URL, so one written by EncodeTravelOptionValue is still encoded.
 	 */
 	FString ParseTravelOption(const FString& RequestURL, const TCHAR* Key);
 
 	/**
-	 * Make a value safe to carry as a travel option. The engine splits options on
-	 * '?' and '#' (FURL.cpp, ValidNetChar), so a value holding either one arrives
-	 * cut in half; '%' goes with them to keep decoding unambiguous. Everything
-	 * else, spaces and '=' included, is left alone.
+	 * Make a value safe to carry as a travel option.
+	 * The engine splits options on '?' and '#' (FURL.cpp, ValidNetChar), so a value containing either one would arrive truncated.
+	 * '%' is escaped as well so decoding stays unambiguous; everything else, spaces and '=' included, is left alone.
 	 */
 	FString EncodeTravelOptionValue(const FString& Value);
 
-	/** Undo EncodeTravelOptionValue. Leaves anything it did not write untouched. */
+	/** Undo EncodeTravelOptionValue. Characters it never escaped are left as they are. */
 	FString DecodeTravelOptionValue(const FString& Value);
 }
