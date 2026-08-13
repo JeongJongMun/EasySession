@@ -20,7 +20,7 @@ Fix on the **host** side: keep `Start Listening = true` (default) in Host Params
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
-**One occurrence during client travel is normal.** The engine tries to unregister the traveling player twice (logout path + PlayerState teardown); the first succeeds, the second logs this warning. Epic's own samples show the same line. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
+**One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and unregisters the local player, who was never in the client's own copy of the session's player list. Epic's own samples show the same line. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
 
 ## "Connected fine, but the other player doesn't move on my screen"
 

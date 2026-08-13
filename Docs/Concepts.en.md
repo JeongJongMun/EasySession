@@ -12,7 +12,7 @@ A **session** is a record the online service holds for one running game. It carr
 
 A session is data, not a connection. It tells players where a game is; moving game data between machines is a separate system, the [NetDriver](#what-is-a-netdriver). Most "it does not work" reports come from that gap: the session is advertised, but the host never became a server, so everyone trying to join hits a dead address.
 
-The free-slot count is part of that record, so it is only right if someone keeps it current. EasySession registers each player who arrives and unregisters each one who leaves. Without that, a session that is already full keeps advertising free space.
+The free-slot count is part of that record, so it is only right if someone keeps it current. Each player who arrives is registered in the session and each one who leaves is unregistered. Without that, a session that is already full keeps advertising free space.
 
 ## What is the Online Subsystem (OSS)?
 

@@ -11,10 +11,7 @@
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
-#include "GameFramework/PlayerController.h"
-#include "GameFramework/PlayerState.h"
 #include "Interfaces/OnlineFriendsInterface.h"
-#include "Kismet/GameplayStatics.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 
@@ -26,8 +23,6 @@ FEasySessionServerGate::~FEasySessionServerGate()
 void FEasySessionServerGate::Initialize()
 {
 	PreLoginHandle = FGameModeEvents::GameModePreLoginEvent.AddRaw(this, &FEasySessionServerGate::HandlePreLogin);
-	PostLoginHandle = FGameModeEvents::GameModePostLoginEvent.AddRaw(this, &FEasySessionServerGate::HandlePostLogin);
-	LogoutHandle = FGameModeEvents::GameModeLogoutEvent.AddRaw(this, &FEasySessionServerGate::HandleLogout);
 }
 
 void FEasySessionServerGate::Shutdown()
@@ -36,18 +31,6 @@ void FEasySessionServerGate::Shutdown()
 	{
 		FGameModeEvents::GameModePreLoginEvent.Remove(PreLoginHandle);
 		PreLoginHandle.Reset();
-	}
-
-	if (PostLoginHandle.IsValid())
-	{
-		FGameModeEvents::GameModePostLoginEvent.Remove(PostLoginHandle);
-		PostLoginHandle.Reset();
-	}
-
-	if (LogoutHandle.IsValid())
-	{
-		FGameModeEvents::GameModeLogoutEvent.Remove(LogoutHandle);
-		LogoutHandle.Reset();
 	}
 
 	ClearSessionCredentials();
@@ -174,54 +157,5 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 	if (ApproveJoin(NewPlayer, SuppliedPassword, Reason) != EEasyJoinApprovalResult::Approved)
 	{
 		ErrorMessage = Reason;
-	}
-}
-
-void FEasySessionServerGate::HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer)
-{
-	// Fires on the server only (game modes do not exist on clients).
-	if (!IsOwnWorld(GameMode) || NewPlayer == nullptr)
-	{
-		return;
-	}
-
-	if (NewPlayer->IsLocalController())
-	{
-		// The hosting player registers itself right after creating the session.
-		return;
-	}
-
-	// Register the remote player so the advertised open slot count stays accurate.
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(Owner.GetGameInstance()->GetWorld());
-	const APlayerState* PlayerState = NewPlayer->PlayerState;
-	const FUniqueNetIdRepl PlayerId = PlayerState ? PlayerState->GetUniqueId() : FUniqueNetIdRepl();
-
-	if (Sessions.IsValid() && PlayerId.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr)
-	{
-		if (Sessions->RegisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Registered remote player '%s' in the session."), *NewPlayer->GetName());
-		}
-	}
-}
-
-void FEasySessionServerGate::HandleLogout(AGameModeBase* GameMode, AController* Exiting)
-{
-	// Fires on the server only. Unregister remote players so their slot frees up.
-	if (!IsOwnWorld(GameMode) || Exiting == nullptr || Exiting->IsLocalController())
-	{
-		return;
-	}
-
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(Owner.GetGameInstance()->GetWorld());
-	const APlayerState* PlayerState = Exiting->PlayerState;
-	const FUniqueNetIdRepl PlayerId = PlayerState ? PlayerState->GetUniqueId() : FUniqueNetIdRepl();
-
-	if (Sessions.IsValid() && PlayerId.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr)
-	{
-		if (Sessions->UnregisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Unregistered remote player '%s' from the session."), *Exiting->GetName());
-		}
 	}
 }

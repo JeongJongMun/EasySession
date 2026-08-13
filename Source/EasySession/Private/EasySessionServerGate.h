@@ -5,9 +5,7 @@
 #include "CoreMinimal.h"
 #include "EasySessionServerGate.generated.h"
 
-class AController;
 class AGameModeBase;
-class APlayerController;
 class UEasySessionSubsystem;
 struct FUniqueNetIdRepl;
 
@@ -29,11 +27,10 @@ enum class EEasyJoinApprovalResult : uint8
 };
 
 /**
- * Decides who may join the session, and keeps the session's player list matching who is connected.
+ * Decides who may join the session.
  *
  * Runs on the server only, because game modes do not exist on clients.
- * ApproveJoin makes the join decision: the approval beacon asks it before a client travels, and PreLogin asks it again when that client arrives.
- * PostLogin and Logout register and unregister players with the online service.
+ * ApproveJoin makes the decision: the approval beacon asks it before a client travels, and PreLogin asks it again when that client arrives.
  *
  * This object holds the session credentials because it is the only place the password is ever compared.
  * The subsystem passes them in when a session is created or updated, and clears them when it is destroyed.
@@ -52,7 +49,7 @@ public:
 
 	~FEasySessionServerGate();
 
-	/** Start watching the engine's login events. */
+	/** Start watching the engine's PreLogin event. */
 	void Initialize();
 
 	/** Stop watching and forget the credentials. */
@@ -81,10 +78,8 @@ public:
 
 private:
 
-	/** Engine login event handlers. Server only. */
+	/** Refuse the arriving player when ApproveJoin says no, by writing the reason into ErrorMessage. */
 	void HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage);
-	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
-	void HandleLogout(AGameModeBase* GameMode, AController* Exiting);
 
 	/** Whether the event belongs to the world this subsystem runs in. Ignores PIE instances other than our own. */
 	bool IsOwnWorld(const AGameModeBase* GameMode) const;
@@ -98,6 +93,4 @@ private:
 	bool bFriendsBypassPassword = false;
 
 	FDelegateHandle PreLoginHandle;
-	FDelegateHandle PostLoginHandle;
-	FDelegateHandle LogoutHandle;
 };
