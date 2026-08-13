@@ -36,7 +36,7 @@ A player whose join fails this way is sent back to the main menu when the invite
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
-**One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and unregisters the local player, who was never in the client's own copy of the session's player list. Epic's own samples show the same line. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
+**One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and tries to take the local player out of a session the online service cannot find them in. Epic's own samples show the same line. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
 
 ## "Connected fine, but the other player doesn't move on my screen"
 
