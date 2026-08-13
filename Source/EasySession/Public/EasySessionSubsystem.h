@@ -446,9 +446,6 @@ private:
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
 
-	/** A map load finished, which ends any travel this plugin started - forwards to the travel helper. */
-	void HandlePostLoadMap(UWorld* LoadedWorld);
-
 	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
 	void ReturnToMenu();
 
@@ -545,9 +542,6 @@ private:
 
 	/** Ticker waiting for a valid world before auto hosting on a dedicated server. */
 	FTSTicker::FDelegateHandle DedicatedAutoHostTickerHandle;
-
-	/** Delegate handle for map loads, which end a travel. Bound for the subsystem lifetime. */
-	FDelegateHandle PostLoadMapHandle;
 
 	/**
 	 * Internal collaborators.

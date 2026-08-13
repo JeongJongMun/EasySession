@@ -8,22 +8,21 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
+#include "UObject/UObjectGlobals.h"
 
 FEasySessionTravel::FEasySessionTravel(UEasySessionSubsystem& InOwner)
 	: Owner(InOwner)
 {
+	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddRaw(this, &FEasySessionTravel::HandlePostLoadMap);
 }
 
 FEasySessionTravel::~FEasySessionTravel()
 {
-	if (ListenCheckTickerHandle.IsValid())
-	{
-		FTSTicker::GetCoreTicker().RemoveTicker(ListenCheckTickerHandle);
-		ListenCheckTickerHandle.Reset();
-	}
+	FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
+	PostLoadMapHandle.Reset();
 }
 
-void FEasySessionTravel::EnsureHostIsListening(const FEasySessionHostParams& HostParams)
+void FEasySessionTravel::ListenOnCurrentMap(const FEasySessionHostParams& HostParams)
 {
 	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
 	if (World == nullptr)
@@ -32,46 +31,20 @@ void FEasySessionTravel::EnsureHostIsListening(const FEasySessionHostParams& Hos
 	}
 
 	const bool bIsDedicated = HostParams.HostMode == EEasySessionHostMode::DedicatedServer;
-
-	if (!HostParams.MapName.IsEmpty())
+	if (bIsDedicated || !HostParams.bStartListening || World->GetNetMode() != NM_Standalone)
 	{
-		TravelToOwnSession(HostParams);
-	}
-	else if (!bIsDedicated && HostParams.bStartListening && World->GetNetMode() == NM_Standalone)
-	{
-		// No map to travel to - start listening on the current map so clients can connect.
-		FURL ListenURL;
-		if (World->Listen(ListenURL))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
-		}
-		else
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("Failed to start a listen server on the current map. Clients will not be able to connect."));
-			Owner.OnSessionFailure.Broadcast(TEXT("Failed to start a listen server on the current map."));
-		}
+		return;
 	}
 
-	// Verify shortly after that we actually became a listen server - the most common
-	// beginner pitfall is a session that is advertised but not connectable.
-	if (!bIsDedicated && HostParams.bStartListening)
+	FURL ListenURL;
+	if (World->Listen(ListenURL))
 	{
-		if (ListenCheckTickerHandle.IsValid())
-		{
-			FTSTicker::GetCoreTicker().RemoveTicker(ListenCheckTickerHandle);
-		}
-
-		ListenCheckTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float DeltaTime)
-		{
-			ListenCheckTickerHandle.Reset();
-
-			const UWorld* CurrentWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-			if (CurrentWorld != nullptr && CurrentWorld->GetNetMode() == NM_Standalone && Owner.IsInSession() && Owner.IsHost())
-			{
-				UE_LOG(LogEasySession, Warning, TEXT("The session is advertised but this game is still not a listen server - clients will fail to connect. Common causes: PIE with 'Run Under One Process' enabled, an invalid travel map path, or the starting map's game mode using seamless travel (seamless travel drops the ?listen option)."));
-			}
-			return false;
-		}), 3.0f);
+		UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
+	}
+	else
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Failed to start a listen server on the current map. Clients will not be able to connect."));
+		Owner.OnSessionFailure.Broadcast(TEXT("Failed to start a listen server on the current map."));
 	}
 }
 
@@ -98,11 +71,7 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
 
-	// From a standalone game - the very first travel that turns the host into a
-	// listen server - use an absolute client travel: it always performs a hard map
-	// load, so ?listen is guaranteed to take effect. ServerTravel would consult the
-	// current game mode's bUseSeamlessTravel, and seamless travel silently drops
-	// ?listen - the travel must not depend on (or mutate) the game's configuration.
+	// Not yet a server (hosting from the main menu). A client travel hard loads, so ?listen opens the listen server; seamless ServerTravel would drop it.
 	if (World->GetNetMode() == NM_Standalone)
 	{
 		APlayerController* PlayerController = Owner.GetGameInstance()->GetFirstLocalPlayerController();
@@ -114,13 +83,9 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 		}
 
 		PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
-		MarkStarted(TEXT("host travel to own session"));
-		return;
 	}
-
-	// Already a server (listen or dedicated): a regular server travel moves every
-	// connected player along, and may be seamless.
-	if (!World->ServerTravel(TravelURL))
+	// Already a server: no local player controller on a dedicated server, and a server travel brings connected players along.
+	else if (!World->ServerTravel(TravelURL))
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerTravel to '%s' failed. Check that the map path is valid (e.g. /Game/Maps/Lobby)."), *TravelURL);
 		Owner.OnSessionFailure.Broadcast(FString::Printf(TEXT("ServerTravel to '%s' failed."), *TravelURL));
@@ -163,8 +128,14 @@ void FEasySessionTravel::MarkStarted(const TCHAR* Reason)
 	bTravelInFlight = true;
 }
 
-void FEasySessionTravel::NotifyMapLoaded()
+void FEasySessionTravel::HandlePostLoadMap(UWorld* LoadedWorld)
 {
+	// Fires for every world in the process, ours or another PIE instance's.
+	if (LoadedWorld == nullptr || LoadedWorld->GetGameInstance() != Owner.GetGameInstance())
+	{
+		return;
+	}
+
 	bTravelInFlight = false;
 }
 

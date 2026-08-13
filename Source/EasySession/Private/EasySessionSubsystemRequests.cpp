@@ -483,7 +483,6 @@ void UEasySessionSubsystem::ExecuteUpdate()
 		return;
 	}
 
-	// Same gate as ExecuteStart, for the same reason.
 	if (!IsSessionAuthority())
 	{
 		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
@@ -537,18 +536,27 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 
-	// This process made the session, so it is the one that serves it - on a dedicated
+	// This process created the session, so it is the session's server - on a dedicated
 	// server just as much as on a listen server.
 	bCreatedActiveSession = true;
 
 	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
-	
-	// Hosting without a travel stays in this world - start the beacon here; every later world starts its own.
-	JoinApproval->EnsureHost();
 	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
-	Travel->EnsureHostIsListening(HostParams);
+
+	if (HostParams.MapName.IsEmpty())
+	{
+		// The host stays on this map: open the listen server and answer join approvals here.
+		Travel->ListenOnCurrentMap(HostParams);
+		JoinApproval->EnsureHost();
+	}
+	else
+	{
+		// The host travels to the session map. The travel URL opens the listen server, and
+		// the arrival world starts the approval beacon when its game mode initializes.
+		Travel->TravelToOwnSession(HostParams);
+	}
 }
 
 void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
@@ -672,7 +680,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
-	// Joining settles the question the other way: someone else serves this session.
+	// This process joined the session rather than creating it, so it is not the session's server.
 	bCreatedActiveSession = false;
 
 	RegisterLocalPlayerInSession();
@@ -702,7 +710,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	ServerGate->ClearSessionCredentials();
 	JoinApproval->StopHost();
 
-	// The session is gone - drop the replicated state carrier and cache with it.
+	// The session is gone - destroy the replicated state actor and clear the cached host state.
 	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
 		Actor->Destroy();
@@ -751,10 +759,6 @@ void UEasySessionSubsystem::ExecuteStart()
 		return;
 	}
 
-	// Without this gate the call would still "succeed" - StartSession flips the local
-	// session copy - while the real session on the server stays Pending. This check is
-	// the only thing standing: BlueprintAuthorityOnly has no runtime effect on a
-	// subsystem (only AActor::GetFunctionCallspace enforces it).
 	if (!IsSessionAuthority())
 	{
 		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
@@ -788,7 +792,6 @@ void UEasySessionSubsystem::ExecuteEnd()
 		return;
 	}
 
-	// Same gate as ExecuteStart, for the same reason.
 	if (!IsSessionAuthority())
 	{
 		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,

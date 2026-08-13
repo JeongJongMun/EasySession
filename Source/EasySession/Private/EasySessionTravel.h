@@ -3,48 +3,45 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Containers/Ticker.h"
 #include "EasySessionTypes.h"
 
 class UEasySessionSubsystem;
+class UWorld;
 
 /**
- * Sends players to the map the session is played on.
- * The host opens its own map as a listen server, clients connect to the host's address, and both travel URLs pass through the modify hooks first.
+ * Sends players to the map the session is played on: the host to its own map, clients to the host's address.
+ * Both travel URLs pass through the modify hooks first.
  *
- * This object also tracks whether such a travel is still running.
- * The online call that precedes a travel can finish in the same frame, because the NULL subsystem completes Start, End and Join inside the call itself.
- * The queue alone would then report "idle" while the player is still watching a level load.
+ * Also tracks whether a travel this plugin started is still running, so session operations report busy while the player is watching a level load.
  *
- * The subsystem keeps the engine delegate bindings for map loads and travel failures and forwards them here, so those callbacks stay bound to a UObject.
+ * Owned by the subsystem and destroyed with it.
+ * The map load delegate is bound raw because this object cannot outlive the owner that destroys it.
+ * Travel failures arrive through the subsystem, whose failure handler owns the disconnect recovery and calls NotifyTravelFailed as one part of it.
  */
 class FEasySessionTravel
 {
 public:
 
+	/** Starts watching map loads, which are what end a travel. */
 	explicit FEasySessionTravel(UEasySessionSubsystem& InOwner);
 
-	/** The listen-check ticker is bound to this raw class - it is removed here. */
+	/** Stops watching map loads. */
 	~FEasySessionTravel();
 
-	/**
-	 * Host side, after creating a session: travel to the session map, or start listening on the current map when no map is given.
-	 * Shortly afterwards it checks that this game really did become a listen server.
-	 * A session that is advertised but accepts no connections is the most common setup mistake.
-	 */
-	void EnsureHostIsListening(const FEasySessionHostParams& HostParams);
+	/** Host side, after creating a session that has its own map: travel there, adding ?listen when the mode needs it. */
+	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
 
-	/** Client side, after joining: travel to the host the connect string points at. */
+	/**
+	 * Host side, after creating a session that stays on the current map: open a listen server here so clients can connect.
+	 * Does nothing on a dedicated server, which already listens, and when Start Listening is disabled.
+	 */
+	void ListenOnCurrentMap(const FEasySessionHostParams& HostParams);
+
+	/** Client side, after joining: travel to the host address in the connect string. */
 	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
 
-	/** Remember that this plugin sent the player somewhere. */
+	/** Remember that this plugin started a travel. */
 	void MarkStarted(const TCHAR* Reason);
-
-	/**
-	 * A map load ended the travel.
-	 * Called for every load, including one this plugin did not start, so the flag can never stay set after the travel it belongs to is over.
-	 */
-	void NotifyMapLoaded();
 
 	/** The travel is over even though no map was loaded. */
 	void NotifyTravelFailed();
@@ -57,14 +54,14 @@ public:
 
 private:
 
-	/** Host with a target map: travel there, adding ?listen when the mode needs it. */
-	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
+	/** A map load ended the travel. Loads of other game instances' worlds (PIE) are ignored. */
+	void HandlePostLoadMap(UWorld* LoadedWorld);
 
 	UEasySessionSubsystem& Owner;
 
+	/** Handle for the engine's map load delegate. Bound for this object's lifetime. */
+	FDelegateHandle PostLoadMapHandle;
+
 	/** Whether a travel this plugin started is still waiting for its map to load. */
 	bool bTravelInFlight = false;
-
-	/** Ticker that verifies the host became a listen server shortly after creating a session. */
-	FTSTicker::FDelegateHandle ListenCheckTickerHandle;
 };

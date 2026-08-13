@@ -132,7 +132,7 @@ cannot fake. This has no effect on NULL/LAN, where there are no friends.
 
 ## Traveling mid-session
 
-`Server Travel To Map` (host only) moves the whole session to a new map, automatically keeping the `?listen` option. Clients follow automatically.
+`Server Travel Easy Session` (host only) moves the whole session to a new map, appending `?listen` unless the server is dedicated or you wrote the option yourself. Clients follow automatically. Always change maps with this node: it stops the join approval beacon before the travel, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
 ## Events and state queries
 

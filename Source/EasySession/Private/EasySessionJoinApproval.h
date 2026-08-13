@@ -41,10 +41,11 @@ public:
 	void Shutdown();
 
 	/**
-	 * Host: start the beacon that answers join requests before a client travels.
-	 * Only runs when the session advertises the join approval key.
+	 * Host: start the beacon that answers join requests in the current world.
+	 * Only starts when the session advertises the join approval key.
+	 * Safe to call repeatedly; a beacon already running in this world is kept.
 	 */
-	bool EnsureHost();
+	void EnsureHost();
 
 	/** Host: stop the beacon. Safe when none is running. */
 	void StopHost();
@@ -67,7 +68,7 @@ private:
 	/**
 	 * Advertise the port the beacon actually bound to, so joiners reach this host and not another one on the same machine.
 	 * Retries every frame until the request queue is idle.
-	 * EnsureHost can run while a request is still active, and this update would then complete that request instead of its own.
+	 * EnsureHost can run while a request is active, and this update would then complete that request instead of its own.
 	 */
 	bool TickAdvertiseBoundPort(float DeltaTime);
 

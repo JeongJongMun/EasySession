@@ -72,12 +72,6 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &UEasySessionSubsystem::HandleTravelFailure);
 	}
 
-	// A map load ends a travel. The engine guarantees this fires however the load
-	// ends: UEngine::LoadMap broadcasts it from a scope guard's destructor "no matter
-	// how we exit", and seamless travel broadcasts it once the new world begins play.
-	// That guarantee is what makes it safe to hold state until it arrives.
-	PostLoadMapHandle = FCoreUObjectDelegates::PostLoadMapWithWorld.AddUObject(this, &UEasySessionSubsystem::HandlePostLoadMap);
-
 	// The session interface may not be reachable until the world exists - retry until it is.
 	InviteBindTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
 	{
@@ -128,12 +122,6 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		GEngine->OnTravelFailure().Remove(TravelFailureHandle);
 		TravelFailureHandle.Reset();
-	}
-
-	if (PostLoadMapHandle.IsValid())
-	{
-		FCoreUObjectDelegates::PostLoadMapWithWorld.Remove(PostLoadMapHandle);
-		PostLoadMapHandle.Reset();
 	}
 
 	if (WorldInitializedActorsHandle.IsValid())
@@ -582,13 +570,12 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 		return false;
 	}
 
+	// The map changes on the next frame, and the arrival world starts its own beacon.
+	// Stopping now frees the beacon port in between - the new beacon fails to bind without this.
+	JoinApproval->StopHost();
+
 	Travel->MarkStarted(TEXT("ServerTravelToMap"));
 	return true;
-}
-
-void UEasySessionSubsystem::HandlePostLoadMap(UWorld* /*LoadedWorld*/)
-{
-	Travel->NotifyMapLoaded();
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const

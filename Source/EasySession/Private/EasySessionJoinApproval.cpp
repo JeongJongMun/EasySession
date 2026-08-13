@@ -43,12 +43,12 @@ void FEasySessionJoinApproval::Shutdown()
 	StopClient();
 }
 
-bool FEasySessionJoinApproval::EnsureHost()
+void FEasySessionJoinApproval::EnsureHost()
 {
 	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
 	if (World == nullptr || World->GetNetMode() == NM_Client)
 	{
-		return false;
+		return;
 	}
 
 	// Run the beacon only when the session advertised it
@@ -57,12 +57,12 @@ bool FEasySessionJoinApproval::EnsureHost()
 	int32 bJoinApproval = 0;
 	if (NamedSession == nullptr || !NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) || bJoinApproval == 0)
 	{
-		return false;
+		return;
 	}
 
 	if (BeaconHost.IsValid() && BeaconHost->GetWorld() == World)
 	{
-		return true;
+		return;
 	}
 
 	StopHost();
@@ -73,23 +73,23 @@ bool FEasySessionJoinApproval::EnsureHost()
 	AOnlineBeaconHost* Host = World->SpawnActor<AOnlineBeaconHost>(SpawnParams);
 	if (Host == nullptr)
 	{
-		return false;
+		return;
 	}
 
 	// ListenPort is left as the class default so a project can move the beacon from DefaultEngine.ini.
 	if (!Host->InitHost())
 	{
 		UE_LOG(LogEasySession, Error,
-			TEXT("Could not start the join approval beacon. Players will not be told why a join is refused until they have already traveled. Check that a BeaconNetDriver definition exists - clearing NetDriverDefinitions removes the engine's."));
+			TEXT("Could not start the join approval beacon. Players will not be told why a join is refused until they have already traveled. Check that a BeaconNetDriver definition exists (clearing NetDriverDefinitions removes the engine's), and change maps with Server Travel Easy Session - a plain ServerTravel leaves the previous beacon's port still held when this world starts."));
 		Host->DestroyBeacon();
-		return false;
+		return;
 	}
 
 	AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>(SpawnParams);
 	if (HostObject == nullptr)
 	{
 		Host->DestroyBeacon();
-		return false;
+		return;
 	}
 
 	Host->RegisterHost(HostObject);
@@ -109,15 +109,12 @@ bool FEasySessionJoinApproval::EnsureHost()
 		AdvertiseTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
 			FTickerDelegate::CreateRaw(this, &FEasySessionJoinApproval::TickAdvertiseBoundPort));
 	}
-
-	return true;
 }
 
 bool FEasySessionJoinApproval::TickAdvertiseBoundPort(float DeltaTime)
 {
-	// A request in flight has its completion delegate bound, and this update would wake
-	// that handler and finish the wrong request. Keep ticking until the queue is idle -
-	// EnsureHost runs while the create it followed is still active.
+	// An active request has its completion delegate bound, and this update would wake
+	// that handler and finish the wrong request. Keep ticking until the queue is idle.
 	if (!Owner.RequestQueue.IsValid() || !Owner.RequestQueue->IsIdle())
 	{
 		return true;
