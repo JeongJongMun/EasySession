@@ -542,19 +542,25 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
-	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 
 	if (HostParams.MapName.IsEmpty())
 	{
-		// The host stays on this map: open the listen server and answer join approvals here.
+		// The host stays on this map, where they logged in before the session existed - so no login has registered them.
+		const IOnlineSessionPtr Sessions = GetSessionInterface();
+		const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
+		const FUniqueNetIdRepl HostId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
+		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(NAME_GameSession, { HostId.GetUniqueNetId().ToSharedRef() }))
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Registered the hosting player in the session."));
+		}
+
 		Travel->ListenOnCurrentMap(HostParams);
 		JoinApproval->EnsureHost();
 	}
 	else
 	{
-		// The host travels to the session map. The travel URL opens the listen server, and
-		// the arrival world starts the approval beacon when its game mode initializes.
+		// The host travels to the session map.
 		Travel->TravelToOwnSession(HostParams);
 	}
 }

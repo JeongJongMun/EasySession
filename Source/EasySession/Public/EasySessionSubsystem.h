@@ -471,10 +471,9 @@ private:
 	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);
 
 	/**
-	 * Register / unregister the local player in the current session.
-	 * Registration is what drives the advertised open slot count of a session.
+	 * Take the local player out of the session, so the slot they held is advertised as open again.
+	 * Called before destroying the session, while the online service still has one to edit.
 	 */
-	void RegisterLocalPlayerInSession();
 	void UnregisterLocalPlayerFromSession();
 
 	/** Create the automatic session when running as a dedicated server. */

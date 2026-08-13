@@ -867,23 +867,6 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
 		}));
 }
 
-void UEasySessionSubsystem::RegisterLocalPlayerInSession()
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
-	const FUniqueNetIdRepl PlayerId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-
-	if (!Sessions.IsValid() || !PlayerId.IsValid())
-	{
-		return;
-	}
-
-	if (Sessions->RegisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() }))
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Registered local player in the session."));
-	}
-}
-
 void UEasySessionSubsystem::UnregisterLocalPlayerFromSession()
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
