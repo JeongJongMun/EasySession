@@ -61,7 +61,7 @@ These guides are still being written and do not yet cover every feature.
 - Setup: [LAN](Docs/Setup-LAN.md) | [Steam](Docs/Setup-Steam.md)
 - Guides: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.en.md)
-- [FAQ & Troubleshooting](Docs/FAQ.md)
+- [FAQ & Troubleshooting](Docs/FAQ.en.md)
 
 ## Modules
 

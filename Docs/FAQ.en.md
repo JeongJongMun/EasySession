@@ -1,5 +1,7 @@
 # FAQ & Troubleshooting
 
+*[한국어](FAQ.ko.md)*
+
 Real problems, in the order people usually hit them.
 
 ## "Find returns no sessions"
@@ -14,17 +16,32 @@ Checked in order of likelihood:
 
 ## "Session is found, but joining times out / fails with ResolveFailure"
 
-The session is advertised but its host is **not running as a listen server** - an advertised address with port 0. EasySession fails this immediately with `ResolveFailure` (older/other systems hang for 20 seconds instead).
+The session is advertised but its host is **not running as a listen server** - an advertised address with port 0. EasySession fails this immediately with `ResolveFailure` instead of waiting for a connection timeout, and the joining player's log carries the reason:
 
-Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Map Name` so the host travels with `?listen`. If the host log shows `The session is advertised but this game is still not a listen server`, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, disable *Run Under One Process*.
+```
+LogEasySession: Warning: Session operation failed: ResolveFailure (The host address 'steam.0:0' is not connectable
+- the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled
+or travels to a map with the ?listen option.)
+```
 
-## "Steam: only the first player can join, everyone after that fails with k_EChatRoomEnterResponseNotAllowed"
+Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Map Name` so the host travels with `?listen`. If the host set a Map Name and still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, disable *Run Under One Process*.
+
+## "Steam: only the first player can join, everyone after that fails"
 
 Your Host Params have **Allow Join In Progress off**. On Steam, leave it on.
 
-Steam sessions are lobbies, and the engine recomputes whether the lobby accepts players every time someone joins or leaves it (`FillMembersFromLobbyData` in `OnlineSessionAsyncLobbySteam.cpp`). That check multiplies the free-slot test by `bAllowJoinInProgress`, without looking at whether the match has started:
+The log can look like this:
+
+```
+LogEasySession: Joining session 'My Session' hosted by 'HostPlayer'
+LogOnline: Warning: OSS: Async task 'FOnlineAsyncTaskSteamJoinLobby bWasSuccessful: 0 Session: GameSession LobbyId: Lobby[0x18600003DDB1FE9] Result: '3' k_EChatRoomEnterResponseNotAllowed (General Denied - You don't have the permissions needed to join the chat)' failed in 0.228409 seconds
+LogEasySession: Warning: Session operation failed: JoinFailure (The online subsystem failed to join the session.)
+```
+
+Steam sessions are lobbies, and the engine recomputes whether the lobby accepts players every time someone joins or leaves it. That check multiplies the free-slot test by `bAllowJoinInProgress`, without looking at whether the match has started:
 
 ```cpp
+// OnlineSessionAsyncLobbySteam.cpp, FillMembersFromLobbyData
 bool bLobbyJoinable = Session.SessionSettings.bAllowJoinInProgress && (LobbyMemberCount < MaxLobbyMembers);
 ```
 
@@ -34,9 +51,21 @@ EasySession does not work around this: it passes the setting to the online servi
 
 A player whose join fails this way is sent back to the main menu when the invite made them leave a session first, so they do not end up in a map with no session.
 
+## "I accepted an invite and nothing happened"
+
+You were already in a session, and **Accept Invites While In Session is off** - the default. The invite is not joined, and the log says so:
+
+```
+LogEasySession: Warning: Not joining the invited session: this player is already in one, and Accept Invites While In Session is disabled.
+```
+
+Accepting an invite is one click in the platform overlay, and joining would destroy the session this player is in - disconnecting everyone else when they were hosting it. So the default is to do nothing and let the game decide.
+
+`On Session Invite Accepted` still fires, so bind it and ask the player first, then call `Join Easy Session` yourself. To go back to joining immediately, turn on **Accept Invites While In Session** in Project Settings -> Plugins -> EasySession.
+
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
-**One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and tries to take the local player out of a session the online service cannot find them in. Epic's own samples show the same line. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
+**One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and tries to take the local player out of a session the online service cannot find them in. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
 
 ## "Connected fine, but the other player doesn't move on my screen"
 
@@ -62,12 +91,4 @@ You are - probably a leftover from a previous failed flow. Call `Destroy Easy Se
 
 ## "Can I cancel a Quick Match in progress?"
 
-Yes: `Cancel Matchmaking` on the subsystem. The Quick Match node fires `OnFailure` with `Canceled`. In-flight online operations finish first (they cannot be aborted mid-call), so cancellation may take a moment.
-
-## "Dedicated server target won't build"
-
-Server targets require a **source-built engine**; the Launcher distribution cannot build them. See [the dedicated server guide](Guide-DedicatedServer.md).
-
-## "Do I need a custom GameInstance?"
-
-No. EasySession is a `GameInstanceSubsystem` - it exists automatically in every project. That's the point.
+Yes: `Cancel Easy Matchmaking`. The Quick Match node fires `OnFailure` with `Canceled`. In-flight online operations finish first (they cannot be aborted mid-call), so cancellation may take a moment.

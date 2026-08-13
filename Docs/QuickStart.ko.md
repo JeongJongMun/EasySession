@@ -113,4 +113,4 @@ Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 - [세션 가이드](Guide-Sessions.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
 - [Quick Match 가이드](Guide-QuickMatch.md) - 방을 고르는 기준과 커스텀 점수 계산
 - [API 레퍼런스](API.ko.md) - 모든 노드, 조회, 구조체, 설정
-- [FAQ](FAQ.md) - 다들 물어보는 것들
+- [FAQ](FAQ.ko.md) - 자주 겪는 문제

@@ -113,4 +113,4 @@ same settings. Separate processes use the same networking path as packaged build
 - [Session guide](Guide-Sessions.md) - custom session data, filters, passwords, updating sessions
 - [Quick Match guide](Guide-QuickMatch.md) - how the matchmaking picks a session, custom scoring
 - [API reference](API.en.md) - every node, query, struct and setting
-- [FAQ](FAQ.md) - the questions everyone asks
+- [FAQ](FAQ.en.md) - the problems people run into

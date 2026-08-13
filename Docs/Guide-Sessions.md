@@ -17,7 +17,7 @@ All operations are **queued and executed one at a time** - you can call them in 
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
 | Start Listening | true | Leave on unless you manage the listen server yourself |
 | Should Advertise | true | Off = private/invisible session |
-| Allow Join In Progress | true | Leave on for Steam, which closes the lobby at the first join when this is off ([FAQ](FAQ.md)) |
+| Allow Join In Progress | true | Leave on for Steam, which closes the lobby at the first join when this is off ([FAQ](FAQ.en.md)) |
 | Allow Invites / Use Presence | true | Ignored on LAN and dedicated servers |
 | Custom Settings | (empty) | Advertised key-value data, see below |
 
@@ -52,7 +52,7 @@ Each `FEasySessionSearchResult` exposes: display name, host name, ping, max play
 
 `Join Easy Session` takes a search result. On success it resolves the host address and client-travels there. Joining always connects to the host, so the joining player leaves whatever map they were on - even a map with the same name as the host's.
 
-EasySession validates the host address **before** reporting success - if the host is not actually reachable (see [FAQ: port 0](FAQ.md)), you get an immediate `ResolveFailure` with an explanation instead of a 20-second connection timeout, and the half-joined session is cleaned up so you can retry right away.
+EasySession validates the host address **before** reporting success - if the host is not actually reachable (see [FAQ: port 0](FAQ.en.md)), you get an immediate `ResolveFailure` with an explanation instead of a 20-second connection timeout, and the half-joined session is cleaned up so you can retry right away.
 
 ## Password protected sessions
 

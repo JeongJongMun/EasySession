@@ -61,7 +61,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 - 설정: [LAN](Docs/Setup-LAN.md) | [Steam](Docs/Setup-Steam.md)
 - 가이드: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API 레퍼런스](Docs/API.ko.md)
-- [FAQ & Troubleshooting](Docs/FAQ.md)
+- [FAQ & Troubleshooting](Docs/FAQ.ko.md)
 
 ## 모듈
 

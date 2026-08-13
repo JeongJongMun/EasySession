@@ -37,14 +37,14 @@
 
 EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해도 오류 대신 순서대로 처리됩니다.
 큐가 덮는 것은 EasySession을 거치는 호출까지이며, 엔진 자체 세션 노드는 따로 서비스에
-도달합니다 ([FAQ](FAQ.md)).
+도달합니다 ([FAQ](FAQ.ko.md)).
 
 | 노드 | 입력 | 비고 |
 |---|---|---|
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 되고, Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 승인을 먼저 물은 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.md)) |
-| **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.md)). 세션 권한 필요 |
+| **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
 | **Destroy Easy Session** | - | `DestroySession` 호출. 호스트는 세션을 없애고 클라이언트는 나가기만 합니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
@@ -215,7 +215,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`JoinSessionDoesNotExist`** | 참가 시점에 방이 사라졌습니다. 다시 검색하세요 |
 | **`WrongPassword`** | 호스트가 거절했습니다: 비밀번호가 맞지 않습니다. 다시 입력받으세요 |
 | **`JoinRefused`** | 호스트가 다른 이유로 거절했습니다. 예: 더 이상 플레이어를 받지 않는 매치. `ErrorMessage`는 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
-| **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.md)) |
+| **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.ko.md)) |
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |
 | **`Timeout`** | 온라인 서비스가 끝내 답하지 않았습니다. 결과를 알 수 없으므로 남은 것이 있으면 정리됩니다. `RequestTimeoutSeconds` 참고 |
 | **`Canceled`** | `Cancel Matchmaking`이 Quick Match를 중단시켰습니다 |

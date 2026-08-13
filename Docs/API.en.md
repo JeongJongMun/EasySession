@@ -38,14 +38,14 @@ online subsystem, a parameter that cannot work - fails on `OnFailure` immediatel
 
 EasySession runs its own operations one at a time, so pressing a button repeatedly
 produces results in order instead of errors. The queue covers what goes through EasySession; the engine's
-own session nodes still reach the service on their own ([FAQ](FAQ.md)).
+own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 
 | Node | Inputs | Notes |
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`. On a listen server it then travels to Map Name with `?listen` so this game becomes the server, or starts listening on the current map when Map Name is empty. Dedicated servers keep the map they launched with |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.md)) |
-| **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.md)). Session authority only |
+| **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
 | **Destroy Easy Session** | - | Calls `DestroySession`: the host destroys the session, a client only leaves it. Both the host and the client can host or join again right after |
@@ -225,7 +225,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`JoinSessionDoesNotExist`** | The room was gone by the time you joined. Search again |
 | **`WrongPassword`** | The host refused the join: the password did not match. Let the player retype it |
 | **`JoinRefused`** | The host refused the join for another reason, e.g. the match no longer takes players. `ErrorMessage` is the host's own sentence, safe to show |
-| **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.md)) |
+| **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.en.md)) |
 | **`RequiresSessionAuthority`** | Only the game that created the session may do this. Show the button only when `Is Easy Session Authority` is true |
 | **`Timeout`** | The online service never answered. The outcome is unknown, so anything it left behind is cleaned up. See `RequestTimeoutSeconds` |
 | **`Canceled`** | `Cancel Matchmaking` stopped a Quick Match run |
