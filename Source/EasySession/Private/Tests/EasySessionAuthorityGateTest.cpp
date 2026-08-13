@@ -142,14 +142,13 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			CurrentTest->TestEqual(TEXT("Update without authority is refused"),
 				State->UpdateWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
 
-			// The synchronous path has to refuse too. BlueprintAuthorityOnly does not
-			// enforce anything on a subsystem (only AActor::GetFunctionCallspace reads
-			// the flag), so the entry check is the only thing standing here.
+			// The synchronous path has to refuse too - nothing outside the function
+			// stops a client from reaching it.
 			CurrentTest->TestFalse(TEXT("ServerTravelToMap without authority is refused"),
 				Subsystem->ServerTravelToMap(TEXT("ES13_NoSuchMap")));
 
-			// Leaving a session someone else serves must stay allowed - that is how a
-			// client leaves - so the teardown itself doubles as an assertion.
+			// Leaving a session another process created must stay allowed - that is how a
+			// client leaves - so this call itself doubles as an assertion.
 			Subsystem->DestroyEasySession();
 			State->Phase = 5;
 			return false;

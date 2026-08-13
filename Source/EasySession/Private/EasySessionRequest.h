@@ -13,7 +13,7 @@
  * A session name can only be created, joined or destroyed once, and searches refuse to overlap, so the queue is not there for that.
  * What it prevents is two different operations overlapping.
  * Steam's DestroySession only refuses while another destroy is running, so it will destroy a session whose create has not finished.
- * Running them in order also turns "rejected because something else was running" into "runs next", which is what a caller expects from a beginner-friendly API.
+ * Running them in order also turns "rejected because another operation was running" into "runs next", which is what a caller expects from a beginner-friendly API.
  *
  * Each request carries its own deadline.
  * The online service is not required to ever call back, and Steam tasks do not implement CancelWhenTimeout.

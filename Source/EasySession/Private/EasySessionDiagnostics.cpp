@@ -137,7 +137,7 @@ FString EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 		return Summary;
 	}
 
-	// The configured service failed to load and something else took over.
+	// The configured service failed to load and a different service loaded instead.
 	if (!ConfiguredService.IsEmpty() && ActualService != FName(*ConfiguredService))
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("[FIX] DefaultPlatformService is '%s' but the active subsystem is '%s' - the configured service failed to load."),

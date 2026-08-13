@@ -238,7 +238,7 @@ void UEasySessionSubsystem::StartQuickMatch(const FEasyQuickMatchParams& QuickMa
 	if (QuickMatchParams.bAllowHostFallback && QuickMatchParams.Host.MapName.IsEmpty())
 	{
 		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams,
-			TEXT("Quick Match needs Host > Map Name so it has somewhere to host when no session is found. Set it, or turn off Allow Host Fallback to only ever join."));
+			TEXT("Quick Match needs Host > Map Name to host a session on when no session is found. Set it, or turn off Allow Host Fallback to only ever join."));
 		return;
 	}
 
@@ -809,14 +809,14 @@ void UEasySessionSubsystem::PushHostSessionState()
 void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitializedParams& Params)
 {
 	// Every map load (hard or seamless) creates a fresh world, so the host respawns
-	// the replicated state carrier there and re-publishes the current state.
+	// the replicated state actor there and pushes the current state into it again.
 	if (Params.World == nullptr || Params.World->GetGameInstance() != GetGameInstance())
 	{
 		return;
 	}
 
 	// The net mode is read from the world being initialized, not from IsNetworkServer:
-	// the game instance may not point at it yet when this fires.
+	// the game instance may still return the previous world when this fires.
 	if (Params.World->GetNetMode() != NM_Client && IsSessionAuthority())
 	{
 		StateActor.Reset();
@@ -827,7 +827,7 @@ void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitialize
 void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState HostState)
 {
 	// Record what the host reports; that is all a client does with it. Get Session
-	// State serves this value, and the client's own session copy is deliberately
+	// State returns this value, and the client's own session copy is deliberately
 	// left alone: nothing reads its state on a client, and destroying works from
 	// any state.
 	if (bHasReplicatedHostSessionState && ReplicatedHostSessionState == HostState)

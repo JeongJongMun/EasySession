@@ -54,7 +54,7 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 {
 	if (!bWasSuccessful || !InviteResult.IsValid())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("An invite was accepted but the session it points to is not valid."));
+		UE_LOG(LogEasySession, Warning, TEXT("An invite was accepted but its session data is not valid."));
 		return;
 	}
 

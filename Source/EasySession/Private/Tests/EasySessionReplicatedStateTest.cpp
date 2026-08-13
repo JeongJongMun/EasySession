@@ -85,7 +85,7 @@ bool FEasySessionWaitForReplicatedState::Update()
 
 	CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-	// Stand in for a client: a game that holds a session someone else serves. The
+	// Stand in for a client: a game that holds a session another process created. The
 	// join path is what normally clears this, and a headless test has no host to
 	// join, so the outcome of that path is set directly.
 	FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);

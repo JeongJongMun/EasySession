@@ -8,8 +8,8 @@
 namespace
 {
 	/**
-	 * Index of the colon that separates the port, or INDEX_NONE when the string
-	 * has no port we can point at with certainty.
+	 * Index of the colon that separates the port, or INDEX_NONE when no colon
+	 * is certainly a port separator.
 	 */
 	int32 FindPortSeparator(const FString& Address)
 	{

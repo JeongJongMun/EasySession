@@ -15,7 +15,7 @@
 
 namespace EasySessionAuthorityTest
 {
-	/** Maximum time to wait for the create and the teardown before failing. */
+	/** Maximum time to wait for the session to be created and destroyed before failing. */
 	static constexpr double TimeoutSeconds = 20.0;
 
 	struct FTestState
@@ -82,7 +82,7 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 	{
 		CurrentTest->AddError(FString::Printf(
-			TEXT("Timed out in phase %d. A server that created the session must still be able to tear it down when it has no hosting player."),
+			TEXT("Timed out in phase %d. A server that created the session must still be able to destroy it when it has no hosting player."),
 			State->Phase));
 		Finish(*State);
 		return true;
@@ -127,8 +127,8 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 /**
  * Server authority must not depend on there being a hosting player. A dedicated server
  * has no local player, and Steam never sets the session's hosting flag, so the two
- * things IsHost() looks at are both absent there - yet that process is still the one
- * serving the session it created.
+ * things IsHost() looks at are both absent there - yet that process is still the
+ * server of the session it created.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDedicatedAuthorityTest, "EasySession.Authority.ServerKeepsAuthorityWithoutHostingPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
