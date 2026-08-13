@@ -152,6 +152,9 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	Params.Search.bLANQuery = true;
 	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Host.SessionDisplayName = TEXT("EasySession QuickMatch Test");
+	// StartQuickMatch refuses fallback params without a map. The travel to it aborts
+	// harmlessly - a headless test has no player controller to travel with.
+	Params.Host.MapName = TEXT("ES_QuickMatchTestMap");
 	Params.Host.bIsLANMatch = true;
 	Params.Host.bStartListening = false;
 	Params.MaxSearchPasses = 1;
