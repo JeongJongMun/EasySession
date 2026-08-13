@@ -661,6 +661,11 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 			CompleteActiveRequest(EEasySessionResult::ResolveFailure, TEXT("Could not retrieve the host address."));
 			return;
 
+		case EOnJoinSessionCompleteResult::AlreadyInSession:
+			CompleteActiveRequest(EEasySessionResult::SessionAlreadyExists, TEXT("This player is already in the session. Destroy the current session before joining it again."));
+			return;
+
+		// UnknownError, and anything the engine adds to this enum later.
 		default:
 			CompleteActiveRequest(EEasySessionResult::JoinFailure, TEXT("The online subsystem failed to join the session."));
 			return;
