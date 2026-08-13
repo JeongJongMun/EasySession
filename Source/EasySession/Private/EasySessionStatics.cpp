@@ -158,6 +158,20 @@ FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObj
 	return Subsystem != nullptr ? Subsystem->GetOnlineSubsystemName() : NAME_None;
 }
 
+bool UEasySessionStatics::ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->ServerTravelToMap(MapName);
+}
+
+void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason)
+{
+	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
+	{
+		Subsystem->DestroyEasySessionForEveryone(MoveTemp(Reason));
+	}
+}
+
 bool UEasySessionStatics::SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

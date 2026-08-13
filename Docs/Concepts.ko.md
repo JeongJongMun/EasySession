@@ -34,7 +34,7 @@
 언리얼은 게임이 월드를 바꾸는 일을 모두 **Travel**이라고 부릅니다 - 맵을 로드하는 것도, 다른 머신의 맵에 접속하는 것도요.
 
 - **클라이언트 Travel** - 이 게임이 어딘가로 갑니다. 맵으로, 또는 호스트의 주소로. 세션 참가는 호스트로의 클라이언트 Travel로 끝납니다.
-- **서버 Travel** - 서버가 세션 전체를 새 맵으로 데려갑니다. `Server Travel To Map`이 이것이고, 클라이언트는 자동으로 따라옵니다.
+- **서버 Travel** - 서버가 세션 전체를 새 맵으로 데려갑니다. `Server Travel Easy Session`이 이것이고, 클라이언트는 자동으로 따라옵니다.
 - `?listen`은 "이 맵을 서버로 열어서 남들이 나에게 Travel할 수 있게 하라"는 Travel 옵션입니다. `Create Easy Session`이 호스트를 서버로 만드는 방법이 이것입니다.
 
 Travel은 세션을 없애지 않습니다. 세션은 맵이 아니라 온라인 서비스에 있으므로, 맵이 바뀌는 동안에도 광고는 그대로 남고 검색하는 사람에게 계속 보입니다.
@@ -46,7 +46,7 @@ Travel은 세션을 없애지 않습니다. 세션은 맵이 아니라 온라인
 - **Hard Travel**(기본값)은 모든 플레이어의 연결을 끊고 새 맵에서 다시 접속시킵니다. 다시 접속한다는 것은 호스트가 입장 검사를 한 번 더 돌린다는 뜻이라, 비밀번호 세션이라면 이미 안에 있던 플레이어를 되돌려보내게 됩니다.
 - **Seamless Travel**은 작은 전환 맵을 거쳐 플레이어를 데려가며 연결을 한 번도 끊지 않습니다. 재접속이 없으니 입장 검사도 두 번 돌지 않습니다.
 
-**세션 도중의 맵 변경에는 Seamless Travel을 쓰세요.** GameMode의 `bUseSeamlessTravel`을 켜고, Project Settings -> Maps & Modes에서 **Transition Map**을 지정하면 됩니다. `Server Travel To Map`은 이 설정을 따릅니다.
+**세션 도중의 맵 변경에는 Seamless Travel을 쓰세요.** GameMode의 `bUseSeamlessTravel`을 켜고, Project Settings -> Maps & Modes에서 **Transition Map**을 지정하면 됩니다. `Server Travel Easy Session`은 이 설정을 따릅니다.
 
 예외 하나는 플러그인이 알아서 처리합니다. 호스트를 서버로 만드는 첫 Travel은 항상 Hard Travel입니다. Seamless Travel은 `?listen` 옵션을 버리기 때문에, 그대로 두면 호스트가 영영 서버가 되지 못합니다.
 

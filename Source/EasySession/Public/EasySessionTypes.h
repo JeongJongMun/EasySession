@@ -490,8 +490,8 @@ enum class EEasyDisconnectReason : uint8
 	/** The connection to the host was lost (host quit, crashed, or the network dropped). */
 	ConnectionLost,
 
-	/** The host ended the session and sent everyone back to the menu. */
-	HostEndedSession,
+	/** The host destroyed the session and sent everyone back to the menu. */
+	HostDestroyedSession,
 
 	/** Traveling to the session's map failed. */
 	TravelFailure,

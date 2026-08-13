@@ -316,21 +316,17 @@ public:
 	bool IsOnlineSubsystemAvailable() const;
 
 	/**
-	 * ServerTravel the current session to a new map.
+	 * ServerTravel the current session to a new map, bringing every connected player along.
+	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
 	 * Needs session authority - only the game that created the session can travel it, and it returns false for other games.
-	 * Additional travel options can be appended with '?'.
-	 * The ?listen option is added automatically when hosting a listen server session.
 	 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
 	bool ServerTravelToMap(const FString& MapName);
 
 	/**
 	 * Destroy the session for every player.
-	 * Remote clients are sent back to the menu with the given reason, shown by their menu popup, then the host destroys the session as well.
-	 * Like Destroy Easy Session, the session is gone afterwards - use End Easy Session to only finish the match and keep the session alive.
+	 * Remote clients record Reason as a Host Destroyed Session disconnect and return to the menu, where reading it with Consume Last Easy Disconnect Info is what shows it to the player.
 	 * Needs session authority - only the game that created the session can do this.
 	 */
-	UFUNCTION(BlueprintCallable, BlueprintAuthorityOnly, Category = "EasySession")
 	void DestroyEasySessionForEveryone(FText Reason);
 
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */

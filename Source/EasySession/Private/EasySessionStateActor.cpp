@@ -36,7 +36,7 @@ void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& R
 	UGameInstance* GameInstance = GetGameInstance();
 	if (UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr)
 	{
-		Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostEndedSession, Reason);
+		Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostDestroyedSession, Reason);
 	}
 }
 

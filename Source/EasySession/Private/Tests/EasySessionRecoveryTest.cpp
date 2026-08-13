@@ -48,9 +48,9 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Second consume returns None"), EmptyInfo.Reason, EEasyDisconnectReason::None);
 
 	// A new disconnect after consuming records fresh info again.
-	Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostEndedSession, FText::FromString(TEXT("Third reason")));
+	Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostDestroyedSession, FText::FromString(TEXT("Third reason")));
 	TestTrue(TEXT("Pending again after re-notify"), Subsystem->HasPendingDisconnectInfo());
-	TestEqual(TEXT("New reason recorded"), Subsystem->ConsumeLastDisconnectInfo().Reason, EEasyDisconnectReason::HostEndedSession);
+	TestEqual(TEXT("New reason recorded"), Subsystem->ConsumeLastDisconnectInfo().Reason, EEasyDisconnectReason::HostDestroyedSession);
 
 	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;
@@ -142,7 +142,7 @@ bool FEasySessionWaitForSecondDisconnect::Update()
 				return false;
 			}
 			CurrentTest->TestEqual(TEXT("Second session created"), State->SecondCreateResult.GetValue(), EEasySessionResult::Success);
-			Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostEndedSession, FText::FromString(TEXT("Host B left")));
+			Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostDestroyedSession, FText::FromString(TEXT("Host B left")));
 			State->Phase = 3;
 			return false;
 

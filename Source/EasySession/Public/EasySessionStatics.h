@@ -148,6 +148,22 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyMatchmaking(const UObject* WorldContextObject);
 
+	/**
+	 * ServerTravel the current session to a new map, bringing every connected player along.
+	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
+	 * Session authority only: on any other game this does nothing and returns false.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName);
+
+	/**
+	 * Destroy the session for every player.
+	 * Remote clients record Reason as a Host Destroyed Session disconnect and return to the menu, where reading it with Consume Last Easy Disconnect Info is what shows it to the player.
+	 * Session authority only: on any other game this does nothing.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static void DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason);
+
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static bool SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);

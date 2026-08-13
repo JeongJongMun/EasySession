@@ -54,7 +54,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.md)).
 
 > **Session authority only** means the game that created the session: the host player's
 > game on a listen server, or the server itself on a dedicated server. Anyone else gets
-> a `RequiresSessionAuthority` failure. `Server Travel To Map` and `Destroy Easy Session
+> a `RequiresSessionAuthority` failure. `Server Travel Easy Session` and `Destroy Easy Session
 > For Everyone` need it too.
 >
 > `Is Easy Session Authority` answers whether this game has that authority. In a game a
@@ -127,7 +127,7 @@ Not async - these return right away. They change state and have execution pins.
 
 What they return means the request was accepted, not that it finished. `Cancel
 Matchmaking` only takes effect once the online call already in flight completes, and
-`Server Travel To Map` returns before the new map has loaded.
+`Server Travel Easy Session` returns before the new map has loaded.
 
 ### 3.1 Standalone nodes (`UEasySessionStatics`)
 
@@ -141,21 +141,14 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session |
+| Server Travel Easy Session | `ServerTravelEasySession` | Moves the whole session to a new map. Session authority only |
+| Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | Ends the session and sends every client back to the menu with a reason. Session authority only |
 
 The invite and profile nodes need a platform service. They return false on NULL/LAN.
 
-### 3.2 On the subsystem (`UEasySessionSubsystem`)
-
-Call these on `Get Easy Session Subsystem`. The name is the same in Blueprint and C++, so
-there is no C++ column.
-
-| Node | Does |
-|---|---|
-| Server Travel To Map | Moves the whole session to a new map. Session authority only |
-| Destroy Easy Session For Everyone | Ends the session and sends every client back to the menu with a reason. Session authority only |
-
-Both are marked `BlueprintAuthorityOnly`: in a graph running without authority the node
-does nothing, so a client copy of your widget cannot travel or end the session.
+The last two check session authority themselves: a client that calls either one changes
+nothing and gets a warning in the log, so gate the button with `Is Easy Session Authority`
+rather than relying on the call being harmless.
 
 ## 4. Events
 
@@ -256,7 +249,7 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 |---|---|
 | `None` | Nothing was recorded |
 | `ConnectionLost` | The link died - the host quit, crashed, or the network dropped |
-| `HostEndedSession` | The host deliberately sent everyone back, via `Destroy Easy Session For Everyone` |
+| `HostDestroyedSession` | The host deliberately sent everyone back, via `Destroy Easy Session For Everyone` |
 | `TravelFailure` | The session's map failed to load |
 | `Rejected` | The host refused the connection and said why: a wrong password, a match no longer taking players. `ReasonText` is the host's own sentence, safe to show |
 

@@ -563,8 +563,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	}
 
 	// UWorld::ServerTravel does not refuse a client - with no game mode it still sets
-	// NextURL and returns true - and BlueprintAuthorityOnly has no runtime effect on a
-	// subsystem, so this entry check is the only real gate.
+	// NextURL and returns true - so this entry check is the only gate.
 	if (!IsSessionAuthority())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session."));

@@ -53,7 +53,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 
 > **세션 권한 필요**는 그 세션을 만든 게임을 뜻합니다. 리슨 서버라면 호스트 플레이어의 게임,
 > 데디케이티드 서버라면 서버 자신입니다. 그 외에는 `RequiresSessionAuthority` 실패를 받습니다.
-> `Server Travel To Map`과 `Destroy Easy Session For Everyone`도 같은 권한이 필요합니다.
+> `Server Travel Easy Session`과 `Destroy Easy Session For Everyone`도 같은 권한이 필요합니다.
 >
 > `Is Easy Session Authority`가 이 권한이 있는지 답해줍니다. 플레이어가 실행하는 게임에서는
 > `Is Easy Session Host`도 같은 답을 주므로, 메뉴 버튼을 비활성화할 때는 두 노드 중 무엇을 써도
@@ -120,7 +120,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 비동기가 아니라 즉시 반환합니다. 상태를 바꾸고 실행 핀이 있습니다.
 
 돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Matchmaking`은
-진행 중이던 온라인 작업이 끝난 뒤에야 실제로 취소되고, `Server Travel To Map`은 맵이 로드되기
+진행 중이던 온라인 작업이 끝난 뒤에야 실제로 취소되고, `Server Travel Easy Session`은 맵이 로드되기
 전에 돌아옵니다.
 
 ### 3.1 바로 쓰는 노드 (`UEasySessionStatics`)
@@ -135,19 +135,12 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이 |
+| Server Travel Easy Session | `ServerTravelEasySession` | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
+| Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 세션 권한 필요 |
 
 초대와 프로필 노드는 플랫폼 서비스가 필요합니다. NULL/LAN에서는 false를 반환합니다.
 
-### 3.2 서브시스템에서 호출하는 노드 (`UEasySessionSubsystem`)
-
-`Get Easy Session Subsystem`에서 호출합니다. 블루프린트와 C++ 이름이 같아 C++ 열이 없습니다.
-
-| 노드 | 하는 일 |
-|---|---|
-| Server Travel To Map | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
-| Destroy Easy Session For Everyone | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 세션 권한 필요 |
-
-두 노드 모두 `BlueprintAuthorityOnly`입니다. 권한 없이 도는 그래프에서는 노드가 아무 일도 하지 않으므로, 클라이언트 쪽 위젯이 세션을 옮기거나 끝낼 수 없습니다.
+마지막 두 노드는 세션 권한을 스스로 확인합니다. 클라이언트가 호출하면 아무것도 바뀌지 않고 로그에 경고만 남으므로, 호출이 무해하다는 데 기대지 말고 `Is Easy Session Authority`로 버튼을 막으세요.
 
 ## 4. 이벤트
 
@@ -246,7 +239,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 |---|---|
 | `None` | 기록된 것이 없습니다 |
 | `ConnectionLost` | 연결이 죽었습니다. 호스트가 나갔거나, 튕겼거나, 네트워크가 끊겼습니다 |
-| `HostEndedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 돌려보냈습니다 |
+| `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 돌려보냈습니다 |
 | `TravelFailure` | 세션의 맵을 로드하지 못했습니다 |
 | `Rejected` | 호스트가 사유를 대며 접속을 거절했습니다. 비밀번호 불일치, 더 이상 받지 않는 매치 등이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
 

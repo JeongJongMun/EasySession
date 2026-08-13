@@ -34,7 +34,7 @@ Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] Defaul
 Unreal calls it **traveling** whenever a game switches worlds - loading a map, or connecting to another machine's map.
 
 - **Client travel** - this game goes somewhere: to a map, or to a host's address. Joining a session ends with a client travel to the host.
-- **Server travel** - the server takes the whole session to a new map together. `Server Travel To Map` is this; clients follow automatically.
+- **Server travel** - the server takes the whole session to a new map together. `Server Travel Easy Session` is this; clients follow automatically.
 - `?listen` is a travel option meaning "open this map as a server, so others can travel to me." It is how `Create Easy Session` makes the host a server.
 
 Traveling does not destroy the session. The session lives on the online service, not in the map, so the advertisement stays up while the map changes and searching players keep finding it.
@@ -46,7 +46,7 @@ A server travel comes in two forms, and the difference matters once players are 
 - **Hard travel** (the default) disconnects every player and reconnects them on the new map. Reconnecting means the host runs its join checks again, so a password session would turn away the players who are already inside.
 - **Seamless travel** carries players through a small transition map without ever dropping the connection. No reconnect, no second round of join checks.
 
-**Use seamless travel for map changes during a session.** Turn it on with `bUseSeamlessTravel` on your GameMode, and set a **Transition Map** in Project Settings -> Maps & Modes. `Server Travel To Map` follows that setting.
+**Use seamless travel for map changes during a session.** Turn it on with `bUseSeamlessTravel` on your GameMode, and set a **Transition Map** in Project Settings -> Maps & Modes. `Server Travel Easy Session` follows that setting.
 
 One exception is handled for you: the first travel, the one that turns the host into a server, is always a hard load. Seamless travel drops the `?listen` option, and the host would never become a server.
 
