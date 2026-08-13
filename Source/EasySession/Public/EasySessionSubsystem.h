@@ -127,7 +127,8 @@ public:
 
 	/**
 	 * Fired when the player accepts an invite from the platform overlay.
-	 * When Auto Join Accepted Invites is enabled the session is joined automatically right after this event.
+	 * With Auto Join Accepted Invites on, this player joins the invited session right after this event, unless they are already in one.
+	 * A player who is already in a session joins only when Accept Invites While In Session is on, and their current session is destroyed first - which disconnects everyone if they were hosting it.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionInviteAcceptedEvent OnSessionInviteAccepted;

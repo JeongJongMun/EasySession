@@ -63,6 +63,14 @@ private:
 	/** Leave the current session if needed, then join the invited one. */
 	void JoinInvitedSession(const FEasySessionSearchResult& Session);
 
+	/**
+	 * Second half of JoinInvitedSession, run once leaving the previous session has completed.
+	 * A player who did leave is sent to the menu when the join fails, because the session they left is destroyed.
+	 *
+	 * @param LeaveResult Result of destroying the session this player was in. Anything but Success cancels the join.
+	 */
+	void JoinInvitedSessionAfterLeaving(EEasySessionResult LeaveResult, const FEasySessionSearchResult& Session);
+
 	/** The world this subsystem runs in, or null before one exists. */
 	UWorld* GetWorld() const;
 

@@ -70,13 +70,47 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 
 void FEasySessionSocial::JoinInvitedSession(const FEasySessionSearchResult& Session)
 {
-	// The request queue serializes these, so the destroy always finishes first.
-	if (Owner.IsInSession())
+	if (!Owner.IsInSession())
 	{
-		Owner.DestroyEasySession();
+		Owner.JoinEasySession(Session, /*bTravelOnSuccess*/ true);
+		return;
 	}
 
-	Owner.JoinEasySession(Session, /*bTravelOnSuccess*/ true);
+	if (!GetDefault<UEasySessionSettings>()->bAcceptInvitesWhileInSession)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Not joining the invited session: this player is already in one, and Accept Invites While In Session is disabled."));
+		return;
+	}
+
+	// Joining refuses while a session exists, so this player leaves theirs first.
+	// The join waits for the result instead of the queue order, because a destroy that fails leaves nothing to join into.
+	Owner.DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(&Owner,
+		[this, Session](EEasySessionResult Result, const FString& /*ErrorMessage*/)
+		{
+			JoinInvitedSessionAfterLeaving(Result, Session);
+		}));
+}
+
+void FEasySessionSocial::JoinInvitedSessionAfterLeaving(EEasySessionResult LeaveResult, const FEasySessionSearchResult& Session)
+{
+	if (LeaveResult != EEasySessionResult::Success)
+	{
+		// The session is still there, so this player stays in it rather than being sent anywhere.
+		UE_LOG(LogEasySession, Warning, TEXT("Not joining the invited session: this player could not leave the session they were in."));
+		return;
+	}
+
+	// The session this player was in is destroyed by now, so a failed join would leave them in its map with no session.
+	// Send them to the menu instead.
+	Owner.JoinEasySession(Session, /*bTravelOnSuccess*/ true, FString(), FString(),
+		FEasySessionCompleteDelegate::CreateWeakLambda(&Owner,
+			[this](EEasySessionResult JoinResult, const FString& /*ErrorMessage*/)
+			{
+				if (JoinResult != EEasySessionResult::Success)
+				{
+					Owner.ReturnToMenu();
+				}
+			}));
 }
 
 bool FEasySessionSocial::SendInviteToFriend(const FEasySessionFriend& Friend)

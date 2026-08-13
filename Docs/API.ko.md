@@ -158,7 +158,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session이 끝났을 때. 호스트든 나가는 클라이언트든 똑같이 발화합니다 |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Quick Match 한 번이 끝났을 때. 참가했든 호스트가 됐든 발화하므로, 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 작업이 끝난 것이 아닙니다. 연결이 끊기거나 네트워크 오류가 났을 때이며, 죽은 세션은 알아서 정리됩니다 |
-| `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행됩니다 |
+| `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다 |
 
 `Result`와 `ErrorMessage`는 해당 노드의 출력 핀으로 받았을 값과 같습니다.
 
@@ -266,6 +266,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 |---|---|---|
 | `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 Travel이 실패하면 세션을 정리하고 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끄면 플레이어를 그 자리에 둡니다 |
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
+| `bAcceptInvitesWhileInSession` | false | 초대를 수락하면 지금 있는 세션을 파괴하고 초대받은 세션에 참가합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로 먼저 물어볼 수 있습니다 |
 | `RequestTimeoutSeconds` | 30 | 요청이 온라인 서비스를 기다리다 `Timeout`으로 실패하기까지의 시간. **0이면 무한히 기다립니다.** 검색은 자기 Timeout Seconds를 이 값 위에 더합니다 |
 | `bAutoHostOnDedicatedServer` | true | 데디케이티드 서버가 맵을 띄우면 스스로를 광고합니다 |
 | `DedicatedServerHostParams` | - | 위 자동 호스팅이 쓰는 파라미터. Map Name은 무시되고 서버가 실행된 맵을 유지합니다 |

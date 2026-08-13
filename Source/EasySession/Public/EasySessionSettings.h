@@ -39,6 +39,14 @@ public:
 	bool bAutoJoinAcceptedInvites = true;
 
 	/**
+	 * Whether an invite can be accepted while this player is already in a session. False by default.
+	 * With this on, one click in the platform overlay destroys the session they are in before joining the invited one.
+	 * The On Session Invite Accepted event still fires either way, so the game can ask the player first and then join.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Invites")
+	bool bAcceptInvitesWhileInSession = false;
+
+	/**
 	 * How long a session request may wait for the online service before it is failed with the Timeout result and the queue moves on.
 	 * Online services are not required to ever call back, and Steam's async tasks have no timeout of their own.
 	 * Without this, a silent service would stall every request behind it.

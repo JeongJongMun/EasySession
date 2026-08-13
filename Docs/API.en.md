@@ -166,7 +166,7 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session finished, both on the host and on a client that left |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Quick Match run finished, whether it joined or ended up hosting. Ask `Is Easy Session Host` which |
 | `OnSessionFailure` | `Reason` (String) | Not an operation finishing - the connection died or a network error hit. The dead session is cleaned up for you |
-| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own |
+| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
 
 `Result` and `ErrorMessage` are the same values the node's own pins would have given you.
 
@@ -273,6 +273,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 |---|---|---|
 | `bAutoReturnToMenuOnDisconnect` | true | On disconnect or a failed travel, clean up the session and browse to the project's **Game Default Map**, keeping the reason for that map to read. Off leaves the player where they are |
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
+| `bAcceptInvitesWhileInSession` | false | An accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first |
 | `RequestTimeoutSeconds` | 30 | How long a request waits for the online service before failing with `Timeout`. **0 waits forever.** Searching adds its own Timeout Seconds on top of this |
 | `bAutoHostOnDedicatedServer` | true | A dedicated server advertises itself once its map is up |
 | `DedicatedServerHostParams` | - | Params used by that auto host. Map Name is ignored - the server keeps its launch map |
