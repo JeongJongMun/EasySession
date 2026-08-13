@@ -75,7 +75,7 @@ A match happens inside a session, and the session outlives it. It is there befor
 
 The session cannot work out where the match stands on its own - you tell it:
 
-- `Start Easy Session` marks the match as running. With **Allow Join In Progress** off, this is the moment the session stops taking new players.
+- `Start Easy Session` marks the match as running. With **Allow Join In Progress** off, this is the moment the session stops taking new players. Steam is stricter and stops at the first join instead, which is why the setting is best left on there ([FAQ](FAQ.md)).
 - `End Easy Session` marks it finished, so `Start` can run the next match on the same session.
 
 Neither node starts or stops your gameplay - they move the session's state. If your game has no notion of a match starting (a sandbox, a social space), you never need to call either.

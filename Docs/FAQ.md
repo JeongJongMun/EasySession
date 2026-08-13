@@ -18,6 +18,22 @@ The session is advertised but its host is **not running as a listen server** - a
 
 Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Map Name` so the host travels with `?listen`. If the host log shows `The session is advertised but this game is still not a listen server`, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, disable *Run Under One Process*.
 
+## "Steam: only the first player can join, everyone after that fails with k_EChatRoomEnterResponseNotAllowed"
+
+Your Host Params have **Allow Join In Progress off**. On Steam, leave it on.
+
+Steam sessions are lobbies, and the engine recomputes whether the lobby accepts players every time someone joins or leaves it (`FillMembersFromLobbyData` in `OnlineSessionAsyncLobbySteam.cpp`). That check multiplies the free-slot test by `bAllowJoinInProgress`, without looking at whether the match has started:
+
+```cpp
+bool bLobbyJoinable = Session.SessionSettings.bAllowJoinInProgress && (LobbyMemberCount < MaxLobbyMembers);
+```
+
+So with the setting off, the first join closes the lobby and nothing reopens it - not a player leaving, not `End Easy Session`. A newly created lobby is open because the create path never runs this check, which is why exactly one player gets in. Invited friends are refused as well, since a closed lobby refuses everyone.
+
+EasySession does not work around this: it passes the setting to the online service as given, and refuses join-in-progress itself through the approval beacon and `PreLogin`, which do check the match state. If you need "no joining once the match starts" on Steam, leave Allow Join In Progress on and let those checks do it.
+
+A player whose join fails this way is sent back to the main menu when the invite made them leave a session first, so they do not end up in a map with no session.
+
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
 **One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and unregisters the local player, who was never in the client's own copy of the session's player list. Epic's own samples show the same line. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.

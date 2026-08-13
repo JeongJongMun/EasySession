@@ -27,7 +27,7 @@ public:
 
 	/**
 	 * Start the match: transitions the session to InProgress.
-	 * When Allow Join In Progress is disabled, new players can no longer join until the match ends.
+	 * When Allow Join In Progress is disabled, new players are refused from here until the match ends - except on Steam, which already refused them from the first join onwards.
 	 *
 	 * Only the game hosting the session can start the match - clients get a Requires Session Authority failure.
 	 * Gate the button with Is Easy Session Host.

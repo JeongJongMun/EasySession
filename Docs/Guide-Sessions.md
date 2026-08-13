@@ -17,7 +17,7 @@ All operations are **queued and executed one at a time** - you can call them in 
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
 | Start Listening | true | Leave on unless you manage the listen server yourself |
 | Should Advertise | true | Off = private/invisible session |
-| Allow Join In Progress | true | |
+| Allow Join In Progress | true | Leave on for Steam, which closes the lobby at the first join when this is off ([FAQ](FAQ.md)) |
 | Allow Invites / Use Presence | true | Ignored on LAN and dedicated servers |
 | Custom Settings | (empty) | Advertised key-value data, see below |
 

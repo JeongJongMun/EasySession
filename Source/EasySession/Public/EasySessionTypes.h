@@ -245,7 +245,10 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString AdditionalTravelOptions;
 
-	/** Whether players can join while the match is already in progress. */
+	/**
+	 * Whether players can join while the match is already in progress.
+	 * Leave this on for Steam: Steam closes the lobby as soon as the first player joins and never reopens it, so everyone after that is refused even before the match starts.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowJoinInProgress = true;
 

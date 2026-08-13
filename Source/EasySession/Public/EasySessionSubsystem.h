@@ -166,7 +166,7 @@ public:
 
 	/**
 	 * Start the match: transitions the session to InProgress.
-	 * When Allow Join In Progress is disabled, new players can no longer join until the match ends.
+	 * When Allow Join In Progress is disabled, new players are refused from here until the match ends - except on Steam, which already refused them from the first join onwards.
 	 * Needs session authority - only the game that created the session can start the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
