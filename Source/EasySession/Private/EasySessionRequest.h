@@ -128,9 +128,6 @@ public:
 	/** Join: the session to join, as returned by a search. */
 	FEasySessionSearchResult JoinTarget;
 
-	/** Join: whether to travel to the host once the online service accepts the join. */
-	bool bTravelOnSuccess = true;
-
 	/** Join: the password sent to the host's approval beacon, and carried in the travel URL for PreLogin. */
 	FString JoinPassword;
 

@@ -50,7 +50,7 @@ Each `FEasySessionSearchResult` exposes: display name, host name, ping, max play
 
 ## Joining
 
-`Join Easy Session` takes a search result. On success it resolves the host address and client-travels there automatically (`Travel On Success` can turn that off).
+`Join Easy Session` takes a search result. On success it resolves the host address and client-travels there. Joining always connects to the host, so the joining player leaves whatever map they were on - even a map with the same name as the host's.
 
 EasySession validates the host address **before** reporting success - if the host is not actually reachable (see [FAQ: port 0](FAQ.md)), you get an immediate `ResolveFailure` with an explanation instead of a 20-second connection timeout, and the half-joined session is cleaned up so you can retry right away.
 

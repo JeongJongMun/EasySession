@@ -2,12 +2,11 @@
 
 #include "Nodes/EasyJoinSessionNode.h"
 
-UEasyJoinSessionNode* UEasyJoinSessionNode::JoinEasySession(UObject* WorldContextObject, const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess, const FString& Password, const FString& AdditionalTravelOptions)
+UEasyJoinSessionNode* UEasyJoinSessionNode::JoinEasySession(UObject* WorldContextObject, const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions)
 {
 	UEasyJoinSessionNode* Node = NewObject<UEasyJoinSessionNode>();
 	Node->NodeWorldContext = WorldContextObject;
 	Node->SearchResult = SearchResult;
-	Node->bTravelOnSuccess = bTravelOnSuccess;
 	Node->Password = Password;
 	Node->AdditionalTravelOptions = AdditionalTravelOptions;
 	Node->RegisterWithGameInstance(WorldContextObject);
@@ -23,7 +22,7 @@ void UEasyJoinSessionNode::Activate()
 		return;
 	}
 
-	Subsystem->JoinEasySession(SearchResult, bTravelOnSuccess, Password, AdditionalTravelOptions, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyJoinSessionNode::HandleComplete));
+	Subsystem->JoinEasySession(SearchResult, Password, AdditionalTravelOptions, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyJoinSessionNode::HandleComplete));
 }
 
 void UEasyJoinSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

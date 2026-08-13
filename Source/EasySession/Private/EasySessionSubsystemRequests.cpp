@@ -635,7 +635,6 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 		return;
 	}
 
-	const bool bTravelOnSuccess = GetActiveRequest()->bTravelOnSuccess;
 	const FString JoinPassword = GetActiveRequest()->JoinPassword;
 	const FString JoinTravelOptions = GetActiveRequest()->JoinTravelOptions;
 
@@ -683,13 +682,9 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	// This process joined the session rather than creating it, so it is not the session's server.
 	bCreatedActiveSession = false;
 
-	RegisterLocalPlayerInSession();
 	CompleteActiveRequest(EEasySessionResult::Success);
 
-	if (bTravelOnSuccess)
-	{
-		Travel->TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
-	}
+	Travel->TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
 }
 
 void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)

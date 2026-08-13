@@ -183,7 +183,7 @@ void UEasyMatchmakingPolicy::TryJoinNextCandidate()
 
 	const FEasySessionSearchResult& Candidate = Candidates[NextCandidateIndex];
 	UE_LOG(LogEasySession, Log, TEXT("QuickMatch joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
-	SubsystemPtr->JoinEasySession(Candidate, true, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
+	SubsystemPtr->JoinEasySession(Candidate, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
 }
 
 void UEasyMatchmakingPolicy::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)

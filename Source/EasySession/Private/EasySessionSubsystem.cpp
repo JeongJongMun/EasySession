@@ -183,11 +183,10 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	EnqueueRequest(Request);
 }
 
-void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Join);
 	Request->JoinTarget = SearchResult;
-	Request->bTravelOnSuccess = bTravelOnSuccess;
 	Request->JoinPassword = Password;
 	Request->JoinTravelOptions = AdditionalTravelOptions;
 	Request->OnComplete = MoveTemp(OnComplete);

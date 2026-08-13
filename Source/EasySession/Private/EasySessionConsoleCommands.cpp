@@ -142,7 +142,7 @@ namespace EasySessionConsole
 
 				const FString Password = Args.Num() > 1 ? Args[1] : FString();
 				Print(FString::Printf(TEXT("Joining '%s'..."), *Results[Index].SessionDisplayName));
-				Subsystem->JoinEasySession(Results[Index], true, Password, FString(), MakePrintDelegate(TEXT("Join")));
+				Subsystem->JoinEasySession(Results[Index], Password, FString(), MakePrintDelegate(TEXT("Join")));
 			}
 		}));
 

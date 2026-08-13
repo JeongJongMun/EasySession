@@ -155,15 +155,14 @@ public:
 	void FindEasySessions(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete = FEasySessionFindCompleteDelegate());
 
 	/**
-	 * Join the given session and optionally travel to the host.
+	 * Join the given session and travel to the host.
 	 *
 	 * @param SearchResult A search result returned by FindEasySessions.
-	 * @param bTravelOnSuccess Whether to client travel to the host once joined.
 	 * @param Password Password for password protected sessions. Ignored otherwise.
 	 * @param AdditionalTravelOptions Extra options appended to the client travel URL (e.g. "Name=Player?Team=1").
 	 * @param OnComplete Called when the operation completes.
 	 */
-	void JoinEasySession(const FEasySessionSearchResult& SearchResult, bool bTravelOnSuccess = true, const FString& Password = FString(), const FString& AdditionalTravelOptions = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password = FString(), const FString& AdditionalTravelOptions = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Start the match: transitions the session to InProgress.

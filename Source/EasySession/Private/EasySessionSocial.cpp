@@ -72,7 +72,7 @@ void FEasySessionSocial::JoinInvitedSession(const FEasySessionSearchResult& Sess
 {
 	if (!Owner.IsInSession())
 	{
-		Owner.JoinEasySession(Session, /*bTravelOnSuccess*/ true);
+		Owner.JoinEasySession(Session);
 		return;
 	}
 
@@ -102,7 +102,7 @@ void FEasySessionSocial::JoinInvitedSessionAfterLeaving(EEasySessionResult Leave
 
 	// The session this player was in is destroyed by now, so a failed join would leave them in its map with no session.
 	// Send them to the menu instead.
-	Owner.JoinEasySession(Session, /*bTravelOnSuccess*/ true, FString(), FString(),
+	Owner.JoinEasySession(Session, FString(), FString(),
 		FEasySessionCompleteDelegate::CreateWeakLambda(&Owner,
 			[this](EEasySessionResult JoinResult, const FString& /*ErrorMessage*/)
 			{
