@@ -32,7 +32,7 @@ public:
 
 	/**
 	 * Start QuickMatch matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
-	 * Cancel a running QuickMatch with Cancel Matchmaking on the subsystem.
+	 * Cancel a running QuickMatch with Cancel Easy Matchmaking.
 	 *
 	 * @param QuickMatchParams Parameters describing the search and the fallback host session.
 	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when empty.

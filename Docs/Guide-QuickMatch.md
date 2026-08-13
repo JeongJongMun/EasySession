@@ -23,7 +23,7 @@ Turn off `Allow Host Fallback` if this game should only ever join.
 
 Progress can be shown by binding `OnStateChanged` on the policy (`Get Active Matchmaking Policy`): `Searching -> Joining -> Hosting -> Complete`.
 
-Cancel anytime with `Cancel Matchmaking` - the run finishes with the `Canceled` result.
+Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Canceled` result.
 
 After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
 

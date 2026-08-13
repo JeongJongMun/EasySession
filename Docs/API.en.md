@@ -125,8 +125,8 @@ there is no C++ column.
 
 Not async - these return right away. They change state and have execution pins.
 
-What they return means the request was accepted, not that it finished. `Cancel
-Matchmaking` only takes effect once the online call already in flight completes, and
+What they return means the request was accepted, not that it finished. `Cancel Easy
+Matchmaking` stops the run only after the online call already running has come back, and
 `Server Travel Easy Session` returns before the new map has loaded.
 
 ### 3.1 Standalone nodes (`UEasySessionStatics`)
@@ -228,7 +228,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.en.md)) |
 | **`RequiresSessionAuthority`** | Only the game that created the session may do this. Show the button only when `Is Easy Session Authority` is true |
 | **`Timeout`** | The online service never answered. The outcome is unknown, so anything it left behind is cleaned up. See `RequestTimeoutSeconds` |
-| **`Canceled`** | `Cancel Matchmaking` stopped a Quick Match run |
+| **`Canceled`** | `Cancel Easy Matchmaking` stopped a Quick Match run |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
 | `InvalidParams` | A parameter cannot work, e.g. Quick Match with no fallback Map Name |
 | `MatchmakingAlreadyInProgress` | A Quick Match is already running |
@@ -239,7 +239,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 
 `NoSession`, `Creating`, `Pending`, `Starting`, `InProgress`, `Ending`, `Ended`, `Destroying`
 
-`Pending` is a session waiting to start; `Ended` is a finished match that `Start Easy Session` can play again. The `-ing` values are the moments an operation is in flight.
+`Pending` is a session waiting to start; `Ended` is a finished match that `Start Easy Session` can play again. The `-ing` values are the moments an operation is still running.
 
 ### 6.3 EEasyDisconnectReason
 

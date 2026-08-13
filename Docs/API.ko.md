@@ -119,7 +119,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 비동기가 아니라 즉시 반환합니다. 상태를 바꾸고 실행 핀이 있습니다.
 
-돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Matchmaking`은
+돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Easy Matchmaking`은
 진행 중이던 온라인 작업이 끝난 뒤에야 실제로 취소되고, `Server Travel Easy Session`은 맵이 로드되기
 전에 돌아옵니다.
 
@@ -218,7 +218,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.ko.md)) |
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |
 | **`Timeout`** | 온라인 서비스가 끝내 답하지 않았습니다. 결과를 알 수 없으므로 남은 것이 있으면 정리됩니다. `RequestTimeoutSeconds` 참고 |
-| **`Canceled`** | `Cancel Matchmaking`이 Quick Match를 중단시켰습니다 |
+| **`Canceled`** | `Cancel Easy Matchmaking`이 Quick Match를 중단시켰습니다 |
 | `NoOnlineSubsystem` | 온라인 서브시스템이 없습니다. `DefaultEngine.ini`를 확인하세요 |
 | `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Map Name 없는 Quick Match |
 | `MatchmakingAlreadyInProgress` | Quick Match가 이미 돌고 있습니다 |
