@@ -42,4 +42,4 @@ DefaultPlatformService=NULL
 - 친구, 초대, 프레즌스가 없습니다.
 - 플레이어 ID는 실제 계정이 아니라 PC마다 생성되는 임의의 ID입니다.
 
-여기서 더 필요해지면 [Steam](Setup-Steam.md)으로 넘어가세요. 블루프린트는 그대로 둬도 됩니다.
+여기서 더 필요해지면 [Steam](Setup-Steam.ko.md)으로 넘어가세요. 블루프린트는 그대로 둬도 됩니다.

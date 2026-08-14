@@ -19,7 +19,7 @@ The free-slot count is part of that record, so it is only right if someone keeps
 The **Online Subsystem** is Unreal's abstraction over platform online services. The same `Create Easy Session` call works on any of them:
 
 - **NULL** - LAN only. No accounts, no setup. Sessions are found via UDP broadcast on the local network. This is the default and perfect for development.
-- **Steam** - sessions become Steam lobbies / server list entries. Requires the Steam client running and an AppId. See [Steam setup](Setup-Steam.md).
+- **Steam** - sessions become Steam lobbies / server list entries. Requires the Steam client running and an AppId. See [Steam setup](Setup-Steam.en.md).
 
 Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] DefaultPlatformService=...`), not by code. Your Blueprint graphs stay identical.
 
@@ -54,7 +54,7 @@ One exception is handled for you: the first travel, the one that turns the host 
 
 The **NetDriver** is the engine object that actually moves game data: it opens the socket, makes or accepts the connection, and replicates actors. One is created when a map opens with `?listen` (the server side) and when a client travels to an address (the client side).
 
-You almost never touch it directly. The one place you will meet the name is configuration: the [Steam setup](Setup-Steam.md) replaces the default NetDriver definitions so connections go through Steam's network, and the beacon has its own `BeaconNetDriver` definition.
+You almost never touch it directly. The one place you will meet the name is configuration: the [Steam setup](Setup-Steam.en.md) replaces the default NetDriver definitions so connections go through Steam's network, and the beacon has its own `BeaconNetDriver` definition.
 
 ## Listen server vs dedicated server
 

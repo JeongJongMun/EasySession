@@ -19,7 +19,7 @@
 **Online Subsystem**은 플랫폼 온라인 서비스에 대한 언리얼의 추상화입니다. 같은 `Create Easy Session` 호출이 어디서든 동작합니다:
 
 - **NULL** - LAN 전용. 계정도 설정도 필요 없습니다. 세션은 로컬 네트워크의 UDP 브로드캐스트로 찾습니다. 기본값이며 개발 중에는 이걸로 충분합니다.
-- **Steam** - 세션이 스팀 로비 / 서버 목록 항목이 됩니다. 스팀 클라이언트 실행과 AppId가 필요합니다. [Steam 설정](Setup-Steam.md)을 보세요.
+- **Steam** - 세션이 스팀 로비 / 서버 목록 항목이 됩니다. 스팀 클라이언트 실행과 AppId가 필요합니다. [Steam 설정](Setup-Steam.ko.md)을 보세요.
 
 어느 쪽이 활성인지는 코드가 아니라 `DefaultEngine.ini`(`[OnlineSubsystem] DefaultPlatformService=...`)가 정합니다. 블루프린트 그래프는 그대로입니다.
 
@@ -54,7 +54,7 @@ Travel은 세션을 없애지 않습니다. 세션은 맵이 아니라 온라인
 
 **NetDriver**는 게임 데이터를 실제로 옮기는 엔진 객체입니다. 소켓을 열고, 연결을 만들거나 받고, 액터를 복제합니다. 맵이 `?listen`으로 열릴 때(서버 쪽), 그리고 클라이언트가 주소로 Travel할 때(클라이언트 쪽) 하나씩 만들어집니다.
 
-직접 다룰 일은 거의 없습니다. 이 이름을 만나는 유일한 곳은 설정입니다. [Steam 설정](Setup-Steam.md)은 연결이 스팀 네트워크를 지나가도록 기본 NetDriver 정의를 교체하고, 비콘은 자기 몫의 `BeaconNetDriver` 정의를 씁니다.
+직접 다룰 일은 거의 없습니다. 이 이름을 만나는 유일한 곳은 설정입니다. [Steam 설정](Setup-Steam.ko.md)은 연결이 스팀 네트워크를 지나가도록 기본 NetDriver 정의를 교체하고, 비콘은 자기 몫의 `BeaconNetDriver` 정의를 씁니다.
 
 ## 리슨 서버와 데디케이티드 서버
 

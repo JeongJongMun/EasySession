@@ -95,7 +95,7 @@ shows the reason under the input (`WBP_JoinPasswordPopup`).
 
 Approval travels over a beacon, a second lightweight connection to the host. When that
 beacon cannot be reached - the port is blocked, or the project removed the engine's
-`BeaconNetDriver` definition ([Steam setup](Setup-Steam.md) shows the line that restores
+`BeaconNetDriver` definition ([Steam setup](Setup-Steam.en.md) shows the line that restores
 it, and `EasySession.Diagnose` checks for it) - the join proceeds directly and the host
 refuses the connection as it arrives instead.
 

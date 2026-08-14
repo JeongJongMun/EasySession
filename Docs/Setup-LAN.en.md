@@ -42,4 +42,4 @@ Two instances on the same PC can host and join each other:
 - No friends, invites, or presence.
 - Player IDs are per-machine random IDs, not real accounts.
 
-When you outgrow these, switch to [Steam](Setup-Steam.md) - your Blueprints stay the same.
+When you outgrow these, switch to [Steam](Setup-Steam.en.md) - your Blueprints stay the same.

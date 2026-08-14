@@ -14,7 +14,7 @@ Host, find, join and quick-play with a few Blueprint nodes - no custom `GameInst
 2. Open the project, go to **Edit -> Plugins**, search for **EasySession**, enable it and restart.
 3. For C++ projects, add `"EasySession"` to `PublicDependencyModuleNames` in your `.Build.cs`.
 
-That is the whole setup for LAN play. The NULL online subsystem needs no accounts or keys. For Steam, follow [Steam setup](Docs/Setup-Steam.md).
+That is the whole setup for LAN play. The NULL online subsystem needs no accounts or keys. For Steam, follow [Steam setup](Docs/Setup-Steam.en.md).
 
 ## Features
 
@@ -57,7 +57,7 @@ These guides are still being written and do not yet cover every feature.
 
 - [Quick Start](Docs/QuickStart.en.md) - host and join in 5 minutes
 - [Concepts](Docs/Concepts.en.md) - sessions, OSS, travel, listen vs dedicated, and how they fit together
-- Setup: [LAN](Docs/Setup-LAN.en.md) | [Steam](Docs/Setup-Steam.md)
+- Setup: [LAN](Docs/Setup-LAN.en.md) | [Steam](Docs/Setup-Steam.en.md)
 - Guides: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.en.md)
 - [FAQ & Troubleshooting](Docs/FAQ.en.md)

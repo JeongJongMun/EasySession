@@ -110,7 +110,7 @@ Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 
 - [Concepts](Concepts.ko.md) - 세션이 실제로 무엇인지, NULL과 스팀이 무슨 뜻인지
 - [LAN 설정](Setup-LAN.ko.md) - 로컬 검색이 깨지는 원인과 한 대에서 테스트하는 법
-- [Steam 설정](Setup-Steam.md) - LAN을 넘어 인터넷으로
+- [Steam 설정](Setup-Steam.ko.md) - 인터넷 플레이에 필요한 플러그인 두 개와 ini 설정
 - [세션 가이드](Guide-Sessions.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
 - [Quick Match 가이드](Guide-QuickMatch.md) - 방을 고르는 기준과 커스텀 점수 계산
 - [API 레퍼런스](API.ko.md) - 모든 노드, 조회, 구조체, 설정

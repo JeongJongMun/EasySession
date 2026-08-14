@@ -14,7 +14,7 @@
 2. 프로젝트를 열고 **Edit -> Plugins**에서 **EasySession**을 찾아 활성화한 뒤 재시작합니다.
 3. C++ 프로젝트라면 `.Build.cs`의 `PublicDependencyModuleNames`에 `"EasySession"`을 추가합니다.
 
-LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키도 필요 없습니다. 스팀은 [Steam 설정 문서](Docs/Setup-Steam.md)를 따르세요.
+LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키도 필요 없습니다. 스팀은 [Steam 설정 문서](Docs/Setup-Steam.ko.md)를 따르세요.
 
 ## 특징
 
@@ -57,7 +57,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 
 - [Quick Start](Docs/QuickStart.ko.md) - 5분 만에 방 만들고 참가하기
 - [Concepts](Docs/Concepts.ko.md) - 세션, OSS, Travel, 리슨 서버와 데디케이티드가 서로 어떻게 맞물리는지
-- 설정: [LAN](Docs/Setup-LAN.ko.md) | [Steam](Docs/Setup-Steam.md)
+- 설정: [LAN](Docs/Setup-LAN.ko.md) | [Steam](Docs/Setup-Steam.ko.md)
 - 가이드: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API 레퍼런스](Docs/API.ko.md)
 - [FAQ & Troubleshooting](Docs/FAQ.ko.md)
