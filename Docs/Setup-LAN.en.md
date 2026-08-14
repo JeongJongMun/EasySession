@@ -1,5 +1,7 @@
 # Setup - LAN (NULL Subsystem)
 
+*[한국어](Setup-LAN.ko.md)*
+
 LAN play through the NULL subsystem is EasySession's default. It needs **no accounts, no keys, and usually no configuration at all**.
 
 ## Minimal configuration

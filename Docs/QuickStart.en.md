@@ -108,7 +108,7 @@ same settings. Separate processes use the same networking path as packaged build
 ## Next steps
 
 - [Concepts](Concepts.en.md) - what a session actually is, and what NULL and Steam mean
-- [LAN setup](Setup-LAN.md) - what breaks local discovery, and how to test on one machine
+- [LAN setup](Setup-LAN.en.md) - what breaks local discovery, and how to test on one machine
 - [Steam setup](Setup-Steam.md) - go online beyond LAN
 - [Session guide](Guide-Sessions.md) - custom session data, filters, passwords, updating sessions
 - [Quick Match guide](Guide-QuickMatch.md) - how the matchmaking picks a session, custom scoring
