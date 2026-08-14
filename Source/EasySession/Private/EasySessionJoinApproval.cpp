@@ -33,12 +33,6 @@ void FEasySessionJoinApproval::Shutdown()
 		GameModeInitializedHandle.Reset();
 	}
 
-	if (AdvertiseTickerHandle.IsValid())
-	{
-		FTSTicker::GetCoreTicker().RemoveTicker(AdvertiseTickerHandle);
-		AdvertiseTickerHandle.Reset();
-	}
-
 	StopHost();
 	StopClient();
 }
@@ -100,69 +94,18 @@ void FEasySessionJoinApproval::EnsureHost()
 
 	UE_LOG(LogEasySession, Log, TEXT("Join approval beacon listening on port %d."), Host->GetListenPort());
 
-	// Joiners connect to the advertised port, and the engine binds the next free one when
-	// the configured port is taken. Move the advertisement onto the port actually bound.
-	int32 AdvertisedPort = 0;
-	NamedSession->SessionSettings.Get(SETTING_BEACONPORT, AdvertisedPort);
-	if (AdvertisedPort != Host->GetListenPort() && !AdvertiseTickerHandle.IsValid())
-	{
-		AdvertiseTickerHandle = FTSTicker::GetCoreTicker().AddTicker(
-			FTickerDelegate::CreateRaw(this, &FEasySessionJoinApproval::TickAdvertiseBoundPort));
-	}
-}
-
-bool FEasySessionJoinApproval::TickAdvertiseBoundPort(float DeltaTime)
-{
-	// An active request has its completion delegate bound, and this update would wake
-	// that handler and finish the wrong request. Keep ticking until the queue is idle.
-	if (!Owner.RequestQueue.IsValid() || !Owner.RequestQueue->IsIdle())
-	{
-		return true;
-	}
-
-	AdvertiseTickerHandle.Reset();
-
-	AOnlineBeaconHost* Host = BeaconHost.Get();
-	const UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-	if (Host == nullptr || World == nullptr)
-	{
-		return false;
-	}
-
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return false;
-	}
-
-	// A later world may have bound the configured port after all, which the waiting
-	// ticker cannot know until it runs.
+	// Joiners reach the beacon at the advertised port, so a beacon that bound elsewhere is unreachable.
 	const int32 BoundPort = Host->GetListenPort();
 	int32 AdvertisedPort = 0;
 	NamedSession->SessionSettings.Get(SETTING_BEACONPORT, AdvertisedPort);
-	if (AdvertisedPort == BoundPort)
-	{
-		return false;
-	}
-
-	FOnlineSessionSettings Corrected = NamedSession->SessionSettings;
-	Corrected.Set(SETTING_BEACONPORT, BoundPort, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	if (Sessions->UpdateSession(NAME_GameSession, Corrected, true))
-	{
-		UE_LOG(LogEasySession, Log,
-			TEXT("Another process holds port %d, so the join approval beacon bound %d. The session now advertises %d."),
-			AdvertisedPort, BoundPort, BoundPort);
-	}
-	else
+	if (BoundPort != AdvertisedPort)
 	{
 		UE_LOG(LogEasySession, Warning,
-			TEXT("The join approval beacon bound port %d but the session still advertises %d, and the online service refused the correction. Joiners will ask whichever process holds port %d about joining this one."),
+			TEXT("The join approval beacon bound port %d, but this session advertises %d. Another process on this machine holds %d."),
 			BoundPort, AdvertisedPort, AdvertisedPort);
+		UE_LOG(LogEasySession, Warning,
+			TEXT("Joiners will ask that process about joining this one, so passwords and full-room checks move to after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."));
 	}
-
-	return false;
 }
 
 void FEasySessionJoinApproval::StopHost()

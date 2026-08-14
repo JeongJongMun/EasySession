@@ -65,20 +65,10 @@ private:
 	/** Re-creates the beacon after a travel replaced the world. Server only. */
 	void HandleGameModeInitialized(AGameModeBase* GameMode);
 
-	/**
-	 * Advertise the port the beacon actually bound to, so joiners reach this host and not another one on the same machine.
-	 * Retries every frame until the request queue is idle.
-	 * EnsureHost can run while a request is active, and this update would then complete that request instead of its own.
-	 */
-	bool TickAdvertiseBoundPort(float DeltaTime);
-
 	UEasySessionSubsystem& Owner;
 
 	/** Handle for the game mode initialization event, which is what re-creates the beacon per world. */
 	FDelegateHandle GameModeInitializedHandle;
-
-	/** Valid only while a re-advertisement is waiting for the queue. */
-	FTSTicker::FDelegateHandle AdvertiseTickerHandle;
 
 	/** Host side of the beacon. Lives exactly as long as the session, per world. */
 	TWeakObjectPtr<AOnlineBeaconHost> BeaconHost;
