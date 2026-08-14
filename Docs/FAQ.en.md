@@ -9,7 +9,7 @@ Real problems, in the order people usually hit them.
 Checked in order of likelihood:
 
 1. **Is anyone actually hosting?** The host must have completed `Create Easy Session` with `Should Advertise = true`.
-2. **PIE on one machine** - set Number of Players = 2, Net Mode = *Play Standalone*. If instances still can't see each other, disable *Run Under One Process*.
+2. **PIE on one machine** - set Number of Players = 2, Net Mode = *Play Standalone*, and turn *Run Under One Process* off. Sharing one process means sharing the LAN beacon port, which makes discovery unreliable.
 3. **Firewall / VPN** - LAN discovery is UDP broadcast; allow the game in Windows Firewall, disable VPNs, or pass `-MultiHome=<LAN IP>`.
 4. **Steam: same account or same-machine test** - two different Steam accounts on two machines are required. With AppId 480, filter out strangers' test sessions using a custom setting (see [Steam setup](Setup-Steam.md)).
 5. **Wrong subsystem is running** - check the log: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM`. Packaged builds read the packaged ini, not your editor state.
@@ -24,7 +24,7 @@ LogEasySession: Warning: Session operation failed: ResolveFailure (The host addr
 or travels to a map with the ?listen option.)
 ```
 
-Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Map Name` so the host travels with `?listen`. If the host set a Map Name and still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, disable *Run Under One Process*.
+Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Map Name` so the host travels with `?listen`. If the host set a Map Name and still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
 
 ## "Steam: only the first player can join, everyone after that fails"
 

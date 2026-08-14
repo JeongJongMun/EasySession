@@ -9,7 +9,7 @@
 가능성이 높은 것부터 확인하세요.
 
 1. **정말로 누군가 호스팅 중인가요?** 호스트가 `Should Advertise = true`로 `Create Easy Session`을 끝냈어야 합니다.
-2. **한 대에서 PIE로 테스트 중** - Number of Players = 2, Net Mode = *Play Standalone*으로 설정하세요. 그래도 서로 못 찾으면 *Run Under One Process*를 끄세요.
+2. **한 대에서 PIE로 테스트 중** - Number of Players = 2, Net Mode = *Play Standalone*으로 설정하고 *Run Under One Process*를 끄세요. 한 프로세스를 공유하면 LAN 비콘 포트도 공유하게 되어 검색이 불안정해집니다.
 3. **방화벽 / VPN** - LAN 검색은 UDP 브로드캐스트입니다. Windows 방화벽에서 게임을 허용하고, VPN을 끄거나, `-MultiHome=<LAN IP>`를 넘기세요.
 4. **스팀: 같은 계정이거나 같은 PC에서 테스트** - 서로 다른 스팀 계정 두 개와 PC 두 대가 필요합니다. AppId 480을 쓴다면 커스텀 세팅으로 남들의 테스트 세션을 걸러내세요 ([스팀 설정](Setup-Steam.md) 참고).
 5. **다른 서브시스템이 돌고 있음** - 로그를 확인하세요: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM`. 패키지 빌드는 에디터 상태가 아니라 패키징된 ini를 읽습니다.
@@ -24,7 +24,7 @@ LogEasySession: Warning: Session operation failed: ResolveFailure (The host addr
 or travels to a map with the ?listen option.)
 ```
 
-**호스트** 쪽에서 고치세요. Host Params의 `Start Listening`을 켠 채로 두거나(기본값), `Map Name`을 지정해 호스트가 `?listen`과 함께 이동하게 하세요. 호스트가 Map Name을 지정했는데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*를 끄세요.
+**호스트** 쪽에서 고치세요. Host Params의 `Start Listening`을 켠 채로 두거나(기본값), `Map Name`을 지정해 호스트가 `?listen`과 함께 이동하게 하세요. 호스트가 Map Name을 지정했는데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*가 꺼져 있는지 확인하세요.
 
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 
