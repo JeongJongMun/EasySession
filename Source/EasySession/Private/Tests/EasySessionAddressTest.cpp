@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionAddress.h"
+#include "Engine/EngineBaseTypes.h"
 
 /**
  * Port 0 detection. The cases that matter are the ones where the string cannot
