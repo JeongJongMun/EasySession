@@ -58,7 +58,7 @@ These guides are still being written and do not yet cover every feature.
 - [Quick Start](Docs/QuickStart.en.md) - host and join in 5 minutes
 - [Concepts](Docs/Concepts.en.md) - sessions, OSS, travel, listen vs dedicated, and how they fit together
 - Setup: [LAN](Docs/Setup-LAN.en.md) | [Steam](Docs/Setup-Steam.en.md)
-- Guides: [Sessions](Docs/Guide-Sessions.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
+- Guides: [Sessions](Docs/Guide-Sessions.en.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API Reference](Docs/API.en.md)
 - [FAQ & Troubleshooting](Docs/FAQ.en.md)
 

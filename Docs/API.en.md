@@ -44,7 +44,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`. On a listen server it then travels to Map Name with `?listen` so this game becomes the server, or starts listening on the current map when Map Name is empty. Dedicated servers keep the map they launched with |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
-| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.md)) |
+| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
@@ -175,10 +175,10 @@ bound to them stays correct even when something else in your game drives the ses
 ### 5.1 FEasySessionHostParams
 `SessionDisplayName` (String), `MapName` (String), `HostMode` (`EEasySessionHostMode`), `MaxPlayers` (int), `bIsLANMatch`, `bStartListening`, `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `AdditionalTravelOptions` (String), `bAllowJoinInProgress`, `bAllowInvites`, `bUsePresence`, `CustomSettings` (Map String->String)
 
-Field behavior is in the [session guide](Guide-Sessions.md). `bHidden` advertises the
+Field behavior is in the [session guide](Guide-Sessions.en.md). `bHidden` advertises the
 session but keeps it out of Find results, so it can only be reached through an invite.
 `Password` and `bFriendsBypassPassword` are covered under
-[password protected sessions](Guide-Sessions.md#password-protected-sessions).
+[password protected sessions](Guide-Sessions.en.md#password-protected-sessions).
 `AdditionalTravelOptions` is appended
 to the host's travel URL (e.g. `GameMode=Deathmatch?MyOption=1`), readable on the server
 with `Parse Option`.

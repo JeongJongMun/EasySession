@@ -27,7 +27,7 @@ Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] Defaul
 
 - A **session** is the advertisement and the online service's record of a running game - the thing Create / Find / Join manage. It says where the game is; it carries no gameplay.
 - A **lobby** means two unrelated things, which is why it confuses everyone. Inside your game it is just a map where players gather before the match (the example's `L_Example_Lobby`) - an ordinary map as far as the online service is concerned. On Steam it is the name of the backend object that stores a presence session - EasySession creates and destroys those for you, so you never handle one directly.
-- A **beacon** is a second, lightweight connection to a host, made for questions that must be answered without loading a map. No pawn spawns and no level loads over it. EasySession uses one so `Join Easy Session` can ask "may this player join?" and fail cleanly before any travel starts ([guide](Guide-Sessions.md#password-protected-sessions)).
+- A **beacon** is a second, lightweight connection to a host, made for questions that must be answered without loading a map. No pawn spawns and no level loads over it. EasySession uses one so `Join Easy Session` can ask "may this player join?" and fail cleanly before any travel starts ([guide](Guide-Sessions.en.md#password-protected-sessions)).
 
 ## What "traveling" means
 

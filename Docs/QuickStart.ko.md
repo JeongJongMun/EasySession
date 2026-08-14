@@ -64,14 +64,14 @@
                    OnFailure -> [Print String: ErrorMessage]
 ```
 
-모든 실패 핀이 `Result` enum과 플레이어에게 그대로 보여줄 수 있는 메시지를 넘겨줍니다.
+모든 실패 핀이 `Result` 열거형과 플레이어에게 그대로 보여줄 수 있는 메시지를 넘겨줍니다.
 
 각 행에는 표시할 이름만이 아니라 `SearchResult` 구조체를 통째로 들고 계세요.
 `Join Easy Session`이 그것을 다시 받습니다.
 
 비밀번호가 틀리거나 매치가 참가를 마감했으면 노드가 바로 여기서 실패합니다. `Result`가
 어느 쪽인지 말해주고 `ErrorMessage`에 호스트가 쓴 이유가 담기며, 로딩 화면은 뜨지 않습니다.
-[비밀번호로 잠근 세션](Guide-Sessions.md#password-protected-sessions)을 보세요.
+[비밀번호로 잠근 세션](Guide-Sessions.ko.md#비밀번호로-잠근-세션)을 보세요.
 
 ## 5. 아니면 Quick Match 하나로 끝내기
 
@@ -111,7 +111,7 @@ Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 - [Concepts](Concepts.ko.md) - 세션이 실제로 무엇인지, NULL과 스팀이 무슨 뜻인지
 - [LAN 설정](Setup-LAN.ko.md) - 로컬 검색이 깨지는 원인과 한 대에서 테스트하는 법
 - [Steam 설정](Setup-Steam.ko.md) - 인터넷 플레이에 필요한 플러그인 두 개와 ini 설정
-- [세션 가이드](Guide-Sessions.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
+- [세션 가이드](Guide-Sessions.ko.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
 - [Quick Match 가이드](Guide-QuickMatch.md) - 방을 고르는 기준과 커스텀 점수 계산
 - [API 레퍼런스](API.ko.md) - 모든 노드, 조회, 구조체, 설정
 - [FAQ](FAQ.ko.md) - 자주 겪는 문제

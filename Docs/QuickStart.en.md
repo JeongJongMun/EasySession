@@ -71,7 +71,7 @@ Session` needs it back.
 
 A wrong password or a match that stopped taking players fails the node right here, with
 `Result` saying which and `ErrorMessage` carrying the host's reason - no loading screen
-first. See [password protected sessions](Guide-Sessions.md#password-protected-sessions).
+first. See [password protected sessions](Guide-Sessions.en.md#password-protected-sessions).
 
 ## 5. Or skip all of that with Quick Match
 
@@ -111,7 +111,7 @@ Separate processes use the same networking path as packaged builds.
 - [Concepts](Concepts.en.md) - what a session actually is, and what NULL and Steam mean
 - [LAN setup](Setup-LAN.en.md) - what breaks local discovery, and how to test on one machine
 - [Steam setup](Setup-Steam.en.md) - the two plugins and the ini block internet play needs
-- [Session guide](Guide-Sessions.md) - custom session data, filters, passwords, updating sessions
+- [Session guide](Guide-Sessions.en.md) - custom session data, filters, passwords, updating sessions
 - [Quick Match guide](Guide-QuickMatch.md) - how the matchmaking picks a session, custom scoring
 - [API reference](API.en.md) - every node, query, struct and setting
 - [FAQ](FAQ.en.md) - the problems people run into
