@@ -152,6 +152,12 @@ namespace EasySession
 	 */
 	EASYSESSION_API int32 GetJoinApprovalBeaconPort();
 
+	/**
+	 * Whether this key is one the plugin writes for itself rather than one the game put in Custom Settings.
+	 * Reserved keys are kept out of Custom Settings in both directions, because a game that reads them back and passes them to Update Easy Session would rewrite them as strings and break the code that reads them as numbers.
+	 */
+	EASYSESSION_API bool IsReservedSettingKey(FName Key);
+
 	/** Travel URL option carrying the password a client supplies when joining. */
 	EASYSESSION_API extern const TCHAR* TravelOption_Password;
 }
@@ -344,6 +350,10 @@ struct EASYSESSION_API FEasySessionSearchResult
 	/** Whether the session is hosted by a dedicated server. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsDedicatedServer = false;
+
+	/** Map this session is played on. Empty when the host started listening on the map they were already on. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FString MapName;
 
 	/** Whether a password is required to join this session. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")

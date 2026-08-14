@@ -70,6 +70,33 @@ public:
 		NamedSession->SessionSettings.Get(EasySession::SettingKey_PasswordProtected, Protected);
 		return Protected != 0;
 	}
+
+	/**
+	 * The stored type of an advertised session setting.
+	 * A test needs the type and not just the value, because rewriting a number as a string leaves the key in place and makes every reader see zero.
+	 */
+	static EOnlineKeyValuePairDataType::Type GetAdvertisedSettingType(const UEasySessionSubsystem& Subsystem, FName Key)
+	{
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		const FOnlineSessionSetting* Setting = NamedSession != nullptr ? NamedSession->SessionSettings.Settings.Find(Key) : nullptr;
+		return Setting != nullptr ? Setting->Data.GetType() : EOnlineKeyValuePairDataType::Empty;
+	}
+
+	/** An advertised session setting read as a number, the way the plugin's own readers read it. */
+	static int32 GetAdvertisedSettingInt(const UEasySessionSubsystem& Subsystem, FName Key)
+	{
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		if (NamedSession == nullptr)
+		{
+			return 0;
+		}
+
+		int32 Value = 0;
+		NamedSession->SessionSettings.Get(Key, Value);
+		return Value;
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

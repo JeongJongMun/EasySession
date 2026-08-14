@@ -52,7 +52,7 @@ Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and 
 
 Results arrive on `OnSuccess` and are also cached - `Get Last Easy Search Results` returns them anywhere, anytime (useful for server browser UIs).
 
-Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, and the custom settings map.
+Each `FEasySessionSearchResult` exposes: display name, map name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, and the custom settings map.
 
 ## Join Session
 

@@ -52,7 +52,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 결과는 `OnSuccess`로 오고 캐시에도 남습니다. `Get Last Easy Search Results`가 언제 어디서든 그 결과를 돌려주므로 서버 목록 UI를 만들 때 편합니다.
 
-각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 커스텀 세팅 맵을 담고 있습니다.
+각 `FEasySessionSearchResult`는 표시 이름, 맵 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 커스텀 세팅 맵을 담고 있습니다.
 
 ## Join Session
 

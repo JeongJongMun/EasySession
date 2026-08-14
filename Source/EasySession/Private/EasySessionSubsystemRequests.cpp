@@ -281,7 +281,14 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
-		Settings.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		const FName Key(*Custom.Key);
+		if (EasySession::IsReservedSettingKey(Key))
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("Custom Setting '%s' is a key this plugin uses for itself. It was not written."), *Custom.Key);
+			continue;
+		}
+
+		Settings.Set(Key, Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 
 	return Settings;
@@ -505,7 +512,14 @@ void UEasySessionSubsystem::ExecuteUpdate()
 
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
-		UpdatedSettings.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		const FName Key(*Custom.Key);
+		if (EasySession::IsReservedSettingKey(Key))
+		{
+			UE_LOG(LogEasySession, Warning, TEXT("Custom Setting '%s' is a key this plugin uses for itself. It was not written."), *Custom.Key);
+			continue;
+		}
+
+		UpdatedSettings.Set(Key, Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 
 	UpdateCompleteHandle = Sessions->AddOnUpdateSessionCompleteDelegate_Handle(

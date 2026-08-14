@@ -318,13 +318,7 @@ FEasySessionHostParams UEasySessionSubsystem::GetEasySessionHostParams() const
 			Setting.Value.Data.GetValue(Hidden);
 			Params.bHidden = Hidden != 0;
 		}
-		else if (Setting.Key == EasySession::SettingKey_PasswordProtected)
-		{
-			// Skipped rather than swept into CustomSettings by the else below. There is
-			// nothing to read: the flag is derived from Password, which is filled from
-			// ServerGate further down.
-		}
-		else
+		else if (!EasySession::IsReservedSettingKey(Setting.Key))
 		{
 			Params.CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
 		}

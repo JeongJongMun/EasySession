@@ -3,6 +3,7 @@
 #include "EasySessionTypes.h"
 
 #include "OnlineBeaconHost.h"
+#include "Online/OnlineSessionNames.h"
 
 namespace EasySession
 {
@@ -24,6 +25,16 @@ namespace EasySession
 	int32 GetJoinApprovalBeaconPort()
 	{
 		return GetDefault<AOnlineBeaconHost>()->ListenPort;
+	}
+
+	bool IsReservedSettingKey(FName Key)
+	{
+		return Key == SettingKey_DisplayName
+			|| Key == SettingKey_Hidden
+			|| Key == SettingKey_PasswordProtected
+			|| Key == SettingKey_JoinApproval
+			|| Key == SETTING_MAPNAME
+			|| Key == SETTING_BEACONPORT;
 	}
 
 	FString ResultToString(EEasySessionResult Result)
@@ -100,7 +111,11 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 			Setting.Value.Data.GetValue(Protected);
 			Result.bPasswordProtected = Protected != 0;
 		}
-		else
+		else if (Setting.Key == SETTING_MAPNAME)
+		{
+			Result.MapName = Setting.Value.Data.ToString();
+		}
+		else if (!EasySession::IsReservedSettingKey(Setting.Key))
 		{
 			Result.CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
 		}
