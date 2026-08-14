@@ -49,7 +49,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
 | **Destroy Easy Session** | - | Calls `DestroySession`: the host destroys the session, a client only leaves it. Both the host and the client can host or join again right after |
-| **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-QuickMatch.md)) |
+| **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-QuickMatch.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array. NULL/LAN has no friends, so it fails there |
 
 > **Session authority only** means the game that created the session: the host player's

@@ -58,7 +58,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 - [Quick Start](Docs/QuickStart.ko.md) - 5분 만에 방 만들고 참가하기
 - [Concepts](Docs/Concepts.ko.md) - 세션, OSS, Travel, 리슨 서버와 데디케이티드가 서로 어떻게 맞물리는지
 - 설정: [LAN](Docs/Setup-LAN.ko.md) | [Steam](Docs/Setup-Steam.ko.md)
-- 가이드: [Sessions](Docs/Guide-Sessions.ko.md) | [Quick Match](Docs/Guide-QuickMatch.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
+- 가이드: [Sessions](Docs/Guide-Sessions.ko.md) | [Quick Match](Docs/Guide-QuickMatch.ko.md) | [Dedicated servers](Docs/Guide-DedicatedServer.md)
 - [API 레퍼런스](Docs/API.ko.md)
 - [FAQ & Troubleshooting](Docs/FAQ.ko.md)
 

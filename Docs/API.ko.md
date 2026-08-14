@@ -48,7 +48,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
 | **Destroy Easy Session** | - | `DestroySession` 호출. 호스트는 세션을 없애고 클라이언트는 나가기만 합니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
-| **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-QuickMatch.md)) |
+| **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-QuickMatch.ko.md)) |
 | **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 넘깁니다. NULL/LAN에는 친구 개념이 없어 실패합니다 |
 
 > **세션 권한 필요**는 그 세션을 만든 게임을 뜻합니다. 리슨 서버라면 호스트 플레이어의 게임,
