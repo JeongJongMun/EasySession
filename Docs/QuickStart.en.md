@@ -78,7 +78,7 @@ first. See [password protected sessions](Guide-Sessions.en.md#password-protected
 ```
 [Button Clicked] -> [Quick Match Easy Session]
                       QuickMatchParams:
-                        Host -> Map Name = "/Game/Maps/Lobby"   <- required
+                        Host -> Map Name = "/Game/Maps/Lobby"   <- your map here
                       OnSuccess -> (joined the best session, or hosting a new one)
                       OnFailure -> [Print String: ErrorMessage]
 ```
@@ -86,9 +86,9 @@ first. See [password protected sessions](Guide-Sessions.en.md#password-protected
 Quick Match searches, joins the best session (good ping, fuller rooms first), and hosts a
 new session if nothing is found. Use `Is Easy Session Host` to check which outcome you got.
 
-**Host > Map Name has no default.** Matchmaking cannot pick where the match is played, so
-leaving it empty fails immediately with `InvalidParams` rather than hosting a session
-nobody can connect to. Turn off **Allow Host Fallback** if this game should only ever join.
+**Leaving Host > Map Name empty** makes the fallback open a listen server on the map this
+player is already on. Called from a menu, that turns the menu into the arena, so fill it in
+most of the time. Turn **Allow Host Fallback** on to host at all - it is off by default.
 
 ## 6. Test in PIE
 

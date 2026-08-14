@@ -9,20 +9,23 @@
 | Field | Default | Notes |
 |---|---|---|
 | Search | (defaults) | Same filters as Find Easy Sessions |
-| Host | **Map Name required** | Used when falling back to hosting. See below |
-| Allow Host Fallback | true | **Set false for dedicated-server games** - clients then only search & join, and fail with `NoSessionsFound` when empty |
+| Host | (defaults) | Used when falling back to hosting. Map Name is covered below |
+| Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there. Turn it on to host instead |
 | Max Search Passes | 3 | How many search passes to run before giving up or hosting. 3 means three searches |
 | Delay Between Passes | 2.0s | How long to rest before the next search |
 
-### Host > Map Name is required
+### Whether to fill in Host > Map Name
 
-Matchmaking cannot pick where the match is played, so this one has no default. Hosting
-with an empty Map Name skips the travel, and that travel is what turns the host into a
-listen server - the session would be advertised with nobody able to connect. Quick Match
-refuses to start in that case and fails with `InvalidParams`.
+Quick Match takes the same host params `Create Easy Session` takes. Leaving Map Name empty
+makes the host fallback open a listen server on the map this player is already on. It is
+not refused.
 
-That check only runs while `Allow Host Fallback` is on. Turn it off if this game should
-only ever join, and an empty Map Name is then fine.
+**Fill it in anyway, most of the time.** Quick Match usually sits on a menu widget, and an
+empty Map Name there turns the menu into the arena: a player who asked to find a game ends
+up receiving strangers in their own menu.
+
+`Allow Host Fallback` is off by default, so Map Name does not matter until you turn it on.
+The bundled example leaves it off and only searches and joins.
 
 Progress can be shown by taking the policy from `Get Easy Session Subsystem` -> `Get Active Matchmaking Policy` and binding its `OnStateChanged`.
 

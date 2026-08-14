@@ -230,17 +230,6 @@ void UEasySessionSubsystem::StartQuickMatch(const FEasyQuickMatchParams& QuickMa
 		return;
 	}
 
-	// Hosting with no map keeps everyone on the map they are already on, and that
-	// travel is what turns the host into a listen server. Without it the session is
-	// advertised and nobody can connect. Refuse here instead of letting the players
-	// who find that session discover it as a timeout.
-	if (QuickMatchParams.bAllowHostFallback && QuickMatchParams.Host.MapName.IsEmpty())
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams,
-			TEXT("Quick Match needs Host > Map Name to host a session on when no session is found. Set it, or turn off Allow Host Fallback to only ever join."));
-		return;
-	}
-
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
 	ActiveMatchmakingPolicy = Policy;
 

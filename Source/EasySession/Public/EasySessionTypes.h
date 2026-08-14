@@ -403,20 +403,13 @@ struct EASYSESSION_API FEasyQuickMatchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionSearchParams Search;
 
-	/**
-	 * Session to host when no session is found.
-	 * Map Name is required here, unlike in Create Easy Session where an empty one means "stay put".
-	 * Ignored when Allow Host Fallback is false.
-	 */
+	/** Session to host when no session is found. Ignored while Allow Host Fallback is off. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionHostParams Host;
 
-	/**
-	 * Whether to host our own session when no session is found.
-	 * Disable in dedicated server games - clients should only search and join.
-	 */
+	/** Whether to host our own session when no session is found. False by default. Turning it on with an empty Host Map Name hosts on the map this player is already on. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	bool bAllowHostFallback = true;
+	bool bAllowHostFallback = false;
 
 	//~ Advanced fields are folded behind the Make node's advanced arrow, for the reason described in FEasySessionHostParams.
 

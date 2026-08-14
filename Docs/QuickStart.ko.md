@@ -78,7 +78,7 @@
 ```
 [Button Clicked] -> [Quick Match Easy Session]
                       QuickMatchParams:
-                        Host -> Map Name = "/Game/Maps/Lobby"   <- 필수
+                        Host -> Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
                       OnSuccess -> (가장 좋은 방에 참가했거나, 직접 호스트가 됨)
                       OnFailure -> [Print String: ErrorMessage]
 ```
@@ -86,9 +86,9 @@
 Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)에 참가하고, 없으면 직접 방을
 만듭니다. 어느 쪽이 됐는지는 `Is Easy Session Host`로 확인합니다.
 
-**Host > Map Name에는 기본값이 없습니다.** 매치메이킹이 매치를 어디서 할지 대신 정해줄 수
-없기 때문입니다. 비워두면 아무도 접속할 수 없는 방을 만드는 대신 `InvalidParams`로 즉시
-실패합니다. 이 게임이 참가만 해야 한다면 **Allow Host Fallback**을 끄세요.
+**Host > Map Name을 비워두면** 직접 호스트가 될 때 지금 있는 맵에서 리슨 서버를 엽니다.
+메뉴에서 Quick Match를 부른다면 메뉴 맵이 경기장이 되므로, 대개는 채우는 게 맞습니다. 이
+직접 호스트가 되게 하려면 **Allow Host Fallback**을 켜세요. 기본값은 꺼짐입니다.
 
 ## 6. PIE로 테스트하기
 

@@ -215,15 +215,22 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 			Node->Activate();
 		}, EExpectedPin::Failure, EEasySessionResult::InvalidParams });
 
-	// Host fallback is on and Map Name is empty, the one combination QuickMatch refuses outright.
+	// Host fallback off and nothing on the LAN to join, so the run ends with nothing found.
+	// This case must not leave a session behind - the success test that follows creates its own.
 	State->Cases.Add({ TEXT("Quick Match Easy Session"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
-			UEasyQuickMatchNode* Node = UEasyQuickMatchNode::QuickMatchEasySession(&GameInstance, FEasyQuickMatchParams());
+			FEasyQuickMatchParams QuickMatchParams;
+			QuickMatchParams.Search.bLANQuery = true;
+			QuickMatchParams.Search.TimeoutSeconds = 5.0f;
+			QuickMatchParams.bAllowHostFallback = false;
+			QuickMatchParams.MaxSearchPasses = 1;
+			QuickMatchParams.DelayBetweenPassesSeconds = 0.0f;
+			UEasyQuickMatchNode* Node = UEasyQuickMatchNode::QuickMatchEasySession(&GameInstance, QuickMatchParams);
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFailure);
 			Node->Activate();
-		}, EExpectedPin::Failure, EEasySessionResult::InvalidParams });
+		}, EExpectedPin::Failure, EEasySessionResult::NoSessionsFound });
 
 	// The NULL subsystem has no friends interface, so this one fails wherever the test runs.
 	State->Cases.Add({ TEXT("Read Easy Friends"),

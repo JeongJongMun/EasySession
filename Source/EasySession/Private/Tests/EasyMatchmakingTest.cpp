@@ -152,13 +152,60 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	Params.Search.bLANQuery = true;
 	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Host.SessionDisplayName = TEXT("EasySession QuickMatch Test");
-	// StartQuickMatch refuses fallback params without a map. The travel to it aborts
-	// harmlessly - a headless test has no player controller to travel with.
+	Params.bAllowHostFallback = true;
+	// The travel to this map aborts harmlessly - a headless test has no player controller to travel with.
 	Params.Host.MapName = TEXT("ES_QuickMatchTestMap");
 	Params.Host.bIsLANMatch = true;
 	Params.Host.bStartListening = false;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
+
+	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+		[State](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			State->QuickMatchResult = Result;
+		}));
+
+	TestTrue(TEXT("Matchmaking is running"), Subsystem->IsMatchmaking());
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitHostFallback(State));
+	return true;
+}
+
+/**
+ * Host fallback without a map: Quick Match accepts every parameter set Create accepts.
+ *
+ * An empty Map Name means "host where this player already is", which Create supports by
+ * listening on the current map. Quick Match used to refuse it at the door, so a graph that
+ * dropped the node in without filling the params always failed.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackWithoutMapTest, "EasySession.Matchmaking.HostFallbackWithoutAMap", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyMatchmakingTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	FEasyQuickMatchParams Params;
+	Params.Search.bLANQuery = true;
+	Params.Search.TimeoutSeconds = 5.0f;
+	Params.Host.SessionDisplayName = TEXT("EasySession QuickMatch No Map Test");
+	Params.bAllowHostFallback = true;
+	Params.Host.bIsLANMatch = true;
+	Params.Host.bStartListening = false;
+	Params.MaxSearchPasses = 1;
+	Params.DelayBetweenPassesSeconds = 0.0f;
+	// Map Name is left empty on purpose. That is what a graph gets from the default struct.
 
 	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& ErrorMessage)

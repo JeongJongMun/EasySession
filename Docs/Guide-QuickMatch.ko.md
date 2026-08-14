@@ -9,20 +9,22 @@
 | 필드 | 기본값 | 설명 |
 |---|---|---|
 | Search | (기본값) | Find Easy Sessions와 같은 필터 |
-| Host | **Map Name 필수** | 참가할 곳이 없어 직접 호스트할 때 씁니다. 아래 참고 |
-| Allow Host Fallback | true | **데디케이티드 서버 게임이라면 끄세요.** 끄면 검색과 참가만 하고, 아무것도 없을 때 `NoSessionsFound`로 실패합니다 |
+| Host | (기본값) | 참가할 곳이 없어 직접 호스트할 때 씁니다. Map Name은 아래 참고 |
+| Allow Host Fallback | false | 기본값은 검색과 참가만 하고, 아무것도 없으면 `NoSessionsFound`로 실패합니다. 켜면 그때 직접 호스트가 됩니다 |
 | Max Search Passes | 3 | 포기하거나 직접 호스트하기 전까지 검색을 몇 번 돌릴지. 3이면 검색을 세 번 합니다 |
 | Delay Between Passes | 2.0초 | 다음 검색까지 이만큼 쉽니다 |
 
-### Host > Map Name은 필수입니다
+### Host > Map Name을 채울지 말지
 
-매치메이킹은 매치를 어디서 할지 대신 정해줄 수 없어서, 이 값만 기본값이 없습니다. Map Name을
-비운 채 호스트하면 Travel을 건너뛰는데, 호스트를 리슨 서버로 만드는 것이 바로 그 Travel입니다.
-그러면 세션은 광고되지만 아무도 접속할 수 없습니다. Quick Match는 그런 경우 시작을 거부하고
-`InvalidParams`로 실패합니다.
+Quick Match는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받습니다. Map Name을
+비워두면 호스트 폴백이 지금 있는 맵에서 리슨 서버를 엽니다. 거부되지 않습니다.
 
-이 검사는 `Allow Host Fallback`이 켜져 있을 때만 합니다. 참가만 할 게임이라면 그걸 끄세요.
-그러면 Map Name이 비어 있어도 됩니다.
+**그래도 대개는 채우는 게 맞습니다.** 메뉴 위젯에서 Quick Match를 부르는 것이 보통인데, 그때
+Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방을 찾던 플레이어가 자기 메뉴에서
+남을 맞이하게 됩니다.
+
+`Allow Host Fallback`은 기본값이 꺼짐이라, 켜지 않으면 Map Name은 볼 일이 없습니다.
+플러그인의 예제도 꺼둔 채로 검색과 참가만 합니다.
 
 진행 상황은 `Get Easy Session Subsystem` -> `Get Active Matchmaking Policy`로 정책을 얻어 그 `OnStateChanged`를 바인딩하면 보여줄 수 있습니다.
 
