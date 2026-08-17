@@ -141,7 +141,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session |
-| Server Travel Easy Session | `ServerTravelEasySession` | Moves the whole session to a new map. Session authority only |
+| Server Travel Easy Session | `ServerTravelToMap` | Moves the whole session to a new map. Session authority only |
 | Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | Ends the session and sends every client back to the menu with a reason. Session authority only |
 
 The invite and profile nodes need a platform service. They return false on NULL/LAN.

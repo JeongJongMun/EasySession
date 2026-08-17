@@ -144,8 +144,8 @@ bool FEasySessionWaitForAuthorityGates::Update()
 
 			// The synchronous path has to refuse too - nothing outside the function
 			// stops a client from reaching it.
-			CurrentTest->TestFalse(TEXT("ServerTravelEasySession without authority is refused"),
-				Subsystem->ServerTravelEasySession(TEXT("ES13_NoSuchMap")));
+			CurrentTest->TestFalse(TEXT("ServerTravelToMap without authority is refused"),
+				Subsystem->ServerTravelToMap(TEXT("ES13_NoSuchMap")));
 
 			// Leaving a session another process created must stay allowed - that is how a
 			// client leaves - so this call itself doubles as an assertion.

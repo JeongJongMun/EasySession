@@ -318,7 +318,7 @@ public:
 	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
 	 * Needs session authority - only the game that created the session can travel it, and it returns false for other games.
 	 */
-	bool ServerTravelEasySession(const FString& MapName);
+	bool ServerTravelToMap(const FString& MapName);
 
 	/**
 	 * Destroy the session for every player.

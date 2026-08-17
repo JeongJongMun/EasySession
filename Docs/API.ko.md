@@ -135,7 +135,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이 |
-| Server Travel Easy Session | `ServerTravelEasySession` | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
+| Server Travel Easy Session | `ServerTravelToMap` | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
 | Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 세션 권한 필요 |
 
 초대와 프로필 노드는 플랫폼 서비스가 필요합니다. NULL/LAN에서는 false를 반환합니다.

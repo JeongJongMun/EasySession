@@ -524,7 +524,7 @@ bool UEasySessionSubsystem::IsOnlineSubsystemAvailable() const
 	return GetSessionInterface().IsValid();
 }
 
-bool UEasySessionSubsystem::ServerTravelEasySession(const FString& MapName)
+bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 {
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (World == nullptr || MapName.IsEmpty())
@@ -536,7 +536,7 @@ bool UEasySessionSubsystem::ServerTravelEasySession(const FString& MapName)
 	// NextURL and returns true - so this entry check is the only gate.
 	if (!IsSessionAuthority())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelEasySession can only be called by the game hosting the session."));
+		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session."));
 		return false;
 	}
 
@@ -556,7 +556,7 @@ bool UEasySessionSubsystem::ServerTravelEasySession(const FString& MapName)
 	// Stopping now frees the beacon port in between - the new beacon fails to bind without this.
 	JoinApproval->StopHost();
 
-	Travel->MarkStarted(TEXT("ServerTravelEasySession"));
+	Travel->MarkStarted(TEXT("ServerTravelToMap"));
 	return true;
 }
 
