@@ -539,6 +539,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 
 	const FEasySessionHostParams HostParams = GetActiveRequest()->HostParams;
+	const FName CreatedSessionName = GetActiveRequest()->SessionName;
 
 	if (!bWasSuccessful)
 	{
@@ -562,7 +563,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 		const IOnlineSessionPtr Sessions = GetSessionInterface();
 		const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
 		const FUniqueNetIdRepl HostId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(GetActiveRequest()->SessionName, { HostId.GetUniqueNetId().ToSharedRef() }))
+		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(CreatedSessionName, { HostId.GetUniqueNetId().ToSharedRef() }))
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Registered the hosting player in the session."));
 		}
