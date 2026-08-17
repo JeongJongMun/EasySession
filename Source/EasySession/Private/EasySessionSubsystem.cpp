@@ -573,8 +573,7 @@ bool UEasySessionSubsystem::ShouldForceLAN() const
 
 void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
 {
-	// The one place a request's target session is decided. Everything downstream
-	// reads it from the request rather than from a constant.
+	// Where a request's target session is decided. The execute and complete handlers read it from the request; queries and gates are game session only and read the constant.
 	Request->SessionName = NAME_GameSession;
 
 	RequestQueue->Enqueue(Request);
@@ -848,20 +847,6 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
 		{
 			ReturnToMenu();
 		}));
-}
-
-void UEasySessionSubsystem::UnregisterLocalPlayerFromSession()
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
-	const FUniqueNetIdRepl PlayerId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-
-	if (!Sessions.IsValid() || !PlayerId.IsValid() || Sessions->GetNamedSession(NAME_GameSession) == nullptr)
-	{
-		return;
-	}
-
-	Sessions->UnregisterPlayers(NAME_GameSession, { PlayerId.GetUniqueNetId().ToSharedRef() });
 }
 
 void UEasySessionSubsystem::AutoHostDedicatedServerSession()

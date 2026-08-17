@@ -454,8 +454,6 @@ void UEasySessionSubsystem::ExecuteDestroy()
 		return;
 	}
 
-	UnregisterLocalPlayerFromSession();
-
 	DestroyCompleteHandle = Sessions->AddOnDestroySessionCompleteDelegate_Handle(
 		FOnDestroySessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleDestroySessionComplete));
 
@@ -564,7 +562,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 		const IOnlineSessionPtr Sessions = GetSessionInterface();
 		const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
 		const FUniqueNetIdRepl HostId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(NAME_GameSession, { HostId.GetUniqueNetId().ToSharedRef() }))
+		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(GetActiveRequest()->SessionName, { HostId.GetUniqueNetId().ToSharedRef() }))
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Registered the hosting player in the session."));
 		}

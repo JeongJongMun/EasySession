@@ -230,9 +230,7 @@ public:
 	/**
 	 * Check whether the local player is currently in a session.
 	 *
-	 * This and the queries below it are all about the game session - the one players find, join and play in.
-	 * There is one per process, so none of them take a session argument.
-	 * A later version adding a second kind of session, such as a party, would give it its own queries rather than change what these mean.
+	 * This and the queries below it are all about the game session and take no session argument - a future party gets its own queries, because these bodies read the world and the match lifecycle, which a party does not have.
 	 */
 	bool IsInSession() const;
 
@@ -469,12 +467,6 @@ private:
 
 	/** Spawn/refresh the state actor after every map load while hosting. */
 	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);
-
-	/**
-	 * Take the local player out of the session, so the slot they held is advertised as open again.
-	 * Called before destroying the session, while the online service still has one to edit.
-	 */
-	void UnregisterLocalPlayerFromSession();
 
 	/** Create the automatic session when running as a dedicated server. */
 	void AutoHostDedicatedServerSession();
