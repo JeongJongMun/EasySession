@@ -45,6 +45,17 @@ public:
 		EndedResults.Add(Result);
 	}
 
+	/** Reasons seen on OnSessionFailure, in order. */
+	UPROPERTY()
+	TArray<FString> FailureReasons;
+
+	/** Bind to OnSessionFailure. */
+	UFUNCTION()
+	void HandleSessionFailure(const FString& Reason)
+	{
+		FailureReasons.Add(Reason);
+	}
+
 	/** @return How many events arrived in total, so a test can assert that none were duplicated. */
 	int32 TotalEvents() const { return StartedResults.Num() + EndedResults.Num(); }
 

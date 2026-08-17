@@ -278,8 +278,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `StartQuickMatch`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.
-Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 고정된 문자열로 표현할 수 있는
-것이라면 `AdditionalTravelOptions` 쪽이 낫습니다.
+Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 시작할 때 한 번 바인딩하세요.
+훅은 그 작업의 완료 콜백보다 먼저 발화하므로, 완료 콜백 안에서 바인딩하면 정작 그 Travel에는
+적용되지 않습니다. 고정된 문자열로 표현할 수 있는 것이라면 `AdditionalTravelOptions` 쪽이 낫습니다.
 
 ## 10. 콘솔 명령 *(개발 빌드 전용)*
 

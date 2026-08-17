@@ -286,7 +286,9 @@ Operations are callable natively with delegate callbacks: `CreateEasySession`,
 
 `OnModifyServerTravelURL` and `OnModifyClientTravelURL` are C++ only delegates on the
 subsystem. They give you the travel URL just before travel so you can append your own
-options. For anything expressible as a static string, prefer `AdditionalTravelOptions`.
+options. Bind once at startup: the hook fires before that operation's completion callback,
+so a handler bound inside the callback misses its own travel. For anything expressible as
+a static string, prefer `AdditionalTravelOptions`.
 
 ## 10. Console commands *(development builds only)*
 

@@ -362,12 +362,18 @@ public:
 
 public:
 
-	/** C++ hook: modify the server travel URL (hosting / server travel) before it is used. */
+	/**
+	 * C++ hook: modify the server travel URL (hosting / server travel) before it is used.
+	 * Bind at startup. The hook fires before the completion callback of the operation that travels, so binding inside that callback misses its own travel.
+	 * For one operation's options, use Additional Travel Options on the params instead.
+	 */
 	FEasyModifyTravelURLDelegate OnModifyServerTravelURL;
 
 	/**
 	 * C++ hook: modify the client travel URL (joining a host) before it is used.
 	 * This URL carries the session password as an option - do not log it.
+	 * Bind at startup. The hook fires before the completion callback of the operation that travels, so binding inside that callback misses its own travel.
+	 * For one operation's options, use Additional Travel Options on the params instead.
 	 */
 	FEasyModifyTravelURLDelegate OnModifyClientTravelURL;
 

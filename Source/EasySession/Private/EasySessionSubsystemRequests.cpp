@@ -539,7 +539,6 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 
 	const FEasySessionHostParams HostParams = GetActiveRequest()->HostParams;
-	const FName CreatedSessionName = GetActiveRequest()->SessionName;
 
 	if (!bWasSuccessful)
 	{
@@ -555,7 +554,6 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
-	CompleteActiveRequest(EEasySessionResult::Success);
 
 	if (HostParams.MapName.IsEmpty())
 	{
@@ -563,7 +561,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 		const IOnlineSessionPtr Sessions = GetSessionInterface();
 		const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
 		const FUniqueNetIdRepl HostId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(CreatedSessionName, { HostId.GetUniqueNetId().ToSharedRef() }))
+		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(GetActiveRequest()->SessionName, { HostId.GetUniqueNetId().ToSharedRef() }))
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Registered the hosting player in the session."));
 		}
@@ -573,9 +571,11 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	}
 	else
 	{
-		// The host travels to the session map.
+		// Requested before the completion below, so Is Busy already covers the coming map load. The map itself loads next tick.
 		Travel->TravelToOwnSession(HostParams);
 	}
+
+	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
 void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
@@ -706,9 +706,10 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 	// This process joined the session rather than creating it, so it is not the session's server.
 	bCreatedActiveSession = false;
 
-	CompleteActiveRequest(EEasySessionResult::Success);
-
+	// Requested before the completion below, so Is Busy already covers the coming map load. The map itself loads next tick.
 	Travel->TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
+
+	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
 void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful)
