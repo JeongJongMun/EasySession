@@ -1,4 +1,4 @@
-# Guide - Quick Match Matchmaking
+# Guide - Quick Match
 
 *[한국어](Guide-QuickMatch.ko.md)*
 
@@ -27,11 +27,11 @@ up receiving strangers in their own menu.
 `Allow Host Fallback` is off by default, so Map Name does not matter until you turn it on.
 The bundled example leaves it off and only searches and joins.
 
-Progress can be shown by taking the policy from `Get Easy Session Subsystem` -> `Get Active Matchmaking Policy` and binding its `OnStateChanged`.
+Progress can be shown by taking the policy from `Get Easy Session Subsystem` -> `Get Active Quick Match Policy` and binding its `OnStateChanged`.
 
 The states are `Searching`, `Joining`, `Hosting` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
 
-Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Canceled` result.
+Cancel anytime with `Cancel Easy Quick Match` - the run finishes with the `Canceled` result.
 
 After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
 
@@ -53,7 +53,7 @@ The default policy narrows the search results down to candidates, then scores th
 
 ## Custom scoring - one function override
 
-The scoring lives in `UEasyMatchmakingPolicy::ScoreSession`, a **BlueprintNativeEvent**. Subclass the policy (Blueprint or C++), override one function, and pass your class to Quick Match's `Policy Class` pin:
+The scoring lives in `UEasyQuickMatchPolicy::ScoreSession`, a **BlueprintNativeEvent**. Subclass the policy (Blueprint or C++), override one function, and pass your class to Quick Match's `Policy Class` pin:
 
 ```
 ScoreSession(Session) -> float   // higher = joined first

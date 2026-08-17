@@ -6,30 +6,30 @@
 #include "UObject/Object.h"
 #include "Containers/Ticker.h"
 #include "EasySessionTypes.h"
-#include "EasyMatchmakingPolicy.generated.h"
+#include "EasyQuickMatchPolicy.generated.h"
 
 class UEasySessionSubsystem;
 
-/** Multicast event fired when the matchmaking state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasyMatchmakingStateEvent, EEasyMatchmakingState, NewState);
+/** Multicast event fired when the quick match state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasyQuickMatchStateEvent, EEasyQuickMatchState, NewState);
 
 /**
- * QuickMatch matchmaking policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
+ * QuickMatch quick match policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
  *
  * The best session is chosen by ScoreSession.
  * The default implementation groups sessions into ping buckets and prefers fuller sessions within the same bucket.
  * Subclass this policy (in Blueprint or C++) and override ScoreSession to use your own criteria such as skill or map preference.
  */
 UCLASS(Blueprintable, BlueprintType)
-class EASYSESSION_API UEasyMatchmakingPolicy : public UObject
+class EASYSESSION_API UEasyQuickMatchPolicy : public UObject
 {
 	GENERATED_BODY()
 
 public:
 
-	/** Fired whenever the matchmaking state changes. */
+	/** Fired whenever the quick match state changes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasyMatchmakingStateEvent OnStateChanged;
+	FEasyQuickMatchStateEvent OnStateChanged;
 
 	/**
 	 * Ping thresholds (in milliseconds) used to group sessions into buckets.
@@ -53,22 +53,22 @@ public:
 	float ScoreSession(const FEasySessionSearchResult& Session) const;
 	virtual float ScoreSession_Implementation(const FEasySessionSearchResult& Session) const;
 
-	/** Get the current matchmaking state. */
+	/** Get the current quick match state. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
-	EEasyMatchmakingState GetState() const { return State; }
+	EEasyQuickMatchState GetState() const { return State; }
 
 public:
 
-	/** Start the matchmaking run. Called by the EasySessionSubsystem. */
+	/** Start the quick match run. Called by the EasySessionSubsystem. */
 	void Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Cancel the matchmaking run. The run finishes with the Canceled result. */
+	/** Cancel the quick match run. The run finishes with the Canceled result. */
 	void Cancel();
 
 private:
 
 	/** Move to a new state and notify listeners. */
-	void SetState(EEasyMatchmakingState NewState);
+	void SetState(EEasyQuickMatchState NewState);
 
 	/** Run one search pass. */
 	void RunSearchPass();
@@ -112,7 +112,7 @@ private:
 	FEasySessionCompleteDelegate OnComplete;
 
 	/** Current state of the run. */
-	EEasyMatchmakingState State = EEasyMatchmakingState::Idle;
+	EEasyQuickMatchState State = EEasyQuickMatchState::Idle;
 
 	/** Search passes executed so far. */
 	int32 PassesCompleted = 0;

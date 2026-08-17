@@ -112,6 +112,6 @@ Separate processes use the same networking path as packaged builds.
 - [LAN setup](Setup-LAN.en.md) - what breaks local discovery, and how to test on one machine
 - [Steam setup](Setup-Steam.en.md) - the two plugins and the ini block internet play needs
 - [Session guide](Guide-Sessions.en.md) - custom session data, filters, passwords, updating sessions
-- [Quick Match guide](Guide-QuickMatch.en.md) - how the matchmaking picks a session, custom scoring
+- [Quick Match guide](Guide-QuickMatch.en.md) - how Quick Match picks a session, custom scoring
 - [API reference](API.en.md) - every node, query, struct and setting
 - [FAQ](FAQ.en.md) - the problems people run into

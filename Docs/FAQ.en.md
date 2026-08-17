@@ -73,7 +73,7 @@ Not a session problem - your pawn has no client->server movement replication. Th
 
 ## "How is this different from the engine's built-in Create Session / Find Sessions nodes?"
 
-The engine ships minimal session nodes (`Create Session`, `Find Sessions`, ...). They work for quick prototypes, but they call the online service directly with almost no options and **no failure reasons** (their OnFailure pin carries nothing). EasySession's nodes route through its subsystem, which adds: operation queueing (EasySession's own calls can never overlap and corrupt the service), automatic listen-server setup, correct player/slot accounting, instant rich errors instead of timeouts, custom session data & filters, and Quick Match matchmaking.
+The engine ships minimal session nodes (`Create Session`, `Find Sessions`, ...). They work for quick prototypes, but they call the online service directly with almost no options and **no failure reasons** (their OnFailure pin carries nothing). EasySession's nodes route through its subsystem, which adds: operation queueing (EasySession's own calls can never overlap and corrupt the service), automatic listen-server setup, correct player/slot accounting, instant rich errors instead of timeouts, custom session data & filters, and Quick Match.
 
 Pick one set and stay with it. The queueing only covers calls that go through EasySession, so an engine node running at the same time still reaches the service on its own - see the entry below.
 
@@ -91,4 +91,4 @@ You are - probably a leftover from a previous failed flow. Call `Destroy Easy Se
 
 ## "Can I cancel a Quick Match in progress?"
 
-Yes: `Cancel Easy Matchmaking`. The Quick Match node fires `OnFailure` with `Canceled`. In-flight online operations finish first (they cannot be aborted mid-call), so cancellation may take a moment.
+Yes: `Cancel Easy Quick Match`. The Quick Match node fires `OnFailure` with `Canceled`. In-flight online operations finish first (they cannot be aborted mid-call), so cancellation may take a moment.

@@ -44,16 +44,16 @@ FString UEasySessionStatics::GetEasySessionPassword(const UObject* WorldContextO
 	return Subsystem != nullptr ? Subsystem->GetSessionPassword() : FString();
 }
 
-bool UEasySessionStatics::IsEasyMatchmaking(const UObject* WorldContextObject)
+bool UEasySessionStatics::IsEasyQuickMatchRunning(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsMatchmaking();
+	return Subsystem != nullptr && Subsystem->IsQuickMatchRunning();
 }
 
-EEasyMatchmakingState UEasySessionStatics::GetEasyMatchmakingState(const UObject* WorldContextObject)
+EEasyQuickMatchState UEasySessionStatics::GetEasyQuickMatchState(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetMatchmakingState() : EEasyMatchmakingState::Idle;
+	return Subsystem != nullptr ? Subsystem->GetQuickMatchState() : EEasyQuickMatchState::Idle;
 }
 
 FString UEasySessionStatics::GetEasySessionStateLabel(const UObject* WorldContextObject)
@@ -135,20 +135,20 @@ bool UEasySessionStatics::IsOnlineSubsystemAvailable(const UObject* WorldContext
 FString UEasySessionStatics::GetEasySessionQueueStatus(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetQueueStatusDescription() : FString();
+	return Subsystem != nullptr ? Subsystem->GetQueueStatus() : FString();
 }
 
 FEasySessionHostParams UEasySessionStatics::GetEasySessionHostParams(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetEasySessionHostParams() : FEasySessionHostParams();
+	return Subsystem != nullptr ? Subsystem->GetSessionHostParams() : FEasySessionHostParams();
 }
 
-void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObject)
+void UEasySessionStatics::CancelEasyQuickMatch(const UObject* WorldContextObject)
 {
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
 	{
-		Subsystem->CancelMatchmaking();
+		Subsystem->CancelQuickMatch();
 	}
 }
 
@@ -161,7 +161,7 @@ FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObj
 bool UEasySessionStatics::ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->ServerTravelToMap(MapName);
+	return Subsystem != nullptr && Subsystem->ServerTravelEasySession(MapName);
 }
 
 void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason)

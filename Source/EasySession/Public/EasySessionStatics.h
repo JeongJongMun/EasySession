@@ -63,11 +63,11 @@ public:
 
 	/** Check whether a Quick Match run is in progress. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
-	static bool IsEasyMatchmaking(const UObject* WorldContextObject);
+	static bool IsEasyQuickMatchRunning(const UObject* WorldContextObject);
 
 	/** Get which step a Quick Match run is on: Searching, Joining, Hosting, Complete. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
-	static EEasyMatchmakingState GetEasyMatchmakingState(const UObject* WorldContextObject);
+	static EEasyQuickMatchState GetEasyQuickMatchState(const UObject* WorldContextObject);
 
 	/**
 	 * Get a display-friendly label for the current session state that pairs the player-facing meaning with the raw state.
@@ -80,7 +80,7 @@ public:
 	/**
 	 * Check whether any session operation is in progress.
 	 * That covers a request running or queued, a Quick Match working through its steps, and a travel this plugin started that has not reached its map yet.
-	 * Bind session buttons to this to disable them while an operation runs; Is Easy Matchmaking asks specifically about Quick Match.
+	 * Bind session buttons to this to disable them while an operation runs; Is Easy Quick Match Running asks specifically about Quick Match.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);
@@ -144,9 +144,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);
 
-	/** Cancel the running Quick Match. Does nothing when no matchmaking is running. */
+	/** Cancel the running Quick Match. Does nothing when no quick match is running. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
-	static void CancelEasyMatchmaking(const UObject* WorldContextObject);
+	static void CancelEasyQuickMatch(const UObject* WorldContextObject);
 
 	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.

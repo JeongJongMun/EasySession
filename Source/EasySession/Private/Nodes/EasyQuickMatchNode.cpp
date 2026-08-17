@@ -2,9 +2,9 @@
 
 #include "Nodes/EasyQuickMatchNode.h"
 
-#include "EasyMatchmakingPolicy.h"
+#include "EasyQuickMatchPolicy.h"
 
-UEasyQuickMatchNode* UEasyQuickMatchNode::QuickMatchEasySession(UObject* WorldContextObject, const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass)
+UEasyQuickMatchNode* UEasyQuickMatchNode::QuickMatchEasySession(UObject* WorldContextObject, const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyQuickMatchPolicy> PolicyClass)
 {
 	UEasyQuickMatchNode* Node = NewObject<UEasyQuickMatchNode>();
 	Node->NodeWorldContext = WorldContextObject;

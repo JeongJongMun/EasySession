@@ -11,7 +11,7 @@
 //   EasySession.Destroy         Destroy the current session (host closes it, client leaves).
 //   EasySession.Start           Start the match (session state -> InProgress).
 //   EasySession.End             End the match (session state -> Ended).
-//   EasySession.Cancel          Cancel the running matchmaking.
+//   EasySession.Cancel          Cancel the running quick match.
 //   EasySession.Status          Print the current session state.
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
@@ -178,7 +178,7 @@ namespace EasySessionConsole
 					return;
 				}
 
-				const bool bStarted = Subsystem->ServerTravelToMap(Args[0]);
+				const bool bStarted = Subsystem->ServerTravelEasySession(Args[0]);
 				Print(FString::Printf(TEXT("Travel to '%s': %s"), *Args[0], bStarted ? TEXT("started") : TEXT("failed (host only)")));
 			}
 		}));
@@ -221,12 +221,12 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GCancelCommand(
 		TEXT("EasySession.Cancel"),
-		TEXT("Cancel the running matchmaking."),
+		TEXT("Cancel the running quick match."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Subsystem->CancelMatchmaking();
+				Subsystem->CancelQuickMatch();
 				Print(TEXT("Cancel requested."));
 			}
 		}));
@@ -238,14 +238,14 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Print(FString::Printf(TEXT("OSS=%s | InSession=%d | Host=%d | Busy=%d | Matchmaking=%d | LastResults=%d"),
+				Print(FString::Printf(TEXT("OSS=%s | InSession=%d | Host=%d | Busy=%d | QuickMatch=%d | LastResults=%d"),
 					*Subsystem->GetOnlineSubsystemName().ToString(),
 					Subsystem->IsInSession() ? 1 : 0,
 					Subsystem->IsHost() ? 1 : 0,
 					Subsystem->IsBusy() ? 1 : 0,
-					Subsystem->IsMatchmaking() ? 1 : 0,
+					Subsystem->IsQuickMatchRunning() ? 1 : 0,
 					Subsystem->GetLastSearchResults().Num()));
-				Print(FString::Printf(TEXT("Queue: %s"), *Subsystem->GetQueueStatusDescription()));
+				Print(FString::Printf(TEXT("Queue: %s"), *Subsystem->GetQueueStatus()));
 			}
 		}));
 

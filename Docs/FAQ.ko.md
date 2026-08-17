@@ -91,4 +91,4 @@ EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스�
 
 ## "진행 중인 Quick Match를 취소할 수 있나요?"
 
-가능합니다. `Cancel Easy Matchmaking`을 부르세요. Quick Match 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 진행 중이던 온라인 작업은 먼저 끝나야 하므로(호출 도중에는 중단할 수 없습니다) 취소에 잠시 걸릴 수 있습니다.
+가능합니다. `Cancel Easy Quick Match`를 부르세요. Quick Match 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 진행 중이던 온라인 작업은 먼저 끝나야 하므로(호출 도중에는 중단할 수 없습니다) 취소에 잠시 걸릴 수 있습니다.

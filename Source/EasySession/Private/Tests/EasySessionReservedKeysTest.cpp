@@ -88,7 +88,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 
 		// What a Blueprint gets from Get Easy Session Host Params. The plugin's own keys
 		// must not be in there, or handing this struct straight back to Update rewrites them.
-		const FEasySessionHostParams ReadBack = Subsystem->GetEasySessionHostParams();
+		const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
 		CurrentTest->TestFalse(TEXT("Join approval is not exposed as a custom setting"),
 			ReadBack.CustomSettings.Contains(EasySession::SettingKey_JoinApproval.ToString()));
 		CurrentTest->TestFalse(TEXT("Beacon port is not exposed as a custom setting"),

@@ -4,14 +4,14 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasyMatchmakingPolicy.h"
+#include "EasyQuickMatchPolicy.h"
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
 
-namespace EasyMatchmakingTest
+namespace EasyQuickMatchTest
 {
 	/** Maximum time to wait for a QuickMatch run before failing the test. */
 	static constexpr double TimeoutSeconds = 30.0;
@@ -40,12 +40,12 @@ namespace EasyMatchmakingTest
  * Scoring test: the default policy must prefer fuller sessions within the same
  * ping bucket, and lower ping buckets over higher ones regardless of fill.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingScoringTest, "EasySession.Matchmaking.DefaultScoring", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingScoringTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchScoringTest, "EasySession.QuickMatch.DefaultScoring", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchScoringTest::RunTest(const FString& Parameters)
 {
-	using namespace EasyMatchmakingTest;
+	using namespace EasyQuickMatchTest;
 
-	const UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>();
+	const UEasyQuickMatchPolicy* Policy = NewObject<UEasyQuickMatchPolicy>();
 
 	// Same bucket (<=50ms): the fuller session wins even with slightly worse ping.
 	const FEasySessionSearchResult NearlyEmpty = MakeFakeResult(28, 8, 7);
@@ -82,10 +82,10 @@ bool FEasyMatchmakingScoringTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitHostFallback, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
-bool FEasyMatchmakingWaitHostFallback::Update()
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitHostFallback, TSharedPtr<EasyQuickMatchTest::FTestState>, State);
+bool FEasyQuickMatchWaitHostFallback::Update()
 {
-	using namespace EasyMatchmakingTest;
+	using namespace EasyQuickMatchTest;
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -105,7 +105,7 @@ bool FEasyMatchmakingWaitHostFallback::Update()
 	{
 		CurrentTest->TestEqual(TEXT("QuickMatch result"), State->QuickMatchResult.GetValue(), EEasySessionResult::Success);
 		CurrentTest->TestTrue(TEXT("Fell back to hosting"), Subsystem->IsHost());
-		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmaking());
+		CurrentTest->TestFalse(TEXT("QuickMatch no longer running"), Subsystem->IsQuickMatchRunning());
 
 		Subsystem->DestroyEasySession();
 		State->bCleanupIssued = true;
@@ -132,10 +132,10 @@ bool FEasyMatchmakingWaitHostFallback::Update()
  * Host fallback test: with no session on the LAN, QuickMatch must exhaust its
  * search passes and then host its own session.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackTest, "EasySession.Matchmaking.HostFallback", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchHostFallbackTest, "EasySession.QuickMatch.HostFallback", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchHostFallbackTest::RunTest(const FString& Parameters)
 {
-	using namespace EasyMatchmakingTest;
+	using namespace EasyQuickMatchTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
@@ -166,10 +166,10 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 			State->QuickMatchResult = Result;
 		}));
 
-	TestTrue(TEXT("Matchmaking is running"), Subsystem->IsMatchmaking());
+	TestTrue(TEXT("QuickMatch is running"), Subsystem->IsQuickMatchRunning());
 
 	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitHostFallback(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitHostFallback(State));
 	return true;
 }
 
@@ -180,10 +180,10 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
  * listening on the current map. Quick Match used to refuse it at the door, so a graph that
  * dropped the node in without filling the params always failed.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackWithoutMapTest, "EasySession.Matchmaking.HostFallbackWithoutAMap", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchHostFallbackWithoutMapTest, "EasySession.QuickMatch.HostFallbackWithoutAMap", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchHostFallbackWithoutMapTest::RunTest(const FString& Parameters)
 {
-	using namespace EasyMatchmakingTest;
+	using namespace EasyQuickMatchTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
@@ -213,17 +213,17 @@ bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Paramete
 			State->QuickMatchResult = Result;
 		}));
 
-	TestTrue(TEXT("Matchmaking is running"), Subsystem->IsMatchmaking());
+	TestTrue(TEXT("QuickMatch is running"), Subsystem->IsQuickMatchRunning());
 
 	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitHostFallback(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitHostFallback(State));
 	return true;
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitNoFallback, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
-bool FEasyMatchmakingWaitNoFallback::Update()
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitNoFallback, TSharedPtr<EasyQuickMatchTest::FTestState>, State);
+bool FEasyQuickMatchWaitNoFallback::Update()
 {
-	using namespace EasyMatchmakingTest;
+	using namespace EasyQuickMatchTest;
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 
@@ -250,10 +250,10 @@ bool FEasyMatchmakingWaitNoFallback::Update()
  * Dedicated-server-client mode: with host fallback disabled, QuickMatch must fail
  * with NoSessionsFound instead of creating a session.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingNoFallbackTest, "EasySession.Matchmaking.NoFallbackFails", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchNoFallbackTest, "EasySession.QuickMatch.NoFallbackFails", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchNoFallbackTest::RunTest(const FString& Parameters)
 {
-	using namespace EasyMatchmakingTest;
+	using namespace EasyQuickMatchTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
@@ -280,7 +280,7 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 		}));
 
 	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitNoFallback(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitNoFallback(State));
 	return true;
 }
 

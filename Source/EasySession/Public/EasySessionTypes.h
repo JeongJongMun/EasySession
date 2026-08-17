@@ -51,8 +51,8 @@ enum class EEasySessionResult : uint8
 	/** The search completed but no joinable session was found. */
 	NoSessionsFound,
 
-	/** Matchmaking is already running. Cancel it before starting a new one. */
-	MatchmakingAlreadyInProgress,
+	/** QuickMatch is already running. Cancel it before starting a new one. */
+	QuickMatchAlreadyInProgress,
 
 	/** The online service failed to join the session. */
 	JoinFailure,
@@ -377,12 +377,12 @@ struct EASYSESSION_API FEasySessionSearchResult
 };
 
 /**
- * State of a running QuickMatch matchmaking pass.
+ * State of a running QuickMatch quick match pass.
  */
 UENUM(BlueprintType)
-enum class EEasyMatchmakingState : uint8
+enum class EEasyQuickMatchState : uint8
 {
-	/** No matchmaking is running. */
+	/** No quick match is running. */
 	Idle,
 
 	/** Searching for sessions. */
@@ -394,15 +394,15 @@ enum class EEasyMatchmakingState : uint8
 	/** No session was found - creating our own session instead. */
 	Hosting,
 
-	/** Matchmaking has finished. Check the completion result for the outcome. */
+	/** QuickMatch has finished. Check the completion result for the outcome. */
 	Complete
 };
 
 /**
- * Parameters for QuickMatch matchmaking.
+ * Parameters for QuickMatch quick match.
  * The search filters default to "any public session".
  * Host > Map Name has no default and must be set.
- * Matchmaking cannot decide where the match is played, and hosting without a map leaves a session nobody can connect to.
+ * QuickMatch cannot decide where the match is played, and hosting without a map leaves a session nobody can connect to.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasyQuickMatchParams

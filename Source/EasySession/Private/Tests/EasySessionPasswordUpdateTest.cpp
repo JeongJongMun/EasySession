@@ -95,7 +95,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 
 			// Reading the session back has to return what it was created with, or the
 			// read-modify-write below would quietly change fields nobody touched.
-			const FEasySessionHostParams ReadBack = Subsystem->GetEasySessionHostParams();
+			const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
 			CurrentTest->TestEqual(TEXT("Read back the display name"), ReadBack.SessionDisplayName, MakeParams().SessionDisplayName);
 			CurrentTest->TestEqual(TEXT("Read back the player limit"), ReadBack.MaxPlayers, 6);
 			CurrentTest->TestFalse(TEXT("Read back join in progress"), ReadBack.bAllowJoinInProgress);
@@ -123,7 +123,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestEqual(TEXT("A locked session enforces the new password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString(TEXT("1234")));
 
 			// Fields the caller did not touch have to survive the update.
-			const FEasySessionHostParams AfterLock = Subsystem->GetEasySessionHostParams();
+			const FEasySessionHostParams AfterLock = Subsystem->GetSessionHostParams();
 			CurrentTest->TestEqual(TEXT("Locking left the display name alone"), AfterLock.SessionDisplayName, MakeParams().SessionDisplayName);
 			CurrentTest->TestEqual(TEXT("Locking left the player limit alone"), AfterLock.MaxPlayers, 6);
 			CurrentTest->TestFalse(TEXT("Locking left join in progress alone"), AfterLock.bAllowJoinInProgress);
