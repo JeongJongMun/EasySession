@@ -180,10 +180,10 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 	
 	const FString ListName = EFriendsLists::ToString(EFriendsLists::Default);
 
-	// Bound to the owning UObject: the read can outlive the world it started in, and
-	// a weak lambda drops the callback instead of writing into a destroyed subsystem.
+	// CreateWeakLambda checks only the subsystem, so the callback reads the subsystem and never FEasySessionSocial, which Deinitialize destroys first.
+	UEasySessionSubsystem* OwnerSub = &Owner;
 	Friends->ReadFriendsList(0, ListName, FOnReadFriendsListComplete::CreateWeakLambda(&Owner,
-		[this, UserDelegate = MoveTemp(OnComplete)](int32 /*LocalUserNum*/, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
+		[OwnerSub, UserDelegate = MoveTemp(OnComplete)](int32 /*LocalUserNum*/, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
 		{
 			if (!bWasSuccessful)
 			{
@@ -191,7 +191,8 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 				return;
 			}
 
-			const IOnlineSubsystem* CallbackSub = Online::GetSubsystem(GetWorld());
+			const UWorld* CallbackWorld = OwnerSub->GetGameInstance() ? OwnerSub->GetGameInstance()->GetWorld() : nullptr;
+			const IOnlineSubsystem* CallbackSub = Online::GetSubsystem(CallbackWorld);
 			const IOnlineFriendsPtr CallbackFriends = CallbackSub ? CallbackSub->GetFriendsInterface() : nullptr;
 
 			TArray<TSharedRef<FOnlineFriend>> FriendList;

@@ -19,8 +19,9 @@ class UEasySessionSubsystem;
  * The overlay handles that itself, and the game is only told once the player has clicked Join Game.
  * Only EOS reports pending invites, and EOS is not a supported subsystem.
  *
- * Owned by the subsystem and destroyed with it.
- * Delegates are bound raw because this object cannot outlive the owner that unbinds them in Shutdown.
+ * Owned by the subsystem and destroyed with it, in Deinitialize.
+ * Delegates with handles are bound raw, because Shutdown unbinds them before this object dies.
+ * One-shot completion delegates cannot be unbound, so they guard on the subsystem and must not capture this object - it dies first.
  */
 class FEasySessionSocial
 {
