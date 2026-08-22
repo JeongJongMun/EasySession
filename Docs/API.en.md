@@ -196,7 +196,7 @@ store it, not just the name it displays.
 `bPasswordProtected` is how you decide whether to prompt before `Join Easy Session`.
 
 ### 5.4 FEasyQuickMatchParams
-`Search` (SearchParams), `Host` (HostParams - **Map Name required**), `bAllowHostFallback`, `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
+`Search` (SearchParams), `Host` (HostParams - read only while `bAllowHostFallback` is on), `bAllowHostFallback`, `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
 
 ### 5.5 FEasySessionPlayerInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost` (always false on dedicated servers), `PlayerId` (the online service id - names can repeat, this cannot)

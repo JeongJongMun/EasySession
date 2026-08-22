@@ -10,7 +10,7 @@
 class UEasyQuickMatchPolicy;
 
 /**
- * Async node that runs QuickMatch quick match.
+ * Async node that runs Quick Match.
  */
 UCLASS()
 class EASYSESSION_API UEasyQuickMatchNode : public UEasySessionNodeBase
@@ -31,7 +31,7 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Start QuickMatch quick match: search for sessions, join the best one, and optionally host a new session when nothing is found.
+	 * Start Quick Match: search for sessions, join the best one, and optionally host a new session when nothing is found.
 	 * Cancel a running QuickMatch with Cancel Easy QuickMatch.
 	 *
 	 * @param QuickMatchParams Parameters describing the search and the fallback host session.

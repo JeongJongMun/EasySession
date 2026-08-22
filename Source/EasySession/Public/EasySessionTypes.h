@@ -377,7 +377,7 @@ struct EASYSESSION_API FEasySessionSearchResult
 };
 
 /**
- * State of a running QuickMatch quick match pass.
+ * State of a running Quick Match pass.
  */
 UENUM(BlueprintType)
 enum class EEasyQuickMatchState : uint8
@@ -399,10 +399,8 @@ enum class EEasyQuickMatchState : uint8
 };
 
 /**
- * Parameters for QuickMatch quick match.
+ * Parameters for Quick Match.
  * The search filters default to "any public session".
- * Host > Map Name has no default and must be set.
- * QuickMatch cannot decide where the match is played, and hosting without a map leaves a session nobody can connect to.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasyQuickMatchParams

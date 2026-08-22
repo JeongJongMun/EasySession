@@ -14,7 +14,7 @@ class UEasySessionSubsystem;
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasyQuickMatchStateEvent, EEasyQuickMatchState, NewState);
 
 /**
- * QuickMatch quick match policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
+ * Quick Match policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
  *
  * The best session is chosen by ScoreSession.
  * The default implementation groups sessions into ping buckets and prefers fuller sessions within the same bucket.

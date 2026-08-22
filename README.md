@@ -4,8 +4,6 @@ Beginner-friendly sessions and matchmaking for Unreal Engine, built on the Onlin
 
 Host, find, join and quick-play with a few Blueprint nodes - no custom `GameInstance`, no C++, no config files to start.
 
-> Still in development.
-
 *[한국어 README](README.ko.md)*
 
 ## Install
@@ -19,7 +17,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 ## Features
 
 - **Drops into an existing project** - no custom `GameInstance`, no required parent classes. Enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Keep the game mode and widgets you already have and add the nodes.
-- **Quick match in one node** - `Quick Match Easy Session` searches, joins the best room it finds, and hosts one when it finds none.
+- **Quick match in one node** - `Quick Match Easy Session` searches, joins the best room it finds, and with Allow Host Fallback on hosts one when it finds none.
 - **The whole session lifecycle in Blueprint** - create, find, join, start the match, end it, leave and update settings, all as async nodes. Session state, the player list and open slots are one node away, and the same API is available from C++.
 - **Every operation reports its progress and result** - `Is Busy` covers the online work running or queued and the level load that follows hosting or joining, so binding it to a button's Is Enabled keeps that button locked for as long as the player is actually waiting. When the work finishes you get a result enum and a message you can show a player, and a request the online service never answers is failed after a timeout instead of blocking everything behind it.
 - **Overlapping calls are handled in order** - every operation goes through a queue and runs one at a time, so mashing a button produces results in order instead of errors.

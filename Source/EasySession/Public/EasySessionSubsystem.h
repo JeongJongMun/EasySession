@@ -117,7 +117,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionEnded;
 
-	/** Fired when a QuickMatch quick match run completes. */
+	/** Fired when a Quick Match run completes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnQuickMatchComplete;
 
@@ -204,7 +204,7 @@ public:
 	void UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Start QuickMatch quick match: search for sessions, join the best one, and optionally host a new session when nothing is found.
+	 * Start Quick Match: search for sessions, join the best one, and optionally host a new session when nothing is found.
 	 *
 	 * @param QuickMatchParams Parameters describing the search and the fallback host session.
 	 * @param PolicyClass Optional custom quick match policy class. Uses the default policy when null.
@@ -214,13 +214,13 @@ public:
 
 public:
 
-	/** Cancel the running QuickMatch quick match. Does nothing when no quick match is running. */
+	/** Cancel the running Quick Match. Does nothing when no quick match is running. */
 	void CancelQuickMatch();
 
-	/** Check whether QuickMatch quick match is currently running. */
+	/** Check whether Quick Match is currently running. */
 	bool IsQuickMatchRunning() const;
 
-	/** Get the state of the running QuickMatch quick match. Idle when none is running. */
+	/** Get the state of the running Quick Match. Idle when none is running. */
 	EEasyQuickMatchState GetQuickMatchState() const;
 
 	/** Get the running quick match policy. Use this to bind its On State Changed event. */
