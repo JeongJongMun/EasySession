@@ -761,6 +761,14 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
 	ServerGate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
 
+	// The engine's own cap follows the advertised one, so its "Server full" refusal tracks the new Max Players.
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	AGameModeBase* GameMode = World ? World->GetAuthGameMode() : nullptr;
+	if (GameMode && GameMode->GameSession)
+	{
+		GameMode->GameSession->MaxPlayers = Params.MaxPlayers;
+	}
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 

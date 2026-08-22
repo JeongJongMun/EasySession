@@ -7,6 +7,8 @@
 #include "EasySessionSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameSession.h"
 #include "GameFramework/PlayerController.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -40,6 +42,13 @@ void FEasySessionTravel::ListenOnCurrentMap(const FEasySessionHostParams& HostPa
 	if (World->Listen(ListenURL))
 	{
 		UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
+
+		// No travel URL here, so the engine never reads ?MaxPlayers= - the cap its "Server full" refusal compares against is set by hand.
+		AGameModeBase* GameMode = World->GetAuthGameMode();
+		if (GameMode && GameMode->GameSession)
+		{
+			GameMode->GameSession->MaxPlayers = HostParams.MaxPlayers;
+		}
 	}
 	else
 	{
@@ -67,6 +76,8 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 		TravelURL += TEXT("?listen");
 	}
 	AppendTravelOptions(TravelURL, HostParams.AdditionalTravelOptions);
+	// The engine reads this into AGameSession::MaxPlayers, so its "Server full" refusal matches the advertised capacity.
+	EasySessionAddress::AppendMaxPlayersOption(TravelURL, HostParams.MaxPlayers);
 	Owner.OnModifyServerTravelURL.Broadcast(TravelURL);
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);

@@ -55,6 +55,17 @@ bool EasySessionAddress::HasListenOption(const FString& TravelURL)
 	return URL.HasOption(TEXT("listen"));
 }
 
+void EasySessionAddress::AppendMaxPlayersOption(FString& TravelURL, int32 MaxPlayers)
+{
+	const FURL URL(nullptr, *TravelURL, TRAVEL_Absolute);
+	if (URL.HasOption(TEXT("MaxPlayers")))
+	{
+		return;
+	}
+
+	TravelURL += FString::Printf(TEXT("?MaxPlayers=%d"), MaxPlayers);
+}
+
 FString EasySessionAddress::ParseTravelOption(const FString& RequestURL, const TCHAR* Key)
 {
 	// ParseOption only reads from the first '?' onwards, and what arrives at

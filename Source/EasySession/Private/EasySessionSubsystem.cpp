@@ -546,6 +546,15 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 		TravelURL += TEXT("?listen");
 	}
 
+	// Every travel carries the current capacity: a host that listened on its first map has no
+	// earlier URL for the engine to inherit it from, and an update may have changed it since.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession != nullptr)
+	{
+		EasySessionAddress::AppendMaxPlayersOption(TravelURL, NamedSession->SessionSettings.NumPublicConnections);
+	}
+
 	UE_LOG(LogEasySession, Log, TEXT("ServerTravel to '%s'"), *TravelURL);
 	if (!World->ServerTravel(TravelURL))
 	{

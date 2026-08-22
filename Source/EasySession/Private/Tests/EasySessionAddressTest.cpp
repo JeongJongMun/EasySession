@@ -82,6 +82,45 @@ bool FEasySessionAddressListenOptionTest::RunTest(const FString& Parameters)
 }
 
 /**
+ * The capacity the engine enforces comes from this option, so it has to land on every
+ * host URL - but a game that set it by hand in its map name or extra travel options
+ * keeps its own value.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressMaxPlayersOptionTest, "EasySession.Address.AppendMaxPlayersOption", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionAddressMaxPlayersOptionTest::RunTest(const FString& Parameters)
+{
+	struct FCase
+	{
+		const TCHAR* TravelURL;
+		const TCHAR* Expected;
+		const TCHAR* Why;
+	};
+
+	static const FCase Cases[] =
+	{
+		{ TEXT("/Game/Maps/Lobby?listen"),              TEXT("/Game/Maps/Lobby?listen?MaxPlayers=4"),        TEXT("appended after the options already there") },
+		{ TEXT("/Game/Maps/Lobby"),                     TEXT("/Game/Maps/Lobby?MaxPlayers=4"),               TEXT("first option on a bare map path") },
+		{ TEXT("/Game/Maps/Lobby?listen?MaxPlayers=8"), TEXT("/Game/Maps/Lobby?listen?MaxPlayers=8"),        TEXT("the game's own value wins") },
+		{ TEXT("/Game/Maps/Lobby?maxplayers=8"),        TEXT("/Game/Maps/Lobby?maxplayers=8"),               TEXT("matched case insensitively, as the engine reads it") },
+		{ TEXT("/Game/Maps/Lobby?MaxPlayersX=8"),       TEXT("/Game/Maps/Lobby?MaxPlayersX=8?MaxPlayers=4"), TEXT("a longer key that starts the same is a different option") },
+	};
+
+	for (const FCase& Case : Cases)
+	{
+		FString Actual = Case.TravelURL;
+		EasySessionAddress::AppendMaxPlayersOption(Actual, 4);
+		TestEqual(FString::Printf(TEXT("'%s' (%s)"), Case.TravelURL, Case.Why), Actual, FString(Case.Expected));
+	}
+
+	// What was written has to read back through the same parser the host gate uses.
+	FString RoundTrip = TEXT("/Game/Maps/Lobby?listen?Pw=secret");
+	EasySessionAddress::AppendMaxPlayersOption(RoundTrip, 4);
+	TestEqual(TEXT("the option reads back"), EasySessionAddress::ParseTravelOption(RoundTrip, TEXT("MaxPlayers")), FString(TEXT("4")));
+
+	return true;
+}
+
+/**
  * Reading an option out of the URL a joining player arrives with. This decides
  * whether a password matches, so every shape the engine can hand us has to read
  * the same way it does: the map path in front, several options, no options.

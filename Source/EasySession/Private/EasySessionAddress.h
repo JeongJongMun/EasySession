@@ -28,6 +28,12 @@ namespace EasySessionAddress
 	bool HasListenOption(const FString& TravelURL);
 
 	/**
+	 * Append ?MaxPlayers= unless the URL already carries one, so a game's own travel option wins.
+	 * The engine reads this option into AGameSession::MaxPlayers, the cap its "Server full" refusal compares against.
+	 */
+	void AppendMaxPlayersOption(FString& TravelURL, int32 MaxPlayers);
+
+	/**
 	 * The value of one option in a travel URL, trimmed, or empty when the option is absent.
 	 * Accepts the whole request URL: the map path in front is skipped, the same way the engine skips it before PreLogin.
 	 *
