@@ -14,7 +14,7 @@ All operations are **queued and executed one at a time** - you can call them in 
 |---|---|---|
 | Session Display Name | "My Session" | Shown in search results |
 | Map Name | (empty) | Travels there with `?listen`. Empty = start listening on the current map |
-| Host Mode | Listen Server | Or Dedicated Server (see [dedicated guide](Guide-DedicatedServer.md)) |
+| Host Mode | Listen Server | Or Dedicated Server - code path present, not validated in 1.0 |
 | Max Players | 4 | Public connections |
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
 | Start Listening | true | Off still advertises the session, but nothing is there to connect to. Turn it off only when you open the listen server yourself |

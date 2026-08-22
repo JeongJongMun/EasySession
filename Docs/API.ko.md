@@ -249,7 +249,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ### 6.5 EEasySessionHostMode
 
-`ListenServer`(호스트 플레이어의 게임이 곧 서버) 또는 `DedicatedServer` ([가이드](Guide-DedicatedServer.md)).
+`ListenServer`(호스트 플레이어의 게임이 곧 서버) 또는 `DedicatedServer`(코드 경로는 있으나 1.0에서는 검증되지 않음).
 
 ## 7. UEasyQuickMatchPolicy
 

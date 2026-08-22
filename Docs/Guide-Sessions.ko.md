@@ -14,7 +14,7 @@
 |---|---|---|
 | Session Display Name | "My Session" | 검색 결과에 보이는 이름 |
 | Map Name | (비어 있음) | `?listen`을 붙여 그 맵으로 이동합니다. 비워두면 현재 맵에서 리슨을 시작합니다 |
-| Host Mode | Listen Server | 또는 Dedicated Server([데디케이티드 가이드](Guide-DedicatedServer.md) 참고) |
+| Host Mode | Listen Server | 또는 Dedicated Server - 코드 경로는 있으나 1.0에서는 검증되지 않음 |
 | Max Players | 4 | 공개 커넥션 수 |
 | Is LAN Match | false | NULL 서브시스템에서는 자동으로 켜집니다 |
 | Start Listening | true | 끄면 세션은 광고되지만 접속할 서버가 없습니다. 리슨 서버를 직접 여는 경우에만 끄세요 |

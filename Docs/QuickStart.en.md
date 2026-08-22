@@ -49,7 +49,8 @@ In any Blueprint (a menu widget button, or the Level Blueprint for a quick test)
 - Registers you as a player, so your session shows correct player counts
 
 Both travel steps assume the default **Host Mode = Listen Server**. A dedicated server
-keeps the map it was launched with - see the [dedicated server guide](Guide-DedicatedServer.md).
+keeps the map it was launched with. Dedicated servers are not validated in 1.0 - listen
+servers are the tested configuration.
 
 ## 4. Find and join from another instance
 
