@@ -136,7 +136,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Node | C++ | Does |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
-| Cancel Easy Quick Match | `CancelQuickMatch` | Ends a Quick Match run with `Canceled` |
+| Cancel Easy Quick Match | `CancelQuickMatch` | Ends a Quick Match run with `Canceled`, undoing a join or host that succeeds after the cancel |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |

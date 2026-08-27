@@ -569,6 +569,11 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	return true;
 }
 
+void UEasySessionSubsystem::CancelPendingTravel()
+{
+	Travel->CancelPendingTravel();
+}
+
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 {
 	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;

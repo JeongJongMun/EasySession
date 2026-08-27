@@ -130,7 +130,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 하는 일 |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
-| Cancel Easy Quick Match | `CancelQuickMatch` | 진행 중인 Quick Match를 `Canceled`로 끝냅니다 |
+| Cancel Easy Quick Match | `CancelQuickMatch` | 진행 중인 Quick Match를 `Canceled`로 끝냅니다. 이미 성사되던 참가나 생성은 되돌려집니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |

@@ -94,6 +94,11 @@ void UEasyQuickMatchPolicy::RunSearchPass()
 		return;
 	}
 
+	if (CompleteIfAlreadyInSession(*SubsystemPtr))
+	{
+		return;
+	}
+
 	UE_LOG(LogEasySession, Log, TEXT("QuickMatch search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
 	SubsystemPtr->FindEasySessions(Params.Search, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleSearchComplete));
 }
@@ -175,6 +180,11 @@ void UEasyQuickMatchPolicy::TryJoinNextCandidate()
 		return;
 	}
 
+	if (CompleteIfAlreadyInSession(*SubsystemPtr))
+	{
+		return;
+	}
+
 	if (!Candidates.IsValidIndex(NextCandidateIndex))
 	{
 		FinishPassAndContinue();
@@ -188,9 +198,22 @@ void UEasyQuickMatchPolicy::TryJoinNextCandidate()
 
 void UEasyQuickMatchPolicy::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
+	if (bCancelRequested)
+	{
+		CompleteAsCanceled(Result);
+		return;
+	}
+
 	if (Result == EEasySessionResult::Success)
 	{
 		Complete(EEasySessionResult::Success, FString());
+		return;
+	}
+
+	// Not this candidate's refusal: a session appeared on this machine, so every remaining step would fail the same way.
+	if (Result == EEasySessionResult::SessionAlreadyExists)
+	{
+		Complete(Result, ErrorMessage);
 		return;
 	}
 
@@ -252,6 +275,11 @@ void UEasyQuickMatchPolicy::HostFallbackSession()
 		return;
 	}
 
+	if (CompleteIfAlreadyInSession(*SubsystemPtr))
+	{
+		return;
+	}
+
 	UE_LOG(LogEasySession, Log, TEXT("QuickMatch found no session - hosting our own."));
 	SetState(EEasyQuickMatchState::Hosting);
 	SubsystemPtr->CreateEasySession(Params.Host, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleHostComplete));
@@ -259,7 +287,39 @@ void UEasyQuickMatchPolicy::HostFallbackSession()
 
 void UEasyQuickMatchPolicy::HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
+	if (bCancelRequested)
+	{
+		CompleteAsCanceled(Result);
+		return;
+	}
+
 	Complete(Result, ErrorMessage);
+}
+
+void UEasyQuickMatchPolicy::CompleteAsCanceled(EEasySessionResult StepResult)
+{
+	// The step finished after the cancel. If it succeeded, undo it, so Canceled always means "not in a match".
+	UEasySessionSubsystem* SubsystemPtr = Subsystem.Get();
+	if (StepResult == EEasySessionResult::Success && SubsystemPtr != nullptr)
+	{
+		// Still the same frame as the travel request, so the map has not started loading.
+		SubsystemPtr->CancelPendingTravel();
+		SubsystemPtr->DestroyEasySession();
+	}
+
+	Complete(EEasySessionResult::Canceled, TEXT("Quick Match was canceled."));
+}
+
+bool UEasyQuickMatchPolicy::CompleteIfAlreadyInSession(UEasySessionSubsystem& InSubsystem)
+{
+	if (!InSubsystem.IsInSession())
+	{
+		return false;
+	}
+
+	// An accepted invite or the game's own Create or Join got here first. Every remaining step would fail against it.
+	Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Quick Match stopped."));
+	return true;
 }
 
 void UEasyQuickMatchPolicy::Complete(EEasySessionResult Result, const FString& ErrorMessage)

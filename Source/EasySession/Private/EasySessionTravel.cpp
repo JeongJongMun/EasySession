@@ -5,6 +5,7 @@
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionSubsystem.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
@@ -137,6 +138,28 @@ void FEasySessionTravel::MarkStarted(const TCHAR* Reason)
 		UE_LOG(LogEasySession, Verbose, TEXT("Travel started (%s). Session operations report busy until the map is loaded."), Reason);
 	}
 	bTravelInFlight = true;
+}
+
+void FEasySessionTravel::CancelPendingTravel()
+{
+	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	// The engine reads both URLs in TickWorldTravel on the next tick, so emptying them now drops the travel.
+	if (FWorldContext* Context = GEngine->GetWorldContextFromWorld(World))
+	{
+		Context->TravelURL.Empty();
+	}
+	World->NextURL.Empty();
+
+	if (bTravelInFlight)
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Canceled a travel that had not started loading its map yet."));
+	}
+	bTravelInFlight = false;
 }
 
 void FEasySessionTravel::HandlePostLoadMap(UWorld* LoadedWorld)

@@ -62,7 +62,7 @@ public:
 	/** Start the quick match run. Called by the EasySessionSubsystem. */
 	void Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Cancel the quick match run. The run finishes with the Canceled result. */
+	/** Cancel the quick match run. The run finishes with the Canceled result, and a join or host that succeeds after the cancel is undone. */
 	void Cancel();
 
 private:
@@ -93,6 +93,16 @@ private:
 
 	/** Called when the host fallback finished. */
 	void HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage);
+
+	/** Finish as Canceled. A step that succeeded after the cancel is undone: its pending travel is dropped and its session destroyed. */
+	void CompleteAsCanceled(EEasySessionResult StepResult);
+
+	/**
+	 * Finish as SessionAlreadyExists when this player is already in a session - an accepted invite, or the game's own Create or Join, got there first.
+	 *
+	 * @return Whether the run finished.
+	 */
+	bool CompleteIfAlreadyInSession(UEasySessionSubsystem& InSubsystem);
 
 	/** Finish the run and report the result. */
 	void Complete(EEasySessionResult Result, const FString& ErrorMessage);

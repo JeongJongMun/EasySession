@@ -30,7 +30,7 @@ Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방
 
 상태는 `Searching`, `Joining`, `Hosting`, `Complete` 넷입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 방을 만들 때만 나옵니다.
 
-언제든 `Cancel Easy Quick Match`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다.
+언제든 `Cancel Easy Quick Match`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 취소 시점에 이미 성사되던 참가나 생성은 되돌려집니다.
 
 `OnSuccess` 뒤에는 `Is Easy Session Host`로 남의 방에 들어간 건지 자기가 호스트가 된 건지 알 수 있습니다.
 

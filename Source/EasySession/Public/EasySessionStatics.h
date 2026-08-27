@@ -144,7 +144,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);
 
-	/** Cancel the running Quick Match. Does nothing when no quick match is running. */
+	/** Cancel the running Quick Match. A join or host that succeeds after the cancel is undone. Does nothing when no quick match is running. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyQuickMatch(const UObject* WorldContextObject);
 

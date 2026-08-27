@@ -214,7 +214,7 @@ public:
 
 public:
 
-	/** Cancel the running Quick Match. Does nothing when no quick match is running. */
+	/** Cancel the running Quick Match. A join or host that succeeds after the cancel is undone. Does nothing when no quick match is running. */
 	void CancelQuickMatch();
 
 	/** Check whether Quick Match is currently running. */
@@ -319,6 +319,12 @@ public:
 	 * Needs session authority - only the game that created the session can travel it, and it returns false for other games.
 	 */
 	bool ServerTravelToMap(const FString& MapName);
+
+	/**
+	 * Drop a travel this plugin requested that has not started loading its map.
+	 * Quick Match uses it when a cancel lands after a join or host already succeeded, right before destroying that session.
+	 */
+	void CancelPendingTravel();
 
 	/**
 	 * Destroy the session for every player.

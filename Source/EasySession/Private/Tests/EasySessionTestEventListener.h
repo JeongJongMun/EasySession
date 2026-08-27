@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "EasySessionTestEventListener.generated.h"
 
@@ -54,6 +55,20 @@ public:
 	void HandleSessionFailure(const FString& Reason)
 	{
 		FailureReasons.Add(Reason);
+	}
+
+	/** When set, entering Hosting cancels this subsystem's quick match - after the create was dispatched, before its completion arrives. */
+	UPROPERTY()
+	TObjectPtr<UEasySessionSubsystem> CancelQuickMatchOnHosting;
+
+	/** Bind to a quick match policy's OnStateChanged. */
+	UFUNCTION()
+	void HandleQuickMatchState(EEasyQuickMatchState NewState)
+	{
+		if (NewState == EEasyQuickMatchState::Hosting && CancelQuickMatchOnHosting)
+		{
+			CancelQuickMatchOnHosting->CancelQuickMatch();
+		}
 	}
 
 	/** @return How many events arrived in total, so a test can assert that none were duplicated. */

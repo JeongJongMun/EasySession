@@ -7,6 +7,7 @@
 #include "EasyQuickMatchPolicy.h"
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
@@ -23,6 +24,9 @@ namespace EasyQuickMatchTest
 		TOptional<EEasySessionResult> QuickMatchResult;
 		bool bCleanupIssued = false;
 		double StartTime = 0.0;
+
+		/** Kept alive for the latent commands - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 	};
 
 	/** Build a fake search result for scoring tests. */
@@ -281,6 +285,197 @@ bool FEasyQuickMatchNoFallbackTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitNoFallback(State));
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitCanceledUndo, TSharedPtr<EasyQuickMatchTest::FTestState>, State);
+bool FEasyQuickMatchWaitCanceledUndo::Update()
+{
+	using namespace EasyQuickMatchTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (!State->QuickMatchResult.IsSet())
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+		{
+			CurrentTest->AddError(TEXT("Timed out waiting for QuickMatch to complete."));
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+		return false;
+	}
+
+	if (!State->bCleanupIssued)
+	{
+		CurrentTest->TestEqual(TEXT("QuickMatch result"), State->QuickMatchResult.GetValue(), EEasySessionResult::Canceled);
+		CurrentTest->TestFalse(TEXT("QuickMatch no longer running"), Subsystem->IsQuickMatchRunning());
+
+		// No cleanup of our own: the undo destroy the policy queued is what we wait out below.
+		State->bCleanupIssued = true;
+		State->StartTime = FPlatformTime::Seconds();
+		return false;
+	}
+
+	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+		{
+			CurrentTest->AddError(FString::Printf(TEXT("The canceled run left state behind: %s"), *Subsystem->GetQueueStatus()));
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+		return false;
+	}
+
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+	return true;
+}
+
+/**
+ * Cancel that lands while the fallback create is in flight. The create still succeeds,
+ * so honoring the cancel means undoing it: the session is destroyed and the run ends
+ * Canceled, never Success. The listener cancels on the Hosting transition, which fires
+ * after the create was dispatched and before its completion arrives.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchCancelUndoTest, "EasySession.QuickMatch.CancelUndoesTheFallbackHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchCancelUndoTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyQuickMatchTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	State->Listener->CancelQuickMatchOnHosting = Subsystem;
+
+	FEasyQuickMatchParams Params;
+	Params.Search.bLANQuery = true;
+	Params.Search.TimeoutSeconds = 5.0f;
+	Params.Host.SessionDisplayName = TEXT("EasySession Cancel Undo Test");
+	Params.bAllowHostFallback = true;
+	Params.Host.bIsLANMatch = true;
+	Params.Host.bStartListening = false;
+	Params.MaxSearchPasses = 1;
+	Params.DelayBetweenPassesSeconds = 0.0f;
+
+	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+		[State](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			State->QuickMatchResult = Result;
+		}));
+
+	UEasyQuickMatchPolicy* Policy = Subsystem->GetActiveQuickMatchPolicy();
+	if (!TestNotNull(TEXT("Active quick match policy is available"), Policy))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+	Policy->OnStateChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleQuickMatchState);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitCanceledUndo(State));
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitAlreadyInSession, TSharedPtr<EasyQuickMatchTest::FTestState>, State);
+bool FEasyQuickMatchWaitAlreadyInSession::Update()
+{
+	using namespace EasyQuickMatchTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (!State->bCleanupIssued)
+	{
+		// Still creating the session the quick match is supposed to trip over.
+		if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+		{
+			if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+			{
+				CurrentTest->AddError(TEXT("Timed out waiting for the setup create."));
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+			return false;
+		}
+
+		TSharedPtr<FTestState> Shared = State;
+		Subsystem->StartQuickMatch(FEasyQuickMatchParams(), nullptr, FEasySessionCompleteDelegate::CreateLambda(
+			[Shared](EEasySessionResult Result, const FString& ErrorMessage)
+			{
+				Shared->QuickMatchResult = Result;
+			}));
+
+		// The refusal happens before the first search, so the result is already here.
+		CurrentTest->TestTrue(TEXT("Refused before any step ran"), State->QuickMatchResult.IsSet());
+		if (State->QuickMatchResult.IsSet())
+		{
+			CurrentTest->TestEqual(TEXT("QuickMatch result"), State->QuickMatchResult.GetValue(), EEasySessionResult::SessionAlreadyExists);
+		}
+		CurrentTest->TestFalse(TEXT("QuickMatch no longer running"), Subsystem->IsQuickMatchRunning());
+		CurrentTest->TestTrue(TEXT("The session it refused over is untouched"), Subsystem->IsInSession());
+
+		Subsystem->DestroyEasySession();
+		State->bCleanupIssued = true;
+		State->StartTime = FPlatformTime::Seconds();
+		return false;
+	}
+
+	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+		{
+			CurrentTest->AddError(TEXT("Timed out waiting for the cleanup destroy."));
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+		return false;
+	}
+
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+	return true;
+}
+
+/**
+ * A session that arrived through another door - an accepted invite, or the game's own
+ * Create or Join - dooms every quick match step to SessionAlreadyExists. The run must
+ * report that once and stop, instead of burning candidates and passes against it.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchAlreadyInSessionTest, "EasySession.QuickMatch.RefusesWhenAlreadyInASession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchAlreadyInSessionTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyQuickMatchTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	FEasySessionHostParams HostParams;
+	HostParams.SessionDisplayName = TEXT("EasySession AlreadyInSession Test");
+	HostParams.bIsLANMatch = true;
+	HostParams.bStartListening = false;
+	// Empty Map Name: the session simply exists here, no travel follows.
+	Subsystem->CreateEasySession(HostParams);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitAlreadyInSession(State));
 	return true;
 }
 
