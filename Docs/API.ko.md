@@ -211,7 +211,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`SessionAlreadyExists`** | 이미 세션에 들어가 있습니다. `Destroy Easy Session`을 먼저 부르세요 |
 | **`NoSessionExists`** | 대상이 될 세션이 없습니다 |
 | **`NoSessionsFound`** | 검색은 정상이었고 결과가 없었습니다. 오류가 아니므로 직접 호스팅을 권하면 됩니다 |
-| **`JoinSessionFull`** | 검색과 참가 사이에 방이 찼습니다 |
+| **`JoinSessionFull`** | 방이 꽉 찼습니다. 트래블 전에는 호스트가, 그 뒤에는 온라인 서비스가 거절합니다 |
 | **`JoinSessionDoesNotExist`** | 참가 시점에 방이 사라졌습니다. 다시 검색하세요 |
 | **`WrongPassword`** | 호스트가 거절했습니다: 비밀번호가 맞지 않습니다. 다시 입력받으세요 |
 | **`JoinRefused`** | 호스트가 다른 이유로 거절했습니다. 예: 더 이상 플레이어를 받지 않는 매치. `ErrorMessage`는 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |

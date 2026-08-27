@@ -11,6 +11,7 @@
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameSession.h"
 #include "Interfaces/OnlineFriendsInterface.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
@@ -71,6 +72,15 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 			OutReason = NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress.").ToString();
 			return EEasyJoinApprovalResult::Refused;
 		}
+	}
+
+	// PreLogin consults AtCapacity after the travel, so asking it here refuses a full room before the travel instead.
+	AGameModeBase* GameMode = OwnWorld ? OwnWorld->GetAuthGameMode() : nullptr;
+	if (GameMode != nullptr && GameMode->GameSession != nullptr && GameMode->GameSession->AtCapacity(/*bSpectator=*/ false))
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - the session is full."), *PlayerId.ToString());
+		OutReason = NSLOCTEXT("EasySession", "SessionFull", "The session is full.").ToString();
+		return EEasyJoinApprovalResult::SessionFull;
 	}
 
 	if (SessionPassword.IsEmpty())

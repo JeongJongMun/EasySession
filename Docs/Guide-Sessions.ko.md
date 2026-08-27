@@ -83,7 +83,8 @@ Create Easy Session
 ### 결과 읽기
 
 다른 일이 벌어지기 전에 호스트에게 먼저 승인을 묻습니다. 비밀번호가 틀리면 노드가
-`WrongPassword`로, 매치가 더 이상 플레이어를 받지 않으면 `JoinRefused`로 실패합니다.
+`WrongPassword`로, 방이 꽉 찼으면 `JoinSessionFull`로, 매치가 더 이상 플레이어를 받지
+않으면 `JoinRefused`로 실패합니다.
 두 경우 모두 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며,
 플레이어는 곧바로 다시 시도할 수 있습니다.
 

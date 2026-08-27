@@ -19,6 +19,9 @@ enum class EEasyJoinApprovalResult : uint8
 	/** The supplied session password did not match. */
 	WrongPassword,
 
+	/** The session has no room for another player. */
+	SessionFull,
+
 	/** Refused for another reason. The reason text says which. */
 	Refused,
 
@@ -69,7 +72,7 @@ public:
 
 	/**
 	 * Decide whether a player may join.
-	 * Checks the join-in-progress policy first, then the password, which friends of the host may skip.
+	 * Checks the join-in-progress policy first, then the room the session has left, then the password, which friends of the host may skip.
 	 * Never returns Unreachable, which only the beacon client produces.
 	 *
 	 * @param OutReason Set to the message shown to the refused player. Untouched when the join is approved.

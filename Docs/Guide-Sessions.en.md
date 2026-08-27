@@ -83,7 +83,8 @@ it to the travel URL for the travels it performs.
 ### Reading the result
 
 The host is asked for approval before anything else happens. A wrong password fails the
-node with `WrongPassword`, and a match that no longer takes players with `JoinRefused` -
+node with `WrongPassword`, a full room with `JoinSessionFull`, and a match that no longer
+takes players with `JoinRefused` -
 in both cases no map has started loading, `ErrorMessage` carries the host's own sentence,
 and the player can retry immediately:
 

@@ -413,6 +413,10 @@ void UEasySessionSubsystem::HandleJoinApprovalResponse(const FEasyJoinApprovalRe
 			CompleteActiveRequest(EEasySessionResult::WrongPassword, Response.ReasonText);
 			break;
 
+		case EEasyJoinApprovalResult::SessionFull:
+			CompleteActiveRequest(EEasySessionResult::JoinSessionFull, Response.ReasonText);
+			break;
+
 		default:
 			CompleteActiveRequest(EEasySessionResult::JoinRefused, Response.ReasonText);
 			break;

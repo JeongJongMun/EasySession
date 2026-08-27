@@ -221,7 +221,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`SessionAlreadyExists`** | You are already in a session. `Destroy Easy Session` first |
 | **`NoSessionExists`** | There is no session to act on |
 | **`NoSessionsFound`** | The search ran fine and found nothing. Not an error - offer to host |
-| **`JoinSessionFull`** | The room filled up between the search and the join |
+| **`JoinSessionFull`** | The room is full - refused by the host before the travel, or by the online service after it |
 | **`JoinSessionDoesNotExist`** | The room was gone by the time you joined. Search again |
 | **`WrongPassword`** | The host refused the join: the password did not match. Let the player retype it |
 | **`JoinRefused`** | The host refused the join for another reason, e.g. the match no longer takes players. `ErrorMessage` is the host's own sentence, safe to show |
