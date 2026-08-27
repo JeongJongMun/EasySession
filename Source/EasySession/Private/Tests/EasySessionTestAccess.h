@@ -9,9 +9,11 @@
 #include "EasySessionServerGate.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
+#include "Interfaces/OnlineIdentityInterface.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
+#include "OnlineSubsystemUtils.h"
 
 /**
  * The subsystem's private state, reached on behalf of the tests.
@@ -96,6 +98,35 @@ public:
 		int32 Value = 0;
 		NamedSession->SessionSettings.Get(Key, Value);
 		return Value;
+	}
+
+	/**
+	 * A joinable search result copied from the session this subsystem currently holds.
+	 * The copy shares the live session info, so its address - port 0 when the host never listened - stays readable after the session is destroyed.
+	 * Join approval is turned off in the copy, so joining it does not wait on a beacon nobody hosts.
+	 */
+	static FOnlineSessionSearchResult MakeSearchResultFromCurrentSession(UEasySessionSubsystem& Subsystem)
+	{
+		FOnlineSessionSearchResult Result;
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		if (NamedSession == nullptr)
+		{
+			return Result;
+		}
+
+		Result.Session = *NamedSession;
+		Result.Session.SessionSettings.Set(EasySession::SettingKey_JoinApproval, 0, EOnlineDataAdvertisementType::ViaOnlineService);
+
+		// Created without a local player, the session may have no owner - and an ownerless result fails the join's validity check.
+		if (!Result.Session.OwningUserId.IsValid())
+		{
+			UWorld* World = Subsystem.GetGameInstance() ? Subsystem.GetGameInstance()->GetWorld() : nullptr;
+			const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
+			Result.Session.OwningUserId = Identity.IsValid() ? Identity->CreateUniquePlayerId(TEXT("EasySessionTestOwner")) : nullptr;
+		}
+
+		return Result;
 	}
 };
 

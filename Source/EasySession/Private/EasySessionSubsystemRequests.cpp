@@ -696,12 +696,12 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 
 	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
 	{
+		// Queued before the completion below, so a retry started in its callback runs after this cleanup instead of hitting the half-joined session.
+		DestroyEasySession();
+
 		CompleteActiveRequest(EEasySessionResult::ResolveFailure, FString::Printf(
 			TEXT("The host address '%s' is not connectable - the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled or travels to a map with the ?listen option."),
 			*ConnectString));
-
-		// Leave the half-joined session so the player can immediately search and join again.
-		DestroyEasySession();
 		return;
 	}
 
