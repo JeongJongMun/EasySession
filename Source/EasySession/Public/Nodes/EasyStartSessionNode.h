@@ -30,7 +30,7 @@ public:
 	 * When Allow Join In Progress is disabled, new players are refused from here until the match ends - except on Steam, which already refused them from the first join onwards.
 	 *
 	 * Only the game hosting the session can start the match - clients get a Requires Session Authority failure.
-	 * Gate the button with Is Easy Session Host.
+	 * Show the button only when Is Easy Session Authority is true.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Start Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyStartSessionNode* StartEasySession(UObject* WorldContextObject);

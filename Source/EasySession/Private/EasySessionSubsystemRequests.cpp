@@ -43,6 +43,12 @@
 #include "OnlineSubsystemUtils.h"
 #include "UObject/UObjectGlobals.h"
 
+namespace
+{
+	/** The fix line appended to every RequiresSessionAuthority message, shared so it cannot drift per operation. Is Easy Session Host would be wrong here - it is false on a dedicated server. */
+	const TCHAR* const RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
+}
+
 void UEasySessionSubsystem::ExecuteActiveRequest()
 {
 	switch (GetActiveRequest()->Type)
@@ -501,7 +507,7 @@ void UEasySessionSubsystem::ExecuteUpdate()
 	if (!IsSessionAuthority())
 	{
 		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
-			TEXT("Only the game hosting the session can update it."));
+			FString::Printf(TEXT("Only the game hosting the session can update it. %s"), RequiresSessionAuthorityFix));
 		return;
 	}
 
@@ -800,7 +806,7 @@ void UEasySessionSubsystem::ExecuteStart()
 	if (!IsSessionAuthority())
 	{
 		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
-			TEXT("Only the game hosting the session can start the match. Gate this button with Is Easy Session Host so clients do not see it."));
+			FString::Printf(TEXT("Only the game hosting the session can start the match. %s"), RequiresSessionAuthorityFix));
 		return;
 	}
 
@@ -833,7 +839,7 @@ void UEasySessionSubsystem::ExecuteEnd()
 	if (!IsSessionAuthority())
 	{
 		CompleteActiveRequest(EEasySessionResult::RequiresSessionAuthority,
-			TEXT("Only the game hosting the session can end the match. Gate this button with Is Easy Session Host so clients do not see it."));
+			FString::Printf(TEXT("Only the game hosting the session can end the match. %s"), RequiresSessionAuthorityFix));
 		return;
 	}
 

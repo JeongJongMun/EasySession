@@ -141,7 +141,7 @@ Event Construct
 
 `End Easy Session`은 매치를 끝내고 세션을 다시 참가할 수 있는 상태로 되돌립니다.
 
-둘 다 호스트 전용입니다. 클라이언트가 부르면 `RequiresSessionAuthority`로 실패하므로, 버튼은 `Is Easy Session Host`로 막아 두세요.
+둘 다 호스트 전용입니다. 클라이언트가 부르면 `RequiresSessionAuthority`로 실패하므로, 버튼은 `Is Easy Session Authority`가 true일 때만 보여주세요.
 
 ## Update Session
 

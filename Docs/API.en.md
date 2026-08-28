@@ -147,8 +147,8 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 The invite and profile nodes need a platform service. They return false on NULL/LAN.
 
 The last two check session authority themselves: a client that calls either one changes
-nothing and gets a warning in the log, so gate the button with `Is Easy Session Authority`
-rather than relying on the call being harmless.
+nothing and gets a warning in the log, so show the button only when
+`Is Easy Session Authority` is true rather than relying on the call being harmless.
 
 ## 4. Events
 

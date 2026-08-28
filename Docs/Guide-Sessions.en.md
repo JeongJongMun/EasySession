@@ -146,7 +146,7 @@ cannot fake. This has no effect on NULL/LAN, where there are no friends.
 
 `End Easy Session` finishes the match and returns the session to a joinable state.
 
-Both are host only. A client gets `RequiresSessionAuthority`, so gate the buttons with `Is Easy Session Host`.
+Both are host only. A client gets `RequiresSessionAuthority`, so show the buttons only when `Is Easy Session Authority` is true.
 
 ## Update Session
 
