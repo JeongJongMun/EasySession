@@ -56,6 +56,14 @@ bool FEasySessionWaitForQueueDrain::Update()
 
 	if (CurrentTest != nullptr)
 	{
+		// Draining is not enough on its own - the failed request must still have answered
+		// its caller, or a node would hang exactly when the watchdog was meant to save it.
+		CurrentTest->TestTrue(TEXT("The failed request answered its caller"), State->StartResult.IsSet());
+		if (State->StartResult.IsSet())
+		{
+			CurrentTest->TestEqual(TEXT("And with the result its state deserved"), State->StartResult.GetValue(), EEasySessionResult::NoSessionExists);
+		}
+
 		CurrentTest->TestTrue(TEXT("The queue kept draining and the follow-up request completed"), bFinished);
 
 		if (UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>())
