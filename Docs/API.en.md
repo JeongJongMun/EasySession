@@ -95,8 +95,8 @@ node name without spaces.
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
-| Get Easy Session Queue Status | `GetQueueStatusDescription` | What the request queue is doing, as a string for status UI and bug reports |
-| Get Easy Session Host Params | `GetEasySessionHostParams` | The params the session was created with, so Update can change one field. Host only |
+| Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports |
+| Get Easy Session Host Params | `GetSessionHostParams` | The params the session was created with, so Update can change one field. Host only |
 
 `To String (EasySessionResult)` (C++ `ResultToString`) turns a result enum into text.
 
@@ -116,8 +116,8 @@ there is no C++ column.
 > own nodes rather than change the meaning of these: `Is In Session` will keep
 > answering about the game session for as long as it exists.
 >
-> Some queries here are not about a session at all: `Is Easy Session Busy` and `Get Queue
-> Status Description` describe the operation queue, and `Is Easy Quick Match Running`,
+> Some queries here are not about a session at all: `Is Easy Session Busy` and `Get Easy
+> Session Queue Status` describe the operation queue, and `Is Easy Quick Match Running`,
 > `Get Easy Quick Match State`, `Get Online Subsystem Name` and `Is Online Subsystem Available`
 > describe the process. Those keep their meaning whatever sessions exist.
 
