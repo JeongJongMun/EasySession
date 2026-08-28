@@ -51,6 +51,9 @@ public:
 	/** @return Whether nothing is running and nothing is waiting. */
 	bool IsIdle() const { return !Active.IsValid() && Pending.IsEmpty(); }
 
+	/** @return Whether a request of this type is running or waiting. */
+	bool Contains(FEasySessionRequest::EType Type) const;
+
 	/** One line for status UI and bug reports, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle, 1 queued". */
 	FString DescribeStatus(bool bIdleButTraveling) const;
 

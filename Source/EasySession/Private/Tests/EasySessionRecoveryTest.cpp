@@ -6,6 +6,7 @@
 
 #include "EasySessionSettings.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -198,6 +199,126 @@ bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForSecondDisconnect(State));
+	return true;
+}
+
+namespace EasySessionCleanupOnceTest
+{
+	/** Maximum time to wait for the whole sequence before failing. */
+	static constexpr double TimeoutSeconds = 20.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		TOptional<EEasySessionResult> CreateResult;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+		bool bAutoReturnWasEnabled = true;
+	};
+
+	static void Finish(FTestState& State)
+	{
+		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
+	}
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForCleanupOnce, TSharedPtr<EasySessionCleanupOnceTest::FTestState>, State);
+bool FEasySessionWaitForCleanupOnce::Update()
+{
+	using namespace EasySessionCleanupOnceTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		Finish(*State);
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+			if (!State->CreateResult.IsSet() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
+
+			// Two failures land in the same recovery: the host dying, then the net
+			// driver closing. The first queues the cleanup destroy; the second finds
+			// it already queued.
+			Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Host died")));
+			Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Net driver closed")));
+			State->Phase = 1;
+			return false;
+
+		default:
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(FString::Printf(TEXT("The cleanup destroy ran exactly once (saw %d)"), State->Listener->DestroyedResults.Num()),
+				State->Listener->DestroyedResults.Num(), 1);
+			if (State->Listener->DestroyedResults.Num() > 0)
+			{
+				CurrentTest->TestEqual(TEXT("And it succeeded"), State->Listener->DestroyedResults[0], EEasySessionResult::Success);
+			}
+			CurrentTest->TestEqual(TEXT("The first failure's reason survived"), Subsystem->ConsumeLastDisconnectInfo().ReasonText.ToString(), FString(TEXT("Host died")));
+
+			Finish(*State);
+			return true;
+	}
+}
+
+/**
+ * Two failures inside one recovery run one cleanup. The connection dropping while the
+ * dead session is being destroyed re-enters the disconnect path, and a second queued
+ * destroy would complete as NoSessionExists - a failure popup right after a clean
+ * recovery, over a session that was already gone.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionCleanupOnceTest, "EasySession.Recovery.SecondFailureDuringCleanup", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionCleanupOnceTest;
+	using namespace EasySessionSecondDisconnectTest;
+
+	TSharedPtr<EasySessionCleanupOnceTest::FTestState> State = MakeShared<EasySessionCleanupOnceTest::FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	// Returning to the menu means browsing to a map, which a headless test world has
+	// no use for. Turning it off leaves the session cleanup, which is what is on trial.
+	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
+	Settings->bAutoReturnToMenuOnDisconnect = false;
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionDestroyed.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleDestroyed);
+
+	TSharedPtr<EasySessionCleanupOnceTest::FTestState> Shared = State;
+	Subsystem->CreateEasySession(MakeParams(TEXT("EasySession Cleanup Once Test")), FEasySessionCompleteDelegate::CreateLambda(
+		[Shared](EEasySessionResult Result, const FString&)
+		{
+			Shared->CreateResult = Result;
+		}));
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForCleanupOnce(State));
 	return true;
 }
 

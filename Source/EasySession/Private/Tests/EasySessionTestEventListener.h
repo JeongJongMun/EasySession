@@ -46,6 +46,17 @@ public:
 		EndedResults.Add(Result);
 	}
 
+	/** Results seen on OnSessionDestroyed, in order. */
+	UPROPERTY()
+	TArray<EEasySessionResult> DestroyedResults;
+
+	/** Bind to OnSessionDestroyed. */
+	UFUNCTION()
+	void HandleDestroyed(EEasySessionResult Result, const FString& ErrorMessage)
+	{
+		DestroyedResults.Add(Result);
+	}
+
 	/** Reasons seen on OnSessionFailure, in order. */
 	UPROPERTY()
 	TArray<FString> FailureReasons;

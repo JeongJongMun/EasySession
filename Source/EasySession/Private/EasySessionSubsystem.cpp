@@ -694,6 +694,12 @@ void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason 
 
 	if (IsInSession())
 	{
+		// A destroy already on the queue empties the session before a second one would run, so a second only adds a NoSessionExists failure.
+		if (RequestQueue->Contains(FEasySessionRequest::EType::Destroy))
+		{
+			return;
+		}
+
 		// Clean up the dead session so the player can host or join again right away.
 		DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 			[this, bReturnToMenu](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)

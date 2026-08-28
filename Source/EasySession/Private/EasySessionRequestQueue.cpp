@@ -28,6 +28,24 @@ void FEasySessionRequestQueue::Enqueue(TSharedRef<FEasySessionRequest> Request)
 	ScheduleNext();
 }
 
+bool FEasySessionRequestQueue::Contains(FEasySessionRequest::EType Type) const
+{
+	if (Active.IsValid() && Active->Type == Type)
+	{
+		return true;
+	}
+
+	for (const TSharedRef<FEasySessionRequest>& Request : Pending)
+	{
+		if (Request->Type == Type)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::PopActive()
 {
 	TSharedPtr<FEasySessionRequest> Popped = Active;
