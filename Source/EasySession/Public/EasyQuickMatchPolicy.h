@@ -67,6 +67,9 @@ public:
 
 private:
 
+	/** Tests feed crafted search results into the candidate pipeline and read what it decided. */
+	friend class FEasySessionTestAccess;
+
 	/** Move to a new state and notify listeners. */
 	void SetState(EEasyQuickMatchState NewState);
 

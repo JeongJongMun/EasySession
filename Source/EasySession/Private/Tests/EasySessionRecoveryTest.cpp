@@ -454,4 +454,150 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+namespace EasySessionNetworkFilterTest
+{
+	/** Maximum time to wait for each step before failing. */
+	static constexpr double TimeoutSeconds = 20.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** A second instance whose world stands in for another PIE instance's. */
+		TStrongObjectPtr<UGameInstance> ForeignGameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		int32 Phase = 0;
+		double StartTime = 0.0;
+		bool bAutoReturnWasEnabled = true;
+	};
+
+	static void Finish(FTestState& State)
+	{
+		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		EasySessionTest::DestroyGameInstance(State.ForeignGameInstance.Get());
+		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
+	}
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForNetworkFilter, TSharedPtr<EasySessionNetworkFilterTest::FTestState>, State);
+bool FEasySessionWaitForNetworkFilter::Update()
+{
+	using namespace EasySessionNetworkFilterTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UWorld* World = State->GameInstance->GetWorld();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		Finish(*State);
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			// The host hears about a client's dead connection through the same broadcast.
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::ConnectionLost, TEXT("a client dropped"));
+			CurrentTest->TestTrue(TEXT("The host keeps its session over a client's failure"), Subsystem->IsInSession());
+			CurrentTest->TestEqual(TEXT("The failure was still reported"), State->Listener->FailureReasons.Num(), 1);
+			CurrentTest->TestFalse(TEXT("No disconnect was recorded for the host"), Subsystem->HasPendingDisconnectInfo());
+
+			// Another instance's world fails - PIE neighbors share the engine broadcast.
+			GEngine->BroadcastNetworkFailure(State->ForeignGameInstance->GetWorld(), nullptr, ENetworkFailure::ConnectionLost, TEXT("someone else's world"));
+			CurrentTest->TestTrue(TEXT("A foreign world's failure changes nothing"), Subsystem->IsInSession());
+			CurrentTest->TestEqual(TEXT("And is not reported here"), State->Listener->FailureReasons.Num(), 1);
+
+			// The same broadcast on a client is a lost host.
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::ConnectionLost, TEXT("lost the host"));
+
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("The client's cleanup destroy ran"), State->Listener->DestroyedResults.Num(), 1);
+			CurrentTest->TestEqual(TEXT("The disconnect reason is the lost connection"), Subsystem->ConsumeLastDisconnectInfo().Reason, EEasyDisconnectReason::ConnectionLost);
+
+			// With no world and no session there is nothing this failure could mean here.
+			const int32 ReasonsBefore = State->Listener->FailureReasons.Num();
+			GEngine->BroadcastNetworkFailure(nullptr, nullptr, ENetworkFailure::ConnectionLost, TEXT("stray"));
+			CurrentTest->TestEqual(TEXT("A worldless failure outside a session is ignored"), State->Listener->FailureReasons.Num(), ReasonsBefore);
+
+			// A refusal the host wrote reaches the player verbatim.
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::FailureReceived, TEXT("Wrong password."));
+			const FEasyDisconnectInfo Refusal = Subsystem->ConsumeLastDisconnectInfo();
+			CurrentTest->TestEqual(TEXT("A host-written refusal is recorded as a rejection"), Refusal.Reason, EEasyDisconnectReason::Rejected);
+			CurrentTest->TestEqual(TEXT("With the host's own sentence"), Refusal.ReasonText.ToString(), FString(TEXT("Wrong password.")));
+
+			Finish(*State);
+			return true;
+		}
+	}
+}
+
+/**
+ * What counts as a disconnect is decided in HandleNetworkFailure, and every branch of
+ * that decision was previously untested - the recovery tests start below it. The costly
+ * misjudgment is the host reading a client's dead connection as losing its own session
+ * and tearing the room down; the filter rows for foreign worlds and worldless failures
+ * keep PIE neighbors and stray broadcasts from doing the same.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNetworkFilterTest, "EasySession.Recovery.NetworkFailureFilter", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionNetworkFilterTest;
+	using EasySessionSecondDisconnectTest::MakeParams;
+
+	// The engine logs every BroadcastNetworkFailure call at Error level, and this test is the caller.
+	AddExpectedError(TEXT("UEngine::BroadcastNetworkFailure"), EAutomationExpectedErrorFlags::Contains, 0);
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+	State->ForeignGameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->ForeignGameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		Finish(*State);
+		return false;
+	}
+
+	// Returning to the menu means browsing to a map, which a headless test world has
+	// no use for. Turning it off leaves the filter decisions, which are what is on trial.
+	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
+	Settings->bAutoReturnToMenuOnDisconnect = false;
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionFailure.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionFailure);
+	Subsystem->OnSessionDestroyed.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleDestroyed);
+
+	Subsystem->CreateEasySession(MakeParams(TEXT("EasySession Network Filter Test")));
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForNetworkFilter(State));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

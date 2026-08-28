@@ -209,4 +209,160 @@ bool FEasySessionPasswordUpdateTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+namespace EasySessionApprovalTableTest
+{
+	/** Maximum time to wait for each queued operation before failing. */
+	static constexpr double TimeoutSeconds = 20.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+	};
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForApprovalTable, TSharedPtr<EasySessionApprovalTableTest::FTestState>, State);
+bool FEasySessionWaitForApprovalTable::Update()
+{
+	using namespace EasySessionApprovalTableTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	auto Approve = [Subsystem](const TCHAR* Password)
+	{
+		return FEasySessionTestAccess::AskApproveJoin(*Subsystem, Password);
+	};
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			// An open room takes anyone, whatever they typed.
+			CurrentTest->TestEqual(TEXT("Open room, no password"), Approve(TEXT("")), EEasyJoinApprovalResult::Approved);
+			CurrentTest->TestEqual(TEXT("Open room, stray password"), Approve(TEXT("anything")), EEasyJoinApprovalResult::Approved);
+
+			Subsystem->DestroyEasySession();
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 1:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			FEasySessionHostParams Params;
+			Params.SessionDisplayName = TEXT("EasySession Approval Table Locked");
+			Params.bIsLANMatch = true;
+			Params.bStartListening = false;
+			Params.Password = TEXT("hunter2");
+			Params.bAllowJoinInProgress = false;
+			Subsystem->CreateEasySession(Params);
+
+			State->Phase = 2;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 2:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("The right password enters"), Approve(TEXT("hunter2")), EEasyJoinApprovalResult::Approved);
+			CurrentTest->TestEqual(TEXT("Whitespace around it is forgiven"), Approve(TEXT("  hunter2  ")), EEasyJoinApprovalResult::Approved);
+			CurrentTest->TestEqual(TEXT("A wrong password is refused"), Approve(TEXT("wrong")), EEasyJoinApprovalResult::WrongPassword);
+			CurrentTest->TestEqual(TEXT("No password is refused"), Approve(TEXT("")), EEasyJoinApprovalResult::WrongPassword);
+			CurrentTest->TestEqual(TEXT("The comparison is case sensitive"), Approve(TEXT("HUNTER2")), EEasyJoinApprovalResult::WrongPassword);
+
+			Subsystem->StartEasySession();
+			State->Phase = 3;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 3:
+		{
+			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			// With join-in-progress off, a started match refuses even the right password.
+			CurrentTest->TestEqual(TEXT("A started match turns the right password away"), Approve(TEXT("hunter2")), EEasyJoinApprovalResult::Refused);
+
+			Subsystem->DestroyEasySession();
+			State->Phase = 4;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * The join decision table, asked at the single call the approval beacon and PreLogin
+ * both route into. The password tests elsewhere only prove the password was stored;
+ * this one proves what the stored value decides.
+ *
+ * Two rows cannot run headless and stay on the on-device list: the capacity refusal
+ * needs connected players for AtCapacity, and the friends bypass needs a friends
+ * interface the NULL subsystem does not provide.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionApprovalTableTest, "EasySession.JoinApproval.ApprovalTable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionApprovalTableTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionApprovalTableTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	FEasySessionHostParams OpenParams;
+	OpenParams.SessionDisplayName = TEXT("EasySession Approval Table Open");
+	OpenParams.bIsLANMatch = true;
+	OpenParams.bStartListening = false;
+	Subsystem->CreateEasySession(OpenParams);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForApprovalTable(State));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

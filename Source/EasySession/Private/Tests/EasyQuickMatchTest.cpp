@@ -7,6 +7,7 @@
 #include "EasyQuickMatchPolicy.h"
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
@@ -476,6 +477,229 @@ bool FEasyQuickMatchAlreadyInSessionTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitAlreadyInSession(State));
+	return true;
+}
+
+namespace EasySessionCandidateTest
+{
+	/** Maximum time to wait for each step before failing. */
+	static constexpr double TimeoutSeconds = 30.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		/** A joinable-but-unreachable result borrowed from the seed session, cloned into every candidate. */
+		FOnlineSessionSearchResult BaseResult;
+
+		/** Whether the first real search pass was seen running. Its release opens the injection window. */
+		bool bFirstSearchRan = false;
+
+		/** Destroys seen before the injection - the seed session's own cleanup is one of them. */
+		int32 DestroysBeforeInjection = 0;
+
+		TOptional<EEasySessionResult> QuickMatchResult;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+	};
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForCandidateRun, TSharedPtr<EasySessionCandidateTest::FTestState>, State);
+bool FEasySessionWaitForCandidateRun::Update()
+{
+	using namespace EasySessionCandidateTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	TSharedPtr<FTestState> Shared = State;
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			State->BaseResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);
+			if (!CurrentTest->TestTrue(TEXT("The crafted base result is joinable"), State->BaseResult.IsValid()))
+			{
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+
+			Subsystem->DestroyEasySession();
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 1:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			FEasyQuickMatchParams Params;
+			Params.Search.bLANQuery = true;
+			// A short first pass and a long inter-pass delay open a quiet window to inject into.
+			Params.Search.TimeoutSeconds = 0.5f;
+			Params.MaxSearchPasses = 2;
+			Params.DelayBetweenPassesSeconds = 10.0f;
+			Params.bAllowHostFallback = false;
+
+			Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&)
+				{
+					Shared->QuickMatchResult = Result;
+				}));
+
+			State->Phase = 2;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 2:
+		{
+			if (State->QuickMatchResult.IsSet())
+			{
+				CurrentTest->AddError(TEXT("The run finished before anything was injected - the injection window was missed."));
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+
+			// The quiet window: the first pass's search ran and was released, and the next
+			// pass is 10s away. IsBusy cannot spot it - it stays true for the whole run.
+			if (!State->bFirstSearchRan)
+			{
+				State->bFirstSearchRan = FEasySessionTestAccess::HasActiveSearch(*Subsystem);
+				return false;
+			}
+			if (FEasySessionTestAccess::HasActiveSearch(*Subsystem) || Subsystem->GetQuickMatchState() != EEasyQuickMatchState::Searching)
+			{
+				return false;
+			}
+
+			UEasyQuickMatchPolicy* Policy = Subsystem->GetActiveQuickMatchPolicy();
+			if (!CurrentTest->TestNotNull(TEXT("The quick match policy is active"), Policy))
+			{
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+
+			// One candidate per assertion, ordered worst-first on purpose. They share the
+			// seed session's id, so the retry ledger ends with one key for all of them.
+			Policy->TopCandidateRandomization = 1;
+			auto MakeCandidate = [Shared](const TCHAR* Name, int32 Ping, bool bLocked)
+			{
+				FEasySessionSearchResult Candidate;
+				Candidate.NativeResult = Shared->BaseResult;
+				Candidate.SessionDisplayName = Name;
+				Candidate.PingInMs = Ping;
+				Candidate.MaxPlayers = 4;
+				Candidate.OpenSlots = 2;
+				Candidate.bPasswordProtected = bLocked;
+				return Candidate;
+			};
+
+			State->DestroysBeforeInjection = State->Listener->DestroyedResults.Num();
+
+			TArray<FEasySessionSearchResult> Crafted;
+			Crafted.Add(MakeCandidate(TEXT("Far"), 200, false));
+			Crafted.Add(MakeCandidate(TEXT("Locked"), 5, true));
+			Crafted.Add(MakeCandidate(TEXT("Near"), 20, false));
+			Crafted.Add(MakeCandidate(TEXT("Mid"), 90, false));
+			FEasySessionTestAccess::DriveQuickMatchSearch(*Policy, Crafted);
+
+			const TArray<FEasySessionSearchResult> Candidates = FEasySessionTestAccess::GetQuickMatchCandidates(*Policy);
+			CurrentTest->TestEqual(TEXT("The locked room is not a candidate"), Candidates.Num(), 3);
+			if (Candidates.Num() == 3)
+			{
+				CurrentTest->TestEqual(TEXT("The nearest room is tried first"), Candidates[0].SessionDisplayName, FString(TEXT("Near")));
+				CurrentTest->TestEqual(TEXT("The middle bucket is second"), Candidates[1].SessionDisplayName, FString(TEXT("Mid")));
+				CurrentTest->TestEqual(TEXT("The far room is last"), Candidates[2].SessionDisplayName, FString(TEXT("Far")));
+			}
+
+			State->Phase = 3;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (!State->QuickMatchResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("Exhausting every candidate without fallback ends in NoSessionsFound"),
+				State->QuickMatchResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestEqual(TEXT("Every candidate was actually tried - each join left one cleanup destroy"),
+				State->Listener->DestroyedResults.Num() - State->DestroysBeforeInjection, 3);
+
+			UEasyQuickMatchPolicy* Policy = Subsystem->GetActiveQuickMatchPolicy();
+			if (Policy != nullptr)
+			{
+				// One key, not three: the crafted candidates share the seed session's id.
+				CurrentTest->TestEqual(TEXT("The refused session is on the no-retry ledger"),
+					FEasySessionTestAccess::GetQuickMatchFailedSessionKeys(*Policy).Num(), 1);
+			}
+
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * The half of Quick Match after a search returns rooms: password rooms are excluded,
+ * candidates are tried best score first, and a refused room lands on the no-retry
+ * ledger. None of it ran under automation before, because the only way results entered
+ * the policy was a real search, and one process cannot find its own LAN session.
+ *
+ * The crafted candidates borrow a real session's info with port 0, so every join
+ * genuinely runs and fails on address resolve - which is exactly what drives the
+ * try-next-candidate loop to the end.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionCandidateTest, "EasySession.QuickMatch.TriesCandidatesInScoreOrder", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionCandidateTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionCandidateTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionDestroyed.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleDestroyed);
+
+	FEasySessionHostParams SeedParams;
+	SeedParams.SessionDisplayName = TEXT("EasySession Candidate Seed");
+	SeedParams.bIsLANMatch = true;
+	SeedParams.bStartListening = false;
+	Subsystem->CreateEasySession(SeedParams);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForCandidateRun(State));
 	return true;
 }
 

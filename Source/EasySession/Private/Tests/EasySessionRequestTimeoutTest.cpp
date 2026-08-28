@@ -5,6 +5,12 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionRequest.h"
+#include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
+#include "EasySessionTestWorld.h"
+#include "EasySessionTypes.h"
+#include "Engine/GameInstance.h"
+#include "UObject/StrongObjectPtr.h"
 
 /**
  * Timeout rules of a queued request.
@@ -61,6 +67,138 @@ bool FEasySessionRequestTimeoutTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("Find cannot"), FEasySessionRequest(FEasySessionRequest::EType::Find).CouldHaveCreatedSession());
 	}
 
+	return true;
+}
+
+namespace EasySessionAbandonedCreateTest
+{
+	/** Maximum time to wait for each queued operation before failing. */
+	static constexpr double TimeoutSeconds = 20.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+		TOptional<EEasySessionResult> RetryResult;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+	};
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForAbandonedCreate, TSharedPtr<EasySessionAbandonedCreateTest::FTestState>, State);
+bool FEasySessionWaitForAbandonedCreate::Update()
+{
+	using namespace EasySessionAbandonedCreateTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	TSharedPtr<FTestState> Shared = State;
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			// The session stands in for one a late create left behind after its deadline.
+			FEasySessionTestAccess::CleanupAsAbandoned(*Subsystem, FEasySessionRequest::EType::Create);
+
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 1:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			// The point of the branch: the leftover is gone and a new create is not blocked.
+			FEasySessionHostParams Params;
+			Params.SessionDisplayName = TEXT("EasySession Abandoned Create Retry");
+			Params.bIsLANMatch = true;
+			Params.bStartListening = false;
+			Subsystem->CreateEasySession(Params, FEasySessionCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&)
+				{
+					Shared->RetryResult = Result;
+				}));
+
+			State->Phase = 2;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 2:
+		{
+			if (!State->RetryResult.IsSet() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("A create after the abandoned one is not blocked"), State->RetryResult.GetValue(), EEasySessionResult::Success);
+
+			Subsystem->DestroyEasySession();
+			State->Phase = 3;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * A create abandoned by the watchdog can leave a session behind, and CleanupRequest
+ * destroys it so the next create starts clean - the behavior EasySessionSettings
+ * promises for Request Timeout Seconds. NULL completes creates synchronously and can
+ * never abandon one for real, so the cleanup is entered directly with the state the
+ * watchdog would arrive with: a create-typed request, abandoned, session existing.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAbandonedCreateTest, "EasySession.Subsystem.AbandonedCreateLeavesNoSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionAbandonedCreateTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionAbandonedCreateTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	FEasySessionHostParams Params;
+	Params.SessionDisplayName = TEXT("EasySession Abandoned Create Test");
+	Params.bIsLANMatch = true;
+	Params.bStartListening = false;
+	Subsystem->CreateEasySession(Params);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForAbandonedCreate(State));
 	return true;
 }
 

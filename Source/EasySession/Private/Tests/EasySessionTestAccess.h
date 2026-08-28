@@ -6,9 +6,12 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasyQuickMatchPolicy.h"
 #include "EasySessionJoinApproval.h"
+#include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionSubsystem.h"
+#include "GameFramework/OnlineReplStructs.h"
 #include "EasySessionTypes.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "Online/OnlineSessionNames.h"
@@ -149,6 +152,44 @@ public:
 		}
 
 		return Result;
+	}
+
+	/** Ask the server gate the join question directly - the approval beacon and PreLogin both route into this same call. */
+	static EEasyJoinApprovalResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& SuppliedPassword)
+	{
+		FString Reason;
+		return Subsystem.ServerGate.IsValid()
+			? Subsystem.ServerGate->ApproveJoin(FUniqueNetIdRepl(), SuppliedPassword, Reason)
+			: EEasyJoinApprovalResult::Refused;
+	}
+
+	/**
+	 * Run the abandoned-request cleanup for a request of this type, standing in for the watchdog arriving there.
+	 * NULL completes creates synchronously, so a create genuinely abandoned mid-flight cannot be produced headless.
+	 */
+	static void CleanupAsAbandoned(UEasySessionSubsystem& Subsystem, FEasySessionRequest::EType Type)
+	{
+		FEasySessionRequest Request(Type);
+		Request.SessionName = NAME_GameSession;
+		Subsystem.CleanupRequest(Request, /*bAbandoned*/ true);
+	}
+
+	/** Feed a finished search into the quick match policy, standing in for a search pass completing with these results. */
+	static void DriveQuickMatchSearch(UEasyQuickMatchPolicy& Policy, const TArray<FEasySessionSearchResult>& Results)
+	{
+		Policy.HandleSearchComplete(EEasySessionResult::Success, FString(), Results);
+	}
+
+	/** The candidates the quick match run will try, in try order. */
+	static TArray<FEasySessionSearchResult> GetQuickMatchCandidates(const UEasyQuickMatchPolicy& Policy)
+	{
+		return Policy.Candidates;
+	}
+
+	/** The sessions the quick match run refuses to retry. */
+	static TSet<FString> GetQuickMatchFailedSessionKeys(const UEasyQuickMatchPolicy& Policy)
+	{
+		return Policy.FailedSessionKeys;
 	}
 };
 
