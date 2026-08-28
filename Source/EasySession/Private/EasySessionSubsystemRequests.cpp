@@ -159,11 +159,17 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 
 	if (Request.Type == FEasySessionRequest::EType::Find)
 	{
-		// The online service refuses a new search while it thinks one is running. Not
-		// queued: a queued cancel would run behind a search that is already waiting.
+		// The service keeps running an abandoned search and refuses every new one meanwhile - InProgress proves the slot holds ours and not another caller's.
 		if (bAbandoned && ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
 		{
 			UE_LOG(LogEasySession, Warning, TEXT("Cancelling the abandoned search so later searches are not refused."));
+			Sessions->CancelFindSessions();
+		}
+		// A synchronous failure leaves the service holding our search, and its cancel frees the slot only for a search marked InProgress - a mark ours to restore.
+		else if (ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::Failed)
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Releasing the failed search so later searches are not refused."));
+			ActiveSearch->SearchState = EOnlineAsyncTaskState::InProgress;
 			Sessions->CancelFindSessions();
 		}
 

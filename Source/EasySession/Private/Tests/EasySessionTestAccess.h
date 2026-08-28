@@ -101,6 +101,21 @@ public:
 		return Value;
 	}
 
+	/**
+	 * Mark the running search as failed while the online service still holds it - the shape a synchronous search failure leaves behind.
+	 *
+	 * @return Whether there was a running search to fail.
+	 */
+	static bool FailActiveSearch(UEasySessionSubsystem& Subsystem)
+	{
+		if (Subsystem.ActiveSearch.IsValid() && Subsystem.ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
+		{
+			Subsystem.ActiveSearch->SearchState = EOnlineAsyncTaskState::Failed;
+			return true;
+		}
+		return false;
+	}
+
 	/** The beacon host the join approval registered on - the plugin's own or the project's. Null while none runs. */
 	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
 	{

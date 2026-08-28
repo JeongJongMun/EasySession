@@ -159,6 +159,130 @@ bool FEasySessionSearchRecoveryTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+namespace EasySessionFailedSearchTest
+{
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+		bool bSearchFailed = false;
+		bool bRecoveryStarted = false;
+		TOptional<EEasySessionResult> PendingResult;
+		float OriginalTimeout = 30.0f;
+		double StartTime = 0.0;
+	};
+
+	static void Finish(FTestState& State)
+	{
+		GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds = State.OriginalTimeout;
+		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
+	}
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForFailedSearchRecovery, TSharedPtr<EasySessionFailedSearchTest::FTestState>, State);
+bool FEasySessionWaitForFailedSearchRecovery::Update()
+{
+	using namespace EasySessionFailedSearchTest;
+	using EasySessionSearchRecoveryTest::MakeParams;
+	using EasySessionSearchRecoveryTest::MaxWaitSeconds;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	TSharedPtr<FTestState> Shared = State;
+
+	if (FPlatformTime::Seconds() - State->StartTime > MaxWaitSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out. Queue: %s"), *Subsystem->GetQueueStatus()));
+		Finish(*State);
+		return true;
+	}
+
+	// The failure is injected while the service holds the running search, which is the
+	// state a synchronous LAN failure leaves: SearchState Failed, slot still taken.
+	if (!State->bSearchFailed)
+	{
+		if (FEasySessionTestAccess::FailActiveSearch(*Subsystem))
+		{
+			State->bSearchFailed = true;
+		}
+		return false;
+	}
+
+	if (!State->PendingResult.IsSet())
+	{
+		return false;
+	}
+
+	const EEasySessionResult Result = State->PendingResult.GetValue();
+	State->PendingResult.Reset();
+
+	if (!State->bRecoveryStarted)
+	{
+		CurrentTest->TestEqual(TEXT("The watchdog gave up on the failed search"), Result, EEasySessionResult::Timeout);
+
+		// The recovery search gets the real deadline back, same as the abandoned-search test.
+		GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds = State->OriginalTimeout;
+
+		State->bRecoveryStarted = true;
+		State->StartTime = FPlatformTime::Seconds();
+		Subsystem->FindEasySessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+			[Shared](EEasySessionResult InResult, const FString&, const TArray<FEasySessionSearchResult>&)
+			{
+				Shared->PendingResult = InResult;
+			}));
+		return false;
+	}
+
+	// Success specifically: a service still holding the failed search refuses this one
+	// and the drop detection reports SearchFailure instead.
+	CurrentTest->TestEqual(TEXT("A search after a synchronously failed one still reaches the online service"), Result, EEasySessionResult::Success);
+
+	Finish(*State);
+	return true;
+}
+
+/**
+ * Searching has to survive a search that fails synchronously.
+ *
+ * The online service marks such a search Failed but keeps holding it, its cancel only
+ * takes a search it believes is running, and nothing else ever releases the slot - so
+ * one failed search would swallow every search after it until the game restarts.
+ *
+ * The failure is injected by flipping the running search's state, because the real
+ * trigger - a LAN broadcast that fails to send - needs a machine with no network.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFailedSearchRecoveryTest, "EasySession.Search.RecoversFromASynchronouslyFailedSearch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionFailedSearchRecoveryTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionFailedSearchTest;
+	using EasySessionSearchRecoveryTest::MakeParams;
+	using EasySessionSearchRecoveryTest::TestRequestTimeoutSeconds;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	State->OriginalTimeout = Settings->RequestTimeoutSeconds;
+	Settings->RequestTimeoutSeconds = TestRequestTimeoutSeconds;
+
+	Subsystem->FindEasySessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+		[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>&)
+		{
+			State->PendingResult = Result;
+		}));
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForFailedSearchRecovery(State));
+	return true;
+}
+
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionInterruptOwnSearch, TSharedPtr<EasySessionSearchRecoveryTest::FTestState>, State);
 bool FEasySessionInterruptOwnSearch::Update()
 {
