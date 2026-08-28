@@ -62,10 +62,7 @@ These guides are still being written and do not yet cover every feature.
 
 ## Modules
 
-| Module | Type | Description |
-|---|---|---|
-| `EasySession` | Runtime | Core subsystem, session/matchmaking API, Blueprint nodes |
-| `EasySessionEditor` | Editor | Settings validation and editor tooling |
+One runtime module, `EasySession`: the core subsystem, the session/matchmaking API, and the Blueprint nodes.
 
 ## License
 
