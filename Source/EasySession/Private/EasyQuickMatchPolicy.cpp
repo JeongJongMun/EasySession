@@ -282,7 +282,16 @@ void UEasyQuickMatchPolicy::HostFallbackSession()
 
 	UE_LOG(LogEasySession, Log, TEXT("QuickMatch found no session - hosting our own."));
 	SetState(EEasyQuickMatchState::Hosting);
-	SubsystemPtr->CreateEasySession(Params.Host, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleHostComplete));
+	SubsystemPtr->CreateEasySession(MakeFallbackHostParams(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleHostComplete));
+}
+
+FEasySessionHostParams UEasyQuickMatchPolicy::MakeFallbackHostParams() const
+{
+	// The fallback room must be one this run's own search would find: on the searched network, with every required key advertised at the required value.
+	FEasySessionHostParams FallbackParams = Params.Host;
+	FallbackParams.bIsLANMatch = Params.Search.bLANQuery;
+	FallbackParams.CustomSettings.Append(Params.Search.RequiredCustomSettings);
+	return FallbackParams;
 }
 
 void UEasyQuickMatchPolicy::HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage)

@@ -411,7 +411,10 @@ struct EASYSESSION_API FEasyQuickMatchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionSearchParams Search;
 
-	/** Session to host when no session is found. Ignored while Allow Host Fallback is off. */
+	/**
+	 * Session to host when no session is found. Ignored while Allow Host Fallback is off.
+	 * The fallback inherits the search's filters: it hosts on the searched network (LAN Query) and advertises every Required Custom Settings pair, overwriting the same key in Custom Settings.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionHostParams Host;
 

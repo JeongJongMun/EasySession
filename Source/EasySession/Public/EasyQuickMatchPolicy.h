@@ -94,6 +94,9 @@ private:
 	/** Host our own session because no session could be joined. */
 	void HostFallbackSession();
 
+	/** The run's host params with the search's network and required custom settings folded in. */
+	FEasySessionHostParams MakeFallbackHostParams() const;
+
 	/** Called when the host fallback finished. */
 	void HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage);
 

@@ -27,6 +27,11 @@ up receiving strangers in their own menu.
 `Allow Host Fallback` is off by default, so Map Name does not matter until you turn it on.
 The bundled example leaves it off and only searches and joins.
 
+When the fallback does host, it inherits the search's filters: the session is created on
+the network the search looked at (`LAN Query`), and every `Required Custom Settings` pair
+is advertised on it, overwriting the same key in Host > Custom Settings. The room a run
+opens is one its own search would have found.
+
 Progress can be shown by taking the policy from `Get Easy Session Subsystem` -> `Get Active Quick Match Policy` and binding its `OnStateChanged`.
 
 The states are `Searching`, `Joining`, `Hosting` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.

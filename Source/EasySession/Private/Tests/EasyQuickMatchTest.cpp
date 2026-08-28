@@ -225,6 +225,115 @@ bool FEasyQuickMatchHostFallbackWithoutMapTest::RunTest(const FString& Parameter
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitFallbackFilters, TSharedPtr<EasyQuickMatchTest::FTestState>, State);
+bool FEasyQuickMatchWaitFallbackFilters::Update()
+{
+	using namespace EasyQuickMatchTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (!State->QuickMatchResult.IsSet())
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+		{
+			CurrentTest->AddError(TEXT("Timed out waiting for QuickMatch to complete."));
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+		return false;
+	}
+
+	if (!State->bCleanupIssued)
+	{
+		CurrentTest->TestEqual(TEXT("QuickMatch result"), State->QuickMatchResult.GetValue(), EEasySessionResult::Success);
+		CurrentTest->TestTrue(TEXT("Fell back to hosting"), Subsystem->IsHost());
+
+		// The live session must advertise what the search filtered on, or the next player's identical search skips this room.
+		const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
+		CurrentTest->TestEqual(TEXT("The filtered key overwrote the host value"), ReadBack.CustomSettings.FindRef(TEXT("GameMode")), FString(TEXT("Deathmatch")));
+		CurrentTest->TestEqual(TEXT("The filter-only key was added"), ReadBack.CustomSettings.FindRef(TEXT("Region")), FString(TEXT("KR")));
+		CurrentTest->TestEqual(TEXT("The host-only key survived"), ReadBack.CustomSettings.FindRef(TEXT("MOTD")), FString(TEXT("Hello")));
+
+		Subsystem->DestroyEasySession();
+		State->bCleanupIssued = true;
+		State->StartTime = FPlatformTime::Seconds();
+		return false;
+	}
+
+	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+		{
+			CurrentTest->AddError(TEXT("Timed out waiting for the cleanup destroy."));
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+		return false;
+	}
+
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+	return true;
+}
+
+/**
+ * The fallback host inherits the search filters. Host params used to be passed to Create
+ * as given, so a LAN search could fall back to an online session, and a run filtering on
+ * GameMode=Deathmatch could open a room its own search would never return.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchFallbackFiltersTest, "EasySession.QuickMatch.FallbackHostMatchesTheFilters", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchFallbackFiltersTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyQuickMatchTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	FEasyQuickMatchParams Params;
+	Params.Search.bLANQuery = true;
+	Params.Search.TimeoutSeconds = 5.0f;
+	Params.Search.RequiredCustomSettings.Add(TEXT("GameMode"), TEXT("Deathmatch"));
+	Params.Search.RequiredCustomSettings.Add(TEXT("Region"), TEXT("KR"));
+	Params.Host.SessionDisplayName = TEXT("EasySession Fallback Filters Test");
+	// On purpose: the search filter must win over this stale host value.
+	Params.Host.CustomSettings.Add(TEXT("GameMode"), TEXT("Warmup"));
+	Params.Host.CustomSettings.Add(TEXT("MOTD"), TEXT("Hello"));
+	// Also on purpose: the LAN search must pull the fallback onto the LAN.
+	Params.Host.bIsLANMatch = false;
+	Params.Host.bStartListening = false;
+	Params.bAllowHostFallback = true;
+	Params.MaxSearchPasses = 1;
+	Params.DelayBetweenPassesSeconds = 0.0f;
+
+	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+		[State](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			State->QuickMatchResult = Result;
+		}));
+
+	// The NULL service forces LAN on every created session, so the network half of the
+	// fold is only observable here, on the params the fallback hands to Create.
+	UEasyQuickMatchPolicy* Policy = Subsystem->GetActiveQuickMatchPolicy();
+	if (TestNotNull(TEXT("The quick match policy is active"), Policy))
+	{
+		const FEasySessionHostParams Folded = FEasySessionTestAccess::MakeQuickMatchFallbackHostParams(*Policy);
+		TestTrue(TEXT("The LAN search pulls the fallback onto the LAN"), Folded.bIsLANMatch);
+		TestEqual(TEXT("The folded params carry the filtered value"), Folded.CustomSettings.FindRef(TEXT("GameMode")), FString(TEXT("Deathmatch")));
+	}
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitFallbackFilters(State));
+	return true;
+}
+
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitNoFallback, TSharedPtr<EasyQuickMatchTest::FTestState>, State);
 bool FEasyQuickMatchWaitNoFallback::Update()
 {

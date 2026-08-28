@@ -26,6 +26,11 @@ Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방
 `Allow Host Fallback`은 기본값이 꺼짐이라, 켜지 않으면 Map Name은 볼 일이 없습니다.
 플러그인의 예제도 꺼둔 채로 검색과 참가만 합니다.
 
+폴백이 실제로 호스트할 때는 검색의 필터를 물려받습니다. 검색이 본 네트워크(`LAN Query`)에서
+세션을 만들고, `Required Custom Settings`의 모든 키-값을 그 세션에 광고하며, Host >
+Custom Settings에 같은 키가 있으면 덮어씁니다. 이 판이 여는 방은 자기 검색으로도 찾았을
+방입니다.
+
 진행 상황은 `Get Easy Session Subsystem` -> `Get Active Quick Match Policy`로 정책을 얻어 그 `OnStateChanged`를 바인딩하면 보여줄 수 있습니다.
 
 상태는 `Searching`, `Joining`, `Hosting`, `Complete` 넷입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 방을 만들 때만 나옵니다.

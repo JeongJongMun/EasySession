@@ -180,6 +180,12 @@ public:
 		Policy.HandleSearchComplete(EEasySessionResult::Success, FString(), Results);
 	}
 
+	/** The host params the quick match fallback would create its session with. */
+	static FEasySessionHostParams MakeQuickMatchFallbackHostParams(const UEasyQuickMatchPolicy& Policy)
+	{
+		return Policy.MakeFallbackHostParams();
+	}
+
 	/** The candidates the quick match run will try, in try order. */
 	static TArray<FEasySessionSearchResult> GetQuickMatchCandidates(const UEasyQuickMatchPolicy& Policy)
 	{
