@@ -250,14 +250,28 @@ void UEasySessionSubsystem::StartQuickMatch(const FEasyQuickMatchParams& QuickMa
 
 	UEasyQuickMatchPolicy* Policy = NewObject<UEasyQuickMatchPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyQuickMatchPolicy::StaticClass());
 	ActiveQuickMatchPolicy = Policy;
+	Policy->OnStateChanged.AddDynamic(this, &UEasySessionSubsystem::RelayQuickMatchStateChanged);
+	Policy->OnUpdated.AddDynamic(this, &UEasySessionSubsystem::RelayQuickMatchUpdated);
+	OnQuickMatchStarted.Broadcast();
 
 	Policy->Start(*this, QuickMatchParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			ActiveQuickMatchPolicy = nullptr;
-			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
+			// Observers first: the requester's delegate often tears down the very UI that is listening.
 			OnQuickMatchComplete.Broadcast(Result, ErrorMessage);
+			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
 		}));
+}
+
+void UEasySessionSubsystem::RelayQuickMatchStateChanged(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState)
+{
+	OnQuickMatchStateChanged.Broadcast(OldState, NewState);
+}
+
+void UEasySessionSubsystem::RelayQuickMatchUpdated(EEasyQuickMatchState QuickMatchState, int32 ElapsedSeconds)
+{
+	OnQuickMatchUpdated.Broadcast(QuickMatchState, ElapsedSeconds);
 }
 
 void UEasySessionSubsystem::CancelQuickMatch()

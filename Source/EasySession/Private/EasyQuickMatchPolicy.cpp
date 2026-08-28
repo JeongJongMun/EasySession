@@ -52,8 +52,29 @@ void UEasyQuickMatchPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEas
 
 	UE_LOG(LogEasySession, Log, TEXT("QuickMatch started (MaxPasses=%d, HostFallback=%d)"), Params.MaxSearchPasses, Params.bAllowHostFallback ? 1 : 0);
 
+	RunStartTimeSeconds = FPlatformTime::Seconds();
+	RunEndTimeSeconds = 0.0;
+
+	// The heartbeat between state changes, so elapsed-time UI does not need its own timer.
+	UpdatedTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
+	{
+		OnUpdated.Broadcast(State, GetElapsedSeconds());
+		return true;
+	}), 1.0f);
+
 	SetState(EEasyQuickMatchState::Searching);
 	RunSearchPass();
+}
+
+int32 UEasyQuickMatchPolicy::GetElapsedSeconds() const
+{
+	if (RunStartTimeSeconds <= 0.0)
+	{
+		return 0;
+	}
+
+	const double End = RunEndTimeSeconds > 0.0 ? RunEndTimeSeconds : FPlatformTime::Seconds();
+	return static_cast<int32>(End - RunStartTimeSeconds);
 }
 
 void UEasyQuickMatchPolicy::Cancel()
@@ -81,8 +102,10 @@ void UEasyQuickMatchPolicy::SetState(EEasyQuickMatchState NewState)
 		return;
 	}
 
+	const EEasyQuickMatchState OldState = State;
 	State = NewState;
-	OnStateChanged.Broadcast(NewState);
+	OnStateChanged.Broadcast(OldState, NewState);
+	OnUpdated.Broadcast(NewState, GetElapsedSeconds());
 }
 
 void UEasyQuickMatchPolicy::RunSearchPass()
@@ -344,6 +367,15 @@ void UEasyQuickMatchPolicy::Complete(EEasySessionResult Result, const FString& E
 		FTSTicker::GetCoreTicker().RemoveTicker(PassDelayTickerHandle);
 		PassDelayTickerHandle.Reset();
 	}
+
+	if (UpdatedTickerHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(UpdatedTickerHandle);
+		UpdatedTickerHandle.Reset();
+	}
+
+	// Frozen before the Complete state broadcast, so every listener reads the same final time.
+	RunEndTimeSeconds = FPlatformTime::Seconds();
 
 	UE_LOG(LogEasySession, Log, TEXT("QuickMatch complete: %s"), *EasySession::ResultToString(Result));
 	SetState(EEasyQuickMatchState::Complete);

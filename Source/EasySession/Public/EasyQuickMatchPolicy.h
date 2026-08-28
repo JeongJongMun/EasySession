@@ -11,7 +11,10 @@
 class UEasySessionSubsystem;
 
 /** Multicast event fired when the quick match state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasyQuickMatchStateEvent, EEasyQuickMatchState, NewState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyQuickMatchStateEvent, EEasyQuickMatchState, OldState, EEasyQuickMatchState, NewState);
+
+/** Multicast event fired on every state change and once a second while the run is active. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyQuickMatchUpdatedEvent, EEasyQuickMatchState, State, int32, ElapsedSeconds);
 
 /**
  * Quick Match policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
@@ -30,6 +33,10 @@ public:
 	/** Fired whenever the quick match state changes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasyQuickMatchStateEvent OnStateChanged;
+
+	/** Fired on every state change and once a second while the run is active. Drives progress text such as "Searching... 0:42". */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasyQuickMatchUpdatedEvent OnUpdated;
 
 	/**
 	 * Ping thresholds (in milliseconds) used to group sessions into buckets.
@@ -56,6 +63,10 @@ public:
 	/** Get the current quick match state. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasyQuickMatchState GetState() const { return State; }
+
+	/** @return Whole seconds since this run started. Zero before the start, and it stops counting when the run completes. */
+	UFUNCTION(BlueprintPure, Category = "EasySession")
+	int32 GetElapsedSeconds() const;
 
 public:
 
@@ -147,4 +158,13 @@ private:
 
 	/** Ticker handle for the delay between search passes. */
 	FTSTicker::FDelegateHandle PassDelayTickerHandle;
+
+	/** Ticker handle for the once-a-second OnUpdated broadcast. */
+	FTSTicker::FDelegateHandle UpdatedTickerHandle;
+
+	/** When the run started, in FPlatformTime seconds. Zero while idle. */
+	double RunStartTimeSeconds = 0.0;
+
+	/** When the run completed, in FPlatformTime seconds. Elapsed time freezes here. */
+	double RunEndTimeSeconds = 0.0;
 };

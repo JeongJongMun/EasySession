@@ -108,7 +108,7 @@ there is no C++ column.
 
 | Node | Answers |
 |---|---|
-| Get Active Quick Match Policy | The policy object, for binding `OnStateChanged` |
+| Get Active Quick Match Policy | The running policy object. Progress is also relayed on the subsystem's own events, which need no policy in hand |
 
 > **Which session are these about?** The game session - the one players find,
 > join and play in. There is exactly one per process (see Limitations in the README),
@@ -165,7 +165,10 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session finished - the match is over, the session is not |
 | `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session finished |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session finished, both on the host and on a client that left |
-| `OnQuickMatchComplete` | `Result`, `ErrorMessage` | A Quick Match run finished, whether it joined or ended up hosting. Ask `Is Easy Session Host` which |
+| `OnQuickMatchStarted` | - | A Quick Match run was accepted and its policy registered. Always the first event of a run |
+| `OnQuickMatchStateChanged` | `OldState`, `NewState` | The Quick Match state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |
+| `OnQuickMatchUpdated` | `State`, `ElapsedSeconds` | Every Quick Match state change plus once a second while it runs - drives elapsed-time labels |
+| `OnQuickMatchComplete` | `Result`, `ErrorMessage` | A Quick Match run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
 | `OnSessionFailure` | `Reason` (String) | Not an operation finishing - the connection died or a network error hit. The dead session is cleaned up for you |
 | `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
 
@@ -266,7 +269,7 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 The object behind `Quick Match Easy Session`: it searches, joins the best result it finds, and hosts when it finds none.
 
-Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> float`** (higher = joined first) for custom pick-a-session criteria. Editable defaults: `PingBucketsMs` (default `[50, 100, 150]`), `TopCandidateRandomization` (default 3). Query with `GetState`, or bind `OnStateChanged`.
+Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> float`** (higher = joined first) for custom pick-a-session criteria. Editable defaults: `PingBucketsMs` (default `[50, 100, 150]`), `TopCandidateRandomization` (default 3). Query with `GetState` and `GetElapsedSeconds`, or bind `OnStateChanged` / `OnUpdated`.
 
 ## 8. UEasySessionSettings (Project Settings -> Plugins -> EasySession)
 

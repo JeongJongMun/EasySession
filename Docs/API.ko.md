@@ -103,7 +103,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 | 노드 | 무엇을 답하는가 |
 |---|---|
-| Get Active Quick Match Policy | 정책 객체. `OnStateChanged` 바인딩에 씁니다 |
+| Get Active Quick Match Policy | 실행 중인 정책 객체. 진행 상황은 서브시스템의 이벤트로도 릴레이되므로, 정책 없이도 받을 수 있습니다 |
 
 > **이 함수들은 어떤 세션에 대해 답하는가?** 플레이어가 찾고, 참가하고, 플레이하는 게임 세션입니다.
 > 프로세스당 정확히 하나만 존재하므로(README의 제약 사항 참고) 세션을 인자로 받는 함수가 없습니다.
@@ -157,7 +157,10 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session이 끝났을 때. 매치만 끝나고 세션은 남습니다 |
 | `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session이 끝났을 때 |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session이 끝났을 때. 호스트든 나가는 클라이언트든 똑같이 발화합니다 |
-| `OnQuickMatchComplete` | `Result`, `ErrorMessage` | Quick Match 한 번이 끝났을 때. 참가했든 호스트가 됐든 발화하므로, 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
+| `OnQuickMatchStarted` | - | Quick Match 실행이 받아들여지고 정책이 등록됐을 때. 한 실행의 이벤트 중 언제나 첫 번째입니다 |
+| `OnQuickMatchStateChanged` | `OldState`, `NewState` | Quick Match 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
+| `OnQuickMatchUpdated` | `State`, `ElapsedSeconds` | Quick Match 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
+| `OnQuickMatchComplete` | `Result`, `ErrorMessage` | Quick Match 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 작업이 끝난 것이 아닙니다. 연결이 끊기거나 네트워크 오류가 났을 때이며, 죽은 세션은 알아서 정리됩니다 |
 | `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다 |
 
@@ -259,7 +262,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 블루프린트나 C++로 서브클래스를 만들고, 매치메이킹 기준을 바꾸려면
 **`ScoreSession(Session) -> float`**(값이 클수록 먼저 참가)만 오버라이드하면 됩니다.
 편집 가능한 기본값은 `PingBucketsMs`(기본 `[50, 100, 150]`), `TopCandidateRandomization`(기본 3)입니다.
-상태는 `GetState`로 조회하거나 `OnStateChanged`에 바인딩하세요.
+상태는 `GetState`와 `GetElapsedSeconds`로 조회하거나 `OnStateChanged` / `OnUpdated`에 바인딩하세요.
 
 ## 8. UEasySessionSettings (Project Settings -> Plugins -> EasySession)
 

@@ -31,7 +31,17 @@ Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방
 Custom Settings에 같은 키가 있으면 덮어씁니다. 이 판이 여는 방은 자기 검색으로도 찾았을
 방입니다.
 
-진행 상황은 `Get Easy Session Subsystem` -> `Get Active Quick Match Policy`로 정책을 얻어 그 `OnStateChanged`를 바인딩하면 보여줄 수 있습니다.
+진행 상황은 서브시스템의 이벤트 넷으로 알 수 있습니다. 실행이 시작되기 전에, 위젯이 한
+번만 바인딩하면 됩니다.
+
+- `On Quick Match Started` - 실행이 받아들여졌습니다. 이때부터 `Get Active Quick Match Policy`가 그 정책을 돌려줍니다
+- `On Quick Match State Changed` (`OldState`, `NewState`) - 상태가 바뀔 때마다
+- `On Quick Match Updated` (`State`, `ElapsedSeconds`) - 상태가 바뀔 때 + 실행 중 1초마다. 타이머 없이 "Searching... 0:42" 같은 표시를 만들 수 있습니다
+- `On Quick Match Complete` (`Result`, `ErrorMessage`) - 어떻게든 실행이 끝났습니다. 취소된 실행도 `Result` = `Canceled`로 여기로 옵니다. 별도의 취소 이벤트는 없습니다
+
+순서는 언제나 Started가 처음, Complete가 마지막입니다. 문전에서 거절된 실행도 이 짝을
+지킵니다. 특정 실행 하나를 붙들고 있는 코드는 여전히 정책 객체의 `OnStateChanged`와
+`OnUpdated`를 쓸 수 있습니다.
 
 상태는 `Searching`, `Joining`, `Hosting`, `Complete` 넷입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 방을 만들 때만 나옵니다.
 

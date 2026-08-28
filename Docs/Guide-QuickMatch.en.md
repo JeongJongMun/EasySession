@@ -32,7 +32,17 @@ the network the search looked at (`LAN Query`), and every `Required Custom Setti
 is advertised on it, overwriting the same key in Host > Custom Settings. The room a run
 opens is one its own search would have found.
 
-Progress can be shown by taking the policy from `Get Easy Session Subsystem` -> `Get Active Quick Match Policy` and binding its `OnStateChanged`.
+Progress comes from four events on the subsystem itself, so a widget can bind once,
+before any run exists:
+
+- `On Quick Match Started` - a run was accepted; from here `Get Active Quick Match Policy` returns it
+- `On Quick Match State Changed` (`OldState`, `NewState`) - every state transition
+- `On Quick Match Updated` (`State`, `ElapsedSeconds`) - every state change plus once a second while the run is active. Enough for a "Searching... 0:42" label without a timer of your own
+- `On Quick Match Complete` (`Result`, `ErrorMessage`) - the run ended, however it ended. A canceled run arrives here with `Result` = `Canceled`; there is no separate cancel event
+
+They always arrive as Started first and Complete last, a run refused at the door
+included. The policy object still exposes `OnStateChanged` and `OnUpdated` for code
+that holds a specific run.
 
 The states are `Searching`, `Joining`, `Hosting` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
 

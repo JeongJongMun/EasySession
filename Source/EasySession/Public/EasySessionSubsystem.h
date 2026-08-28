@@ -7,6 +7,7 @@
 #include "GameFramework/OnlineReplStructs.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "EasySessionTypes.h"
+#include "EasyQuickMatchPolicy.h"
 #include "Containers/Ticker.h"
 #include "Templates/SubclassOf.h"
 #include "EasySessionSubsystem.generated.h"
@@ -31,7 +32,6 @@ class FEasySessionServerGate;
 class FEasySessionSocial;
 class FEasySessionTravel;
 struct FEasyJoinApprovalResponse;
-class UEasyQuickMatchPolicy;
 
 /** Multicast event fired when a session operation completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasySessionEvent, EEasySessionResult, Result, const FString&, ErrorMessage);
@@ -44,6 +44,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionFailureEvent, const FStr
 
 /** Multicast event fired when the player accepts an invite from the platform overlay. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, const FEasySessionSearchResult&, Session);
+
+/** Multicast event fired when a quick match run is accepted and its policy is registered. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyQuickMatchStartedEvent);
 
 /** Multicast event fired when reading the friends list completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionFriend>&, Friends);
@@ -117,7 +120,19 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionEnded;
 
-	/** Fired when a Quick Match run completes. */
+	/** Fired when a Quick Match run is accepted and its policy is registered - the first of that run's events, and the moment Get Active Quick Match Policy starts returning it. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasyQuickMatchStartedEvent OnQuickMatchStarted;
+
+	/** Relays the active policy's OnStateChanged, so progress UI can bind here once instead of chasing each run's policy. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasyQuickMatchStateEvent OnQuickMatchStateChanged;
+
+	/** Relays the active policy's OnUpdated: every state change plus a once-a-second heartbeat carrying the elapsed whole seconds. */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasyQuickMatchUpdatedEvent OnQuickMatchUpdated;
+
+	/** Fired when a Quick Match run completes, a canceled one included - cancellation arrives as the Canceled result, never as a separate event. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnQuickMatchComplete;
 
@@ -472,6 +487,14 @@ private:
 	void HandleEndSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+
+	/** Relay the active policy's state change to OnQuickMatchStateChanged. */
+	UFUNCTION()
+	void RelayQuickMatchStateChanged(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState);
+
+	/** Relay the active policy's update to OnQuickMatchUpdated. */
+	UFUNCTION()
+	void RelayQuickMatchUpdated(EEasyQuickMatchState QuickMatchState, int32 ElapsedSeconds);
 
 	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
 	void ReturnToMenu();

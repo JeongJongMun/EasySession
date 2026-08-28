@@ -74,12 +74,65 @@ public:
 
 	/** Bind to a quick match policy's OnStateChanged. */
 	UFUNCTION()
-	void HandleQuickMatchState(EEasyQuickMatchState NewState)
+	void HandleQuickMatchState(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState)
 	{
 		if (NewState == EEasyQuickMatchState::Hosting && CancelQuickMatchOnHosting)
 		{
 			CancelQuickMatchOnHosting->CancelQuickMatch();
 		}
+	}
+
+	/** Everything seen from the subsystem's quick match events, in arrival order. Heartbeat ticks are kept out - they land in QuickMatchElapsedSeen. */
+	UPROPERTY()
+	TArray<FString> QuickMatchJournal;
+
+	/** Elapsed seconds seen on OnQuickMatchUpdated, in arrival order. */
+	UPROPERTY()
+	TArray<int32> QuickMatchElapsedSeen;
+
+	/** Bind to the subsystem's OnQuickMatchStarted. */
+	UFUNCTION()
+	void HandleQuickMatchStarted()
+	{
+		QuickMatchJournal.Add(TEXT("Started"));
+	}
+
+	/** Bind to the subsystem's OnQuickMatchStateChanged. */
+	UFUNCTION()
+	void HandleQuickMatchTransition(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState)
+	{
+		const UEnum* StateEnum = StaticEnum<EEasyQuickMatchState>();
+		QuickMatchJournal.Add(FString::Printf(TEXT("State=%s>%s"),
+			*StateEnum->GetNameStringByValue(static_cast<int64>(OldState)),
+			*StateEnum->GetNameStringByValue(static_cast<int64>(NewState))));
+	}
+
+	/** Bind to the subsystem's OnQuickMatchUpdated. */
+	UFUNCTION()
+	void HandleQuickMatchUpdated(EEasyQuickMatchState QuickMatchState, int32 ElapsedSeconds)
+	{
+		QuickMatchElapsedSeen.Add(ElapsedSeconds);
+	}
+
+	/** Bind to the subsystem's OnQuickMatchComplete. */
+	UFUNCTION()
+	void HandleQuickMatchCompleted(EEasySessionResult Result, const FString& ErrorMessage)
+	{
+		QuickMatchJournal.Add(FString::Printf(TEXT("Completed=%s"), *EasySession::ResultToString(Result)));
+	}
+
+	/** How many journal entries match the given prefix, so a test can assert an event fired exactly once. */
+	int32 CountJournal(const TCHAR* Prefix) const
+	{
+		int32 Count = 0;
+		for (const FString& Entry : QuickMatchJournal)
+		{
+			if (Entry.StartsWith(Prefix))
+			{
+				++Count;
+			}
+		}
+		return Count;
 	}
 
 	/** @return How many events arrived in total, so a test can assert that none were duplicated. */

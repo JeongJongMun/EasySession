@@ -812,4 +812,169 @@ bool FEasySessionCandidateTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+namespace EasyQuickMatchEventsTest
+{
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		TOptional<EEasySessionResult> FirstResult;
+		TOptional<EEasySessionResult> SecondResult;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+	};
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyQuickMatchWaitEvents, TSharedPtr<EasyQuickMatchEventsTest::FTestState>, State);
+bool FEasyQuickMatchWaitEvents::Update()
+{
+	using namespace EasyQuickMatchEventsTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UEasySessionTestEventListener* Listener = State->Listener.Get();
+
+	if (FPlatformTime::Seconds() - State->StartTime > EasyQuickMatchTest::TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d."), State->Phase));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!State->FirstResult.IsSet() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("The run ended in NoSessionsFound"), State->FirstResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestEqual(TEXT("Started fired once"), Listener->CountJournal(TEXT("Started")), 1);
+			CurrentTest->TestEqual(TEXT("Completed fired once"), Listener->CountJournal(TEXT("Completed")), 1);
+			CurrentTest->TestEqual(TEXT("Completed is the last entry"), Listener->QuickMatchJournal.Last(), FString(TEXT("Completed=NoSessionsFound")));
+			CurrentTest->TestTrue(TEXT("The Complete state is broadcast before Completed"),
+				Listener->QuickMatchJournal.Num() >= 2 && Listener->QuickMatchJournal[Listener->QuickMatchJournal.Num() - 2].EndsWith(TEXT(">Complete")));
+
+			CurrentTest->TestTrue(TEXT("The heartbeat fired"), Listener->QuickMatchElapsedSeen.Num() >= 2);
+			bool bNonDecreasing = true;
+			for (int32 Index = 1; Index < Listener->QuickMatchElapsedSeen.Num(); ++Index)
+			{
+				bNonDecreasing &= Listener->QuickMatchElapsedSeen[Index] >= Listener->QuickMatchElapsedSeen[Index - 1];
+			}
+			CurrentTest->TestTrue(TEXT("Elapsed seconds never go backwards"), bNonDecreasing);
+			CurrentTest->TestTrue(TEXT("Elapsed seconds actually count"), Listener->QuickMatchElapsedSeen.Last() >= 1);
+
+			// Seed a session so the next run is refused at the door.
+			FEasySessionHostParams SeedParams;
+			SeedParams.SessionDisplayName = TEXT("EasySession Events Seed");
+			SeedParams.bIsLANMatch = true;
+			SeedParams.bStartListening = false;
+			Subsystem->CreateEasySession(SeedParams);
+
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 1:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			// A refused run must still pair Started with Completed, or a spinner shown on Started never goes away.
+			TSharedPtr<FTestState> Shared = State;
+			FEasyQuickMatchParams Params;
+			Params.Search.bLANQuery = true;
+			Params.bAllowHostFallback = false;
+			Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&)
+				{
+					Shared->SecondResult = Result;
+				}));
+
+			CurrentTest->TestTrue(TEXT("The refused run completed synchronously"), State->SecondResult.IsSet());
+			CurrentTest->TestEqual(TEXT("It was refused as SessionAlreadyExists"), State->SecondResult.Get(EEasySessionResult::Success), EEasySessionResult::SessionAlreadyExists);
+			CurrentTest->TestEqual(TEXT("Started fired for it too"), Listener->CountJournal(TEXT("Started")), 2);
+			CurrentTest->TestEqual(TEXT("And Completed followed"), Listener->CountJournal(TEXT("Completed")), 2);
+			CurrentTest->TestEqual(TEXT("With the refusal as its result"), Listener->QuickMatchJournal.Last(), FString(TEXT("Completed=SessionAlreadyExists")));
+
+			Subsystem->DestroyEasySession();
+			State->Phase = 2;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * The subsystem's quick match events tell the whole story to a listener that bound
+ * before any run existed: Started first, state changes and a once-a-second elapsed
+ * heartbeat in between, Completed last. A run refused at the door keeps the pairing,
+ * so a spinner shown on Started always sees the end.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyQuickMatchEventsTest, "EasySession.QuickMatch.EventsFireInOrder", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyQuickMatchEventsTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyQuickMatchEventsTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	// Bound before any run exists - the point of subsystem-level events.
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnQuickMatchStarted.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleQuickMatchStarted);
+	Subsystem->OnQuickMatchStateChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleQuickMatchTransition);
+	Subsystem->OnQuickMatchUpdated.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleQuickMatchUpdated);
+	Subsystem->OnQuickMatchComplete.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleQuickMatchCompleted);
+
+	TSharedPtr<FTestState> Shared = State;
+	FEasyQuickMatchParams Params;
+	Params.Search.bLANQuery = true;
+	Params.Search.TimeoutSeconds = 5.0f;
+	Params.MaxSearchPasses = 1;
+	Params.DelayBetweenPassesSeconds = 0.0f;
+	Params.bAllowHostFallback = false;
+
+	Subsystem->StartQuickMatch(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+		[Shared](EEasySessionResult Result, const FString&)
+		{
+			Shared->FirstResult = Result;
+		}));
+
+	TestEqual(TEXT("Started is the first entry"),
+		State->Listener->QuickMatchJournal.Num() > 0 ? State->Listener->QuickMatchJournal[0] : FString(), FString(TEXT("Started")));
+	TestEqual(TEXT("The first transition leaves Idle"),
+		State->Listener->QuickMatchJournal.Num() > 1 ? State->Listener->QuickMatchJournal[1] : FString(), FString(TEXT("State=Idle>Searching")));
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyQuickMatchWaitEvents(State));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
