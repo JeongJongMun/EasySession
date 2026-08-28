@@ -30,15 +30,9 @@ namespace
 
 	void DiagnoseSteam(UWorld* World, const IOnlineSubsystem& OnlineSub)
 	{
-		// [OnlineSubsystemSteam] keys that beginners forget most often.
-		bool bEnabled = false;
-		GConfig->GetBool(TEXT("OnlineSubsystemSteam"), TEXT("bEnabled"), bEnabled, GEngineIni);
-		if (!bEnabled)
-		{
-			LogFix(TEXT("[OnlineSubsystemSteam] bEnabled is not set."),
-				{ TEXT("[OnlineSubsystemSteam]"), TEXT("bEnabled=true") });
-		}
-
+		// [OnlineSubsystemSteam] keys that beginners forget most often. bEnabled is not
+		// checked here: a missing key counts as enabled, and Steam being active - the
+		// only way into this function - already proves the key did not stop it.
 		int32 AppId = 0;
 		GConfig->GetInt(TEXT("OnlineSubsystemSteam"), TEXT("SteamDevAppId"), AppId, GEngineIni);
 		if (AppId <= 0)
@@ -145,7 +139,7 @@ FString EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 
 		if (ConfiguredService.Equals(TEXT("Steam"), ESearchCase::IgnoreCase))
 		{
-			UE_LOG(LogEasySession, Warning, TEXT("      Likely causes: the OnlineSubsystemSteam plugin is not enabled in the .uproject, or the Steam client is not running."));
+			UE_LOG(LogEasySession, Warning, TEXT("      Likely causes: the OnlineSubsystemSteam plugin is not enabled in the .uproject, [OnlineSubsystemSteam] bEnabled=false in DefaultEngine.ini, or the Steam client is not running."));
 		}
 	}
 
