@@ -574,6 +574,11 @@ void UEasySessionSubsystem::CancelPendingTravel()
 	Travel->CancelPendingTravel();
 }
 
+bool UEasySessionSubsystem::IsSessionBeingDestroyed() const
+{
+	return RequestQueue.IsValid() && RequestQueue->Contains(FEasySessionRequest::EType::Destroy);
+}
+
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 {
 	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;

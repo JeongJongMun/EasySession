@@ -312,7 +312,8 @@ void UEasyQuickMatchPolicy::CompleteAsCanceled(EEasySessionResult StepResult)
 
 bool UEasyQuickMatchPolicy::CompleteIfAlreadyInSession(UEasySessionSubsystem& InSubsystem)
 {
-	if (!InSubsystem.IsInSession())
+	// A failed join's leftover session is queued for destruction and gone before the next candidate runs - only a session that stays counts.
+	if (!InSubsystem.IsInSession() || InSubsystem.IsSessionBeingDestroyed())
 	{
 		return false;
 	}

@@ -327,6 +327,12 @@ public:
 	void CancelPendingTravel();
 
 	/**
+	 * @return Whether a destroy for the current session is already running or waiting.
+	 * Quick Match reads it to tell a session on its way out from one that is here to stay.
+	 */
+	bool IsSessionBeingDestroyed() const;
+
+	/**
 	 * Destroy the session for every player.
 	 * Remote clients record Reason as a Host Destroyed Session disconnect and return to the menu, where reading it with Consume Last Easy Disconnect Info is what shows it to the player.
 	 * Needs session authority - only the game that created the session can do this.
