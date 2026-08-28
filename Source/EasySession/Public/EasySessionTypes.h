@@ -95,7 +95,7 @@ enum class EEasySessionResult : uint8
 };
 
 /**
- * Lifecycle state of the current session, mirroring the online subsystem's session state.
+ * Lifecycle state of the current session: EOnlineSessionState::Type as a UENUM, for Blueprint pins and the replicated host state.
  */
 UENUM(BlueprintType)
 enum class EEasySessionState : uint8
