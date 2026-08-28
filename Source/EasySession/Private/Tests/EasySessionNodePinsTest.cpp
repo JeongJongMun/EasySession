@@ -14,6 +14,8 @@
 #include "Nodes/EasyEndSessionNode.h"
 #include "Nodes/EasyFindSessionsNode.h"
 #include "Nodes/EasyJoinSessionNode.h"
+#include "Nodes/EasyLeaveSessionNode.h"
+#include "EasySessionTestAccess.h"
 #include "Nodes/EasyQuickMatchNode.h"
 #include "Nodes/EasyReadFriendsNode.h"
 #include "Nodes/EasyStartSessionNode.h"
@@ -329,6 +331,110 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 		}, EExpectedPin::Success, EEasySessionResult::Success });
 
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionRunPinCases(State));
+	return true;
+}
+
+namespace EasySessionLeaveNodeTest
+{
+	/** Maximum time to wait before failing. */
+	static constexpr double TimeoutSeconds = 20.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+		TStrongObjectPtr<UEasySessionTestNodePinListener> Listener;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+	};
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForLeaveNode, TSharedPtr<EasySessionLeaveNodeTest::FTestState>, State);
+bool FEasySessionWaitForLeaveNode::Update()
+{
+	using namespace EasySessionLeaveNodeTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			// The ticket's protagonist is the client: it created nothing and only wants out.
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
+
+			UEasyLeaveSessionNode* Node = UEasyLeaveSessionNode::LeaveEasySession(State->GameInstance.Get());
+			Node->OnSuccess.AddDynamic(State->Listener.Get(), &UEasySessionTestNodePinListener::HandleSuccess);
+			Node->OnFailure.AddDynamic(State->Listener.Get(), &UEasySessionTestNodePinListener::HandleFailure);
+			Node->Activate();
+
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (State->Listener->TotalFired() == 0)
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("Leave fires exactly one pin"), State->Listener->TotalFired(), 1);
+			CurrentTest->TestEqual(TEXT("And it is On Success"), State->Listener->SuccessResults.Num(), 1);
+			CurrentTest->TestFalse(TEXT("The named session is gone"), Subsystem->IsInSession());
+			// The menu map load was requested and has not resolved in this headless world - busy is the honest answer.
+			CurrentTest->TestTrue(TEXT("The trip to the menu is on its way"), Subsystem->IsBusy());
+
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * Leave Easy Session is the whole exit: the named session is destroyed and the menu
+ * map load is requested, in one node. Destroy Easy Session covers only the named
+ * session, which left a client's leave button stranding the player on the host's map.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLeaveNodeTest, "EasySession.Nodes.LeaveReturnsToTheMenu", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionLeaveNodeTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestNodePinListener>(NewObject<UEasySessionTestNodePinListener>());
+
+	FEasySessionHostParams Params;
+	Params.SessionDisplayName = TEXT("EasySession Leave Node Test");
+	Params.bIsLANMatch = true;
+	Params.bStartListening = false;
+	Subsystem->CreateEasySession(Params);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForLeaveNode(State));
 	return true;
 }
 

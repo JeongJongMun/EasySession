@@ -30,7 +30,7 @@ namespace EasySessionAuthorityGateTest
 		bool bAutoReturnWasEnabled = true;
 	};
 
-	/** Builds host params that create a session record without opening a server. */
+	/** Builds host params that create a named session without opening a server. */
 	static FEasySessionHostParams MakeParams()
 	{
 		FEasySessionHostParams Params;

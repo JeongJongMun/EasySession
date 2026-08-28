@@ -163,7 +163,11 @@ Event Construct
 
 ## Destroy Session
 
-`Destroy Easy Session`은 호스트에서는 세션을 파괴하고, 클라이언트에서는 세션을 떠납니다. 나간 뒤에는 곧바로 다시 방을 만들거나 참가할 수 있습니다.
+`Destroy Easy Session`은 이 게임의 네임드 세션만 지웁니다. 플레이어는 지금 맵에 그대로
+남는데, 매치 사이의 호스트에게는 그게 맞습니다. 방을 나가려는 클라이언트가 원하는 것은
+`Leave Easy Session`입니다. 네임드 세션을 지운 뒤 메뉴 맵으로 돌아갑니다. 호스트가 Leave를
+누르면 방이 모두에게 닫히고, 클라이언트들은 "The host has left the game."을 사유로
+읽습니다. 어느 쪽이든 직후에 곧바로 다시 방을 만들거나 참가할 수 있습니다.
 
 호스트가 이 노드를 부르면 클라이언트들은 연결이 끊긴 것으로 보고 `ConnectionLost`로 메뉴에 돌아갑니다. 왜 끝났는지 알려주고 싶다면 `Destroy Easy Session For Everyone`에 사유를 넘기세요. 세션을 내리기 전에 모두에게 그 문구를 먼저 보내고, 받는 쪽은 `HostDestroyedSession`으로 읽습니다.
 

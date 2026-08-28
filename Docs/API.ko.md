@@ -47,7 +47,8 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
-| **Destroy Easy Session** | - | `DestroySession` 호출. 호스트는 세션을 없애고 클라이언트는 나가기만 합니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
+| **Destroy Easy Session** | - | `DestroySession` 호출. 이 게임의 네임드 세션만 지우고 맵에는 그대로 남습니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
+| **Leave Easy Session** | - | Destroy Easy Session에 귀갓길까지. 네임드 세션을 지운 뒤 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 방을 닫습니다 |
 | **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-QuickMatch.ko.md)) |
 | **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 넘깁니다. NULL/LAN에는 친구 개념이 없어 실패합니다 |
 

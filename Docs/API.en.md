@@ -48,7 +48,8 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
-| **Destroy Easy Session** | - | Calls `DestroySession`: the host destroys the session, a client only leaves it. Both the host and the client can host or join again right after |
+| **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
+| **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the room for everyone with "The host has left the game." |
 | **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-QuickMatch.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array. NULL/LAN has no friends, so it fails there |
 

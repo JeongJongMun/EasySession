@@ -214,6 +214,24 @@ void UEasySessionSubsystem::DestroyEasySession(FEasySessionCompleteDelegate OnCo
 	EnqueueRequest(Request);
 }
 
+void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComplete)
+{
+	// A leaving host takes the room with it - closing it for everyone tells each client why before the connection dies.
+	if (IsSessionAuthority())
+	{
+		DestroyEasySessionForEveryone(NSLOCTEXT("EasySession", "HostLeftSession", "The host has left the game."), MoveTemp(OnComplete));
+		return;
+	}
+	
+	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			// Requested before the completion below, the same order every travel in this plugin uses.
+			ReturnToMenu();
+			OnComplete.ExecuteIfBound(Result, ErrorMessage);
+		}));
+}
+
 void UEasySessionSubsystem::UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete)
 {
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Update);
@@ -745,12 +763,8 @@ void UEasySessionSubsystem::ReturnToMenu()
 		return;
 	}
 
-	// Hand this to the engine instead of opening a map ourselves: it cancels any
-	// pending net game, strips ?listen/?LAN from the last URL, drops the net driver
-	// and browses to the project's Game Default Map. Doing it by hand would skip
-	// that cleanup and add a second "where is the menu" setting next to the
-	// engine's own. Repeated calls are harmless - the engine no-ops once it is
-	// already browsing to the default map.
+	// ReturnToMainMenu does the cleanup an OpenLevel would skip - the pending net game, the ?listen/?LAN options, the net driver - and the engine already owns the "where is the menu" setting.
+	// Repeated calls are harmless: the engine no-ops once it is already browsing to the default map.
 	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
 	GameInstance->ReturnToMainMenu();
 	Travel->MarkStarted(TEXT("return to menu"));
@@ -854,31 +868,29 @@ void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState H
 }
 
 
-void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason)
+void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
 {
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (World == nullptr || !IsSessionAuthority())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the server that created the session."));
+		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority, TEXT("Only the game that created the session can destroy it for everyone."));
 		return;
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
 
-	// Tell every remote client to leave with the reason before the session goes down.
+	// Tell every remote client to leave with the reason before the session is destroyed.
 	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
 		Actor->MulticastReturnToMenu(Reason);
 	}
 
-	// No waiting: the multicast is reliable, so it is already queued on every client
-	// connection and the engine flushes those queues while closing the net driver.
-	// This mirrors AGameSession::ReturnToMainMenuHost, which notifies the clients and
-	// tears the host down in the same frame.
 	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
+		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			ReturnToMenu();
+			OnComplete.ExecuteIfBound(Result, ErrorMessage);
 		}));
 }
 

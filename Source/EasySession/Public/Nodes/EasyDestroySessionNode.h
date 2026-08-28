@@ -26,8 +26,8 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Destroy the current session: the host closes it, a client simply leaves.
-	 * To also send the other players back to the menu with a reason, use Destroy Easy Session For Everyone on the subsystem instead.
+	 * Destroy the named session: the host closes the session, a client removes its own copy and stays on the current map.
+	 * A client leaving for the menu is Leave Easy Session; sending everyone back with a reason is Destroy Easy Session For Everyone on the subsystem.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Destroy Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyDestroySessionNode* DestroyEasySession(UObject* WorldContextObject);

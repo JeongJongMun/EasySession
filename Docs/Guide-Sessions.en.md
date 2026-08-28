@@ -168,7 +168,12 @@ These options cannot be changed:
 
 ## Destroy Session
 
-`Destroy Easy Session` destroys the session on the host and leaves it on a client. After leaving you can immediately host or join again.
+`Destroy Easy Session` removes this game's named session - and only that. The player
+stays on their current map, which is what a host between matches wants. A client
+leaving the room wants `Leave Easy Session` instead: it destroys the named session and
+then returns to the menu map. A host pressing Leave closes the room for everyone, with
+"The host has left the game." as the reason clients read. After either one you can
+immediately host or join again.
 
 When the host calls it, clients see the connection drop and return to the menu with `ConnectionLost`. To tell them why it ended, pass a reason to `Destroy Easy Session For Everyone` instead: it sends that sentence to everyone before taking the session down, and they read it as `HostDestroyedSession`.
 

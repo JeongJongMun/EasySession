@@ -189,6 +189,15 @@ public:
 	void DestroyEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
+	 * Leave the session: destroy this game's named session, then return to the menu map.
+	 * A leaving host takes the room with it, so it closes the room the polite way instead - every client hears "The host has left the game." before the connection dies.
+	 * The menu travel runs whatever the destroy reported - the player asked to leave, and a named session that failed to delete is no reason to keep them on the map.
+	 *
+	 * @param OnComplete Called with the destroy's result, after the menu travel was requested.
+	 */
+	void LeaveEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
 	 * Update the advertised properties of the current session.
 	 * Needs session authority - only the game that created the session can update it.
 	 *
@@ -336,8 +345,10 @@ public:
 	 * Destroy the session for every player.
 	 * Remote clients record Reason as a Host Destroyed Session disconnect and return to the menu, where reading it with Consume Last Easy Disconnect Info is what shows it to the player.
 	 * Needs session authority - only the game that created the session can do this.
+	 *
+	 * @param OnComplete Called with the destroy's result, after the host's own menu travel was requested.
 	 */
-	void DestroyEasySessionForEveryone(FText Reason);
+	void DestroyEasySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	bool SendSessionInviteToFriend(const FEasySessionFriend& Friend);
