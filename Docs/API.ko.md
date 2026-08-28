@@ -89,8 +89,8 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Is Easy Quick Match Running | `IsQuickMatchRunning` | Quick Match가 돌고 있는가 |
 | Get Easy Quick Match State | `GetQuickMatchState` | 어느 단계인가. Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
-| Get Online Subsystem Name | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
-| Is Online Subsystem Available | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
+| Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
+| Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
 | Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용 |
 | Get Easy Session Host Params | `GetSessionHostParams` | 세션을 만들 때 쓴 파라미터. 한 필드만 바꿔 Update에 넘길 때 씁니다. 호스트 전용 |
 
@@ -112,8 +112,8 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 >
 > 여기 있는 것 중 일부는 애초에 세션에 대한 질문이 아닙니다. `Is Easy Session Busy`와
 > `Get Easy Session Queue Status`는 작업 큐를, `Is Easy Quick Match Running`,
-> `Get Easy Quick Match State`, `Get Online Subsystem Name`, `Is Online Subsystem
-> Available`은 프로세스를 설명합니다. 이들은 세션이 무엇이든 의미가 그대로입니다.
+> `Get Easy Quick Match State`, `Get Online Subsystem Name (EasySession)`,
+> `Is Online Subsystem Available (EasySession)`은 프로세스를 설명합니다. 이들은 세션이 무엇이든 의미가 그대로입니다.
 
 ## 3. 동작 블루프린트 노드
 

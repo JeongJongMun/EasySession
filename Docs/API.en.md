@@ -93,8 +93,8 @@ node name without spaces.
 | Is Easy Quick Match Running | `IsQuickMatchRunning` | Is a Quick Match run in progress |
 | Get Easy Quick Match State | `GetQuickMatchState` | Which step it is on: Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
-| Get Online Subsystem Name | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
-| Is Online Subsystem Available | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
+| Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
+| Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
 | Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports |
 | Get Easy Session Host Params | `GetSessionHostParams` | The params the session was created with, so Update can change one field. Host only |
 
@@ -118,8 +118,8 @@ there is no C++ column.
 >
 > Some queries here are not about a session at all: `Is Easy Session Busy` and `Get Easy
 > Session Queue Status` describe the operation queue, and `Is Easy Quick Match Running`,
-> `Get Easy Quick Match State`, `Get Online Subsystem Name` and `Is Online Subsystem Available`
-> describe the process. Those keep their meaning whatever sessions exist.
+> `Get Easy Quick Match State`, `Get Online Subsystem Name (EasySession)` and
+> `Is Online Subsystem Available (EasySession)` describe the process. Those keep their meaning whatever sessions exist.
 
 ## 3. Action Blueprint nodes
 

@@ -123,11 +123,11 @@ public:
 	static FEasyDisconnectInfo ConsumeLastEasyDisconnectInfo(const UObject* WorldContextObject);
 
 	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
-	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	UFUNCTION(BlueprintPure, Category = "EasySession", DisplayName = "Get Online Subsystem Name (EasySession)", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);
 
 	/** Whether an online subsystem is available and its session interface is valid. */
-	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	UFUNCTION(BlueprintPure, Category = "EasySession", DisplayName = "Is Online Subsystem Available (EasySession)", meta = (WorldContext = "WorldContextObject"))
 	static bool IsOnlineSubsystemAvailable(const UObject* WorldContextObject);
 
 	/**

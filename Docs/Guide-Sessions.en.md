@@ -188,7 +188,7 @@ Bind these on the subsystem (`Get Easy Session Subsystem`) for UI updates:
 - `OnSessionFailure` - the connection to the session was lost or a network error occurred. EasySession automatically destroys the dead session so the player can rejoin immediately
 - `OnQuickMatchComplete` - Quick Match finished
 
-Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players` for contents, and `Get Online Subsystem Name` for the environment. The [API reference](API.en.md) has the full list.
+Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.
 
 ## C++ API
 
