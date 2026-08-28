@@ -100,7 +100,9 @@ shows the reason under the input (`WBP_JoinPasswordPopup`).
 
 ### When the host cannot be asked
 
-Approval travels over a beacon, a second lightweight connection to the host. When that
+Approval travels over a beacon, a second lightweight connection to the host. If the
+project already runs its own beacon host, approval registers on it instead of opening a
+second port. When that
 beacon cannot be reached - the port is blocked, another instance on this machine took it
 first, or the project removed the engine's
 `BeaconNetDriver` definition ([Steam setup](Setup-Steam.en.md) shows the line that restores

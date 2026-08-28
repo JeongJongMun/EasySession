@@ -6,6 +6,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionJoinApproval.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
@@ -98,6 +99,12 @@ public:
 		int32 Value = 0;
 		NamedSession->SessionSettings.Get(Key, Value);
 		return Value;
+	}
+
+	/** The beacon host the join approval registered on - the plugin's own or the project's. Null while none runs. */
+	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.JoinApproval.IsValid() ? Subsystem.JoinApproval->GetBeaconHost() : nullptr;
 	}
 
 	/**

@@ -9,6 +9,7 @@
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/GameModeBase.h"
 #include "OnlineBeaconHost.h"
 #include "Online/OnlineSessionNames.h"
@@ -32,6 +33,9 @@ void FEasySessionJoinApproval::Shutdown()
 		FGameModeEvents::GameModeInitializedEvent.Remove(GameModeInitializedHandle);
 		GameModeInitializedHandle.Reset();
 	}
+
+	FTSTicker::GetCoreTicker().RemoveTicker(DeferredEnsureHostHandle);
+	DeferredEnsureHostHandle.Reset();
 
 	StopHost();
 	StopClient();
@@ -64,35 +68,64 @@ void FEasySessionJoinApproval::EnsureHost()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.ObjectFlags |= RF_Transient;
 
-	AOnlineBeaconHost* Host = World->SpawnActor<AOnlineBeaconHost>(SpawnParams);
+	// A beacon host is one shared listener per process, so an existing one is reused instead of binding a second port joiners never ask.
+	AOnlineBeaconHost* Host = nullptr;
+	for (TActorIterator<AOnlineBeaconHost> It(World); It; ++It)
+	{
+		Host = *It;
+		break;
+	}
+	bOwnsBeaconHost = Host == nullptr;
+
 	if (Host == nullptr)
 	{
-		return;
-	}
+		Host = World->SpawnActor<AOnlineBeaconHost>(SpawnParams);
+		if (Host == nullptr)
+		{
+			return;
+		}
 
-	// ListenPort is left as the class default so a project can move the beacon from DefaultEngine.ini.
-	if (!Host->InitHost())
-	{
-		UE_LOG(LogEasySession, Error,
-			TEXT("Could not start the join approval beacon. Players will not be told why a join is refused until they have already traveled. Check that a BeaconNetDriver definition exists (clearing NetDriverDefinitions removes the engine's), and change maps with Server Travel Easy Session - a plain ServerTravel leaves the previous beacon's port still held when this world starts."));
-		Host->DestroyBeacon();
-		return;
+		// ListenPort is left as the class default so a project can move the beacon from DefaultEngine.ini.
+		if (!Host->InitHost())
+		{
+			UE_LOG(LogEasySession, Error,
+				TEXT("Could not start the join approval beacon - a refused join is now reported after the travel instead of before it."));
+			UE_LOG(LogEasySession, Error,
+				TEXT("Likely causes: no BeaconNetDriver definition (clearing NetDriverDefinitions removes the engine's), or a plain ServerTravel kept the previous beacon's port - change maps with Server Travel Easy Session."));
+			Host->DestroyBeacon();
+			return;
+		}
 	}
 
 	AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>(SpawnParams);
 	if (HostObject == nullptr)
 	{
-		Host->DestroyBeacon();
+		if (bOwnsBeaconHost)
+		{
+			Host->DestroyBeacon();
+		}
 		return;
 	}
 
 	Host->RegisterHost(HostObject);
-	Host->PauseBeaconRequests(false);
+
+	// The project's own host keeps the pause state the project chose.
+	if (bOwnsBeaconHost)
+	{
+		Host->PauseBeaconRequests(false);
+	}
 
 	BeaconHost = Host;
 	BeaconHostObject = HostObject;
 
-	UE_LOG(LogEasySession, Log, TEXT("Join approval beacon listening on port %d."), Host->GetListenPort());
+	if (bOwnsBeaconHost)
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Join approval beacon listening on port %d."), Host->GetListenPort());
+	}
+	else
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Registered the join approval on the project's beacon host (port %d)."), Host->GetListenPort());
+	}
 
 	// Joiners reach the beacon at the advertised port, so a beacon that bound elsewhere is unreachable.
 	const int32 BoundPort = Host->GetListenPort();
@@ -101,10 +134,11 @@ void FEasySessionJoinApproval::EnsureHost()
 	if (BoundPort != AdvertisedPort)
 	{
 		UE_LOG(LogEasySession, Warning,
-			TEXT("The join approval beacon bound port %d, but this session advertises %d. Another process on this machine holds %d."),
-			BoundPort, AdvertisedPort, AdvertisedPort);
+			TEXT("The join approval beacon listens on port %d, but this session advertises %d - another process holds the advertised port, or this project's own beacon uses a different one."),
+			BoundPort, AdvertisedPort);
 		UE_LOG(LogEasySession, Warning,
-			TEXT("Joiners will ask that process about joining this one, so passwords and full-room checks move to after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."));
+			TEXT("Joiners will ask %d and not reach this beacon, so passwords and full-room checks move to after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
+			AdvertisedPort);
 	}
 }
 
@@ -119,9 +153,19 @@ void FEasySessionJoinApproval::StopHost()
 
 	if (AOnlineBeaconHost* Host = BeaconHost.Get())
 	{
-		Host->DestroyBeacon();
+		// The project's own host stays up for the project - only one this plugin spawned is torn down.
+		if (bOwnsBeaconHost)
+		{
+			Host->DestroyBeacon();
+		}
 	}
 	BeaconHost.Reset();
+	bOwnsBeaconHost = false;
+}
+
+AOnlineBeaconHost* FEasySessionJoinApproval::GetBeaconHost() const
+{
+	return BeaconHost.Get();
 }
 
 void FEasySessionJoinApproval::RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete)
@@ -174,6 +218,13 @@ void FEasySessionJoinApproval::HandleGameModeInitialized(AGameModeBase* GameMode
 
 	if (Owner.IsSessionAuthority())
 	{
-		EnsureHost();
+		// One tick later, so a beacon host the project spawns in RegisterServer or BeginPlay exists first and gets reused.
+		FTSTicker::GetCoreTicker().RemoveTicker(DeferredEnsureHostHandle);
+		DeferredEnsureHostHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float)
+		{
+			DeferredEnsureHostHandle.Reset();
+			EnsureHost();
+			return false;
+		}));
 	}
 }

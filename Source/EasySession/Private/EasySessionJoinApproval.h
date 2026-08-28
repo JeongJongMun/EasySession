@@ -60,6 +60,9 @@ public:
 	/** Joiner: cancel a pending request, so its answer never arrives. Safe when none is running. */
 	void StopClient();
 
+	/** @return The beacon host answering approvals - owned by this plugin or borrowed from the project. Null while none runs. */
+	AOnlineBeaconHost* GetBeaconHost() const;
+
 private:
 
 	/** Re-creates the beacon after a travel replaced the world. Server only. */
@@ -70,9 +73,15 @@ private:
 	/** Handle for the game mode initialization event, which is what re-creates the beacon per world. */
 	FDelegateHandle GameModeInitializedHandle;
 
+	/** Handle for the one-tick delay between the game mode initializing and the beacon starting. */
+	FTSTicker::FDelegateHandle DeferredEnsureHostHandle;
+
 	/** Host side of the beacon. Lives exactly as long as the session, per world. */
 	TWeakObjectPtr<AOnlineBeaconHost> BeaconHost;
 	TWeakObjectPtr<AEasySessionJoinApprovalBeaconHostObject> BeaconHostObject;
+
+	/** Whether this plugin spawned BeaconHost and may destroy or unpause it. A host the project spawned is only registered on. */
+	bool bOwnsBeaconHost = false;
 
 	/** Joiner side. Lives for one request, from RequestJoinApproval to its answer or StopClient. */
 	TWeakObjectPtr<AEasySessionJoinApprovalBeaconClient> BeaconClient;
