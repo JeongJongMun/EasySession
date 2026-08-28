@@ -293,8 +293,9 @@ namespace EasySessionConsole
 		{
 			// The findings go to the log; put the headline on screen too, so the
 			// command answers "did my service come up?" without a log window.
-			Print(FString::Printf(TEXT("Diagnose: %s (details in the log)"),
-				*EasySessionDiagnostics::RunDiagnostics(World)));
+			const EasySessionDiagnostics::FReport Report = EasySessionDiagnostics::RunDiagnostics(World);
+			EasySessionDiagnostics::LogReport(Report);
+			Print(FString::Printf(TEXT("Diagnose: %s (details in the log)"), *Report.Summary));
 		}));
 
 }

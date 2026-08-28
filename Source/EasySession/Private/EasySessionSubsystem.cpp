@@ -85,7 +85,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		// The fixes it prints are for whoever builds the game, not whoever plays it.
 		// Packaged development builds keep it: that is where a service that works in
 		// the editor and not in a build gets diagnosed.
-		EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+		EasySessionDiagnostics::LogReport(EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr));
 #endif
 		InviteBindTickerHandle.Reset();
 		return false;

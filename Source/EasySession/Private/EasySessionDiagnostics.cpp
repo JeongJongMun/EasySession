@@ -14,21 +14,30 @@
 
 namespace
 {
-	/** Log a problem plus the exact ini lines that fix it. */
-	void LogFix(const FString& Problem, const TArray<FString>& IniLines)
+	using EasySessionDiagnostics::EFindingKind;
+	using EasySessionDiagnostics::FFinding;
+	using EasySessionDiagnostics::FReport;
+
+	/** Append a problem plus the exact ini lines that fix it. */
+	void AddFix(FReport& Report, FString Problem, TArray<FString> IniLines = {}, FString Postscript = FString())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("[FIX] %s"), *Problem);
-		if (IniLines.Num() > 0)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("      Add to DefaultEngine.ini:"));
-			for (const FString& Line : IniLines)
-			{
-				UE_LOG(LogEasySession, Warning, TEXT("        %s"), *Line);
-			}
-		}
+		FFinding Finding;
+		Finding.Message = MoveTemp(Problem);
+		Finding.IniLines = MoveTemp(IniLines);
+		Finding.Postscript = MoveTemp(Postscript);
+		Report.Findings.Add(MoveTemp(Finding));
 	}
 
-	void DiagnoseSteam(UWorld* World, const IOnlineSubsystem& OnlineSub)
+	/** Append an informational line. */
+	void AddInfo(FReport& Report, EFindingKind Kind, FString Message)
+	{
+		FFinding Finding;
+		Finding.Kind = Kind;
+		Finding.Message = MoveTemp(Message);
+		Report.Findings.Add(MoveTemp(Finding));
+	}
+
+	void DiagnoseSteam(UWorld* World, const IOnlineSubsystem& OnlineSub, FReport& Report)
 	{
 		// [OnlineSubsystemSteam] keys that beginners forget most often. bEnabled is not
 		// checked here: a missing key counts as enabled, and Steam being active - the
@@ -37,7 +46,7 @@ namespace
 		GConfig->GetInt(TEXT("OnlineSubsystemSteam"), TEXT("SteamDevAppId"), AppId, GEngineIni);
 		if (AppId <= 0)
 		{
-			LogFix(TEXT("SteamDevAppId is not set - Steam cannot initialize without an app id (use 480 for testing)."),
+			AddFix(Report, TEXT("SteamDevAppId is not set - Steam cannot initialize without an app id (use 480 for testing)."),
 				{ TEXT("[OnlineSubsystemSteam]"), TEXT("SteamDevAppId=480") });
 		}
 
@@ -45,7 +54,7 @@ namespace
 		GConfig->GetBool(TEXT("OnlineSubsystemSteam"), TEXT("bInitServerOnClient"), bInitServerOnClient, GEngineIni);
 		if (!bInitServerOnClient)
 		{
-			LogFix(TEXT("bInitServerOnClient is not set - listen servers will not register with Steam, so other players cannot find your session."),
+			AddFix(Report, TEXT("bInitServerOnClient is not set - listen servers will not register with Steam, so other players cannot find your session."),
 				{ TEXT("[OnlineSubsystemSteam]"), TEXT("bInitServerOnClient=true") });
 		}
 
@@ -66,17 +75,16 @@ namespace
 				{ TEXT("[/Script/Engine.GameEngine]"),
 				  TEXT("!NetDriverDefinitions=ClearArray"),
 				  TEXT("+NetDriverDefinitions=(DefName=\"GameNetDriver\",DriverClassName=\"/Script/SteamSockets.SteamSocketsNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") };
+			const FString SteamSocketsAdvice = TEXT("Also enable the 'SteamSockets' plugin in the .uproject.");
 
 			const FString DriverClass = GameDriver ? GameDriver->DriverClassName.ToString() : FString();
 			if (!DriverClass.Contains(TEXT("Steam")))
 			{
-				LogFix(TEXT("GameNetDriver is not a Steam net driver - sessions are advertised but clients cannot connect."), SteamSocketsFix);
-				UE_LOG(LogEasySession, Warning, TEXT("      Also enable the 'SteamSockets' plugin in the .uproject."));
+				AddFix(Report, TEXT("GameNetDriver is not a Steam net driver - sessions are advertised but clients cannot connect."), SteamSocketsFix, SteamSocketsAdvice);
 			}
 			else if (StaticLoadClass(UNetDriver::StaticClass(), nullptr, *DriverClass, nullptr, LOAD_Quiet) == nullptr)
 			{
-				LogFix(FString::Printf(TEXT("GameNetDriver class '%s' does not exist, so the engine silently falls back to the IP driver and Steam joins fail. Use the SteamSockets plugin instead."), *DriverClass), SteamSocketsFix);
-				UE_LOG(LogEasySession, Warning, TEXT("      Also enable the 'SteamSockets' plugin in the .uproject."));
+				AddFix(Report, FString::Printf(TEXT("GameNetDriver class '%s' does not exist, so the engine silently falls back to the IP driver and Steam joins fail. Use the SteamSockets plugin instead."), *DriverClass), SteamSocketsFix, SteamSocketsAdvice);
 			}
 			else if (DriverClass.Contains(TEXT("OnlineSubsystemSteam.SteamNetDriver")))
 			{
@@ -85,7 +93,7 @@ namespace
 				GConfig->GetString(TEXT("/Script/OnlineSubsystemSteam.SteamNetDriver"), TEXT("NetConnectionClassName"), ConnectionClass, GEngineIni);
 				if (!ConnectionClass.Contains(TEXT("SteamNetConnection")))
 				{
-					LogFix(TEXT("SteamNetDriver has no SteamNetConnection class configured."),
+					AddFix(Report, TEXT("SteamNetDriver has no SteamNetConnection class configured."),
 						{ TEXT("[/Script/OnlineSubsystemSteam.SteamNetDriver]"),
 						  TEXT("NetConnectionClassName=\"OnlineSubsystemSteam.SteamNetConnection\"") });
 				}
@@ -96,60 +104,61 @@ namespace
 		const IOnlineIdentityPtr Identity = OnlineSub.GetIdentityInterface();
 		if (Identity.IsValid() && Identity->GetLoginStatus(0) == ELoginStatus::LoggedIn)
 		{
-			UE_LOG(LogEasySession, Log, TEXT("[OK]  Steam is logged in as '%s'."), *Identity->GetPlayerNickname(0));
+			AddInfo(Report, EFindingKind::Ok, FString::Printf(TEXT("Steam is logged in as '%s'."), *Identity->GetPlayerNickname(0)));
 		}
 		else
 		{
-			UE_LOG(LogEasySession, Warning, TEXT("[FIX] Steam is not logged in. Make sure the Steam client is running and logged in before launching the game."));
+			AddFix(Report, TEXT("Steam is not logged in. Make sure the Steam client is running and logged in before launching the game."));
 		}
 
 		// Steam sessions cannot be tested inside PIE.
 		if (World != nullptr && World->WorldType == EWorldType::PIE)
 		{
-			UE_LOG(LogEasySession, Warning, TEXT("[NOTE] Running under PIE - Steam sessions need Standalone or packaged builds, and two machines with different Steam accounts for full testing."));
+			AddInfo(Report, EFindingKind::Note, TEXT("Running under PIE - Steam sessions need Standalone or packaged builds, and two machines with different Steam accounts for full testing."));
 		}
 	}
 }
 
-FString EasySessionDiagnostics::RunDiagnostics(UWorld* World)
+EasySessionDiagnostics::FReport EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 {
+	FReport Report;
+
 	FString ConfiguredService;
 	GConfig->GetString(TEXT("OnlineSubsystem"), TEXT("DefaultPlatformService"), ConfiguredService, GEngineIni);
 
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(World);
 	const FName ActualService = OnlineSub ? OnlineSub->GetSubsystemName() : NAME_None;
 
-	const FString Summary = FString::Printf(TEXT("configured: %s, active: %s"),
+	Report.Summary = FString::Printf(TEXT("configured: %s, active: %s"),
 		ConfiguredService.IsEmpty() ? TEXT("<unset>") : *ConfiguredService, *ActualService.ToString());
-
-	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics (%s) ====="), *Summary);
 
 	if (OnlineSub == nullptr)
 	{
-		LogFix(TEXT("No online subsystem is active - sessions cannot work at all."),
+		AddFix(Report, TEXT("No online subsystem is active - sessions cannot work at all."),
 			{ TEXT("[OnlineSubsystem]"), TEXT("DefaultPlatformService=NULL") });
-		return Summary;
+		return Report;
 	}
 
 	// The configured service failed to load and a different service loaded instead.
 	if (!ConfiguredService.IsEmpty() && ActualService != FName(*ConfiguredService))
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("[FIX] DefaultPlatformService is '%s' but the active subsystem is '%s' - the configured service failed to load."),
-			*ConfiguredService, *ActualService.ToString());
-
+		FString Causes;
 		if (ConfiguredService.Equals(TEXT("Steam"), ESearchCase::IgnoreCase))
 		{
-			UE_LOG(LogEasySession, Warning, TEXT("      Likely causes: the OnlineSubsystemSteam plugin is not enabled in the .uproject, [OnlineSubsystemSteam] bEnabled=false in DefaultEngine.ini, or the Steam client is not running."));
+			Causes = TEXT("Likely causes: the OnlineSubsystemSteam plugin is not enabled in the .uproject, [OnlineSubsystemSteam] bEnabled=false in DefaultEngine.ini, or the Steam client is not running.");
 		}
+
+		AddFix(Report, FString::Printf(TEXT("DefaultPlatformService is '%s' but the active subsystem is '%s' - the configured service failed to load."),
+			*ConfiguredService, *ActualService.ToString()), {}, MoveTemp(Causes));
 	}
 
 	if (ActualService == STEAM_SUBSYSTEM)
 	{
-		DiagnoseSteam(World, *OnlineSub);
+		DiagnoseSteam(World, *OnlineSub, Report);
 	}
 	else if (ActualService == NULL_SUBSYSTEM)
 	{
-		UE_LOG(LogEasySession, Log, TEXT("[NOTE] NULL (LAN) subsystem active - sessions work on the local network only, and invites/friends/presence are unsupported. This is the expected mode for local testing."));
+		AddInfo(Report, EFindingKind::Note, TEXT("NULL (LAN) subsystem active - sessions work on the local network only, and invites/friends/presence are unsupported. This is the expected mode for local testing."));
 	}
 
 	// The join approval beacon needs a BeaconNetDriver definition. The engine ships one
@@ -158,12 +167,53 @@ FString EasySessionDiagnostics::RunDiagnostics(UWorld* World)
 	if (GEngine != nullptr && !GEngine->NetDriverDefinitions.ContainsByPredicate(
 		[](const FNetDriverDefinition& Definition) { return Definition.DefName == FName(TEXT("BeaconNetDriver")); }))
 	{
-		LogFix(TEXT("No BeaconNetDriver definition - the join approval beacon cannot start, so hosts fall back to refusing players after they have already traveled."),
+		AddFix(Report, TEXT("No BeaconNetDriver definition - the join approval beacon cannot start, so hosts fall back to refusing players after they have already traveled."),
 			{ TEXT("[/Script/Engine.GameEngine]"),
 			  TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"/Script/OnlineSubsystemUtils.IpNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") });
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics complete ====="));
+	return Report;
+}
 
-	return Summary;
+void EasySessionDiagnostics::LogReport(const FReport& Report)
+{
+	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics (%s) ====="), *Report.Summary);
+
+	for (const FFinding& Finding : Report.Findings)
+	{
+		switch (Finding.Kind)
+		{
+			case EFindingKind::Fix:
+			{
+				UE_LOG(LogEasySession, Warning, TEXT("[FIX] %s"), *Finding.Message);
+				if (Finding.IniLines.Num() > 0)
+				{
+					UE_LOG(LogEasySession, Warning, TEXT("      Add to DefaultEngine.ini:"));
+					for (const FString& Line : Finding.IniLines)
+					{
+						UE_LOG(LogEasySession, Warning, TEXT("        %s"), *Line);
+					}
+				}
+				if (!Finding.Postscript.IsEmpty())
+				{
+					UE_LOG(LogEasySession, Warning, TEXT("      %s"), *Finding.Postscript);
+				}
+				break;
+			}
+
+			case EFindingKind::Note:
+			{
+				UE_LOG(LogEasySession, Log, TEXT("[NOTE] %s"), *Finding.Message);
+				break;
+			}
+
+			case EFindingKind::Ok:
+			{
+				UE_LOG(LogEasySession, Log, TEXT("[OK]  %s"), *Finding.Message);
+				break;
+			}
+		}
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("===== EasySession diagnostics complete ====="));
 }
