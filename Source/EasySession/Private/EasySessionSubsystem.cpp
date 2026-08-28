@@ -673,6 +673,14 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
 
+	// A failed server travel leaves the host's world, session and players untouched - only the map change failed, which OnSessionFailure just reported.
+	if (IsSessionAuthority())
+	{
+		// ServerTravelToMap stopped the beacon for a world that never arrived.
+		JoinApproval->EnsureHost();
+		return;
+	}
+
 	NotifyDisconnectedFromSession(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));
 }
 

@@ -178,6 +178,8 @@ When the host calls it, clients see the connection drop and return to the menu w
 
 Always change maps with this node: it stops the join approval beacon before the map changes, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
+If the map fails to load (a typo, a map missing from the cook), the room and its players stay exactly where they were. The failure arrives on `On Session Failure` - call again with the right map name.
+
 ## Events and state queries
 
 Bind these on the subsystem (`Get Easy Session Subsystem`) for UI updates:

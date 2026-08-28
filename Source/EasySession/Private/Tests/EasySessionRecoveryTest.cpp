@@ -6,9 +6,11 @@
 
 #include "EasySessionSettings.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
+#include "Engine/EngineBaseTypes.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
 
@@ -319,6 +321,136 @@ bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForCleanupOnce(State));
+	return true;
+}
+
+namespace EasySessionTravelFailureTest
+{
+	/** Maximum time to wait for each step before failing. */
+	static constexpr double TimeoutSeconds = 20.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		int32 Phase = 0;
+		double StartTime = 0.0;
+		bool bAutoReturnWasEnabled = true;
+	};
+
+	static void Finish(FTestState& State)
+	{
+		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
+	}
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForTravelFailure, TSharedPtr<EasySessionTravelFailureTest::FTestState>, State);
+bool FEasySessionWaitForTravelFailure::Update()
+{
+	using namespace EasySessionTravelFailureTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UWorld* World = State->GameInstance->GetWorld();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		Finish(*State);
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+			CurrentTest->TestNotNull(TEXT("The approval beacon is up before the travel"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+
+			// The engine accepts a travel to a map that does not exist - only the next
+			// tick's load fails. The failure broadcast below stands in for that tick.
+			CurrentTest->TestTrue(TEXT("ServerTravelToMap accepted the bad map"), Subsystem->ServerTravelToMap(TEXT("/Game/EasySessionTests/ES_NoSuchMap")));
+			CurrentTest->TestNull(TEXT("The travel stopped the beacon"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+			CurrentTest->TestTrue(TEXT("The travel reports busy"), Subsystem->IsBusy());
+
+			GEngine->BroadcastTravelFailure(World, ETravelFailure::ServerTravelFailure, TEXT("No such map"));
+
+			CurrentTest->TestTrue(TEXT("The host keeps its session"), Subsystem->IsInSession());
+			CurrentTest->TestTrue(TEXT("The failure was reported"), State->Listener->FailureReasons.Num() >= 1);
+			CurrentTest->TestFalse(TEXT("No disconnect was recorded - nobody disconnected"), Subsystem->HasPendingDisconnectInfo());
+			CurrentTest->TestFalse(TEXT("The failed travel no longer reports busy"), Subsystem->IsBusy());
+			CurrentTest->TestNotNull(TEXT("The approval beacon is back up"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+
+			// The same broadcast on a client still tears the dead session down.
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
+			GEngine->BroadcastTravelFailure(World, ETravelFailure::ServerTravelFailure, TEXT("Could not reach the host"));
+
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("The client's cleanup destroy ran"), State->Listener->DestroyedResults.Num(), 1);
+			CurrentTest->TestEqual(TEXT("The disconnect reason is the travel failure"), Subsystem->ConsumeLastDisconnectInfo().Reason, EEasyDisconnectReason::TravelFailure);
+
+			Finish(*State);
+			return true;
+		}
+	}
+}
+
+/**
+ * A failed server travel leaves the host's world, session and connected players exactly
+ * where they were - the engine only clears the pending URL. Treating it as a disconnect
+ * destroyed a live room over a map name typo. The host now keeps the session and hears
+ * about the failure through On Session Failure; a client still cleans up, because its
+ * travel failure really does mean it never reached the host.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionTravelFailureTest, "EasySession.Recovery.HostKeepsSessionOnTravelFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionTravelFailureTest;
+	using EasySessionSecondDisconnectTest::MakeParams;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	// Returning to the menu means browsing to a map, which a headless test world has
+	// no use for. Turning it off leaves the recovery behavior, which is what is on trial.
+	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
+	Settings->bAutoReturnToMenuOnDisconnect = false;
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionFailure.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionFailure);
+	Subsystem->OnSessionDestroyed.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleDestroyed);
+
+	Subsystem->CreateEasySession(MakeParams(TEXT("EasySession Travel Failure Test")));
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForTravelFailure(State));
 	return true;
 }
 
