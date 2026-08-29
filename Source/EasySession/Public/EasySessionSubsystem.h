@@ -180,6 +180,16 @@ public:
 	void JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password = FString(), const FString& AdditionalTravelOptions = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
+	 * Find the session advertising this join code and join it. Hidden sessions count - a code names one exact room.
+	 * The lookup search stays off the public surfaces: no OnSessionsFound broadcast, no GetLastSearchResults cache.
+	 *
+	 * @param JoinCode The code the host reads from GetSessionJoinCode. Case does not matter.
+	 * @param Password Password for password protected sessions. Ignored otherwise.
+	 * @param OnComplete Called when the operation completes. NoSessionsFound when no session advertises the code.
+	 */
+	void JoinEasySessionByCode(const FString& JoinCode, const FString& Password = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
 	 * Start the match: transitions the session to InProgress.
 	 * When Allow Join In Progress is disabled, new players are refused from here until the match ends - except on Steam, which already refused them from the first join onwards.
 	 * Needs session authority - only the game that created the session can start the match.
@@ -270,6 +280,12 @@ public:
 	 *         Host only. Returns defaults on a client, when there is no session, and for the fields Update cannot change.
 	 */
 	FEasySessionHostParams GetSessionHostParams() const;
+
+	/**
+	 * @return The join code the current session advertises, or empty when it advertises none.
+	 *         Works for every player in the session, so anyone in the room can share the code.
+	 */
+	FString GetSessionJoinCode() const;
 
 	/**
 	 * Internal: receive the host's replicated session state (called by the state actor).

@@ -314,6 +314,10 @@ FEasySessionHostParams UEasyQuickMatchPolicy::MakeFallbackHostParams() const
 	FEasySessionHostParams FallbackParams = Params.Host;
 	FallbackParams.bIsLANMatch = Params.Search.bLANQuery;
 	FallbackParams.CustomSettings.Append(Params.Search.RequiredCustomSettings);
+	if (Params.Search.Region != EEasySessionRegion::Any)
+	{
+		FallbackParams.Region = Params.Search.Region;
+	}
 	return FallbackParams;
 }
 

@@ -174,6 +174,32 @@ public:
 		Subsystem.CleanupRequest(Request, /*bAbandoned*/ true);
 	}
 
+	/**
+	 * Complete the running search with these crafted results, standing in for the online service answering.
+	 * One process cannot find its own LAN session, so filter tests inject what a search would have returned.
+	 *
+	 * @return Whether there was a running search to complete.
+	 */
+	static bool DriveFindCompletion(UEasySessionSubsystem& Subsystem, const TArray<FOnlineSessionSearchResult>& Results)
+	{
+		if (!Subsystem.ActiveSearch.IsValid() || Subsystem.ActiveSearch->SearchState != EOnlineAsyncTaskState::InProgress)
+		{
+			return false;
+		}
+
+		// Release the service's slot first - NULL refuses every later search in the process while it holds one.
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		if (Sessions.IsValid())
+		{
+			Sessions->CancelFindSessions();
+		}
+
+		Subsystem.ActiveSearch->SearchResults = Results;
+		Subsystem.ActiveSearch->SearchState = EOnlineAsyncTaskState::Done;
+		Subsystem.HandleFindSessionsComplete(true);
+		return true;
+	}
+
 	/** Feed a finished search into the quick match policy, standing in for a search pass completing with these results. */
 	static void DriveQuickMatchSearch(UEasyQuickMatchPolicy& Policy, const TArray<FEasySessionSearchResult>& Results)
 	{

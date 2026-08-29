@@ -57,6 +57,20 @@ public:
 		DestroyedResults.Add(Result);
 	}
 
+	/** How many times OnSessionsFound fired, so a test can prove an internal search stayed off the public event. */
+	UPROPERTY()
+	int32 SessionsFoundBroadcasts = 0;
+
+	/** Bind to OnSessionsFound. */
+	UFUNCTION()
+	void HandleSessionsFound(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
+	{
+		++SessionsFoundBroadcasts;
+	}
+
+	/** @return How many times OnSessionsFound fired. */
+	int32 FoundBroadcasts() const { return SessionsFoundBroadcasts; }
+
 	/** Reasons seen on OnSessionFailure, in order. */
 	UPROPERTY()
 	TArray<FString> FailureReasons;

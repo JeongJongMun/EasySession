@@ -139,6 +139,15 @@ namespace EasySession
 	/** Custom session setting key marking a password protected session. The password itself is never advertised. */
 	EASYSESSION_API extern const FName SettingKey_PasswordProtected;
 
+	/** Custom session setting key holding the advertised region, as an EEasySessionRegion value. */
+	EASYSESSION_API extern const FName SettingKey_Region;
+
+	/** Custom session setting key holding the shareable join code. Empty when the host advertises none. */
+	EASYSESSION_API extern const FName SettingKey_JoinCode;
+
+	/** Make a six character join code from an alphabet without look-alike characters (no 0/O, 1/I/L, 8/B). */
+	EASYSESSION_API FString GenerateJoinCode();
+
 	/**
 	 * Custom session setting key marking a session whose host answers join approval over a beacon.
 	 * Approval covers every joining rule - password, room, joinable state - not just passwords.
@@ -164,6 +173,44 @@ namespace EasySession
 
 /** Native hook fired before a travel URL is used, allowing C++ code to modify it in place. */
 DECLARE_MULTICAST_DELEGATE_OneParam(FEasyModifyTravelURLDelegate, FString& /*TravelURL*/);
+
+/**
+ * Coarse world regions a session can advertise and a search can filter by, cut so that one region means playable latency.
+ * A game that needs its own split (country servers, one home region) leaves this at Any and filters with a Custom Settings key instead.
+ */
+UENUM(BlueprintType)
+enum class EEasySessionRegion : uint8
+{
+	/** No region: the session matches only searches that do not filter by region. */
+	Any,
+
+	/** USA and Canada, eastern half. */
+	NorthAmericaEast UMETA(DisplayName = "North America East"),
+
+	/** USA and Canada, western half. */
+	NorthAmericaWest UMETA(DisplayName = "North America West"),
+
+	/** South and Central America. */
+	SouthAmerica UMETA(DisplayName = "South America"),
+
+	/** Europe. */
+	Europe,
+
+	/** Middle East and Africa. */
+	MiddleEastAfrica UMETA(DisplayName = "Middle East & Africa"),
+
+	/** India and its neighbors. */
+	SouthAsia UMETA(DisplayName = "South Asia"),
+
+	/** Singapore and its neighbors. */
+	SoutheastAsia UMETA(DisplayName = "Southeast Asia"),
+
+	/** Korea, Japan, Hong Kong. */
+	EastAsia UMETA(DisplayName = "East Asia"),
+
+	/** Australia and New Zealand. */
+	Oceania
+};
 
 /**
  * Parameters for hosting a session.
@@ -269,6 +316,18 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bUsePresence = true;
 
+	/** The region advertised with the session. Searches filtering by region only see sessions advertising the same one. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	EEasySessionRegion Region = EEasySessionRegion::Any;
+
+	/**
+	 * Advertise a generated six character join code with the session, readable with Get Easy Session Join Code.
+	 * Players enter it in Join Easy Session By Code to join directly, hidden sessions included - Hidden plus a code makes a friends-only room.
+	 * The code identifies the room but does not protect it; protection is Password, and the two combine.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	bool bUseJoinCode = false;
+
 	/** Custom key-value data advertised with the session (e.g. GameMode = Deathmatch). */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	TMap<FString, FString> CustomSettings;
@@ -314,6 +373,16 @@ struct EASYSESSION_API FEasySessionSearchParams
 	/** Only return sessions whose custom settings match all of these key-value pairs exactly. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	TMap<FString, FString> RequiredCustomSettings;
+
+	/** Only return sessions advertising this region. Any applies no region filter. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	EEasySessionRegion Region = EEasySessionRegion::Any;
+
+	/**
+	 * Let hidden sessions into the results. C++ only, set by the join-by-code path: a code names one exact room, hidden or not.
+	 * Results of such a search stay off the public surfaces - no OnSessionsFound broadcast, no Get Last Search Results cache.
+	 */
+	bool bIncludeHiddenSessions = false;
 
 	/** Returns true if the search params are valid. */
 	bool IsValid() const;
@@ -361,6 +430,13 @@ struct EASYSESSION_API FEasySessionSearchResult
 
 	/** Whether the session is hidden from searches. Hidden sessions are filtered out of Find results, so Blueprint never receives one. */
 	bool bIsHidden = false;
+
+	/** The region the session advertises. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	EEasySessionRegion Region = EEasySessionRegion::Any;
+
+	/** The session's join code. C++ only, read by Join Easy Session By Code - kept off Blueprint so a session browser cannot list other rooms' codes. */
+	FString JoinCode;
 
 	/** Custom key-value data advertised with the session. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")

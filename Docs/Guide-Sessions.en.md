@@ -185,6 +185,26 @@ Always change maps with this node: it stops the join approval beacon before the 
 
 If the map fails to load (a typo, a map missing from the cook), the room and its players stay exactly where they were. The failure arrives on `On Session Failure` - call again with the right map name.
 
+## Regions
+
+Hosting advertises `Region` (`Any` by default) and searching filters by it: set the same
+region in both places and players only see rooms they can play in. `Any` on the search
+lists every region; `Any` on the host matches only searches that do not filter. The
+regions are coarse on purpose - one region means playable latency. A game that needs its
+own split (country servers, a single home region) leaves the field at `Any` and filters
+with a `Custom Settings` key through `Required Custom Settings` instead.
+
+## Join codes
+
+Turn on `Use Join Code` when hosting and the session advertises a generated six character
+code, readable with `Get Easy Session Join Code` by everyone in the room. `Join Easy
+Session By Code` finds the room advertising that code and joins it - hidden sessions
+included, so `Hidden` plus a code is a friends-only room: no browser lists it, anyone
+with the code walks in.
+
+The code identifies the room but does not protect it. Protection is `Password`, and the
+two combine: the code finds the room, the password still gates the door.
+
 ## Events and state queries
 
 Bind these on the subsystem (`Get Easy Session Subsystem`) for UI updates:

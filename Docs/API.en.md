@@ -45,9 +45,10 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`. On a listen server it then travels to Map Name with `?listen` so this game becomes the server, or starts listening on the current map when Map Name is empty. Dedicated servers keep the map they launched with |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
+| **Join Easy Session By Code** | `JoinCode`, `Password` | Finds the session advertising the code - hidden sessions included - and joins it through the same approval flow. The code comes from the host's Get Easy Session Join Code |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
-| **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
+| **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, region, join code, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
 | **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
 | **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the room for everyone with "The host has left the game." |
 | **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-QuickMatch.en.md)) |
@@ -98,6 +99,7 @@ node name without spaces.
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
 | Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports |
 | Get Easy Session Host Params | `GetSessionHostParams` | The params the session was created with, so Update can change one field. Host only |
+| Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the room can read and share it |
 
 `To String (EasySessionResult)` (C++ `ResultToString`) turns a result enum into text.
 
@@ -177,7 +179,7 @@ bound to them stays correct even when something else in your game drives the ses
 ## 5. Structs
 
 ### 5.1 FEasySessionHostParams
-`SessionDisplayName` (String), `MapName` (String), `HostMode` (`EEasySessionHostMode`), `MaxPlayers` (int), `bIsLANMatch`, `bStartListening`, `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `AdditionalTravelOptions` (String), `bAllowJoinInProgress`, `bAllowInvites`, `bUsePresence`, `CustomSettings` (Map String->String)
+`SessionDisplayName` (String), `MapName` (String), `HostMode` (`EEasySessionHostMode`), `MaxPlayers` (int), `bIsLANMatch`, `bStartListening`, `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `AdditionalTravelOptions` (String), `bAllowJoinInProgress`, `bAllowInvites`, `bUsePresence`, `Region` (`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings` (Map String->String)
 
 Field behavior is in the [session guide](Guide-Sessions.en.md). `bHidden` advertises the
 session but keeps it out of Find results, so it can only be reached through an invite.
@@ -185,13 +187,15 @@ session but keeps it out of Find results, so it can only be reached through an i
 [password protected sessions](Guide-Sessions.en.md#password-protected-sessions).
 `AdditionalTravelOptions` is appended
 to the host's travel URL (e.g. `GameMode=Deathmatch?MyOption=1`), readable on the server
-with `Parse Option`.
+with `Parse Option`. `Region` and `bUseJoinCode` are covered in the guide's
+[regions](Guide-Sessions.en.md#regions) and [join codes](Guide-Sessions.en.md#join-codes)
+sections.
 
 ### 5.2 FEasySessionSearchParams
-`MaxResults` (int), `bLANQuery`, `TimeoutSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String)
+`MaxResults` (int), `bLANQuery`, `TimeoutSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`)
 
 ### 5.3 FEasySessionSearchResult *(read-only)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `CustomSettings`
 
 This struct connects the two nodes: `Find Easy Sessions` returns them and
 `Join Easy Session` takes one back. Keep the whole struct - a server-browser row should
@@ -264,6 +268,10 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 ### 6.5 EEasySessionHostMode
 
 `ListenServer` (the hosting player's game is the server) or `DedicatedServer` (code path present, not validated in 1.0).
+
+### 6.6 EEasySessionRegion
+
+`Any` plus nine coarse world regions, from `NorthAmericaEast` to `Oceania`, cut so that one region means playable latency. A game that needs its own split leaves this at `Any` and filters with a `CustomSettings` key instead ([guide](Guide-Sessions.en.md#regions)).
 
 ## 7. UEasyQuickMatchPolicy
 

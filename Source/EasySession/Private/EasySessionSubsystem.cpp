@@ -193,6 +193,41 @@ void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& Sear
 	EnqueueRequest(Request);
 }
 
+void UEasySessionSubsystem::JoinEasySessionByCode(const FString& JoinCode, const FString& Password, FEasySessionCompleteDelegate OnComplete)
+{
+	const FString NormalizedCode = JoinCode.TrimStartAndEnd().ToUpper();
+	if (NormalizedCode.IsEmpty())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, TEXT("The join code is empty."));
+		return;
+	}
+
+	// A code names one exact room, so the lookup runs unfiltered and hidden rooms count.
+	FEasySessionSearchParams SearchParams;
+	SearchParams.bIncludeHiddenSessions = true;
+
+	FindEasySessions(SearchParams, FEasySessionFindCompleteDelegate::CreateWeakLambda(this,
+		[this, NormalizedCode, Password, OnComplete](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
+		{
+			if (Result != EEasySessionResult::Success)
+			{
+				OnComplete.ExecuteIfBound(Result, ErrorMessage);
+				return;
+			}
+
+			for (const FEasySessionSearchResult& Session : Results)
+			{
+				if (Session.JoinCode == NormalizedCode)
+				{
+					JoinEasySession(Session, Password, FString(), OnComplete);
+					return;
+				}
+			}
+
+			OnComplete.ExecuteIfBound(EEasySessionResult::NoSessionsFound, FString::Printf(TEXT("No session with the join code '%s' was found."), *NormalizedCode));
+		}));
+}
+
 void UEasySessionSubsystem::StartEasySession(FEasySessionCompleteDelegate OnComplete)
 {
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Start);
@@ -350,6 +385,18 @@ FEasySessionHostParams UEasySessionSubsystem::GetSessionHostParams() const
 			Setting.Value.Data.GetValue(Hidden);
 			Params.bHidden = Hidden != 0;
 		}
+		else if (Setting.Key == EasySession::SettingKey_Region)
+		{
+			int32 RegionValue = 0;
+			Setting.Value.Data.GetValue(RegionValue);
+			Params.Region = static_cast<EEasySessionRegion>(RegionValue);
+		}
+		else if (Setting.Key == EasySession::SettingKey_JoinCode)
+		{
+			FString JoinCode;
+			Setting.Value.Data.GetValue(JoinCode);
+			Params.bUseJoinCode = !JoinCode.IsEmpty();
+		}
 		else if (!EasySession::IsReservedSettingKey(Setting.Key))
 		{
 			Params.CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
@@ -365,6 +412,20 @@ FEasySessionHostParams UEasySessionSubsystem::GetSessionHostParams() const
 	}
 
 	return Params;
+}
+
+FString UEasySessionSubsystem::GetSessionJoinCode() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return FString();
+	}
+
+	FString JoinCode;
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, JoinCode);
+	return JoinCode;
 }
 
 EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const

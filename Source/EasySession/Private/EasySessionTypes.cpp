@@ -16,6 +16,12 @@ namespace EasySession
 	/** Custom session setting key marking a password protected session. */
 	const FName SettingKey_PasswordProtected = TEXT("EASYPASSWORDPROTECTED");
 
+	/** Custom session setting key holding the advertised region. */
+	const FName SettingKey_Region = TEXT("EASYREGION");
+
+	/** Custom session setting key holding the shareable join code. */
+	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
+
 	/** Custom session setting key marking a session whose host answers join approval over a beacon. */
 	const FName SettingKey_JoinApproval = TEXT("EASYJOINAPPROVAL");
 
@@ -32,9 +38,25 @@ namespace EasySession
 		return Key == SettingKey_DisplayName
 			|| Key == SettingKey_Hidden
 			|| Key == SettingKey_PasswordProtected
+			|| Key == SettingKey_Region
+			|| Key == SettingKey_JoinCode
 			|| Key == SettingKey_JoinApproval
 			|| Key == SETTING_MAPNAME
 			|| Key == SETTING_BEACONPORT;
+	}
+
+	FString GenerateJoinCode()
+	{
+		// Codes are read over voice chat and typed on gamepads, so every character must survive both.
+		static const TCHAR Alphabet[] = TEXT("23456789ACDEFGHJKMNPQRSTUVWXYZ");
+		static constexpr int32 AlphabetSize = UE_ARRAY_COUNT(Alphabet) - 1;
+
+		FString Code;
+		for (int32 Index = 0; Index < 6; ++Index)
+		{
+			Code.AppendChar(Alphabet[FMath::RandRange(0, AlphabetSize - 1)]);
+		}
+		return Code;
 	}
 
 	FString ResultToString(EEasySessionResult Result)
@@ -110,6 +132,16 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 			int32 Protected = 0;
 			Setting.Value.Data.GetValue(Protected);
 			Result.bPasswordProtected = Protected != 0;
+		}
+		else if (Setting.Key == EasySession::SettingKey_Region)
+		{
+			int32 RegionValue = 0;
+			Setting.Value.Data.GetValue(RegionValue);
+			Result.Region = static_cast<EEasySessionRegion>(RegionValue);
+		}
+		else if (Setting.Key == EasySession::SettingKey_JoinCode)
+		{
+			Result.JoinCode = Setting.Value.Data.ToString();
 		}
 		else if (Setting.Key == SETTING_MAPNAME)
 		{

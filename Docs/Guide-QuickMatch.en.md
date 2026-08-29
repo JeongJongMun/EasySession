@@ -29,8 +29,9 @@ The bundled example leaves it off and only searches and joins.
 
 When the fallback does host, it inherits the search's filters: the session is created on
 the network the search looked at (`LAN Query`), and every `Required Custom Settings` pair
-is advertised on it, overwriting the same key in Host > Custom Settings. The room a run
-opens is one its own search would have found.
+is advertised on it, overwriting the same key in Host > Custom Settings. A searched
+`Region` is advertised the same way. The room a run opens is one its own search would
+have found.
 
 Progress comes from four events on the subsystem itself, so a widget can bind once,
 before any run exists:

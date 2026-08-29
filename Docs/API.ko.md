@@ -44,9 +44,10 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 되고, Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 승인을 먼저 물은 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
+| **Join Easy Session By Code** | `JoinCode`, `Password` | 코드를 광고하는 세션을 찾아 - 숨긴 세션 포함 - 같은 승인 흐름으로 참가합니다. 코드는 호스트의 Get Easy Session Join Code에서 나옵니다 |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
-| **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
+| **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 지역, 참가 코드, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
 | **Destroy Easy Session** | - | `DestroySession` 호출. 이 게임의 네임드 세션만 지우고 맵에는 그대로 남습니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
 | **Leave Easy Session** | - | Destroy Easy Session에 귀갓길까지. 네임드 세션을 지운 뒤 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 방을 닫습니다 |
 | **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-QuickMatch.ko.md)) |
@@ -94,6 +95,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
 | Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용 |
 | Get Easy Session Host Params | `GetSessionHostParams` | 세션을 만들 때 쓴 파라미터. 한 필드만 바꿔 Update에 넘길 때 씁니다. 호스트 전용 |
+| Get Easy Session Join Code | `GetSessionJoinCode` | 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 방에 있는 누구나 읽고 공유할 수 있습니다 |
 
 `To String (EasySessionResult)`(C++ `ResultToString`)는 결과 열거형을 텍스트로 바꿉니다.
 
@@ -169,19 +171,20 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 ## 5. 구조체
 
 ### 5.1 FEasySessionHostParams
-`SessionDisplayName`(String), `MapName`(String), `HostMode`(`EEasySessionHostMode`), `MaxPlayers`(int), `bIsLANMatch`, `bStartListening`, `bShouldAdvertise`, `bHidden`, `Password`(String), `bFriendsBypassPassword`, `AdditionalTravelOptions`(String), `bAllowJoinInProgress`, `bAllowInvites`, `bUsePresence`, `CustomSettings`(Map String->String)
+`SessionDisplayName`(String), `MapName`(String), `HostMode`(`EEasySessionHostMode`), `MaxPlayers`(int), `bIsLANMatch`, `bStartListening`, `bShouldAdvertise`, `bHidden`, `Password`(String), `bFriendsBypassPassword`, `AdditionalTravelOptions`(String), `bAllowJoinInProgress`, `bAllowInvites`, `bUsePresence`, `Region`(`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings`(Map String->String)
 
 각 필드의 동작은 [세션 가이드](Guide-Sessions.ko.md)에 있습니다. `bHidden`은 세션을 광고하되
 Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Password`와 `bFriendsBypassPassword`는
 [같은 가이드의 비밀번호 절](Guide-Sessions.ko.md#비밀번호로-잠근-세션)에서 다룹니다.
 `AdditionalTravelOptions`는 호스트의 Travel URL 뒤에
 붙으며(예: `GameMode=Deathmatch?MyOption=1`), 서버에서 `Parse Option`으로 읽습니다.
+`Region`과 `bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 지역 절과 참가 코드 절에서 다룹니다.
 
 ### 5.2 FEasySessionSearchParams
-`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String)
+`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`)
 
 ### 5.3 FEasySessionSearchResult *(읽기 전용)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `CustomSettings`
 
 두 노드를 잇는 구조체입니다. `Find Easy Sessions`가 돌려주고 `Join Easy Session`이 받습니다.
 구조체를 통째로 들고 계세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
@@ -254,6 +257,10 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 ### 6.5 EEasySessionHostMode
 
 `ListenServer`(호스트 플레이어의 게임이 곧 서버) 또는 `DedicatedServer`(코드 경로는 있으나 1.0에서는 검증되지 않음).
+
+### 6.6 EEasySessionRegion
+
+`Any`에 `NorthAmericaEast`부터 `Oceania`까지 큰 단위의 세계 지역 아홉 개를 더한 열거형입니다. 한 지역 안이면 쾌적한 핑으로 플레이할 수 있도록 나눴습니다. 게임 고유의 분할이 필요하면 `Any`로 두고 `CustomSettings` 키로 필터하세요 ([가이드](Guide-Sessions.ko.md)).
 
 ## 7. UEasyQuickMatchPolicy
 

@@ -107,7 +107,15 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 
 		case FEasySessionRequest::EType::Find:
 			CompletedRequest->OnFindComplete.ExecuteIfBound(Result, ErrorMessage, LastSearchResults);
-			OnSessionsFound.Broadcast(Result, ErrorMessage, LastSearchResults);
+			// A search that saw hidden rooms stays off the public surfaces: no broadcast, no cache.
+			if (CompletedRequest->SearchParams.bIncludeHiddenSessions)
+			{
+				LastSearchResults.Empty();
+			}
+			else
+			{
+				OnSessionsFound.Broadcast(Result, ErrorMessage, LastSearchResults);
+			}
 			break;
 
 		case FEasySessionRequest::EType::Join:
@@ -280,6 +288,15 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	// FEasySessionSearchResult::bPasswordProtected and asks for one before joining.
 	// Trimmed like ServerGate's copy: a whitespace-only password enforces nothing.
 	Settings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The advertised region. Written even at Any: an advertised key cannot be deleted later.
+	Settings.Set(EasySession::SettingKey_Region, static_cast<int32>(Params.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The room's shareable code. Generated rather than chosen: codes exist to be short and unambiguous.
+	if (Params.bUseJoinCode)
+	{
+		Settings.Set(EasySession::SettingKey_JoinCode, EasySession::GenerateJoinCode(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
 
 	// The port joiners reach the join approval beacon on. Read from config rather than
 	// from a running beacon, because none exists yet - one is created per world, after
@@ -524,6 +541,20 @@ void UEasySessionSubsystem::ExecuteUpdate()
 	// HandleUpdateSessionComplete, once this request is known to have succeeded.
 	UpdatedSettings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
+	UpdatedSettings.Set(EasySession::SettingKey_Region, static_cast<int32>(Params.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The code survives updates. Turning it on mid-session generates one; turning it off blanks it, because an advertised key cannot be deleted.
+	FString ExistingJoinCode;
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, ExistingJoinCode);
+	if (Params.bUseJoinCode)
+	{
+		UpdatedSettings.Set(EasySession::SettingKey_JoinCode, ExistingJoinCode.IsEmpty() ? EasySession::GenerateJoinCode() : ExistingJoinCode, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+	else if (!ExistingJoinCode.IsEmpty())
+	{
+		UpdatedSettings.Set(EasySession::SettingKey_JoinCode, FString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
 	{
 		const FName Key(*Custom.Key);
@@ -628,7 +659,11 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		FEasySessionSearchResult Result = FEasySessionSearchResult::FromNative(NativeResult);
 
 		// Hidden sessions are advertised for invites/direct joins but never listed in searches.
-		if (Result.bIsHidden)
+		if (Result.bIsHidden && !Params.bIncludeHiddenSessions)
+		{
+			continue;
+		}
+		if (Params.Region != EEasySessionRegion::Any && Result.Region != Params.Region)
 		{
 			continue;
 		}

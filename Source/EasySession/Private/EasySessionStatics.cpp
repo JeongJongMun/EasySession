@@ -144,6 +144,12 @@ FEasySessionHostParams UEasySessionStatics::GetEasySessionHostParams(const UObje
 	return Subsystem != nullptr ? Subsystem->GetSessionHostParams() : FEasySessionHostParams();
 }
 
+FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetSessionJoinCode() : FString();
+}
+
 void UEasySessionStatics::CancelEasyQuickMatch(const UObject* WorldContextObject)
 {
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))

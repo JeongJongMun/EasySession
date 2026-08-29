@@ -254,6 +254,7 @@ bool FEasyQuickMatchWaitFallbackFilters::Update()
 		CurrentTest->TestEqual(TEXT("The filtered key overwrote the host value"), ReadBack.CustomSettings.FindRef(TEXT("GameMode")), FString(TEXT("Deathmatch")));
 		CurrentTest->TestEqual(TEXT("The filter-only key was added"), ReadBack.CustomSettings.FindRef(TEXT("Region")), FString(TEXT("KR")));
 		CurrentTest->TestEqual(TEXT("The host-only key survived"), ReadBack.CustomSettings.FindRef(TEXT("MOTD")), FString(TEXT("Hello")));
+		CurrentTest->TestEqual(TEXT("The fallback session advertises the searched region"), ReadBack.Region, EEasySessionRegion::EastAsia);
 
 		Subsystem->DestroyEasySession();
 		State->bCleanupIssued = true;
@@ -302,6 +303,7 @@ bool FEasyQuickMatchFallbackFiltersTest::RunTest(const FString& Parameters)
 	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Search.RequiredCustomSettings.Add(TEXT("GameMode"), TEXT("Deathmatch"));
 	Params.Search.RequiredCustomSettings.Add(TEXT("Region"), TEXT("KR"));
+	Params.Search.Region = EEasySessionRegion::EastAsia;
 	Params.Host.SessionDisplayName = TEXT("EasySession Fallback Filters Test");
 	// On purpose: the search filter must win over this stale host value.
 	Params.Host.CustomSettings.Add(TEXT("GameMode"), TEXT("Warmup"));
@@ -327,6 +329,7 @@ bool FEasyQuickMatchFallbackFiltersTest::RunTest(const FString& Parameters)
 		const FEasySessionHostParams Folded = FEasySessionTestAccess::MakeQuickMatchFallbackHostParams(*Policy);
 		TestTrue(TEXT("The LAN search pulls the fallback onto the LAN"), Folded.bIsLANMatch);
 		TestEqual(TEXT("The folded params carry the filtered value"), Folded.CustomSettings.FindRef(TEXT("GameMode")), FString(TEXT("Deathmatch")));
+		TestEqual(TEXT("The folded params carry the searched region"), Folded.Region, EEasySessionRegion::EastAsia);
 	}
 
 	State->StartTime = FPlatformTime::Seconds();

@@ -144,6 +144,13 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);
 
+	/**
+	 * Get the join code the current session advertises, or an empty string when it advertises none.
+	 * Works for every player in the session, so anyone in the room can share the code.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static FString GetEasySessionJoinCode(const UObject* WorldContextObject);
+
 	/** Cancel the running Quick Match. A join or host that succeeds after the cancel is undone. Does nothing when no quick match is running. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyQuickMatch(const UObject* WorldContextObject);
