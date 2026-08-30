@@ -50,9 +50,13 @@ namespace EasySessionJoinCodeTest
 		/** The code the hidden session advertises. */
 		FString JoinCode;
 
+		/** What the code-filtered search delivered - the preview a UI would show. */
+		TArray<FEasySessionSearchResult> PreviewResults;
+
 		TOptional<int32> NormalSearchCount;
-		TOptional<EEasySessionResult> ByCodeResult;
-		TOptional<EEasySessionResult> WrongCodeResult;
+		bool bPreviewDelivered = false;
+		TOptional<EEasySessionResult> JoinResult;
+		TOptional<int32> WrongCodeCount;
 		int32 Phase = 0;
 		double StartTime = 0.0;
 	};
@@ -123,14 +127,47 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			CurrentTest->TestEqual(TEXT("A normal search does not list the hidden room"), State->NormalSearchCount.GetValue(), 0);
 			CurrentTest->TestEqual(TEXT("The normal search reached the public event"), State->Listener->FoundBroadcasts(), 1);
 
-			// A read-modify-write update must not lose the code.
-			Subsystem->UpdateEasySession(Subsystem->GetSessionHostParams());
+			// The code-filtered search is the preview: the one hidden room, delivered without the public surfaces.
+			FEasySessionSearchParams CodeSearch;
+			CodeSearch.bLANQuery = true;
+			CodeSearch.JoinCode = State->JoinCode;
+			Subsystem->FindEasySessions(CodeSearch, FEasySessionFindCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
+				{
+					Shared->PreviewResults = Results;
+					Shared->bPreviewDelivered = true;
+				}));
+
 			State->Phase = 2;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
 		}
 
 		case 2:
+		{
+			if (!State->bPreviewDelivered)
+			{
+				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("The code search previews the hidden room"), State->PreviewResults.Num(), 1);
+			CurrentTest->TestEqual(TEXT("The code lookup stayed off the public event"), State->Listener->FoundBroadcasts(), 1);
+			CurrentTest->TestEqual(TEXT("And off the public cache"), Subsystem->GetLastSearchResults().Num(), 0);
+			if (State->PreviewResults.Num() != 1)
+			{
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+
+			// A read-modify-write update must not lose the code.
+			Subsystem->UpdateEasySession(Subsystem->GetSessionHostParams());
+			State->Phase = 3;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 3:
 		{
 			if (Subsystem->IsBusy())
 			{
@@ -139,26 +176,8 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 
 			CurrentTest->TestEqual(TEXT("The update kept the code"), Subsystem->GetSessionJoinCode(), State->JoinCode);
 
-			// The record must be gone before joining by code, or the join is refused for being in a session already.
+			// The record must be gone before joining the preview, or the join is refused for being in a session already.
 			Subsystem->DestroyEasySession();
-			State->Phase = 3;
-			State->StartTime = FPlatformTime::Seconds();
-			return false;
-		}
-
-		case 3:
-		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
-			{
-				return false;
-			}
-
-			Subsystem->JoinEasySessionByCode(State->JoinCode, FString(), FEasySessionCompleteDelegate::CreateLambda(
-				[Shared](EEasySessionResult Result, const FString&)
-				{
-					Shared->ByCodeResult = Result;
-				}));
-
 			State->Phase = 4;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -166,26 +185,16 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 
 		case 4:
 		{
-			if (!State->ByCodeResult.IsSet())
-			{
-				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
-				return false;
-			}
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (Subsystem->IsInSession() || Subsystem->IsBusy())
 			{
 				return false;
 			}
 
-			// ResolveFailure, not NoSessionsFound: the code found the hidden room and a join was genuinely tried.
-			CurrentTest->TestEqual(TEXT("The code reached the hidden room"), State->ByCodeResult.GetValue(), EEasySessionResult::ResolveFailure);
-			CurrentTest->TestEqual(TEXT("The code lookup stayed off the public event"), State->Listener->FoundBroadcasts(), 1);
-			CurrentTest->TestEqual(TEXT("And off the public cache"), Subsystem->GetLastSearchResults().Num(), 0);
-
-			// A code nobody advertises finds nothing, even with the room in the results.
-			Subsystem->JoinEasySessionByCode(TEXT("QQQQQQ"), FString(), FEasySessionCompleteDelegate::CreateLambda(
+			// The previewed result joins like any other search result.
+			Subsystem->JoinEasySession(State->PreviewResults[0], FString(), FString(), FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
-					Shared->WrongCodeResult = Result;
+					Shared->JoinResult = Result;
 				}));
 
 			State->Phase = 5;
@@ -193,9 +202,34 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			return false;
 		}
 
+		case 5:
+		{
+			if (!State->JoinResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			// ResolveFailure, not InvalidParams: the preview was a real joinable target and a join was genuinely tried.
+			CurrentTest->TestEqual(TEXT("The previewed room was genuinely joined"), State->JoinResult.GetValue(), EEasySessionResult::ResolveFailure);
+
+			// A code nobody advertises finds nothing, even with the room in the results.
+			FEasySessionSearchParams WrongSearch;
+			WrongSearch.bLANQuery = true;
+			WrongSearch.JoinCode = TEXT("QQQQQQ");
+			Subsystem->FindEasySessions(WrongSearch, FEasySessionFindCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
+				{
+					Shared->WrongCodeCount = Result == EEasySessionResult::Success ? Results.Num() : -1;
+				}));
+
+			State->Phase = 6;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
 		default:
 		{
-			if (!State->WrongCodeResult.IsSet())
+			if (!State->WrongCodeCount.IsSet())
 			{
 				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
 				return false;
@@ -205,7 +239,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("A wrong code finds nothing"), State->WrongCodeResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestEqual(TEXT("A wrong code finds nothing"), State->WrongCodeCount.GetValue(), 0);
 
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
@@ -216,9 +250,9 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 /**
  * The whole life of a join code against a hidden room: advertised and readable by the
  * host, invisible to a normal search, preserved by a read-modify-write update, and the
- * one key that lets Join Easy Session By Code reach the room - without its lookup ever
- * touching the public search surfaces. The join itself fails on address resolve, which
- * is what proves the room was found rather than skipped.
+ * one filter that lets a code search preview the room - off the public search surfaces -
+ * whose result then joins like any other. The join itself fails on address resolve,
+ * which is what proves the previewed room was real rather than skipped.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinCodeTest, "EasySession.JoinCode.CodeOpensAHiddenRoom", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinCodeTest::RunTest(const FString& Parameters)

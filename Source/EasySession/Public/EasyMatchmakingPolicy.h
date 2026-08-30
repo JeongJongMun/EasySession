@@ -60,7 +60,7 @@ public:
 	float ScoreSession(const FEasySessionSearchResult& Session) const;
 	virtual float ScoreSession_Implementation(const FEasySessionSearchResult& Session) const;
 
-	/** Get the current matchmaking state. */
+	/** @return The current matchmaking state. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasyMatchmakingState GetState() const { return State; }
 

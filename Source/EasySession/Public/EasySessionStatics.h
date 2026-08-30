@@ -20,101 +20,87 @@ class EASYSESSION_API UEasySessionStatics : public UBlueprintFunctionLibrary
 
 public:
 
-	/** Get the EasySession subsystem. Use this to bind session events like On Session Failure. */
+	/** @return The EasySession subsystem, for binding session events like On Session Failure. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static UEasySessionSubsystem* GetEasySessionSubsystem(const UObject* WorldContextObject);
 
 	/**
-	 * Check whether the local player is currently in a session.
-	 *
 	 * This and the queries below it are all about the game session - the one players find, join and play in.
 	 * There is one per process, so none of them take a session argument.
+	 *
+	 * @return Whether the local player is currently in a session.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsInEasySession(const UObject* WorldContextObject);
 
-	/**
-	 * Check whether the local player is hosting the current session.
-	 * Always false on a dedicated server, which has no local player - use Is Easy Session Authority there instead.
-	 */
+	/** @return Whether the local player is hosting the current session. Always false on a dedicated server, which has no local player - use Is Easy Session Authority there instead. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionHost(const UObject* WorldContextObject);
 
-	/**
-	 * Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
-	 * Do not use Is Easy Session Host instead - it is false on a dedicated server.
-	 */
+	/** @return Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it. Is Easy Session Host is not the same question - it is false on a dedicated server. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionAuthority(const UObject* WorldContextObject);
 
 	/**
-	 * Get the lifecycle state of the current session (Pending, InProgress, Ended, ...).
-	 * The host reports its own state; a client reports the host's replicated state once it has arrived, and its own until then.
+	 * @return The lifecycle state of the current session (Pending, InProgress, Ended, ...).
+	 *         The host reports its own state; a client reports the host's replicated state once it has arrived, and its own until then.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionState GetEasySessionState(const UObject* WorldContextObject);
 
-	/**
-	 * Get the password this game's session was created with, e.g. to show it so the host can share it.
-	 * Empty on clients and for password-less sessions - the password never leaves the host.
-	 */
+	/** @return The password this game's session was created with, for the host to share. Empty on clients and for password-less sessions - the password never leaves the host. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionPassword(const UObject* WorldContextObject);
 
-	/** Check whether a Matchmaking run is in progress. */
+	/** @return Whether a Matchmaking run is in progress. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasyMatchmakingRunning(const UObject* WorldContextObject);
 
-	/** Get which step a Matchmaking run is on: Searching, Joining, Hosting, Complete. */
+	/** @return Which step a Matchmaking run is on: Searching, Joining, Hosting, Complete. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static EEasyMatchmakingState GetEasyMatchmakingState(const UObject* WorldContextObject);
 
 	/**
-	 * Get a display-friendly label for the current session state that pairs the player-facing meaning with the raw state.
-	 * For example "Waiting (Pending)", "In Match (InProgress)", "Waiting (Ended)".
-	 * Pending and Ended both mean "in the lobby, ready to (re)start" - only the history differs.
+	 * @return A display-friendly label for the current session state that pairs the player-facing meaning with the raw state.
+	 *         For example "Waiting (Pending)", "In Match (InProgress)", "Waiting (Ended)".
+	 *         Pending and Ended both mean "in the lobby, ready to (re)start" - only the history differs.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionStateLabel(const UObject* WorldContextObject);
 
 	/**
-	 * Check whether any session operation is in progress.
-	 * That covers a request running or queued, a Matchmaking working through its steps, and a travel this plugin started that has not reached its map yet.
-	 * Bind session buttons to this to disable them while an operation runs; Is Easy Matchmaking Running asks specifically about Matchmaking.
+	 * Session buttons bind here to disable themselves; Is Easy Matchmaking Running asks about Matchmaking alone.
+	 *
+	 * @return Whether a request is running or queued, a Matchmaking is working through its steps, or a travel this plugin started has not reached its map yet.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);
 
-	/** Get the results of the most recent session search. Empty while a new search is running. */
+	/** @return The results of the most recent session search. Empty while a new search is running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionSearchResult> GetLastEasySearchResults(const UObject* WorldContextObject);
 
-	/**
-	 * Get the display names of all players currently in the session, including the local player.
-	 * Names come from the replicated player states, so the list is available on both the host and clients.
-	 */
+	/** @return The display names of all players currently in the session, including the local player. Read from the replicated player states, so both the host and clients get the list. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FString> GetEasySessionPlayerNames(const UObject* WorldContextObject);
 
-	/** Get the display name of the current session. Empty when no session exists. */
+	/** @return The display name of the current session. Empty when no session exists. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionDisplayName(const UObject* WorldContextObject);
 
-	/**
-	 * Get per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host.
-	 */
+	/** @return Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionPlayerInfo> GetEasySessionPlayerInfos(const UObject* WorldContextObject);
 
-	/** Get the number of players currently in the session. */
+	/** @return The number of players currently in the session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasySessionPlayerCount(const UObject* WorldContextObject);
 
-	/** Get the maximum number of players allowed in the current session. Returns 0 when no session exists. */
+	/** @return The maximum number of players allowed in the current session. 0 when no session exists. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasySessionMaxPlayers(const UObject* WorldContextObject);
 
-	/** Check whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
+	/** @return Whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool HasPendingEasyDisconnectInfo(const UObject* WorldContextObject);
 
@@ -122,31 +108,28 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasyDisconnectInfo ConsumeLastEasyDisconnectInfo(const UObject* WorldContextObject);
 
-	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
+	/** @return The name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
 	UFUNCTION(BlueprintPure, Category = "EasySession", DisplayName = "Get Online Subsystem Name (EasySession)", meta = (WorldContext = "WorldContextObject"))
 	static FName GetOnlineSubsystemName(const UObject* WorldContextObject);
 
-	/** Whether an online subsystem is available and its session interface is valid. */
+	/** @return Whether an online subsystem is available and its session interface is valid. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", DisplayName = "Is Online Subsystem Available (EasySession)", meta = (WorldContext = "WorldContextObject"))
 	static bool IsOnlineSubsystemAvailable(const UObject* WorldContextObject);
 
-	/**
-	 * Get what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle".
-	 * Meant for status UI and bug reports.
-	 */
+	/** @return What the session queue is doing right now, for status UI and bug reports, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle". */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionQueueStatus(const UObject* WorldContextObject);
 
 	/**
-	 * Get the parameters the current session was created with, so one field can be changed and passed to Update Easy Session.
-	 * Host only. Returns defaults on a client, and when there is no session.
+	 * @return The parameters the current session was created with, so one field can be changed and passed to Update Easy Session.
+	 *         Host only. Returns defaults on a client, and when there is no session.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);
 
 	/**
-	 * Get the join code the current session advertises, or an empty string when it advertises none.
-	 * Works for every player in the session, so anyone in the room can share the code.
+	 * @return The join code the current session advertises, or an empty string when it advertises none.
+	 *         Works for every player in the session, so anyone in the room can share the code.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasySessionJoinCode(const UObject* WorldContextObject);

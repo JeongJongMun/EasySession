@@ -49,10 +49,16 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 | Min Open Slots | 0 | 빈 자리가 이만큼 이상인 세션만 |
 | Max Ping Ms | 0 | 0이면 제한 없음 |
 | Required Custom Settings | (비어 있음) | 광고된 커스텀 데이터와 정확히 일치하는 것만 통과 |
+| Region | Any | 이 지역을 광고하는 세션만 (지역 절 참고) |
+| Include In Progress Sessions | true | 끄면 매치가 이미 시작된 세션을 숨깁니다. 난입을 거절하는 세션은 어차피 검색에 응답하지 않아 보이지 않습니다 |
+
+`Find Easy Friend Sessions`는 친구 판 검색입니다. 친구 목록을 읽고, 이 게임을 플레이 중인
+친구마다 어떤 세션에 있는지 찾아 친구 한 명당 한 항목으로 돌려줍니다. 친구의 세션은 다른
+검색 결과처럼 그대로 참가에 씁니다. 친구 목록과 마찬가지로 NULL/LAN에서는 지원되지 않습니다.
 
 결과는 `OnSuccess`로 오고 캐시에도 남습니다. `Get Last Easy Search Results`가 언제 어디서든 그 결과를 돌려주므로 서버 목록 UI를 만들 때 편합니다.
 
-각 `FEasySessionSearchResult`는 표시 이름, 맵 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 커스텀 세팅 맵을 담고 있습니다.
+각 `FEasySessionSearchResult`는 표시 이름, 맵 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 지역, 매치 진행 중 여부, 커스텀 세팅 맵을 담고 있습니다.
 
 ## Join Session
 
@@ -141,6 +147,9 @@ Event Construct
 
 `End Easy Session`은 매치를 끝내고 세션을 다시 참가할 수 있는 상태로 되돌립니다.
 
+둘 다 광고되는 매치 진행 중 키를 갱신합니다. 검색의 `Include In Progress Sessions` 필터와
+결과의 `bMatchInProgress`가 읽는 값이 바로 이것입니다.
+
 둘 다 호스트 전용입니다. 클라이언트가 부르면 `RequiresSessionAuthority`로 실패하므로, 버튼은 `Is Easy Session Authority`가 true일 때만 보여주세요.
 
 ## Update Session
@@ -190,12 +199,17 @@ Event Construct
 ## 참가 코드
 
 호스팅할 때 `Use Join Code`를 켜면 생성된 6자리 코드가 세션에 광고되고, 방에 있는 누구나
-`Get Easy Session Join Code`로 읽을 수 있습니다. `Join Easy Session By Code`는 그 코드를
-광고하는 방을 찾아 참가합니다. 숨긴 세션도 포함이라, `Hidden`에 코드를 더하면 친구 전용
+`Get Easy Session Join Code`로 읽을 수 있습니다. 참가는 검색 한 번 거리입니다.
+`Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 방이라도 그 방 하나가 결과로 오니, 보여준
+뒤 `Join Easy Session`에 넘기면 됩니다. 같은 `Join Code`로 매치메이킹을 돌리면 찾기와
+참가를 한 번에, 방이 생길 때까지 재시도까지 해줍니다. `Hidden`에 코드를 더하면 친구 전용
 방이 됩니다. 어떤 브라우저에도 안 보이지만 코드를 아는 사람은 들어옵니다.
 
 코드는 방을 가리키는 이름이지 지키는 장치가 아닙니다. 지키는 것은 `Password`이고 둘은
 조합됩니다. 코드가 방을 찾고, 비밀번호가 여전히 문을 지킵니다.
+
+코드는 검색 필터로도 동작합니다. `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 방이라도
+그 방 하나가 결과로 오므로, 참가하기 전에 방 정보를 보여주는 UI를 만들 수 있습니다.
 
 ## 이벤트와 상태 조회
 

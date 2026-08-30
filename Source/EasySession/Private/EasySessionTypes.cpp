@@ -19,6 +19,9 @@ namespace EasySession
 	/** Custom session setting key holding the advertised region. */
 	const FName SettingKey_Region = TEXT("EASYREGION");
 
+	/** Custom session setting key marking a session whose match is in progress. */
+	const FName SettingKey_MatchInProgress = TEXT("EASYINPROGRESS");
+
 	/** Custom session setting key holding the shareable join code. */
 	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
 
@@ -39,6 +42,7 @@ namespace EasySession
 			|| Key == SettingKey_Hidden
 			|| Key == SettingKey_PasswordProtected
 			|| Key == SettingKey_Region
+			|| Key == SettingKey_MatchInProgress
 			|| Key == SettingKey_JoinCode
 			|| Key == SettingKey_JoinApproval
 			|| Key == SETTING_MAPNAME
@@ -84,6 +88,7 @@ namespace EasySession
 			case EEasySessionResult::Canceled:					return TEXT("Canceled");
 			case EEasySessionResult::Timeout:					return TEXT("Timeout");
 			case EEasySessionResult::RequiresSessionAuthority:	return TEXT("RequiresSessionAuthority");
+			case EEasySessionResult::FriendSearchAlreadyInProgress:	return TEXT("FriendSearchAlreadyInProgress");
 			default:											return TEXT("UnknownFailure");
 		}
 	}
@@ -97,6 +102,51 @@ bool FEasySessionHostParams::IsValid() const
 bool FEasySessionSearchParams::IsValid() const
 {
 	return MaxResults > 0 && TimeoutSeconds > 0.0f;
+}
+
+bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Result) const
+{
+	// Hidden sessions are advertised for invites/direct joins but never listed in searches.
+	if (Result.bIsHidden && !bIncludeHiddenSessions)
+	{
+		return false;
+	}
+	if (Region != EEasySessionRegion::Any && Result.Region != Region)
+	{
+		return false;
+	}
+	if (!bIncludeInProgressSessions && Result.bMatchInProgress)
+	{
+		return false;
+	}
+	if (Result.OpenSlots < MinOpenSlots)
+	{
+		return false;
+	}
+	if (MaxPingMs > 0 && Result.PingInMs > MaxPingMs)
+	{
+		return false;
+	}
+	if (OwnerId.IsValid() &&
+		(!Result.NativeResult.Session.OwningUserId.IsValid() || *Result.NativeResult.Session.OwningUserId != *OwnerId))
+	{
+		return false;
+	}
+	if (!JoinCode.IsEmpty() && !Result.JoinCode.Equals(JoinCode, ESearchCase::IgnoreCase))
+	{
+		return false;
+	}
+
+	for (const TPair<FString, FString>& Required : RequiredCustomSettings)
+	{
+		const FString* FoundValue = Result.CustomSettings.Find(Required.Key);
+		if (FoundValue == nullptr || *FoundValue != Required.Value)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool FEasySessionSearchResult::IsValid() const
@@ -142,6 +192,12 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		else if (Setting.Key == EasySession::SettingKey_JoinCode)
 		{
 			Result.JoinCode = Setting.Value.Data.ToString();
+		}
+		else if (Setting.Key == EasySession::SettingKey_MatchInProgress)
+		{
+			int32 MatchInProgress = 0;
+			Setting.Value.Data.GetValue(MatchInProgress);
+			Result.bMatchInProgress = MatchInProgress != 0;
 		}
 		else if (Setting.Key == SETTING_MAPNAME)
 		{

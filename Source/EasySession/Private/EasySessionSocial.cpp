@@ -216,3 +216,114 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 			UserDelegate.ExecuteIfBound(EEasySessionResult::Success, FString(), Result);
 		}));
 }
+
+void FEasySessionSocial::FindFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete)
+{
+	if (bFindingFriendSessions)
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, TEXT("A friend session search is already running."), {});
+		return;
+	}
+
+	bFindingFriendSessions = true;
+	FriendSessionsDelegate = MoveTemp(OnComplete);
+	FriendSessionEntries.Reset();
+	PendingFriendQueries.Reset();
+	CurrentFriendQuery = INDEX_NONE;
+
+	// CreateWeakLambda checks only the subsystem, so Social is fetched back through it - Deinitialize destroys Social first.
+	UEasySessionSubsystem* OwnerSub = &Owner;
+	ReadFriends(FEasyFriendsCompleteDelegate::CreateWeakLambda(&Owner,
+		[OwnerSub](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionFriend>& Friends)
+		{
+			FEasySessionSocial* Social = OwnerSub->Social.Get();
+			if (Social == nullptr)
+			{
+				return;
+			}
+
+			if (Result != EEasySessionResult::Success)
+			{
+				Social->FinishFriendSessions(Result, ErrorMessage);
+				return;
+			}
+
+			// Every friend is listed. Only friends playing this game can be in a findable session, so only those are asked.
+			for (const FEasySessionFriend& Friend : Friends)
+			{
+				FEasyFriendSession& Entry = Social->FriendSessionEntries.AddDefaulted_GetRef();
+				Entry.Friend = Friend;
+				if (Friend.bIsPlayingThisGame && Friend.IsValid())
+				{
+					Social->PendingFriendQueries.Add(Social->FriendSessionEntries.Num() - 1);
+				}
+			}
+
+			Social->QueryNextFriendSession();
+		}));
+}
+
+void FEasySessionSocial::QueryNextFriendSession()
+{
+	if (PendingFriendQueries.Num() == 0)
+	{
+		FinishFriendSessions(EEasySessionResult::Success, FString());
+		return;
+	}
+
+	CurrentFriendQuery = PendingFriendQueries.Pop();
+
+	// One request per friend, enqueued only when the previous one answered - a Create or Join the game asks for meanwhile runs between two queries instead of waiting out the whole sweep.
+	UEasySessionSubsystem* OwnerSub = &Owner;
+	FEasySessionSearchParams QueryParams;
+	QueryParams.FriendId = FriendSessionEntries[CurrentFriendQuery].Friend.NativeId;
+	Owner.FindEasySessions(QueryParams,
+		FEasySessionFindCompleteDelegate::CreateWeakLambda(&Owner,
+			[OwnerSub](EEasySessionResult Result, const FString& /*ErrorMessage*/, const TArray<FEasySessionSearchResult>& Results)
+			{
+				if (FEasySessionSocial* Social = OwnerSub->Social.Get())
+				{
+					Social->HandleFriendQueryComplete(Result, Results);
+				}
+			}));
+}
+
+void FEasySessionSocial::HandleFriendQueryComplete(EEasySessionResult Result, const TArray<FEasySessionSearchResult>& Results)
+{
+	if (!bFindingFriendSessions || CurrentFriendQuery == INDEX_NONE)
+	{
+		return;
+	}
+
+	FEasyFriendSession& Entry = FriendSessionEntries[CurrentFriendQuery];
+	CurrentFriendQuery = INDEX_NONE;
+
+	// Whatever one query reported, the sweep goes on - a failed lookup only means no session for that friend.
+	if (Result == EEasySessionResult::Success && Results.Num() > 0 && Results[0].IsValid())
+	{
+		Entry.Session = Results[0];
+		Entry.bHasSession = true;
+	}
+
+	QueryNextFriendSession();
+}
+
+void FEasySessionSocial::FinishFriendSessions(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	bFindingFriendSessions = false;
+	CurrentFriendQuery = INDEX_NONE;
+	PendingFriendQueries.Reset();
+
+	int32 InSessionCount = 0;
+	for (const FEasyFriendSession& Entry : FriendSessionEntries)
+	{
+		InSessionCount += Entry.bHasSession ? 1 : 0;
+	}
+	UE_LOG(LogEasySession, Log, TEXT("Friend session search complete: %d friend(s), %d in a session."), FriendSessionEntries.Num(), InSessionCount);
+
+	const FEasyFriendSessionsCompleteDelegate Delegate = MoveTemp(FriendSessionsDelegate);
+	FriendSessionsDelegate = FEasyFriendSessionsCompleteDelegate();
+	const TArray<FEasyFriendSession> Entries = MoveTemp(FriendSessionEntries);
+	FriendSessionEntries.Reset();
+	Delegate.ExecuteIfBound(Result, ErrorMessage, Entries);
+}

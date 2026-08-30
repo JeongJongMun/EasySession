@@ -51,6 +51,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyMatchmakingStartedEvent);
 /** Multicast event fired when reading the friends list completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionFriend>&, Friends);
 
+/** Multicast event fired when finding friend sessions completes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendSessionsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasyFriendSession>&, FriendSessions);
+
 /**
  * Core subsystem of the EasySession plugin.
  * Automatically created for each game instance - no custom GameInstance class required.
@@ -179,15 +182,6 @@ public:
 	 */
 	void JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password = FString(), const FString& AdditionalTravelOptions = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
-	/**
-	 * Find the session advertising this join code and join it. Hidden sessions count - a code names one exact room.
-	 * The lookup search stays off the public surfaces: no OnSessionsFound broadcast, no GetLastSearchResults cache.
-	 *
-	 * @param JoinCode The code the host reads from GetSessionJoinCode. Case does not matter.
-	 * @param Password Password for password protected sessions. Ignored otherwise.
-	 * @param OnComplete Called when the operation completes. NoSessionsFound when no session advertises the code.
-	 */
-	void JoinEasySessionByCode(const FString& JoinCode, const FString& Password = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Start the match: transitions the session to InProgress.
@@ -251,32 +245,33 @@ public:
 	/** Cancel the running Matchmaking. A join or host that succeeds after the cancel is undone. Does nothing when no matchmaking is running. */
 	void CancelMatchmaking();
 
-	/** Check whether Matchmaking is currently running. */
+	/** @return Whether Matchmaking is currently running. */
 	bool IsMatchmakingRunning() const;
 
-	/** Get the state of the running Matchmaking. Idle when none is running. */
+	/** @return The state of the running Matchmaking. Idle when none is running. */
 	EEasyMatchmakingState GetMatchmakingState() const;
 
-	/** Get the running matchmaking policy. Use this to bind its On State Changed event. */
+	/** @return The running matchmaking policy, for binding its On State Changed event. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const { return ActiveMatchmakingPolicy; }
 
 	/**
-	 * Check whether the local player is currently in a session.
-	 *
 	 * This and the queries below it are all about the game session and take no session argument - a future party gets its own queries, because these bodies read the world and the match lifecycle, which a party does not have.
+	 *
+	 * @return Whether the local player is currently in a session.
 	 */
 	bool IsInSession() const;
 
 	/**
-	 * Get the lifecycle state of the current session (Pending, InProgress, Ended, ...).
-	 * The host reports its own state; a client reports the host's replicated state once it has arrived, and its own until then.
+	 * @return The lifecycle state of the current session (Pending, InProgress, Ended, ...).
+	 *         The host reports its own state; a client reports the host's replicated state once it has arrived, and its own until then.
 	 */
 	EEasySessionState GetSessionState() const;
 
 	/**
+	 * Get these, edit the one field, pass them to Update Easy Session - building fresh params instead resets every field you did not fill in.
+	 *
 	 * @return The parameters the current session is running with, so a change can be made without restating everything else.
-	 *         Get these, edit the one field, pass them to Update Easy Session - building fresh params instead resets every field you did not fill in.
 	 *         Host only. Returns defaults on a client, when there is no session, and for the fields Update cannot change.
 	 */
 	FEasySessionHostParams GetSessionHostParams() const;
@@ -293,64 +288,47 @@ public:
 	 */
 	void HandleReplicatedHostSessionState(EEasySessionState HostState);
 
-	/**
-	 * Check whether the local player is hosting the current session.
-	 * Always false on a dedicated server, which has no local player - call IsSessionAuthority there instead.
-	 */
+	/** @return Whether the local player is hosting the current session. Always false on a dedicated server, which has no local player - call IsSessionAuthority there instead. */
 	bool IsHost() const;
 
-	/**
-	 * Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
-	 * Do not use Is Host instead - it is false on a dedicated server.
-	 */
+	/** @return Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it. Is Host is not the same question - it is false on a dedicated server. */
 	bool IsSessionAuthority() const;
 
-	/**
-	 * Get the display names of all players currently in the session, including the local player.
-	 * Names come from the replicated player states, so the list is available on both the host and clients.
-	 */
+	/** @return The display names of all players currently in the session, including the local player. Read from the replicated player states, so both the host and clients get the list. */
 	TArray<FString> GetSessionPlayerNames() const;
 
-	/** Get the display name of the current session. Empty when no session exists. */
+	/** @return The display name of the current session. Empty when no session exists. */
 	FString GetSessionDisplayName() const;
 
-	/**
-	 * Get the password of the session this game is hosting, e.g. to display it so the host can share it.
-	 * Empty on clients and for password-less sessions - the password never leaves the host.
-	 */
+	/** @return The password of the session this game is hosting, for the host to share. Empty on clients and for password-less sessions - the password never leaves the host. */
 	FString GetSessionPassword() const;
 
-	/**
-	 * Get per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host.
-	 */
+	/** @return Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host. */
 	TArray<FEasySessionPlayerInfo> GetSessionPlayerInfos() const;
 
-	/** Get the number of players currently in the session. */
+	/** @return The number of players currently in the session. */
 	int32 GetSessionPlayerCount() const;
 
-	/** Get the maximum number of players allowed in the current session. Returns 0 when no session exists. */
+	/** @return The maximum number of players allowed in the current session. 0 when no session exists. */
 	int32 GetSessionMaxPlayers() const;
 
 	/**
-	 * Check whether any session operation is in progress.
-	 * That covers a request running or queued, a Matchmaking working through its steps, and a travel this plugin started that has not reached its map yet.
-	 * Bind session buttons to this to disable them while an operation runs; use IsMatchmakingRunning to ask specifically about Matchmaking.
+	 * Session buttons bind here to disable themselves; IsMatchmakingRunning asks about Matchmaking alone.
+	 *
+	 * @return Whether a request is running or queued, a Matchmaking is working through its steps, or a travel this plugin started has not reached its map yet.
 	 */
 	bool IsBusy() const;
 
-	/**
-	 * Describe what the session queue is doing right now, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle".
-	 * Meant for status UI, the EasySession.Status console command and bug reports.
-	 */
+	/** @return What the session queue is doing right now, for status UI and bug reports, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle". */
 	FString GetQueueStatus() const;
 
-	/** Get the results of the most recent session search. */
+	/** @return The results of the most recent session search. */
 	const TArray<FEasySessionSearchResult>& GetLastSearchResults() const { return LastSearchResults; }
 
-	/** Get the name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
+	/** @return The name of the online subsystem currently in use (e.g. NULL, STEAM, EOS). */
 	FName GetOnlineSubsystemName() const;
 
-	/** Check whether an online subsystem is available and its session interface is valid. */
+	/** @return Whether an online subsystem is available and its session interface is valid. */
 	bool IsOnlineSubsystemAvailable() const;
 
 	/**
@@ -367,8 +345,9 @@ public:
 	void CancelPendingTravel();
 
 	/**
+	 * Matchmaking reads this to tell a session on its way out from one that is here to stay.
+	 *
 	 * @return Whether a destroy for the current session is already running or waiting.
-	 * Matchmaking reads it to tell a session on its way out from one that is here to stay.
 	 */
 	bool IsSessionBeingDestroyed() const;
 
@@ -381,6 +360,8 @@ public:
 	 */
 	void DestroyEasySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
+public:
+	
 	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
 	bool SendSessionInviteToFriend(const FEasySessionFriend& Friend);
 
@@ -400,7 +381,19 @@ public:
 	 */
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete = FEasyFriendsCompleteDelegate());
 
-	/** Check whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
+	/**
+	 * Read the friends list and find the session each friend playing this game is in.
+	 * Each friend's lookup is its own request on the queue, one at a time, so the game's own session operations run between them instead of waiting out the sweep.
+	 * One sweep at a time; a second call while one runs fails with FriendSearchAlreadyInProgress.
+	 * Not supported on the NULL (LAN) subsystem.
+	 *
+	 * @param OnComplete Called with one entry per friend. Entries with bHasSession carry a session joinable with JoinEasySession.
+	 */
+	void FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete = FEasyFriendSessionsCompleteDelegate());
+
+public:
+	
+	/** @return Whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
 	bool HasPendingDisconnectInfo() const { return bHasPendingDisconnectInfo; }
 
 	/** Get the last disconnect info and clear the pending flag. Survives map travel. */
@@ -493,9 +486,23 @@ private:
 	/** Ask the online service to join. Every join path ends in this step. */
 	void JoinOnlineSession();
 
+	/** Route the active request's search to the service call its params ask for: by session id, by friend, or discovery. */
+	void DispatchActiveSearch(const FEasySessionSearchParams& Params);
+
+	/** Start a discovery search for the active request, completing it on the failures the service reports on the spot. */
+	void StartSessionSearch(const FEasySessionSearchParams& Params);
+
+	/** Filter what a search returned and finish the active Find request with the results. */
+	void FinishActiveSearch(const TArray<FOnlineSessionSearchResult>& NativeResults);
+
+	/** @return The active Find request when a search completion serves one. Null otherwise. */
+	TSharedPtr<FEasySessionRequest> GetActiveSearchRequest() const;
+
 	/** Online subsystem delegate handlers. */
 	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleFindSessionsComplete(bool bWasSuccessful);
+	void HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults);
+	void HandleFindSessionByIdComplete(int32 LocalUserNum, bool bWasSuccessful, const FOnlineSessionSearchResult& SessionResult);
 	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult);
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);
@@ -533,6 +540,9 @@ private:
 	/** Server: push the current local session state to the replicated state actor. */
 	void PushHostSessionState();
 
+	/** Keep the advertised in-match key current. Called when Start and End succeed. */
+	void AdvertiseMatchInProgress(bool bMatchInProgress);
+
 	/** Spawn/refresh the state actor after every map load while hosting. */
 	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);
 
@@ -566,6 +576,7 @@ private:
 	/** Delegate handles for the running operation. Cleared when it completes. */
 	FDelegateHandle CreateCompleteHandle;
 	FDelegateHandle FindCompleteHandle;
+	FDelegateHandle FindFriendCompleteHandle;
 	FDelegateHandle JoinCompleteHandle;
 	FDelegateHandle DestroyCompleteHandle;
 	FDelegateHandle UpdateCompleteHandle;

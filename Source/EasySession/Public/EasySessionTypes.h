@@ -7,6 +7,8 @@
 #include "OnlineSessionSettings.h"
 #include "EasySessionTypes.generated.h"
 
+struct FEasySessionSearchResult;
+
 /**
  * How the session host runs the game.
  */
@@ -91,7 +93,10 @@ enum class EEasySessionResult : uint8
 	Timeout,
 
 	/** Only the game that created the session can do this. Show the button only when Is Easy Session Authority is true. */
-	RequiresSessionAuthority
+	RequiresSessionAuthority,
+
+	/** A friend session search is already running. One runs at a time - wait for its completion. */
+	FriendSearchAlreadyInProgress
 };
 
 /**
@@ -141,6 +146,9 @@ namespace EasySession
 
 	/** Custom session setting key holding the advertised region, as an EEasySessionRegion value. */
 	EASYSESSION_API extern const FName SettingKey_Region;
+
+	/** Custom session setting key marking a session whose match is in progress. Kept current by Start and End. */
+	EASYSESSION_API extern const FName SettingKey_MatchInProgress;
 
 	/** Custom session setting key holding the shareable join code. Empty when the host advertises none. */
 	EASYSESSION_API extern const FName SettingKey_JoinCode;
@@ -247,12 +255,8 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bIsLANMatch = false;
 
-	//~ The fields below are folded behind the Make node's advanced arrow.
-	//~ Marking them is what keeps the fold line where we put it.
-	//~ From five fields up, UK2Node_MakeStruct leaves only the first two visible and folds the rest on its own (AllocateDefaultPins in K2Node_MakeStruct.cpp).
-	//~ It only does that while no field carries AdvancedDisplay, so without the markers adding a field would silently move the fold line.
-	//~ Search and Matchmaking params are marked for the same reason.
-	//~ A pin with a connection stays visible either way (SGraphPin::IsPinVisibleAsAdvanced), so folding one never hides live wiring.
+	//~ The fields below are folded behind the Make node's advanced arrow, and the markers are what keep the fold line here.
+	//~ UK2Node_MakeStruct folds on its own from five fields up, but only while no field carries AdvancedDisplay - so without the markers, adding a field would move the line instead.
 
 	/**
 	 * Open a listen server as part of hosting, so clients can connect.
@@ -322,7 +326,7 @@ struct EASYSESSION_API FEasySessionHostParams
 
 	/**
 	 * Advertise a generated six character join code with the session, readable with Get Easy Session Join Code.
-	 * Players enter it in Join Easy Session By Code to join directly, hidden sessions included - Hidden plus a code makes a friends-only room.
+	 * Players reach it with the code in a search's Join Code filter: Find Easy Sessions previews the room, matchmaking joins it, hidden sessions included - Hidden plus a code makes a friends-only room.
 	 * The code identifies the room but does not protect it; protection is Password, and the two combine.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -378,14 +382,46 @@ struct EASYSESSION_API FEasySessionSearchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	EEasySessionRegion Region = EEasySessionRegion::Any;
 
+	/** Whether sessions whose match already started are returned. Sessions that refuse join-in-progress never appear either way - they stop answering searches. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	bool bIncludeInProgressSessions = true;
+
 	/**
-	 * Let hidden sessions into the results. C++ only, set by the join-by-code path: a code names one exact room, hidden or not.
+	 * Let hidden sessions into the results. C++ only. Set automatically for every targeted query below, because those name their room, hidden or not.
 	 * Results of such a search stay off the public surfaces - no OnSessionsFound broadcast, no Get Last Search Results cache.
 	 */
 	bool bIncludeHiddenSessions = false;
 
+	/**
+	 * C++ only. When set, the request asks the service for this friend's session instead of running a discovery search.
+	 * The discovery params (MaxResults, LANQuery, TimeoutSeconds) are ignored; the filters above still apply.
+	 */
+	FUniqueNetIdPtr FriendId;
+
+	/**
+	 * C++ only. When set, the request asks the service for this exact session instead of running a discovery search.
+	 * Takes precedence over FriendId, which then rides along as the "is this friend in it" verification the service offers.
+	 */
+	FUniqueNetIdPtr SessionId;
+
+	/**
+	 * C++ only. Only return sessions hosted by this player.
+	 * Runs as a normal discovery search with an owner filter, so MaxResults still bounds what the filter gets to see.
+	 */
+	FUniqueNetIdPtr OwnerId;
+
+	/** Only return the session advertising this join code, hidden or not. Case does not matter. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	FString JoinCode;
+
 	/** Returns true if the search params are valid. */
 	bool IsValid() const;
+
+	/** @return Whether these params name one specific session (friend, session id, owner or join code) rather than describing a discovery. */
+	bool IsSpecificSessionQuery() const { return FriendId.IsValid() || SessionId.IsValid() || OwnerId.IsValid() || !JoinCode.IsEmpty(); }
+
+	/** @return Whether this session clears every filter above, and so belongs in the results. */
+	bool ShouldInclude(const FEasySessionSearchResult& Result) const;
 };
 
 /**
@@ -435,7 +471,11 @@ struct EASYSESSION_API FEasySessionSearchResult
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	EEasySessionRegion Region = EEasySessionRegion::Any;
 
-	/** The session's join code. C++ only, read by Join Easy Session By Code - kept off Blueprint so a session browser cannot list other rooms' codes. */
+	/** Whether the session's match is in progress right now. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bMatchInProgress = false;
+
+	/** The session's join code. C++ only - the Join Code filter compares it, and keeping it off Blueprint means a session browser cannot list other rooms' codes. */
 	FString JoinCode;
 
 	/** Custom key-value data advertised with the session. */
@@ -500,6 +540,10 @@ struct EASYSESSION_API FEasyMatchmakingParams
 
 	//~ Advanced fields are folded behind the Make node's advanced arrow, for the reason described in FEasySessionHostParams.
 
+	/** Password sent when joining a password protected candidate. Without one, protected sessions are never candidates. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	FString JoinPassword;
+
 	/** How many search passes to run before giving up or hosting. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1))
 	int32 MaxSearchPasses = 3;
@@ -534,6 +578,27 @@ struct EASYSESSION_API FEasySessionFriend
 
 	/** Returns true if this friend can be used with invite functions. */
 	bool IsValid() const { return NativeId.IsValid(); }
+};
+
+/**
+ * A friend together with the session they are in, as returned by Find Easy Friend Sessions.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasyFriendSession
+{
+	GENERATED_BODY()
+
+	/** The friend. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FEasySessionFriend Friend;
+
+	/** Whether a joinable session was found for this friend. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bHasSession = false;
+
+	/** The friend's session, joinable with Join Easy Session. Only valid while bHasSession is true. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FEasySessionSearchResult Session;
 };
 
 /**
@@ -609,3 +674,6 @@ DECLARE_DELEGATE_ThreeParams(FEasySessionFindCompleteDelegate, EEasySessionResul
 
 /** Delegate fired when reading the friends list completes. */
 DECLARE_DELEGATE_ThreeParams(FEasyFriendsCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/, const TArray<FEasySessionFriend>& /*Friends*/);
+
+/** Delegate fired when finding friend sessions completes. */
+DECLARE_DELEGATE_ThreeParams(FEasyFriendSessionsCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/, const TArray<FEasyFriendSession>& /*FriendSessions*/);

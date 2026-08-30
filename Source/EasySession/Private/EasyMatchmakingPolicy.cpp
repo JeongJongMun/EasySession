@@ -148,8 +148,8 @@ void UEasyMatchmakingPolicy::BuildCandidateListAndJoin(const TArray<FEasySession
 	Candidates.Empty();
 	for (const FEasySessionSearchResult& Result : Results)
 	{
-		// Matchmaking cannot supply a password, so protected sessions are never candidates.
-		if (Result.bPasswordProtected)
+		// Protected sessions are only candidates when this run carries a password to offer.
+		if (Result.bPasswordProtected && Params.JoinPassword.TrimStartAndEnd().IsEmpty())
 		{
 			continue;
 		}
@@ -216,7 +216,7 @@ void UEasyMatchmakingPolicy::TryJoinNextCandidate()
 
 	const FEasySessionSearchResult& Candidate = Candidates[NextCandidateIndex];
 	UE_LOG(LogEasySession, Log, TEXT("Matchmaking joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
-	SubsystemPtr->JoinEasySession(Candidate, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
+	SubsystemPtr->JoinEasySession(Candidate, Params.JoinPassword, FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
 }
 
 void UEasyMatchmakingPolicy::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)

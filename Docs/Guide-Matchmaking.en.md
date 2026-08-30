@@ -13,6 +13,7 @@
 | Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there. Turn it on to host instead |
 | Max Search Passes | 3 | How many search passes to run before giving up or hosting. 3 means three searches |
 | Delay Between Passes | 2.0s | How long to rest before the next search |
+| Join Password | (empty) | Sent when joining a password protected candidate. Without one, protected sessions are never candidates |
 
 ### Whether to fill in Host > Map Name
 
@@ -32,6 +33,14 @@ the network the search looked at (`LAN Query`), and every `Required Custom Setti
 is advertised on it, overwriting the same key in Host > Custom Settings. A searched
 `Region` is advertised the same way. The room a run opens is one its own search would
 have found.
+
+### Matchmaking one specific room
+
+The targeted queries `Find Easy Sessions` takes work here too: set `Search > Join Code`
+(or, from C++, a session id, friend or owner) and the passes hunt for that one room -
+hidden sessions included - joining it the moment it appears. `Join Password` rides along
+for protected rooms. With `Allow Host Fallback` off, this is "keep trying to get into
+my friends' room" in one call.
 
 Progress comes from four events on the subsystem itself, so a widget can bind once,
 before any run exists:
@@ -57,7 +66,7 @@ The default policy narrows the search results down to candidates, then scores th
 
 **Left out of the candidates**
 
-- **Password protected sessions** - Matchmaking has no password to offer, so it skips them.
+- **Password protected sessions** - skipped, unless this run carries a `Join Password` to offer.
 - **Sessions that already refused** - a session that rejected a join is never tried again for the rest of the run.
 
 **How the rest are ordered**

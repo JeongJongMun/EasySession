@@ -162,7 +162,10 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 	switch (Request.Type)
 	{
 		case FEasySessionRequest::EType::Create:	Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle); break;
-		case FEasySessionRequest::EType::Find:		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle); break;
+		case FEasySessionRequest::EType::Find:
+			Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle);
+			Sessions->ClearOnFindFriendSessionCompleteDelegate_Handle(0, FindFriendCompleteHandle);
+			break;
 		case FEasySessionRequest::EType::Join:		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle); break;
 		case FEasySessionRequest::EType::Destroy:	Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle); break;
 		case FEasySessionRequest::EType::Update:	Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle); break;
@@ -171,16 +174,17 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 		default: break;
 	}
 
-	if (Request.Type == FEasySessionRequest::EType::Find)
+	// A search still held here has to be released, whichever request made it.
+	if (ActiveSearch.IsValid())
 	{
-		// The service keeps running an abandoned search and refuses every new one meanwhile - InProgress proves the slot holds ours and not another caller's.
-		if (bAbandoned && ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
+		// An abandoned search keeps running in the service, which refuses new ones until it ends. InProgress means the one it still holds is ours.
+		if (bAbandoned && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
 		{
 			UE_LOG(LogEasySession, Warning, TEXT("Cancelling the abandoned search so later searches are not refused."));
 			Sessions->CancelFindSessions();
 		}
-		// A synchronous failure leaves the service holding our search, and its cancel frees the slot only for a search marked InProgress - a mark ours to restore.
-		else if (ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::Failed)
+		// A search that failed on the spot is still held too, and cancel only releases one marked InProgress - so mark ours back before asking.
+		else if (ActiveSearch->SearchState == EOnlineAsyncTaskState::Failed)
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Releasing the failed search so later searches are not refused."));
 			ActiveSearch->SearchState = EOnlineAsyncTaskState::InProgress;
@@ -289,6 +293,9 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	// Trimmed like ServerGate's copy: a whitespace-only password enforces nothing.
 	Settings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
+	// Whether the match is running. The session state never leaves the host, so searches read this key instead. Start and End keep it current.
+	Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
 	// The advertised region. Written even at Any: an advertised key cannot be deleted later.
 	Settings.Set(EasySession::SettingKey_Region, static_cast<int32>(Params.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
@@ -323,6 +330,20 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	return Settings;
 }
 
+void UEasySessionSubsystem::AdvertiseMatchInProgress(bool bMatchInProgress)
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return;
+	}
+
+	// The update completion fires while a Start or End request is still active, and the update handler's request-type guard drops it.
+	NamedSession->SessionSettings.Set(EasySession::SettingKey_MatchInProgress, bMatchInProgress ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Sessions->UpdateSession(NAME_GameSession, NamedSession->SessionSettings, true);
+}
+
 void UEasySessionSubsystem::ExecuteFind()
 {
 	// A new search invalidates the previous one. Dropping the results here rather
@@ -337,6 +358,73 @@ void UEasySessionSubsystem::ExecuteFind()
 		return;
 	}
 
+	DispatchActiveSearch(Params);
+}
+
+void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams& Params)
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		CompleteActiveRequest(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		return;
+	}
+
+	// A by-id query needs no search object. Its completion delegate is a call parameter, so there is no handle to manage.
+	if (Params.SessionId.IsValid())
+	{
+		const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+		const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
+		FUniqueNetIdPtr LocalUserId = Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr;
+		if (!LocalUserId.IsValid() && Identity.IsValid())
+		{
+			// A stand-in searcher id, for services that never read it and worlds with no logged-in player.
+			LocalUserId = Identity->CreateUniquePlayerId(TEXT("EasySessionSearcher"));
+		}
+		if (!LocalUserId.IsValid())
+		{
+			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("No local player id to search with."));
+			return;
+		}
+
+		UE_LOG(LogEasySession, Log, TEXT("Searching for a session by id."));
+
+		// The optional friend id becomes the service's own "is this friend in it" verification.
+		const FUniqueNetId& VerifyFriendId = Params.FriendId.IsValid() ? *Params.FriendId : *LocalUserId;
+
+		// NULL answers inside this call, completing the request before it returns - only an unanswered false is a failure to report.
+		const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+		if (!Sessions->FindSessionById(*LocalUserId, *Params.SessionId, VerifyFriendId,
+				FOnSingleSessionResultCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindSessionByIdComplete))
+			&& GetActiveRequest() == Request)
+		{
+			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindSessionById request was rejected by the online subsystem."));
+		}
+		return;
+	}
+
+	// A friend query rides the Find slot without a search object: one call per request, answered through its own delegate.
+	if (Params.FriendId.IsValid())
+	{
+		FindFriendCompleteHandle = Sessions->AddOnFindFriendSessionCompleteDelegate_Handle(0,
+			FOnFindFriendSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindFriendSessionComplete));
+
+		UE_LOG(LogEasySession, Log, TEXT("Searching for a friend's session."));
+
+		// NULL answers inside this call, completing the request before it returns - only an unanswered false is a failure to report.
+		const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+		if (!Sessions->FindFriendSession(0, *Params.FriendId) && GetActiveRequest() == Request)
+		{
+			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindFriendSession request was rejected by the online subsystem."));
+		}
+		return;
+	}
+
+	StartSessionSearch(Params);
+}
+
+void UEasySessionSubsystem::StartSessionSearch(const FEasySessionSearchParams& Params)
+{
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
@@ -627,7 +715,14 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 {
-	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Find)
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveSearchRequest();
+	if (!Request.IsValid())
+	{
+		return;
+	}
+
+	// By-id and friend queries complete through their own handlers - a discovery completion arriving meanwhile is someone else's.
+	if (Request->SearchParams.SessionId.IsValid() || Request->SearchParams.FriendId.IsValid())
 	{
 		return;
 	}
@@ -640,16 +735,45 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		return;
 	}
 
-	LastSearchResults.Empty();
-
 	if (!bWasSuccessful || !ActiveSearch.IsValid())
 	{
+		LastSearchResults.Empty();
 		CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("The online subsystem failed to search for sessions."));
 		return;
 	}
 
-	const FEasySessionSearchParams& Params = GetActiveRequest()->SearchParams;
-	for (const FOnlineSessionSearchResult& NativeResult : ActiveSearch->SearchResults)
+	// The search is settled - release it before the funnel runs.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (Sessions.IsValid())
+	{
+		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle);
+	}
+	const TArray<FOnlineSessionSearchResult> NativeResults = MoveTemp(ActiveSearch->SearchResults);
+	ActiveSearch.Reset();
+
+	FinishActiveSearch(NativeResults);
+}
+
+TSharedPtr<FEasySessionRequest> UEasySessionSubsystem::GetActiveSearchRequest() const
+{
+	const TSharedPtr<FEasySessionRequest>& Request = GetActiveRequest();
+	if (!Request.IsValid())
+	{
+		return nullptr;
+	}
+	if (Request->Type == FEasySessionRequest::EType::Find)
+	{
+		return Request;
+	}
+	return nullptr;
+}
+
+void UEasySessionSubsystem::FinishActiveSearch(const TArray<FOnlineSessionSearchResult>& NativeResults)
+{
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+
+	TArray<FEasySessionSearchResult> Filtered;
+	for (const FOnlineSessionSearchResult& NativeResult : NativeResults)
 	{
 		if (!NativeResult.IsValid())
 		{
@@ -657,45 +781,44 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		}
 
 		FEasySessionSearchResult Result = FEasySessionSearchResult::FromNative(NativeResult);
-
-		// Hidden sessions are advertised for invites/direct joins but never listed in searches.
-		if (Result.bIsHidden && !Params.bIncludeHiddenSessions)
+		if (Request->SearchParams.ShouldInclude(Result))
 		{
-			continue;
+			Filtered.Add(MoveTemp(Result));
 		}
-		if (Params.Region != EEasySessionRegion::Any && Result.Region != Params.Region)
-		{
-			continue;
-		}
-		if (Result.OpenSlots < Params.MinOpenSlots)
-		{
-			continue;
-		}
-		if (Params.MaxPingMs > 0 && Result.PingInMs > Params.MaxPingMs)
-		{
-			continue;
-		}
-
-		bool bMatchesCustomSettings = true;
-		for (const TPair<FString, FString>& Required : Params.RequiredCustomSettings)
-		{
-			const FString* FoundValue = Result.CustomSettings.Find(Required.Key);
-			if (FoundValue == nullptr || *FoundValue != Required.Value)
-			{
-				bMatchesCustomSettings = false;
-				break;
-			}
-		}
-		if (!bMatchesCustomSettings)
-		{
-			continue;
-		}
-
-		LastSearchResults.Add(MoveTemp(Result));
 	}
 
+	LastSearchResults = MoveTemp(Filtered);
 	UE_LOG(LogEasySession, Log, TEXT("Search complete. %d session(s) found after filtering."), LastSearchResults.Num());
 	CompleteActiveRequest(EEasySessionResult::Success);
+}
+
+void UEasySessionSubsystem::HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults)
+{
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveSearchRequest();
+	if (!Request.IsValid() || !Request->SearchParams.FriendId.IsValid() || Request->SearchParams.SessionId.IsValid())
+	{
+		return;
+	}
+
+	// False is an answer, not a failure: the friend is not in a joinable session right now.
+	FinishActiveSearch(bWasSuccessful ? FriendResults : TArray<FOnlineSessionSearchResult>());
+}
+
+void UEasySessionSubsystem::HandleFindSessionByIdComplete(int32 LocalUserNum, bool bWasSuccessful, const FOnlineSessionSearchResult& SessionResult)
+{
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveSearchRequest();
+	if (!Request.IsValid() || !Request->SearchParams.SessionId.IsValid())
+	{
+		return;
+	}
+
+	TArray<FOnlineSessionSearchResult> NativeResults;
+	// False is an answer, not a failure: no session advertises that id right now.
+	if (bWasSuccessful)
+	{
+		NativeResults.Add(SessionResult);
+	}
+	FinishActiveSearch(NativeResults);
 }
 
 void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult)
@@ -904,6 +1027,8 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 
 	UE_LOG(LogEasySession, Log, TEXT("Session started."));
 
+	AdvertiseMatchInProgress(true);
+
 	// The OSS only changes the local session copy - replicate the new state so
 	// every client (present or future) converges on it.
 	if (IsSessionAuthority())
@@ -928,6 +1053,8 @@ void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWa
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session ended."));
+
+	AdvertiseMatchInProgress(false);
 
 	// The OSS only changes the local session copy - replicate the new state so
 	// every client (present or future) converges on it.

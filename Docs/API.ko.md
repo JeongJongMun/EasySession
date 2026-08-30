@@ -44,7 +44,6 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 되고, Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 승인을 먼저 물은 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
-| **Join Easy Session By Code** | `JoinCode`, `Password` | 코드를 광고하는 세션을 찾아 - 숨긴 세션 포함 - 같은 승인 흐름으로 참가합니다. 코드는 호스트의 Get Easy Session Join Code에서 나옵니다 |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 지역, 참가 코드, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
@@ -52,6 +51,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 | **Leave Easy Session** | - | Destroy Easy Session에 귀갓길까지. 네임드 세션을 지운 뒤 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 방을 닫습니다 |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
 | **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 넘깁니다. NULL/LAN에는 친구 개념이 없어 실패합니다 |
+| **Find Easy Friend Sessions** | - | 친구 목록을 읽은 뒤, 이 게임을 플레이 중인 친구마다 `FindFriendSession`을 호출합니다. `OnSuccess`가 `FEasyFriendSession` 배열을 넘깁니다. 모든 친구가 나열되고, 참가 가능한 세션에 있는 친구는 그 세션을 들고 옵니다. NULL/LAN에서는 실패합니다 |
 
 > **세션 권한 필요**는 그 세션을 만든 게임을 뜻합니다. 리슨 서버라면 호스트 플레이어의 게임,
 > 데디케이티드 서버라면 서버 자신입니다. 그 외에는 `RequiresSessionAuthority` 실패를 받습니다.
@@ -181,19 +181,27 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Region`과 `bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 지역 절과 참가 코드 절에서 다룹니다.
 
 ### 5.2 FEasySessionSearchParams
-`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`)
+`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String)
+
+`JoinCode`는 그 코드를 광고하는 세션 하나로 결과를 좁힙니다. 숨긴 세션도 걸리므로, 참가 전에 프라이빗 방의 정보를 미리 보여주는 UI를 만들 수 있습니다. C++에서는 같은 구조체의 대상 질의 id인 `FriendId`, `SessionId`, `OwnerId`도 채워 특정 세션 하나를 조회할 수 있습니다. 각 필드의 규칙은 헤더에 있습니다. 고유 넷 id는 블루프린트 형태가 없어 핀으로는 못 씁니다.
 
 ### 5.3 FEasySessionSearchResult *(읽기 전용)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
 
 두 노드를 잇는 구조체입니다. `Find Easy Sessions`가 돌려주고 `Join Easy Session`이 받습니다.
 구조체를 통째로 들고 계세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
 저장해야 합니다.
 
+### 5.4 FEasyFriendSession
+`Friend`(`FEasySessionFriend`), `bHasSession`, `Session`(`FEasySessionSearchResult`)
+
+`Find Easy Friend Sessions`가 친구 한 명당 하나씩 돌려주는 구조체입니다. `Session`은
+`bHasSession`이 true일 때만 유효하고, 다른 검색 결과처럼 그대로 참가에 씁니다.
+
 `bPasswordProtected`는 `Join Easy Session` 전에 비밀번호를 물어볼지 판단하는 근거입니다.
 
 ### 5.4 FEasyMatchmakingParams
-`Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
+`Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `JoinPassword`(String), `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
 
 ### 5.5 FEasySessionPlayerInfo *(읽기 전용)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)

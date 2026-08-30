@@ -5,6 +5,8 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestAccess.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -49,12 +51,121 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		}));
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
 
+	// The friend session sweep starts with the same read, so it must fail the same way.
+	bool bSessionsCallbackFired = false;
+	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
+		[this, &bSessionsCallbackFired](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
+		{
+			bSessionsCallbackFired = true;
+			TestNotEqual(TEXT("Friend session search fails on NULL"), Result, EEasySessionResult::Success);
+			TestEqual(TEXT("No friend sessions returned"), FriendSessions.Num(), 0);
+		}));
+	TestTrue(TEXT("Friend sessions callback fired"), bSessionsCallbackFired);
+
 	// Invite helpers must report unsupported instead of crashing.
 	TestFalse(TEXT("ShowInviteUI unsupported on NULL"), Subsystem->ShowInviteUI());
 	TestFalse(TEXT("SendSessionInviteToFriend fails without a valid friend"), Subsystem->SendSessionInviteToFriend(FEasySessionFriend()));
 	TestFalse(TEXT("ShowProfileUI unsupported on NULL"), Subsystem->ShowProfileUI(FEasySessionFriend()));
 
 	EasySessionTest::DestroyGameInstance(GameInstance.Get());
+	return true;
+}
+
+namespace EasySessionFriendLookupTest
+{
+	/** Maximum time to wait before failing. */
+	static constexpr double TimeoutSeconds = 30.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		TOptional<EEasySessionResult> LookupResult;
+		int32 DeliveredCount = -1;
+		double StartTime = 0.0;
+	};
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForFriendLookup, TSharedPtr<EasySessionFriendLookupTest::FTestState>, State);
+bool FEasySessionWaitForFriendLookup::Update()
+{
+	using namespace EasySessionFriendLookupTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out. Queue: %s"), *Subsystem->GetQueueStatus()));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	if (!State->LookupResult.IsSet() || Subsystem->IsBusy())
+	{
+		return false;
+	}
+
+	// NULL answers the friend query inside the call with "no session" - the queued request completes cleanly instead of erroring.
+	CurrentTest->TestEqual(TEXT("The queued friend lookup completes"), State->LookupResult.GetValue(), EEasySessionResult::Success);
+	CurrentTest->TestEqual(TEXT("With no session for the friend"), State->DeliveredCount, 0);
+	CurrentTest->TestEqual(TEXT("And off the public search event"), State->Listener->FoundBroadcasts(), 0);
+	CurrentTest->TestEqual(TEXT("And off the public cache"), Subsystem->GetLastSearchResults().Num(), 0);
+
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+	return true;
+}
+
+/**
+ * The friend session lookup is a queue request like any other search: it occupies the
+ * queue while it runs, completes through the request completion path, and - as a
+ * hidden-seeing search - never reaches the public search event or cache.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendLookupTest, "EasySession.Friends.FriendLookupRidesTheQueue", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionFriendLookupTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionsFound.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionsFound);
+
+	UWorld* World = State->GameInstance->GetWorld();
+	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
+	const FUniqueNetIdPtr FriendId = Identity.IsValid() ? Identity->CreateUniquePlayerId(TEXT("EasySessionFakeFriend")) : nullptr;
+	if (!TestTrue(TEXT("A fake friend id could be made"), FriendId.IsValid()))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	TSharedPtr<FTestState> Shared = State;
+	FEasySessionSearchParams LookupParams;
+	LookupParams.FriendId = FriendId;
+	Subsystem->FindEasySessions(LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
+		[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
+		{
+			Shared->LookupResult = Result;
+			Shared->DeliveredCount = Results.Num();
+		}));
+
+	TestTrue(TEXT("The lookup occupies the queue"), Subsystem->IsBusy());
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForFriendLookup(State));
 	return true;
 }
 

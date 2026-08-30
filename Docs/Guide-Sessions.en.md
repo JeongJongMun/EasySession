@@ -49,10 +49,17 @@ Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and 
 | Min Open Slots | 0 | Only sessions with at least this many free slots |
 | Max Ping Ms | 0 | 0 = no limit |
 | Required Custom Settings | (empty) | Exact-match filters against advertised custom data |
+| Region | Any | Only sessions advertising this region ([regions](#regions)) |
+| Include In Progress Sessions | true | Turn off to hide sessions whose match already started. Sessions refusing join-in-progress never appear either way |
+
+`Find Easy Friend Sessions` is the friends-flavored search: it reads the friends list
+and finds the session each friend playing this game is in, one entry per friend. A
+friend session joins like any other search result. Like the friends list itself, it
+is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess` and are also cached - `Get Last Easy Search Results` returns them anywhere, anytime (useful for server browser UIs).
 
-Each `FEasySessionSearchResult` exposes: display name, map name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, and the custom settings map.
+Each `FEasySessionSearchResult` exposes: display name, map name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, region, in-progress flag, and the custom settings map.
 
 ## Join Session
 
@@ -146,6 +153,9 @@ cannot fake. This has no effect on NULL/LAN, where there are no friends.
 
 `End Easy Session` finishes the match and returns the session to a joinable state.
 
+Both keep the advertised in-progress flag current, which is what the search's
+`Include In Progress Sessions` filter and the result's `bMatchInProgress` read.
+
 Both are host only. A client gets `RequiresSessionAuthority`, so show the buttons only when `Is Easy Session Authority` is true.
 
 ## Update Session
@@ -197,10 +207,11 @@ with a `Custom Settings` key through `Required Custom Settings` instead.
 ## Join codes
 
 Turn on `Use Join Code` when hosting and the session advertises a generated six character
-code, readable with `Get Easy Session Join Code` by everyone in the room. `Join Easy
-Session By Code` finds the room advertising that code and joins it - hidden sessions
-included, so `Hidden` plus a code is a friends-only room: no browser lists it, anyone
-with the code walks in.
+code, readable with `Get Easy Session Join Code` by everyone in the room. Joining is a
+search away: `Find Easy Sessions` with `Join Code` set returns that one room, hidden or
+not - show it, then pass it to `Join Easy Session`. Matchmaking with the same `Join
+Code` does both in one call, retrying while the room comes up. `Hidden` plus a code is
+a friends-only room: no browser lists it, anyone with the code walks in.
 
 The code identifies the room but does not protect it. Protection is `Password`, and the
 two combine: the code finds the room, the password still gates the door.

@@ -147,6 +147,7 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle);
 		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle);
+		Sessions->ClearOnFindFriendSessionCompleteDelegate_Handle(0, FindFriendCompleteHandle);
 		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
 		Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle);
 		Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
@@ -180,6 +181,13 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Find);
 	Request->SearchParams = SearchParams;
 	Request->OnFindComplete = MoveTemp(OnComplete);
+
+	// A targeted query names its room, hidden or not - and the hidden-seeing mark keeps it off the public search surfaces.
+	if (Request->SearchParams.IsSpecificSessionQuery())
+	{
+		Request->SearchParams.bIncludeHiddenSessions = true;
+	}
+
 	EnqueueRequest(Request);
 }
 
@@ -191,41 +199,6 @@ void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& Sear
 	Request->JoinTravelOptions = AdditionalTravelOptions;
 	Request->OnComplete = MoveTemp(OnComplete);
 	EnqueueRequest(Request);
-}
-
-void UEasySessionSubsystem::JoinEasySessionByCode(const FString& JoinCode, const FString& Password, FEasySessionCompleteDelegate OnComplete)
-{
-	const FString NormalizedCode = JoinCode.TrimStartAndEnd().ToUpper();
-	if (NormalizedCode.IsEmpty())
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, TEXT("The join code is empty."));
-		return;
-	}
-
-	// A code names one exact room, so the lookup runs unfiltered and hidden rooms count.
-	FEasySessionSearchParams SearchParams;
-	SearchParams.bIncludeHiddenSessions = true;
-
-	FindEasySessions(SearchParams, FEasySessionFindCompleteDelegate::CreateWeakLambda(this,
-		[this, NormalizedCode, Password, OnComplete](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
-		{
-			if (Result != EEasySessionResult::Success)
-			{
-				OnComplete.ExecuteIfBound(Result, ErrorMessage);
-				return;
-			}
-
-			for (const FEasySessionSearchResult& Session : Results)
-			{
-				if (Session.JoinCode == NormalizedCode)
-				{
-					JoinEasySession(Session, Password, FString(), OnComplete);
-					return;
-				}
-			}
-
-			OnComplete.ExecuteIfBound(EEasySessionResult::NoSessionsFound, FString::Printf(TEXT("No session with the join code '%s' was found."), *NormalizedCode));
-		}));
 }
 
 void UEasySessionSubsystem::StartEasySession(FEasySessionCompleteDelegate OnComplete)
@@ -868,6 +841,17 @@ bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
 bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
 {
 	return Social.IsValid() && Social->ShowProfileUI(Player.PlayerId.GetUniqueNetId());
+}
+
+void UEasySessionSubsystem::FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete)
+{
+	if (!Social.IsValid())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The session subsystem is shutting down."), {});
+		return;
+	}
+
+	Social->FindFriendSessions(MoveTemp(OnComplete));
 }
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)

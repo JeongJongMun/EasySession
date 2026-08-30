@@ -980,4 +980,192 @@ bool FEasyMatchmakingEventsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+namespace EasyMatchmakingTargetedTest
+{
+	/** Maximum time to wait for each step before failing. */
+	static constexpr double TimeoutSeconds = 30.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+
+		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
+
+		/** A joinable-but-unreachable result borrowed from the coded room. */
+		FOnlineSessionSearchResult BaseResult;
+
+		/** The code the room advertises. */
+		FString JoinCode;
+
+		/** Cleanup destroys recorded before the matchmaking runs began. */
+		int32 DestroysBaseline = 0;
+
+		TOptional<EEasySessionResult> NoPasswordResult;
+		TOptional<EEasySessionResult> WithPasswordResult;
+		int32 Phase = 0;
+		double StartTime = 0.0;
+	};
+
+	/** Start a targeted run hunting the coded room, reporting into OutResult. */
+	void StartTargetedRun(UEasySessionSubsystem& Subsystem, const FString& Code, const FString& Password, const TSharedPtr<FTestState>& State, TOptional<EEasySessionResult>& OutResult)
+	{
+		FEasyMatchmakingParams Params;
+		Params.Search.bLANQuery = true;
+		Params.Search.TimeoutSeconds = 5.0f;
+		Params.Search.JoinCode = Code;
+		Params.JoinPassword = Password;
+		Params.MaxSearchPasses = 1;
+		Params.DelayBetweenPassesSeconds = 0.0f;
+		Params.bAllowHostFallback = false;
+
+		TOptional<EEasySessionResult>* Result = &OutResult;
+		Subsystem.StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+			[State, Result](EEasySessionResult InResult, const FString&)
+			{
+				*Result = InResult;
+			}));
+	}
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitTargeted, TSharedPtr<EasyMatchmakingTargetedTest::FTestState>, State);
+bool FEasyMatchmakingWaitTargeted::Update()
+{
+	using namespace EasyMatchmakingTargetedTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+	{
+		CurrentTest->AddError(FString::Printf(TEXT("Timed out in phase %d. Queue: %s"), State->Phase, *Subsystem->GetQueueStatus()));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			State->JoinCode = Subsystem->GetSessionJoinCode();
+			CurrentTest->TestEqual(TEXT("The room advertises a code"), State->JoinCode.Len(), 6);
+
+			State->BaseResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);
+			if (!CurrentTest->TestTrue(TEXT("The crafted result is joinable"), State->BaseResult.IsValid()))
+			{
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+
+			Subsystem->DestroyEasySession();
+			State->Phase = 1;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 1:
+		{
+			if (Subsystem->IsInSession() || Subsystem->IsBusy())
+			{
+				return false;
+			}
+
+			State->DestroysBaseline = State->Listener->DestroyedResults.Num();
+
+			// Without the password, the coded room is found but never becomes a candidate.
+			StartTargetedRun(*Subsystem, State->JoinCode, FString(), State, State->NoPasswordResult);
+			State->Phase = 2;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		case 2:
+		{
+			if (!State->NoPasswordResult.IsSet())
+			{
+				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
+				return false;
+			}
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			CurrentTest->TestEqual(TEXT("Without a password the run finds nothing to join"), State->NoPasswordResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestEqual(TEXT("And no join was attempted"), State->Listener->DestroyedResults.Num() - State->DestroysBaseline, 0);
+
+			// With the password, the locked room becomes a candidate and a join genuinely runs.
+			StartTargetedRun(*Subsystem, State->JoinCode, TEXT("secret"), State, State->WithPasswordResult);
+			State->Phase = 3;
+			State->StartTime = FPlatformTime::Seconds();
+			return false;
+		}
+
+		default:
+		{
+			if (!State->WithPasswordResult.IsSet())
+			{
+				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
+				return false;
+			}
+			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return false;
+			}
+
+			// The join fails on address resolve and the run ends empty-handed - but the cleanup destroy proves the room was genuinely tried.
+			CurrentTest->TestEqual(TEXT("The run still ends in NoSessionsFound"), State->WithPasswordResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestEqual(TEXT("The password opened the coded room for one real join attempt"), State->Listener->DestroyedResults.Num() - State->DestroysBaseline, 1);
+
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * Targeted matchmaking hunts one specific room: a Join Code in the search params finds
+ * the hidden, password protected room, and Join Password decides whether it may become
+ * a candidate. The injected result stands in for the search, and the cleanup destroy
+ * after the failed resolve is the proof that a join was genuinely attempted.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.PasswordOpensTheCodedRoom", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyMatchmakingTargetedTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionDestroyed.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleDestroyed);
+
+	FEasySessionHostParams HostParams;
+	HostParams.SessionDisplayName = TEXT("EasySession Targeted Room");
+	HostParams.bIsLANMatch = true;
+	HostParams.bStartListening = false;
+	HostParams.bHidden = true;
+	HostParams.bUseJoinCode = true;
+	HostParams.Password = TEXT("secret");
+	Subsystem->CreateEasySession(HostParams);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitTargeted(State));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

@@ -122,7 +122,7 @@ public:
 	/** Create and Update: the settings to advertise for the session. */
 	FEasySessionHostParams HostParams;
 
-	/** Find: the filters to search with. */
+	/** Find: the filters to search with, including the targeted-query ids. */
 	FEasySessionSearchParams SearchParams;
 
 	/** Join: the session to join, as returned by a search. */

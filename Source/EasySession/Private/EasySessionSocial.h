@@ -56,6 +56,12 @@ public:
 	/** Read the platform friends list. */
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete);
 
+	/**
+	 * Read the friends list and find the session each friend playing this game is in.
+	 * Every query is one request on the owner's queue, one friend at a time - this object only aggregates.
+	 */
+	void FindFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete);
+
 private:
 
 	/** Fires when the player accepts an invite from the platform overlay. */
@@ -72,6 +78,15 @@ private:
 	 */
 	void JoinInvitedSessionAfterLeaving(EEasySessionResult LeaveResult, const FEasySessionSearchResult& Session);
 
+	/** Ask the queue for the next pending friend's session, or finish the sweep when none are left. */
+	void QueryNextFriendSession();
+
+	/** The queue's answer for the friend currently being asked. */
+	void HandleFriendQueryComplete(EEasySessionResult Result, const TArray<FEasySessionSearchResult>& Results);
+
+	/** Finish the sweep and report everything it collected. */
+	void FinishFriendSessions(EEasySessionResult Result, const FString& ErrorMessage);
+
 	/** The world this subsystem runs in, or null before one exists. */
 	UWorld* GetWorld() const;
 
@@ -79,4 +94,19 @@ private:
 
 	/** Handle for the accepted-invite delegate. Valid once BindInviteDelegates has run. */
 	FDelegateHandle InviteAcceptedHandle;
+
+	/** True while a friend session sweep runs. */
+	bool bFindingFriendSessions = false;
+
+	/** Fired once when the running sweep finishes. */
+	FEasyFriendSessionsCompleteDelegate FriendSessionsDelegate;
+
+	/** One entry per friend. Entries of friends playing this game gain their session as the queue answers. */
+	TArray<FEasyFriendSession> FriendSessionEntries;
+
+	/** Indices into FriendSessionEntries still waiting for their session query. */
+	TArray<int32> PendingFriendQueries;
+
+	/** Index of the entry whose query is on the queue, INDEX_NONE between queries. */
+	int32 CurrentFriendQuery = INDEX_NONE;
 };
