@@ -156,16 +156,19 @@ Event Construct
 
 `Update Easy Session`에 호스트 파라미터를 다시 넘기면 세션이 새 값으로 광고됩니다. 호스트 전용입니다.
 
-바꿀 수 있는 것은 표시 이름, 최대 인원, 광고 여부, 숨김 여부, 난입 허용 여부, 초대 허용 여부, 비밀번호(와 친구 예외), 커스텀 세팅입니다.
+무엇을 바꿀 수 있는지는 `FEasySessionSettings`가 답합니다. 표시 이름, 최대 인원, 광고 여부,
+숨김 여부, 난입 허용 여부, 초대 허용 여부, 지역, 참가 코드, 비밀번호(와 친구 예외), 커스텀
+세팅이 전부입니다. `Get Easy Session Settings`로 현재 값을 받아 고치면 됩니다.
 
-아래 옵션들은 바꿀 수 없습니다.
+호스팅 전용 필드는 한 단계 위인 `FEasySessionHostParams`에 있고, Update에는 아예 닿지
+않습니다.
 
 | 필드 | 왜 |
 |---|---|
 | Map Name | 맵은 `Server Travel Easy Session`으로 옮깁니다 |
 | Host Mode | 리슨이냐 데디케이티드냐는 프로세스를 띄운 방식이라 실행 중에 바뀌지 않습니다 |
 | Is LAN Match | 세션이 LAN에 있는지 온라인 서비스에 있는지는 만들 때 정해집니다 |
-| Use Presence | 플러그인이 넘기지 않고, 넘기더라도 스팀이 거절합니다. `Can't change presence settings on existing session` 경고만 남고 이전 값이 유지됩니다 |
+| Use Presence | 살아있는 세션에서는 스팀이 거절합니다. `Can't change presence settings on existing session` 경고만 남고 이전 값이 유지됩니다 |
 | Start Listening / Additional Travel Options | 세션을 만들 때 Travel에 한 번 쓰이는 값이라 이후에는 읽지 않습니다 |
 
 > LAN(NULL)에서는 광고 여부를 바꿔도 LAN 비콘이 그대로입니다. 엔진의 `FOnlineSessionNull::UpdateSession`이 설정만 갈아끼우고 비콘을 다시 계산하지 않기 때문입니다.

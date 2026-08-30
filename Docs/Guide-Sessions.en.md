@@ -160,18 +160,22 @@ Both are host only. A client gets `RequiresSessionAuthority`, so show the button
 
 ## Update Session
 
-`Update Easy Session` re-advertises the session from a fresh set of host params. Host only.
+`Update Easy Session` re-advertises the session from a fresh `FEasySessionSettings`. Host only.
 
-You can change the display name, max players, advertise flag, hidden flag, join-in-progress flag, invites flag, the password (and its friends exception), and custom settings.
+That struct is the answer to "what can I change?" - it holds the display name, max
+players, advertise flag, hidden flag, join-in-progress flag, invites flag, region, join
+code, the password (and its friends exception) and custom settings, and nothing else.
+`Get Easy Session Settings` hands you the current ones to edit.
 
-These options cannot be changed:
+The hosting-only fields live one level up, in `FEasySessionHostParams`, and never reach
+Update:
 
 | Field | Why |
 |---|---|
 | Map Name | Move maps with `Server Travel Easy Session` instead |
 | Host Mode | Listen or dedicated is how the process was started, not a live setting |
 | Is LAN Match | Whether the session lives on the LAN or on the online service is decided at create time |
-| Use Presence | The plugin does not pass it, and Steam refuses it anyway - it logs `Can't change presence settings on existing session` and keeps the old value |
+| Use Presence | Steam refuses it on a live session - it logs `Can't change presence settings on existing session` and keeps the old value |
 | Start Listening / Additional Travel Options | Used once for the travel at create time, never read again |
 
 > On LAN (NULL), changing the advertise flag leaves the LAN beacon as it was: the engine's `FOnlineSessionNull::UpdateSession` swaps the settings without recomputing the beacon.

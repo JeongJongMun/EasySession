@@ -90,7 +90,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			State->JoinCode = Subsystem->GetSessionJoinCode();
 			CurrentTest->TestEqual(TEXT("The hidden session advertises a six character code"), State->JoinCode.Len(), 6);
 
-			const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
+			const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 			CurrentTest->TestTrue(TEXT("The code toggle reads back"), ReadBack.bUseJoinCode);
 			CurrentTest->TestTrue(TEXT("Hidden reads back"), ReadBack.bHidden);
 
@@ -161,7 +161,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			}
 
 			// A read-modify-write update must not lose the code.
-			Subsystem->UpdateEasySession(Subsystem->GetSessionHostParams());
+			Subsystem->UpdateEasySession(Subsystem->GetSessionSettings());
 			State->Phase = 3;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;

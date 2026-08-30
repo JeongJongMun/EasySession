@@ -240,10 +240,10 @@ void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComp
 		}));
 }
 
-void UEasySessionSubsystem::UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::UpdateEasySession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete)
 {
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Update);
-	Request->HostParams = NewHostParams;
+	Request->Settings = NewSettings;
 	Request->OnComplete = MoveTemp(OnComplete);
 	EnqueueRequest(Request);
 }
@@ -322,9 +322,9 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 	return LocalState;
 }
 
-FEasySessionHostParams UEasySessionSubsystem::GetSessionHostParams() const
+FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
 {
-	FEasySessionHostParams Params;
+	FEasySessionSettings Params;
 
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
@@ -338,19 +338,12 @@ FEasySessionHostParams UEasySessionSubsystem::GetSessionHostParams() const
 	Params.bShouldAdvertise = Settings.bShouldAdvertise;
 	Params.bAllowJoinInProgress = Settings.bAllowJoinInProgress;
 	Params.bAllowInvites = Settings.bAllowInvites;
-	Params.bIsLANMatch = Settings.bIsLANMatch;
-	Params.bUsePresence = Settings.bUsesPresence;
-	Params.HostMode = Settings.bIsDedicated ? EEasySessionHostMode::DedicatedServer : EEasySessionHostMode::ListenServer;
 
 	for (const TPair<FName, FOnlineSessionSetting>& Setting : Settings.Settings)
 	{
 		if (Setting.Key == EasySession::SettingKey_DisplayName)
 		{
 			Params.SessionDisplayName = Setting.Value.Data.ToString();
-		}
-		else if (Setting.Key == SETTING_MAPNAME)
-		{
-			Params.MapName = Setting.Value.Data.ToString();
 		}
 		else if (Setting.Key == EasySession::SettingKey_Hidden)
 		{

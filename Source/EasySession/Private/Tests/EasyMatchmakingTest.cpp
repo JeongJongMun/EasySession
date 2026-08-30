@@ -250,7 +250,7 @@ bool FEasyMatchmakingWaitFallbackFilters::Update()
 		CurrentTest->TestTrue(TEXT("Fell back to hosting"), Subsystem->IsHost());
 
 		// The live session must advertise what the search filtered on, or the next player's identical search skips this room.
-		const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
+		const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 		CurrentTest->TestEqual(TEXT("The filtered key overwrote the host value"), ReadBack.CustomSettings.FindRef(TEXT("GameMode")), FString(TEXT("Deathmatch")));
 		CurrentTest->TestEqual(TEXT("The filter-only key was added"), ReadBack.CustomSettings.FindRef(TEXT("Region")), FString(TEXT("KR")));
 		CurrentTest->TestEqual(TEXT("The host-only key survived"), ReadBack.CustomSettings.FindRef(TEXT("MOTD")), FString(TEXT("Hello")));

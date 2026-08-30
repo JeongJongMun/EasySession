@@ -613,10 +613,10 @@ void UEasySessionSubsystem::ExecuteDestroy()
 
 void UEasySessionSubsystem::ExecuteUpdate()
 {
-	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
+	const FEasySessionSettings& Params = GetActiveRequest()->Settings;
 	if (!Params.IsValid())
 	{
-		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Update params are invalid."));
+		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Update settings are invalid."));
 		return;
 	}
 
@@ -970,7 +970,7 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 	UE_LOG(LogEasySession, Log, TEXT("Session updated successfully."));
 
 	// Only now, so a rejected update leaves the gate matching what is advertised.
-	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
+	const FEasySessionSettings& Params = GetActiveRequest()->Settings;
 	ServerGate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
 
 	// The engine's own cap follows the advertised one, so its "Server full" refusal tracks the new Max Players.

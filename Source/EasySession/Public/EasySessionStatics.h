@@ -121,11 +121,11 @@ public:
 	static FString GetEasySessionQueueStatus(const UObject* WorldContextObject);
 
 	/**
-	 * @return The parameters the current session was created with, so one field can be changed and passed to Update Easy Session.
+	 * @return The settings the current session is advertising, so one field can be changed and passed to Update Easy Session.
 	 *         Host only. Returns defaults on a client, and when there is no session.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
-	static FEasySessionHostParams GetEasySessionHostParams(const UObject* WorldContextObject);
+	static FEasySessionSettings GetEasySessionSettings(const UObject* WorldContextObject);
 
 	/**
 	 * @return The join code the current session advertises, or an empty string when it advertises none.

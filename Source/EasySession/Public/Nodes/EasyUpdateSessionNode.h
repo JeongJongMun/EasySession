@@ -31,15 +31,13 @@ public:
 	 * Only the game hosting the session can update it - clients get a Requires Session Authority failure.
 	 *
 	 * Every field is applied as given, including Password.
-	 * Pass params built by Get Easy Session Host Params and change only what you mean to change.
+	 * Pass settings from Get Easy Session Settings and change only what you mean to change.
 	 * Otherwise the fields you left at their defaults overwrite the session with those defaults.
 	 *
-	 * @param NewHostParams New parameters to advertise. Map Name, Host Mode, Start
-	 *        Listening, LAN Match, Use Presence and Additional Travel Options are
-	 *        fixed when the session is created and are ignored here.
+	 * @param NewSettings The settings to advertise in place of the current ones. Get Easy Session Settings hands you the current ones to edit.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Update Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "NewHostParams"))
-	static UEasyUpdateSessionNode* UpdateEasySession(UObject* WorldContextObject, const FEasySessionHostParams& NewHostParams);
+	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Update Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "NewSettings"))
+	static UEasyUpdateSessionNode* UpdateEasySession(UObject* WorldContextObject, const FEasySessionSettings& NewSettings);
 
 	//~ Begin UBlueprintAsyncActionBase Interface
 	virtual void Activate() override;
@@ -51,5 +49,5 @@ private:
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** New parameters to advertise. */
-	FEasySessionHostParams NewHostParams;
+	FEasySessionSettings NewSettings;
 };

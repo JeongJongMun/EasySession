@@ -47,7 +47,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
-| **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, region, join code, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
+| **Update Easy Session** | `NewSettings` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` from a `FEasySessionSettings` and re-advertises. The struct holds exactly the fields a live session can change, so there is nothing here that gets ignored. Session authority only |
 | **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
 | **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the room for everyone with "The host has left the game." |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
@@ -98,7 +98,7 @@ node name without spaces.
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
 | Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports |
-| Get Easy Session Host Params | `GetSessionHostParams` | The params the session was created with, so Update can change one field. Host only |
+| Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Host only |
 | Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the room can read and share it |
 
 `To String (EasySessionResult)` (C++ `ResultToString`) turns a result enum into text.
@@ -178,8 +178,17 @@ bound to them stays correct even when something else in your game drives the ses
 
 ## 5. Structs
 
-### 5.1 FEasySessionHostParams
-`SessionDisplayName` (String), `MapName` (String), `HostMode` (`EEasySessionHostMode`), `MaxPlayers` (int), `bIsLANMatch`, `bStartListening`, `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `AdditionalTravelOptions` (String), `bAllowJoinInProgress`, `bAllowInvites`, `bUsePresence`, `Region` (`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings` (Map String->String)
+### 5.1 FEasySessionSettings
+`SessionDisplayName` (String), `MaxPlayers` (int), `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `Region` (`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings` (Map String->String)
+
+What a session advertises about itself. `Update Easy Session` takes exactly this struct,
+so every field here is one a live session can change.
+
+### 5.2 FEasySessionHostParams *(FEasySessionSettings plus)*
+`MapName` (String), `HostMode` (`EEasySessionHostMode`), `bIsLANMatch`, `bStartListening`, `bUsePresence`, `AdditionalTravelOptions` (String)
+
+Hosting is the settings above plus how to bring the server up. These added fields are
+read once, while the session is created, which is why Update cannot change them.
 
 Field behavior is in the [session guide](Guide-Sessions.en.md). `bHidden` advertises the
 session but keeps it out of Find results, so it can only be reached through an invite.
@@ -191,19 +200,19 @@ with `Parse Option`. `Region` and `bUseJoinCode` are covered in the guide's
 [regions](Guide-Sessions.en.md#regions) and [join codes](Guide-Sessions.en.md#join-codes)
 sections.
 
-### 5.2 FEasySessionSearchParams
+### 5.3 FEasySessionSearchParams
 `MaxResults` (int), `bLANQuery`, `TimeoutSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String)
 
 `JoinCode` filters down to the one session advertising that code, hidden or not - which is how a UI previews a private room before joining it. C++ callers can also set the targeted-query ids `FriendId`, `SessionId` or `OwnerId` on the same struct to look up one specific session - the header documents each. The ids cannot ride Blueprint pins, because unique net ids have no Blueprint form.
 
-### 5.3 FEasySessionSearchResult *(read-only)*
+### 5.4 FEasySessionSearchResult *(read-only)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
 
 This struct connects the two nodes: `Find Easy Sessions` returns them and
 `Join Easy Session` takes one back. Keep the whole struct - a server-browser row should
 store it, not just the name it displays.
 
-### 5.4 FEasyFriendSession
+### 5.5 FEasyFriendSession
 `Friend` (`FEasySessionFriend`), `bHasSession`, `Session` (`FEasySessionSearchResult`)
 
 One entry per friend from `Find Easy Friend Sessions`. `Session` is only valid while
@@ -211,18 +220,18 @@ One entry per friend from `Find Easy Friend Sessions`. `Session` is only valid w
 
 `bPasswordProtected` is how you decide whether to prompt before `Join Easy Session`.
 
-### 5.4 FEasyMatchmakingParams
+### 5.6 FEasyMatchmakingParams
 `Search` (SearchParams), `Host` (HostParams - read only while `bAllowHostFallback` is on), `bAllowHostFallback`, `JoinPassword` (String), `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
 
-### 5.5 FEasySessionPlayerInfo *(read-only)*
+### 5.7 FEasySessionPlayerInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost` (always false on dedicated servers), `PlayerId` (the online service id - names can repeat, this cannot)
 
-### 5.6 FEasySessionFriend *(read-only)*
+### 5.8 FEasySessionFriend *(read-only)*
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`
 
 Returned by `Read Easy Friends`; pass one back to the invite and profile functions.
 
-### 5.7 FEasyDisconnectInfo *(read-only)*
+### 5.9 FEasyDisconnectInfo *(read-only)*
 `Reason` (`EEasyDisconnectReason`), `ReasonText` (Text)
 
 ## 6. Enums

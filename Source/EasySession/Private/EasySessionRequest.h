@@ -119,8 +119,11 @@ public:
 	/** Deadline for this run, frozen when the request starts. 0 = no deadline. */
 	double TimeoutSeconds = 0.0;
 
-	/** Create and Update: the settings to advertise for the session. */
+	/** Create: the session to advertise, and how to open the server for it. */
 	FEasySessionHostParams HostParams;
+
+	/** Update: the settings to advertise in place of the current ones. */
+	FEasySessionSettings Settings;
 
 	/** Find: the filters to search with, including the targeted-query ids. */
 	FEasySessionSearchParams SearchParams;

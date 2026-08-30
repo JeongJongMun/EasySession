@@ -76,7 +76,7 @@ bool FEasySessionWaitForRegionRun::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("The advertised region reads back"), Subsystem->GetSessionHostParams().Region, EEasySessionRegion::EastAsia);
+			CurrentTest->TestEqual(TEXT("The advertised region reads back"), Subsystem->GetSessionSettings().Region, EEasySessionRegion::EastAsia);
 
 			State->BaseResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);
 			if (!CurrentTest->TestTrue(TEXT("The crafted result is joinable"), State->BaseResult.IsValid()))

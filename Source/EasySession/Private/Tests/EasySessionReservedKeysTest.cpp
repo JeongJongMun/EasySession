@@ -86,9 +86,9 @@ bool FEasySessionRunReservedKeySteps::Update()
 		CurrentTest->TestEqual(TEXT("Beacon port is advertised as a number"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
-		// What a Blueprint gets from Get Easy Session Host Params. The plugin's own keys
+		// What a Blueprint gets from Get Easy Session Settings. The plugin's own keys
 		// must not be in there, or handing this struct straight back to Update rewrites them.
-		const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
+		const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 		CurrentTest->TestFalse(TEXT("Join approval is not exposed as a custom setting"),
 			ReadBack.CustomSettings.Contains(EasySession::SettingKey_JoinApproval.ToString()));
 		CurrentTest->TestFalse(TEXT("Beacon port is not exposed as a custom setting"),
@@ -97,7 +97,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 			ReadBack.CustomSettings.Contains(TEXT("GameMode")));
 
 		// The round trip a game is told to make: read, change one field, hand it back.
-		FEasySessionHostParams Updated = ReadBack;
+		FEasySessionSettings Updated = ReadBack;
 		Updated.MaxPlayers = 8;
 
 		State->Step = EStep::AwaitingUpdate;
@@ -155,7 +155,7 @@ bool FEasySessionRunReservedKeySteps::Update()
  * into that map comes back as a string. The key stays present, so every reader gets zero
  * instead of a missing key, and the host quietly stops answering join approval.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.HostParamsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.SettingsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionReservedKeysTest;

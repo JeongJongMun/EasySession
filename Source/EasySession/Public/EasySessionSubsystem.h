@@ -221,15 +221,13 @@ public:
 	 * Needs session authority - only the game that created the session can update it.
 	 *
 	 * Every field is applied as given, including Password.
-	 * Pass params from GetSessionHostParams and change only what you mean to change.
+	 * Pass settings from GetSessionSettings and change only what you mean to change.
 	 * Otherwise the fields you left at their defaults overwrite the session with those defaults.
 	 *
-	 * @param NewHostParams New parameters to advertise. Map Name, Host Mode, Start
-	 *        Listening, LAN Match, Use Presence and Additional Travel Options are
-	 *        fixed when the session is created and are ignored here.
+	 * @param NewSettings The settings to advertise in place of the current ones.
 	 * @param OnComplete Called when the operation completes.
 	 */
-	void UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void UpdateEasySession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Start Matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
@@ -269,12 +267,12 @@ public:
 	EEasySessionState GetSessionState() const;
 
 	/**
-	 * Get these, edit the one field, pass them to Update Easy Session - building fresh params instead resets every field you did not fill in.
+	 * Get these, edit the one field, pass them to Update Easy Session - building fresh settings instead resets every field you did not fill in.
 	 *
-	 * @return The parameters the current session is running with, so a change can be made without restating everything else.
-	 *         Host only. Returns defaults on a client, when there is no session, and for the fields Update cannot change.
+	 * @return The settings the current session is advertising, so a change can be made without restating everything else.
+	 *         Host only. Returns defaults on a client and when there is no session.
 	 */
-	FEasySessionHostParams GetSessionHostParams() const;
+	FEasySessionSettings GetSessionSettings() const;
 
 	/**
 	 * @return The join code the current session advertises, or empty when it advertises none.

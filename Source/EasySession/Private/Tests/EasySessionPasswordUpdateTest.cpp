@@ -95,14 +95,14 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 
 			// Reading the session back has to return what it was created with, or the
 			// read-modify-write below would quietly change fields nobody touched.
-			const FEasySessionHostParams ReadBack = Subsystem->GetSessionHostParams();
+			const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 			CurrentTest->TestEqual(TEXT("Read back the display name"), ReadBack.SessionDisplayName, MakeParams().SessionDisplayName);
 			CurrentTest->TestEqual(TEXT("Read back the player limit"), ReadBack.MaxPlayers, 6);
 			CurrentTest->TestFalse(TEXT("Read back join in progress"), ReadBack.bAllowJoinInProgress);
 			CurrentTest->TestEqual(TEXT("Read back the empty password"), ReadBack.Password, FString());
 
 			// Lock the room by changing only the password.
-			FEasySessionHostParams Locked = ReadBack;
+			FEasySessionSettings Locked = ReadBack;
 			Locked.Password = TEXT("1234");
 			State->Step = EStep::AwaitingLock;
 			Subsystem->UpdateEasySession(Locked, FEasySessionCompleteDelegate::CreateLambda(
@@ -123,7 +123,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestEqual(TEXT("A locked session enforces the new password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString(TEXT("1234")));
 
 			// Fields the caller did not touch have to survive the update.
-			const FEasySessionHostParams AfterLock = Subsystem->GetSessionHostParams();
+			const FEasySessionSettings AfterLock = Subsystem->GetSessionSettings();
 			CurrentTest->TestEqual(TEXT("Locking left the display name alone"), AfterLock.SessionDisplayName, MakeParams().SessionDisplayName);
 			CurrentTest->TestEqual(TEXT("Locking left the player limit alone"), AfterLock.MaxPlayers, 6);
 			CurrentTest->TestFalse(TEXT("Locking left join in progress alone"), AfterLock.bAllowJoinInProgress);
@@ -132,7 +132,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			// Unlock it again. An empty password has to be able to undo a lock, which
 			// is why the advertised flag is written for both states instead of only
 			// being added when set.
-			FEasySessionHostParams Unlocked = AfterLock;
+			FEasySessionSettings Unlocked = AfterLock;
 			Unlocked.Password = FString();
 			State->Step = EStep::AwaitingUnlock;
 			Subsystem->UpdateEasySession(Unlocked, FEasySessionCompleteDelegate::CreateLambda(

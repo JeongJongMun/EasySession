@@ -94,7 +94,7 @@ namespace EasySession
 	}
 }
 
-bool FEasySessionHostParams::IsValid() const
+bool FEasySessionSettings::IsValid() const
 {
 	return MaxPlayers > 0;
 }

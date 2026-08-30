@@ -2,11 +2,11 @@
 
 #include "Nodes/EasyUpdateSessionNode.h"
 
-UEasyUpdateSessionNode* UEasyUpdateSessionNode::UpdateEasySession(UObject* WorldContextObject, const FEasySessionHostParams& NewHostParams)
+UEasyUpdateSessionNode* UEasyUpdateSessionNode::UpdateEasySession(UObject* WorldContextObject, const FEasySessionSettings& NewSettings)
 {
 	UEasyUpdateSessionNode* Node = NewObject<UEasyUpdateSessionNode>();
 	Node->NodeWorldContext = WorldContextObject;
-	Node->NewHostParams = NewHostParams;
+	Node->NewSettings = NewSettings;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
@@ -20,7 +20,7 @@ void UEasyUpdateSessionNode::Activate()
 		return;
 	}
 
-	Subsystem->UpdateEasySession(NewHostParams, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyUpdateSessionNode::HandleComplete));
+	Subsystem->UpdateEasySession(NewSettings, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyUpdateSessionNode::HandleComplete));
 }
 
 void UEasyUpdateSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

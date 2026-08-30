@@ -138,10 +138,10 @@ FString UEasySessionStatics::GetEasySessionQueueStatus(const UObject* WorldConte
 	return Subsystem != nullptr ? Subsystem->GetQueueStatus() : FString();
 }
 
-FEasySessionHostParams UEasySessionStatics::GetEasySessionHostParams(const UObject* WorldContextObject)
+FEasySessionSettings UEasySessionStatics::GetEasySessionSettings(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionHostParams() : FEasySessionHostParams();
+	return Subsystem != nullptr ? Subsystem->GetSessionSettings() : FEasySessionSettings();
 }
 
 FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextObject)

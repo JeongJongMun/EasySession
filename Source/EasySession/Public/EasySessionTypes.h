@@ -221,11 +221,11 @@ enum class EEasySessionRegion : uint8
 };
 
 /**
- * Parameters for hosting a session.
- * All values have sensible defaults - an empty FEasySessionHostParams hosts a public 4 player listen session.
+ * What a session advertises about itself, and everything Update Easy Session can change while players are in it.
+ * Hosting starts from these: FEasySessionHostParams adds the fields that only mean anything while the session is being created.
  */
 USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasySessionHostParams
+struct EASYSESSION_API FEasySessionSettings
 {
 	GENERATED_BODY()
 
@@ -233,39 +233,12 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FString SessionDisplayName = TEXT("My Session");
 
-	/**
-	 * Map to travel to once the session is created (e.g. /Game/Maps/Lobby).
-	 * Leave empty to stay on the current map. Additional travel options can be appended with '?'.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	FString MapName;
-
-	/** Whether the hosting player's game acts as the server, or a dedicated server hosts the session. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	EEasySessionHostMode HostMode = EEasySessionHostMode::ListenServer;
-
 	/** Maximum number of players allowed in the session. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 1))
 	int32 MaxPlayers = 4;
 
-	/**
-	 * Host on the local network instead of the online service.
-	 * Automatically enabled when the NULL (LAN) subsystem is active.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	bool bIsLANMatch = false;
-
 	//~ The fields below are folded behind the Make node's advanced arrow, and the markers are what keep the fold line here.
 	//~ UK2Node_MakeStruct folds on its own from five fields up, but only while no field carries AdvancedDisplay - so without the markers, adding a field would move the line instead.
-
-	/**
-	 * Open a listen server as part of hosting, so clients can connect.
-	 * Travels to Map Name with the ?listen option, or starts listening on the current map when Map Name is empty.
-	 *
-	 * Turning this off still advertises the session, but there is no server for players to connect to until you open one yourself.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	bool bStartListening = true;
 
 	/** Whether the session is advertised to other players. Disable for private sessions. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -296,13 +269,6 @@ struct EASYSESSION_API FEasySessionHostParams
 	bool bFriendsBypassPassword = true;
 
 	/**
-	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
-	 * Read them on the server with Parse Option / Get Game Mode option parsing.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	FString AdditionalTravelOptions;
-
-	/**
 	 * Whether players can join while the match is already in progress.
 	 * Leave this on for Steam: Steam closes the lobby as soon as the first player joins and never reopens it, so everyone after that is refused even before the match starts.
 	 */
@@ -312,13 +278,6 @@ struct EASYSESSION_API FEasySessionHostParams
 	/** Whether players can invite friends to the session. Ignored on dedicated servers. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowInvites = true;
-
-	/**
-	 * Whether the session uses platform presence (friends can see and join it).
-	 * Ignored on dedicated servers and LAN matches.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	bool bUsePresence = true;
 
 	/** The region advertised with the session. Searches filtering by region only see sessions advertising the same one. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -336,8 +295,62 @@ struct EASYSESSION_API FEasySessionHostParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	TMap<FString, FString> CustomSettings;
 
-	/** Returns true if the host params are valid. */
+	/** @return Whether these settings can be advertised as they stand. */
 	bool IsValid() const;
+};
+
+/**
+ * Parameters for hosting a session: the settings above, plus how to open the server that runs it.
+ * All values have sensible defaults - an empty FEasySessionHostParams hosts a public 4 player listen session.
+ * The fields added here are read once, while the session is created. Update Easy Session takes the settings alone, because a live session cannot change them.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
+{
+	GENERATED_BODY()
+
+	/**
+	 * Map to travel to once the session is created (e.g. /Game/Maps/Lobby).
+	 * Leave empty to stay on the current map. Additional travel options can be appended with '?'.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	FString MapName;
+
+	/** Whether the hosting player's game acts as the server, or a dedicated server hosts the session. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	EEasySessionHostMode HostMode = EEasySessionHostMode::ListenServer;
+
+	/**
+	 * Host on the local network instead of the online service.
+	 * Automatically enabled when the NULL (LAN) subsystem is active.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	bool bIsLANMatch = false;
+
+	//~ Folded behind the Make node's advanced arrow, for the reason described in FEasySessionSettings.
+
+	/**
+	 * Open a listen server as part of hosting, so clients can connect.
+	 * Travels to Map Name with the ?listen option, or starts listening on the current map when Map Name is empty.
+	 *
+	 * Turning this off still advertises the session, but there is no server for players to connect to until you open one yourself.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	bool bStartListening = true;
+
+	/**
+	 * Whether the session uses platform presence (friends can see and join it).
+	 * Ignored on dedicated servers and LAN matches.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	bool bUsePresence = true;
+
+	/**
+	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
+	 * Read them on the server with Parse Option / Get Game Mode option parsing.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	FString AdditionalTravelOptions;
 };
 
 /**
