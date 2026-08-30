@@ -74,17 +74,17 @@ A wrong password or a match that stopped taking players fails the node right her
 `Result` saying which and `ErrorMessage` carrying the host's reason - no loading screen
 first. See [password protected sessions](Guide-Sessions.en.md#password-protected-sessions).
 
-## 5. Or skip all of that with Quick Match
+## 5. Or skip all of that with Matchmaking
 
 ```
-[Button Clicked] -> [Quick Match Easy Session]
-                      QuickMatchParams:
+[Button Clicked] -> [Start Easy Matchmaking]
+                      MatchmakingParams:
                         Host -> Map Name = "/Game/Maps/Lobby"   <- your map here
                       OnSuccess -> (joined the best session, or hosting a new one)
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Quick Match searches, joins the best session (good ping, fuller rooms first), and hosts a
+Matchmaking searches, joins the best session (good ping, fuller rooms first), and hosts a
 new session if nothing is found. Use `Is Easy Session Host` to check which outcome you got.
 
 **Leaving Host > Map Name empty** makes the fallback open a listen server on the map this
@@ -103,7 +103,7 @@ one process and one LAN beacon port, so they find each other only some of the ti
 Separate processes use the same networking path as packaged builds.
 
 > Tip: you can test everything without any UI using console commands (`~` key):
-> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.QuickMatch`,
+> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,
 > `EasySession.Destroy`, `EasySession.Status`. They exist in development builds and are
 > compiled out of shipping builds.
 
@@ -113,6 +113,6 @@ Separate processes use the same networking path as packaged builds.
 - [LAN setup](Setup-LAN.en.md) - what breaks local discovery, and how to test on one machine
 - [Steam setup](Setup-Steam.en.md) - the two plugins and the ini block internet play needs
 - [Session guide](Guide-Sessions.en.md) - custom session data, filters, passwords, updating sessions
-- [Quick Match guide](Guide-QuickMatch.en.md) - how Quick Match picks a session, custom scoring
+- [Matchmaking guide](Guide-Matchmaking.en.md) - how Matchmaking picks a session, custom scoring
 - [API reference](API.en.md) - every node, query, struct and setting
 - [FAQ](FAQ.en.md) - the problems people run into

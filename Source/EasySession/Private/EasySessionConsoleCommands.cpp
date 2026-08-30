@@ -6,12 +6,12 @@
 //   EasySession.Host [Map]      Create a session, optionally traveling to the map.
 //   EasySession.Find            Search for sessions and list the results.
 //   EasySession.Join [Index] [Password]  Join a result of the last search (default index 0).
-//   EasySession.QuickMatch [Map] Search, join the best session, or host one.
+//   EasySession.Matchmaking [Map] Search, join the best session, or host one.
 //   EasySession.Travel <Map>    ServerTravel the current session to a new map.
 //   EasySession.Destroy         Destroy the current session (host closes it, client leaves).
 //   EasySession.Start           Start the match (session state -> InProgress).
 //   EasySession.End             End the match (session state -> Ended).
-//   EasySession.Cancel          Cancel the running quick match.
+//   EasySession.Cancel          Cancel the running matchmaking.
 //   EasySession.Status          Print the current session state.
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
@@ -146,22 +146,22 @@ namespace EasySessionConsole
 			}
 		}));
 
-	static FAutoConsoleCommandWithWorldAndArgs GQuickMatchCommand(
-		TEXT("EasySession.QuickMatch"),
+	static FAutoConsoleCommandWithWorldAndArgs GMatchmakingCommand(
+		TEXT("EasySession.Matchmaking"),
 		TEXT("Search, join the best session, or host one. Optional arg: map for the fallback host session."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				FEasyQuickMatchParams Params;
+				FEasyMatchmakingParams Params;
 				Params.Host.SessionDisplayName = FString::Printf(TEXT("%s's Session"), FPlatformProcess::UserName());
 				if (Args.Num() > 0)
 				{
 					Params.Host.MapName = Args[0];
 				}
 
-				Print(TEXT("QuickMatch started..."));
-				Subsystem->StartQuickMatch(Params, nullptr, MakePrintDelegate(TEXT("QuickMatch")));
+				Print(TEXT("Matchmaking started..."));
+				Subsystem->StartMatchmaking(Params, nullptr, MakePrintDelegate(TEXT("Matchmaking")));
 			}
 		}));
 
@@ -221,12 +221,12 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GCancelCommand(
 		TEXT("EasySession.Cancel"),
-		TEXT("Cancel the running quick match."),
+		TEXT("Cancel the running matchmaking."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Subsystem->CancelQuickMatch();
+				Subsystem->CancelMatchmaking();
 				Print(TEXT("Cancel requested."));
 			}
 		}));
@@ -238,12 +238,12 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Print(FString::Printf(TEXT("OSS=%s | InSession=%d | Host=%d | Busy=%d | QuickMatch=%d | LastResults=%d"),
+				Print(FString::Printf(TEXT("OSS=%s | InSession=%d | Host=%d | Busy=%d | Matchmaking=%d | LastResults=%d"),
 					*Subsystem->GetOnlineSubsystemName().ToString(),
 					Subsystem->IsInSession() ? 1 : 0,
 					Subsystem->IsHost() ? 1 : 0,
 					Subsystem->IsBusy() ? 1 : 0,
-					Subsystem->IsQuickMatchRunning() ? 1 : 0,
+					Subsystem->IsMatchmakingRunning() ? 1 : 0,
 					Subsystem->GetLastSearchResults().Num()));
 				Print(FString::Printf(TEXT("Queue: %s"), *Subsystem->GetQueueStatus()));
 			}

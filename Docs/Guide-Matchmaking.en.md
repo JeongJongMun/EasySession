@@ -1,10 +1,10 @@
-# Guide - Quick Match
+# Guide - Matchmaking
 
-*[한국어](Guide-QuickMatch.ko.md)*
+*[한국어](Guide-Matchmaking.ko.md)*
 
-`Quick Match Easy Session` is the one-node path into a game: **search -> join the best session -> host a new one if nothing is found**.
+`Start Easy Matchmaking` is the one-node path into a game: **search -> join the best session -> host a new one if nothing is found**.
 
-## Parameters (`FEasyQuickMatchParams`)
+## Parameters (`FEasyMatchmakingParams`)
 
 | Field | Default | Notes |
 |---|---|---|
@@ -16,11 +16,11 @@
 
 ### Whether to fill in Host > Map Name
 
-Quick Match takes the same host params `Create Easy Session` takes. Leaving Map Name empty
+Matchmaking takes the same host params `Create Easy Session` takes. Leaving Map Name empty
 makes the host fallback open a listen server on the map this player is already on. It is
 not refused.
 
-**Fill it in anyway, most of the time.** Quick Match usually sits on a menu widget, and an
+**Fill it in anyway, most of the time.** Matchmaking usually sits on a menu widget, and an
 empty Map Name there turns the menu into the arena: a player who asked to find a game ends
 up receiving strangers in their own menu.
 
@@ -36,10 +36,10 @@ have found.
 Progress comes from four events on the subsystem itself, so a widget can bind once,
 before any run exists:
 
-- `On Quick Match Started` - a run was accepted; from here `Get Active Quick Match Policy` returns it
-- `On Quick Match State Changed` (`OldState`, `NewState`) - every state transition
-- `On Quick Match Updated` (`State`, `ElapsedSeconds`) - every state change plus once a second while the run is active. Enough for a "Searching... 0:42" label without a timer of your own
-- `On Quick Match Complete` (`Result`, `ErrorMessage`) - the run ended, however it ended. A canceled run arrives here with `Result` = `Canceled`; there is no separate cancel event
+- `On Matchmaking Started` - a run was accepted; from here `Get Active Matchmaking Policy` returns it
+- `On Matchmaking State Changed` (`OldState`, `NewState`) - every state transition
+- `On Matchmaking Updated` (`State`, `ElapsedSeconds`) - every state change plus once a second while the run is active. Enough for a "Searching... 0:42" label without a timer of your own
+- `On Matchmaking Complete` (`Result`, `ErrorMessage`) - the run ended, however it ended. A canceled run arrives here with `Result` = `Canceled`; there is no separate cancel event
 
 They always arrive as Started first and Complete last, a run refused at the door
 included. The policy object still exposes `OnStateChanged` and `OnUpdated` for code
@@ -47,7 +47,7 @@ that holds a specific run.
 
 The states are `Searching`, `Joining`, `Hosting` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
 
-Cancel anytime with `Cancel Easy Quick Match` - the run finishes with the `Canceled` result. A join or host that succeeds after the cancel is undone.
+Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Canceled` result. A join or host that succeeds after the cancel is undone.
 
 After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
 
@@ -57,7 +57,7 @@ The default policy narrows the search results down to candidates, then scores th
 
 **Left out of the candidates**
 
-- **Password protected sessions** - Quick Match has no password to offer, so it skips them.
+- **Password protected sessions** - Matchmaking has no password to offer, so it skips them.
 - **Sessions that already refused** - a session that rejected a join is never tried again for the rest of the run.
 
 **How the rest are ordered**
@@ -69,7 +69,7 @@ The default policy narrows the search results down to candidates, then scores th
 
 ## Custom scoring - one function override
 
-The scoring lives in `UEasyQuickMatchPolicy::ScoreSession`, a **BlueprintNativeEvent**. Subclass the policy (Blueprint or C++), override one function, and pass your class to Quick Match's `Policy Class` pin:
+The scoring lives in `UEasyMatchmakingPolicy::ScoreSession`, a **BlueprintNativeEvent**. Subclass the policy (Blueprint or C++), override one function, and pass your class to Matchmaking's `Policy Class` pin:
 
 ```
 ScoreSession(Session) -> float   // higher = joined first
@@ -89,4 +89,4 @@ The ping-bucket thresholds (`Ping Buckets Ms`) and shuffle width (`Top Candidate
 ## When to write your own policy vs. your own flow
 
 - Tweaking *which* session wins -> override `ScoreSession`. Done.
-- Different *flow* (e.g. party-size aware retries, region failover) -> you can also drive `Find` / `Join` / `Create` nodes yourself; Quick Match is a convenience, not a cage.
+- Different *flow* (e.g. party-size aware retries, region failover) -> you can also drive `Find` / `Join` / `Create` nodes yourself; Matchmaking is a convenience, not a cage.

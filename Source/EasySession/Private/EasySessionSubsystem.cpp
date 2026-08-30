@@ -2,7 +2,7 @@
 
 #include "EasySessionSubsystem.h"
 
-#include "EasyQuickMatchPolicy.h"
+#include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionRequest.h"
@@ -161,7 +161,7 @@ void UEasySessionSubsystem::Deinitialize()
 	ServerGate.Reset();
 	JoinApproval.Reset();
 
-	ActiveQuickMatchPolicy = nullptr;
+	ActiveMatchmakingPolicy = nullptr;
 	ActiveSearch.Reset();
 
 	Super::Deinitialize();
@@ -275,56 +275,56 @@ void UEasySessionSubsystem::UpdateEasySession(const FEasySessionHostParams& NewH
 	EnqueueRequest(Request);
 }
 
-void UEasySessionSubsystem::StartQuickMatch(const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyQuickMatchPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
 {
-	if (IsQuickMatchRunning())
+	if (IsMatchmakingRunning())
 	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::QuickMatchAlreadyInProgress, TEXT("Quick Match is already running. Cancel it first."));
+		OnComplete.ExecuteIfBound(EEasySessionResult::MatchmakingAlreadyInProgress, TEXT("Matchmaking is already running. Cancel it first."));
 		return;
 	}
 
-	UEasyQuickMatchPolicy* Policy = NewObject<UEasyQuickMatchPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyQuickMatchPolicy::StaticClass());
-	ActiveQuickMatchPolicy = Policy;
-	Policy->OnStateChanged.AddDynamic(this, &UEasySessionSubsystem::RelayQuickMatchStateChanged);
-	Policy->OnUpdated.AddDynamic(this, &UEasySessionSubsystem::RelayQuickMatchUpdated);
-	OnQuickMatchStarted.Broadcast();
+	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
+	ActiveMatchmakingPolicy = Policy;
+	Policy->OnStateChanged.AddDynamic(this, &UEasySessionSubsystem::RelayMatchmakingStateChanged);
+	Policy->OnUpdated.AddDynamic(this, &UEasySessionSubsystem::RelayMatchmakingUpdated);
+	OnMatchmakingStarted.Broadcast();
 
-	Policy->Start(*this, QuickMatchParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
+	Policy->Start(*this, MatchmakingParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			ActiveQuickMatchPolicy = nullptr;
+			ActiveMatchmakingPolicy = nullptr;
 			// Observers first: the requester's delegate often tears down the very UI that is listening.
-			OnQuickMatchComplete.Broadcast(Result, ErrorMessage);
+			OnMatchmakingComplete.Broadcast(Result, ErrorMessage);
 			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
 		}));
 }
 
-void UEasySessionSubsystem::RelayQuickMatchStateChanged(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState)
+void UEasySessionSubsystem::RelayMatchmakingStateChanged(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState)
 {
-	OnQuickMatchStateChanged.Broadcast(OldState, NewState);
+	OnMatchmakingStateChanged.Broadcast(OldState, NewState);
 }
 
-void UEasySessionSubsystem::RelayQuickMatchUpdated(EEasyQuickMatchState QuickMatchState, int32 ElapsedSeconds)
+void UEasySessionSubsystem::RelayMatchmakingUpdated(EEasyMatchmakingState MatchmakingState, int32 ElapsedSeconds)
 {
-	OnQuickMatchUpdated.Broadcast(QuickMatchState, ElapsedSeconds);
+	OnMatchmakingUpdated.Broadcast(MatchmakingState, ElapsedSeconds);
 }
 
-void UEasySessionSubsystem::CancelQuickMatch()
+void UEasySessionSubsystem::CancelMatchmaking()
 {
-	if (ActiveQuickMatchPolicy != nullptr)
+	if (ActiveMatchmakingPolicy != nullptr)
 	{
-		ActiveQuickMatchPolicy->Cancel();
+		ActiveMatchmakingPolicy->Cancel();
 	}
 }
 
-bool UEasySessionSubsystem::IsQuickMatchRunning() const
+bool UEasySessionSubsystem::IsMatchmakingRunning() const
 {
-	return ActiveQuickMatchPolicy != nullptr && ActiveQuickMatchPolicy->GetState() != EEasyQuickMatchState::Idle && ActiveQuickMatchPolicy->GetState() != EEasyQuickMatchState::Complete;
+	return ActiveMatchmakingPolicy != nullptr && ActiveMatchmakingPolicy->GetState() != EEasyMatchmakingState::Idle && ActiveMatchmakingPolicy->GetState() != EEasyMatchmakingState::Complete;
 }
 
-EEasyQuickMatchState UEasySessionSubsystem::GetQuickMatchState() const
+EEasyMatchmakingState UEasySessionSubsystem::GetMatchmakingState() const
 {
-	return ActiveQuickMatchPolicy != nullptr ? ActiveQuickMatchPolicy->GetState() : EEasyQuickMatchState::Idle;
+	return ActiveMatchmakingPolicy != nullptr ? ActiveMatchmakingPolicy->GetState() : EEasyMatchmakingState::Idle;
 }
 
 bool UEasySessionSubsystem::IsInSession() const
@@ -593,12 +593,12 @@ int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
 
 bool UEasySessionSubsystem::IsBusy() const
 {
-	// QuickMatch is included on purpose. Quick Match is a policy state machine that
+	// Matchmaking is included on purpose. Matchmaking is a policy state machine that
 	// enqueues one request per step, so the queue is briefly empty between steps -
 	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
 	// Travel is included for the same reason: hosting, joining and starting a match
 	// all end in a level load that the player experiences as part of the operation.
-	return !RequestQueue->IsIdle() || IsQuickMatchRunning() || Travel->IsTraveling();
+	return !RequestQueue->IsIdle() || IsMatchmakingRunning() || Travel->IsTraveling();
 }
 
 FString UEasySessionSubsystem::GetQueueStatus() const

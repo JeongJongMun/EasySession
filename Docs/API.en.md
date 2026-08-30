@@ -22,11 +22,11 @@ under the shorter names in the C++ column. The standalone nodes are `UEasySessio
 functions - the node name without spaces, taking any actor or widget as their first
 argument so they can find the world.
 
-1. [Async Blueprint nodes](#1-async-blueprint-nodes) - create, find, join, quick match
+1. [Async Blueprint nodes](#1-async-blueprint-nodes) - create, find, join, matchmaking
 2. [Query Blueprint nodes](#2-query-blueprint-nodes) - session state, players, search results
 3. [Action Blueprint nodes](#3-action-blueprint-nodes) - travel, cancel, invites
 4. [Events](#4-events) | 5. [Structs](#5-structs) | 6. [Enums](#6-enums)
-7. [UEasyQuickMatchPolicy](#7-ueasyquickmatchpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ notes](#9-c-notes) | 10. [Console commands](#10-console-commands-development-builds-only)
+7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ notes](#9-c-notes) | 10. [Console commands](#10-console-commands-development-builds-only)
 
 ## 1. Async Blueprint nodes
 
@@ -51,7 +51,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Update Easy Session** | `NewHostParams` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` - player cap, advertise, join-in-progress, invites, display name, hidden, password, region, join code, custom settings - and re-advertises. Map Name / Host Mode ignored. Session authority only |
 | **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
 | **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the room for everyone with "The host has left the game." |
-| **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-QuickMatch.en.md)) |
+| **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array. NULL/LAN has no friends, so it fails there |
 
 > **Session authority only** means the game that created the session: the host player's
@@ -92,8 +92,8 @@ node name without spaces.
 | Get Easy Session Player Count | `GetSessionPlayerCount` | How many players are in the session right now |
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | How many it holds. 0 when there is no session |
 | Get Last Easy Search Results | `GetLastSearchResults` | The last search's results, readable anywhere. Empty while a new search runs |
-| Is Easy Quick Match Running | `IsQuickMatchRunning` | Is a Quick Match run in progress |
-| Get Easy Quick Match State | `GetQuickMatchState` | Which step it is on: Searching, Joining, Hosting, Complete |
+| Is Easy Matchmaking Running | `IsMatchmakingRunning` | Is a Matchmaking run in progress |
+| Get Easy Matchmaking State | `GetMatchmakingState` | Which step it is on: Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
@@ -110,7 +110,7 @@ there is no C++ column.
 
 | Node | Answers |
 |---|---|
-| Get Active Quick Match Policy | The running policy object. Progress is also relayed on the subsystem's own events, which need no policy in hand |
+| Get Active Matchmaking Policy | The running policy object. Progress is also relayed on the subsystem's own events, which need no policy in hand |
 
 > **Which session are these about?** The game session - the one players find,
 > join and play in. There is exactly one per process (see Limitations in the README),
@@ -120,8 +120,8 @@ there is no C++ column.
 > answering about the game session for as long as it exists.
 >
 > Some queries here are not about a session at all: `Is Easy Session Busy` and `Get Easy
-> Session Queue Status` describe the operation queue, and `Is Easy Quick Match Running`,
-> `Get Easy Quick Match State`, `Get Online Subsystem Name (EasySession)` and
+> Session Queue Status` describe the operation queue, and `Is Easy Matchmaking Running`,
+> `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)` and
 > `Is Online Subsystem Available (EasySession)` describe the process. Those keep their meaning whatever sessions exist.
 
 ## 3. Action Blueprint nodes
@@ -129,7 +129,7 @@ there is no C++ column.
 Not async - these return right away. They change state and have execution pins.
 
 What they return means the request was accepted, not that it finished. `Cancel Easy
-Quick Match` stops the run only after the online call already running has come back, and
+Matchmaking` stops the run only after the online call already running has come back, and
 `Server Travel Easy Session` returns before the new map has loaded.
 
 ### 3.1 Standalone nodes (`UEasySessionStatics`)
@@ -139,7 +139,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Node | C++ | Does |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
-| Cancel Easy Quick Match | `CancelQuickMatch` | Ends a Quick Match run with `Canceled`, undoing a join or host that succeeds after the cancel |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`, undoing a join or host that succeeds after the cancel |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |
@@ -167,10 +167,10 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session finished - the match is over, the session is not |
 | `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session finished |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session finished, both on the host and on a client that left |
-| `OnQuickMatchStarted` | - | A Quick Match run was accepted and its policy registered. Always the first event of a run |
-| `OnQuickMatchStateChanged` | `OldState`, `NewState` | The Quick Match state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |
-| `OnQuickMatchUpdated` | `State`, `ElapsedSeconds` | Every Quick Match state change plus once a second while it runs - drives elapsed-time labels |
-| `OnQuickMatchComplete` | `Result`, `ErrorMessage` | A Quick Match run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
+| `OnMatchmakingStarted` | - | A Matchmaking run was accepted and its policy registered. Always the first event of a run |
+| `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |
+| `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
+| `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
 | `OnSessionFailure` | `Reason` (String) | Not an operation finishing - the connection died or a network error hit. The dead session is cleaned up for you |
 | `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
 
@@ -203,7 +203,7 @@ store it, not just the name it displays.
 
 `bPasswordProtected` is how you decide whether to prompt before `Join Easy Session`.
 
-### 5.4 FEasyQuickMatchParams
+### 5.4 FEasyMatchmakingParams
 `Search` (SearchParams), `Host` (HostParams - read only while `bAllowHostFallback` is on), `bAllowHostFallback`, `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
 
 ### 5.5 FEasySessionPlayerInfo *(read-only)*
@@ -236,10 +236,10 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.en.md)) |
 | **`RequiresSessionAuthority`** | Only the game that created the session may do this. Show the button only when `Is Easy Session Authority` is true |
 | **`Timeout`** | The online service never answered. The outcome is unknown, so anything it left behind is cleaned up. See `RequestTimeoutSeconds` |
-| **`Canceled`** | `Cancel Easy Quick Match` stopped a Quick Match run |
+| **`Canceled`** | `Cancel Easy Matchmaking` stopped a Matchmaking run |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
-| `InvalidParams` | A parameter cannot work, e.g. Quick Match with no fallback Map Name |
-| `QuickMatchAlreadyInProgress` | A Quick Match is already running |
+| `InvalidParams` | A parameter cannot work, e.g. Matchmaking with no fallback Map Name |
+| `MatchmakingAlreadyInProgress` | A Matchmaking is already running |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | The online service refused that specific call. `ErrorMessage` carries what it said |
 | `UnknownFailure` | Nothing more specific was available |
 
@@ -261,9 +261,9 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 | `TravelFailure` | The session's map failed to load |
 | `Rejected` | The host refused the connection and said why: a wrong password, a match no longer taking players. `ReasonText` is the host's own sentence, safe to show |
 
-### 6.4 EEasyQuickMatchState
+### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - the phases of one Quick Match run, reported through `OnStateChanged`.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - the phases of one Matchmaking run, reported through `OnStateChanged`.
 
 ### 6.5 EEasySessionHostMode
 
@@ -273,9 +273,9 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 `Any` plus nine coarse world regions, from `NorthAmericaEast` to `Oceania`, cut so that one region means playable latency. A game that needs its own split leaves this at `Any` and filters with a `CustomSettings` key instead ([guide](Guide-Sessions.en.md#regions)).
 
-## 7. UEasyQuickMatchPolicy
+## 7. UEasyMatchmakingPolicy
 
-The object behind `Quick Match Easy Session`: it searches, joins the best result it finds, and hosts when it finds none.
+The object behind `Start Easy Matchmaking`: it searches, joins the best result it finds, and hosts when it finds none.
 
 Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> float`** (higher = joined first) for custom pick-a-session criteria. Editable defaults: `PingBucketsMs` (default `[50, 100, 150]`), `TopCandidateRandomization` (default 3). Query with `GetState` and `GetElapsedSeconds`, or bind `OnStateChanged` / `OnUpdated`.
 
@@ -294,7 +294,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 
 Operations are callable natively with delegate callbacks: `CreateEasySession`,
 `FindEasySessions`, `JoinEasySession`, `DestroyEasySession`, `UpdateEasySession`,
-`StartQuickMatch`. Blueprint and C++ take the same code path.
+`StartMatchmaking`. Blueprint and C++ take the same code path.
 
 `OnModifyServerTravelURL` and `OnModifyClientTravelURL` are C++ only delegates on the
 subsystem. They give you the travel URL just before travel so you can append your own
@@ -304,4 +304,4 @@ a static string, prefer `AdditionalTravelOptions`.
 
 ## 10. Console commands *(development builds only)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`
+`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`

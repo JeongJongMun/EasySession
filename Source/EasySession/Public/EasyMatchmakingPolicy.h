@@ -6,37 +6,37 @@
 #include "UObject/Object.h"
 #include "Containers/Ticker.h"
 #include "EasySessionTypes.h"
-#include "EasyQuickMatchPolicy.generated.h"
+#include "EasyMatchmakingPolicy.generated.h"
 
 class UEasySessionSubsystem;
 
-/** Multicast event fired when the quick match state changes. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyQuickMatchStateEvent, EEasyQuickMatchState, OldState, EEasyQuickMatchState, NewState);
+/** Multicast event fired when the matchmaking state changes. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyMatchmakingStateEvent, EEasyMatchmakingState, OldState, EEasyMatchmakingState, NewState);
 
 /** Multicast event fired on every state change and once a second while the run is active. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyQuickMatchUpdatedEvent, EEasyQuickMatchState, State, int32, ElapsedSeconds);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyMatchmakingUpdatedEvent, EEasyMatchmakingState, State, int32, ElapsedSeconds);
 
 /**
- * Quick Match policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
+ * Matchmaking policy: search for sessions, join the best one, and optionally host a new session when nothing is found.
  *
  * The best session is chosen by ScoreSession.
  * The default implementation groups sessions into ping buckets and prefers fuller sessions within the same bucket.
  * Subclass this policy (in Blueprint or C++) and override ScoreSession to use your own criteria such as skill or map preference.
  */
 UCLASS(Blueprintable, BlueprintType)
-class EASYSESSION_API UEasyQuickMatchPolicy : public UObject
+class EASYSESSION_API UEasyMatchmakingPolicy : public UObject
 {
 	GENERATED_BODY()
 
 public:
 
-	/** Fired whenever the quick match state changes. */
+	/** Fired whenever the matchmaking state changes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasyQuickMatchStateEvent OnStateChanged;
+	FEasyMatchmakingStateEvent OnStateChanged;
 
 	/** Fired on every state change and once a second while the run is active. Drives progress text such as "Searching... 0:42". */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasyQuickMatchUpdatedEvent OnUpdated;
+	FEasyMatchmakingUpdatedEvent OnUpdated;
 
 	/**
 	 * Ping thresholds (in milliseconds) used to group sessions into buckets.
@@ -60,9 +60,9 @@ public:
 	float ScoreSession(const FEasySessionSearchResult& Session) const;
 	virtual float ScoreSession_Implementation(const FEasySessionSearchResult& Session) const;
 
-	/** Get the current quick match state. */
+	/** Get the current matchmaking state. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
-	EEasyQuickMatchState GetState() const { return State; }
+	EEasyMatchmakingState GetState() const { return State; }
 
 	/** @return Whole seconds since this run started. Zero before the start, and it stops counting when the run completes. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
@@ -70,10 +70,10 @@ public:
 
 public:
 
-	/** Start the quick match run. Called by the EasySessionSubsystem. */
-	void Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete);
+	/** Start the matchmaking run. Called by the EasySessionSubsystem. */
+	void Start(UEasySessionSubsystem& InSubsystem, const FEasyMatchmakingParams& InParams, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Cancel the quick match run. The run finishes with the Canceled result, and a join or host that succeeds after the cancel is undone. */
+	/** Cancel the matchmaking run. The run finishes with the Canceled result, and a join or host that succeeds after the cancel is undone. */
 	void Cancel();
 
 private:
@@ -82,7 +82,7 @@ private:
 	friend class FEasySessionTestAccess;
 
 	/** Move to a new state and notify listeners. */
-	void SetState(EEasyQuickMatchState NewState);
+	void SetState(EEasyMatchmakingState NewState);
 
 	/** Run one search pass. */
 	void RunSearchPass();
@@ -133,13 +133,13 @@ private:
 	TWeakObjectPtr<UEasySessionSubsystem> Subsystem;
 
 	/** Parameters of this run. */
-	FEasyQuickMatchParams Params;
+	FEasyMatchmakingParams Params;
 
 	/** Fired once when the run completes. */
 	FEasySessionCompleteDelegate OnComplete;
 
 	/** Current state of the run. */
-	EEasyQuickMatchState State = EEasyQuickMatchState::Idle;
+	EEasyMatchmakingState State = EEasyMatchmakingState::Idle;
 
 	/** Search passes executed so far. */
 	int32 PassesCompleted = 0;

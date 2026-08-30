@@ -16,7 +16,7 @@
 #include "Nodes/EasyJoinSessionNode.h"
 #include "Nodes/EasyLeaveSessionNode.h"
 #include "EasySessionTestAccess.h"
-#include "Nodes/EasyQuickMatchNode.h"
+#include "Nodes/EasyMatchmakingNode.h"
 #include "Nodes/EasyReadFriendsNode.h"
 #include "Nodes/EasyStartSessionNode.h"
 #include "Nodes/EasyUpdateSessionNode.h"
@@ -219,16 +219,16 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 
 	// Host fallback off and nothing on the LAN to join, so the run ends with nothing found.
 	// This case must not leave a session behind - the success test that follows creates its own.
-	State->Cases.Add({ TEXT("Quick Match Easy Session"),
+	State->Cases.Add({ TEXT("Start Easy Matchmaking"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
-			FEasyQuickMatchParams QuickMatchParams;
-			QuickMatchParams.Search.bLANQuery = true;
-			QuickMatchParams.Search.TimeoutSeconds = 5.0f;
-			QuickMatchParams.bAllowHostFallback = false;
-			QuickMatchParams.MaxSearchPasses = 1;
-			QuickMatchParams.DelayBetweenPassesSeconds = 0.0f;
-			UEasyQuickMatchNode* Node = UEasyQuickMatchNode::QuickMatchEasySession(&GameInstance, QuickMatchParams);
+			FEasyMatchmakingParams MatchmakingParams;
+			MatchmakingParams.Search.bLANQuery = true;
+			MatchmakingParams.Search.TimeoutSeconds = 5.0f;
+			MatchmakingParams.bAllowHostFallback = false;
+			MatchmakingParams.MaxSearchPasses = 1;
+			MatchmakingParams.DelayBetweenPassesSeconds = 0.0f;
+			UEasyMatchmakingNode* Node = UEasyMatchmakingNode::StartEasyMatchmaking(&GameInstance, MatchmakingParams);
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFailure);
 			Node->Activate();

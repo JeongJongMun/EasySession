@@ -7,7 +7,7 @@
 #include "GameFramework/OnlineReplStructs.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "EasySessionTypes.h"
-#include "EasyQuickMatchPolicy.h"
+#include "EasyMatchmakingPolicy.h"
 #include "Containers/Ticker.h"
 #include "Templates/SubclassOf.h"
 #include "EasySessionSubsystem.generated.h"
@@ -45,8 +45,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionFailureEvent, const FStr
 /** Multicast event fired when the player accepts an invite from the platform overlay. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, const FEasySessionSearchResult&, Session);
 
-/** Multicast event fired when a quick match run is accepted and its policy is registered. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyQuickMatchStartedEvent);
+/** Multicast event fired when a matchmaking run is accepted and its policy is registered. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyMatchmakingStartedEvent);
 
 /** Multicast event fired when reading the friends list completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionFriend>&, Friends);
@@ -120,21 +120,21 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionEnded;
 
-	/** Fired when a Quick Match run is accepted and its policy is registered - the first of that run's events, and the moment Get Active Quick Match Policy starts returning it. */
+	/** Fired when a Matchmaking run is accepted and its policy is registered - the first of that run's events, and the moment Get Active Matchmaking Policy starts returning it. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasyQuickMatchStartedEvent OnQuickMatchStarted;
+	FEasyMatchmakingStartedEvent OnMatchmakingStarted;
 
 	/** Relays the active policy's OnStateChanged, so progress UI can bind here once instead of chasing each run's policy. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasyQuickMatchStateEvent OnQuickMatchStateChanged;
+	FEasyMatchmakingStateEvent OnMatchmakingStateChanged;
 
 	/** Relays the active policy's OnUpdated: every state change plus a once-a-second heartbeat carrying the elapsed whole seconds. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasyQuickMatchUpdatedEvent OnQuickMatchUpdated;
+	FEasyMatchmakingUpdatedEvent OnMatchmakingUpdated;
 
-	/** Fired when a Quick Match run completes, a canceled one included - cancellation arrives as the Canceled result, never as a separate event. */
+	/** Fired when a Matchmaking run completes, a canceled one included - cancellation arrives as the Canceled result, never as a separate event. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
-	FEasySessionEvent OnQuickMatchComplete;
+	FEasySessionEvent OnMatchmakingComplete;
 
 	/** Fired when the connection to the session is lost or a network error occurs. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
@@ -238,28 +238,28 @@ public:
 	void UpdateEasySession(const FEasySessionHostParams& NewHostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Start Quick Match: search for sessions, join the best one, and optionally host a new session when nothing is found.
+	 * Start Matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
 	 *
-	 * @param QuickMatchParams Parameters describing the search and the fallback host session.
-	 * @param PolicyClass Optional custom quick match policy class. Uses the default policy when null.
-	 * @param OnComplete Called when quick match completes.
+	 * @param MatchmakingParams Parameters describing the search and the fallback host session.
+	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when null.
+	 * @param OnComplete Called when matchmaking completes.
 	 */
-	void StartQuickMatch(const FEasyQuickMatchParams& QuickMatchParams, TSubclassOf<UEasyQuickMatchPolicy> PolicyClass = nullptr, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void StartMatchmaking(const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 public:
 
-	/** Cancel the running Quick Match. A join or host that succeeds after the cancel is undone. Does nothing when no quick match is running. */
-	void CancelQuickMatch();
+	/** Cancel the running Matchmaking. A join or host that succeeds after the cancel is undone. Does nothing when no matchmaking is running. */
+	void CancelMatchmaking();
 
-	/** Check whether Quick Match is currently running. */
-	bool IsQuickMatchRunning() const;
+	/** Check whether Matchmaking is currently running. */
+	bool IsMatchmakingRunning() const;
 
-	/** Get the state of the running Quick Match. Idle when none is running. */
-	EEasyQuickMatchState GetQuickMatchState() const;
+	/** Get the state of the running Matchmaking. Idle when none is running. */
+	EEasyMatchmakingState GetMatchmakingState() const;
 
-	/** Get the running quick match policy. Use this to bind its On State Changed event. */
+	/** Get the running matchmaking policy. Use this to bind its On State Changed event. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
-	UEasyQuickMatchPolicy* GetActiveQuickMatchPolicy() const { return ActiveQuickMatchPolicy; }
+	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const { return ActiveMatchmakingPolicy; }
 
 	/**
 	 * Check whether the local player is currently in a session.
@@ -333,8 +333,8 @@ public:
 
 	/**
 	 * Check whether any session operation is in progress.
-	 * That covers a request running or queued, a Quick Match working through its steps, and a travel this plugin started that has not reached its map yet.
-	 * Bind session buttons to this to disable them while an operation runs; use IsQuickMatchRunning to ask specifically about Quick Match.
+	 * That covers a request running or queued, a Matchmaking working through its steps, and a travel this plugin started that has not reached its map yet.
+	 * Bind session buttons to this to disable them while an operation runs; use IsMatchmakingRunning to ask specifically about Matchmaking.
 	 */
 	bool IsBusy() const;
 
@@ -362,13 +362,13 @@ public:
 
 	/**
 	 * Drop a travel this plugin requested that has not started loading its map.
-	 * Quick Match uses it when a cancel lands after a join or host already succeeded, right before destroying that session.
+	 * Matchmaking uses it when a cancel lands after a join or host already succeeded, right before destroying that session.
 	 */
 	void CancelPendingTravel();
 
 	/**
 	 * @return Whether a destroy for the current session is already running or waiting.
-	 * Quick Match reads it to tell a session on its way out from one that is here to stay.
+	 * Matchmaking reads it to tell a session on its way out from one that is here to stay.
 	 */
 	bool IsSessionBeingDestroyed() const;
 
@@ -504,13 +504,13 @@ private:
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
 
-	/** Relay the active policy's state change to OnQuickMatchStateChanged. */
+	/** Relay the active policy's state change to OnMatchmakingStateChanged. */
 	UFUNCTION()
-	void RelayQuickMatchStateChanged(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState);
+	void RelayMatchmakingStateChanged(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState);
 
-	/** Relay the active policy's update to OnQuickMatchUpdated. */
+	/** Relay the active policy's update to OnMatchmakingUpdated. */
 	UFUNCTION()
-	void RelayQuickMatchUpdated(EEasyQuickMatchState QuickMatchState, int32 ElapsedSeconds);
+	void RelayMatchmakingUpdated(EEasyMatchmakingState MatchmakingState, int32 ElapsedSeconds);
 
 	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
 	void ReturnToMenu();
@@ -541,9 +541,9 @@ private:
 
 private:
 
-	/** The quick match policy currently running QuickMatch. Null when idle. */
+	/** The matchmaking policy currently running Matchmaking. Null when idle. */
 	UPROPERTY()
-	TObjectPtr<UEasyQuickMatchPolicy> ActiveQuickMatchPolicy;
+	TObjectPtr<UEasyMatchmakingPolicy> ActiveMatchmakingPolicy;
 
 	/**
 	 * Whether the session that exists now was created by this process.

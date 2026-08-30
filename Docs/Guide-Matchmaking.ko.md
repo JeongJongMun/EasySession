@@ -1,10 +1,10 @@
-# 가이드 - Quick Match 매치메이킹
+# 가이드 - Matchmaking 매치메이킹
 
-*[English](Guide-QuickMatch.en.md)*
+*[English](Guide-Matchmaking.en.md)*
 
-`Quick Match Easy Session`은 노드 하나로 게임에 들어가는 길입니다. **검색 -> 가장 좋은 세션에 참가 -> 하나도 없으면 직접 호스트**.
+`Start Easy Matchmaking`은 노드 하나로 게임에 들어가는 길입니다. **검색 -> 가장 좋은 세션에 참가 -> 하나도 없으면 직접 호스트**.
 
-## 파라미터 (`FEasyQuickMatchParams`)
+## 파라미터 (`FEasyMatchmakingParams`)
 
 | 필드 | 기본값 | 설명 |
 |---|---|---|
@@ -16,10 +16,10 @@
 
 ### Host > Map Name을 채울지 말지
 
-Quick Match는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받습니다. Map Name을
+Matchmaking는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받습니다. Map Name을
 비워두면 호스트 폴백이 지금 있는 맵에서 리슨 서버를 엽니다. 거부되지 않습니다.
 
-**그래도 대개는 채우는 게 맞습니다.** 메뉴 위젯에서 Quick Match를 부르는 것이 보통인데, 그때
+**그래도 대개는 채우는 게 맞습니다.** 메뉴 위젯에서 Matchmaking를 부르는 것이 보통인데, 그때
 Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방을 찾던 플레이어가 자기 메뉴에서
 남을 맞이하게 됩니다.
 
@@ -34,10 +34,10 @@ Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필
 진행 상황은 서브시스템의 이벤트 넷으로 알 수 있습니다. 실행이 시작되기 전에, 위젯이 한
 번만 바인딩하면 됩니다.
 
-- `On Quick Match Started` - 실행이 받아들여졌습니다. 이때부터 `Get Active Quick Match Policy`가 그 정책을 돌려줍니다
-- `On Quick Match State Changed` (`OldState`, `NewState`) - 상태가 바뀔 때마다
-- `On Quick Match Updated` (`State`, `ElapsedSeconds`) - 상태가 바뀔 때 + 실행 중 1초마다. 타이머 없이 "Searching... 0:42" 같은 표시를 만들 수 있습니다
-- `On Quick Match Complete` (`Result`, `ErrorMessage`) - 어떻게든 실행이 끝났습니다. 취소된 실행도 `Result` = `Canceled`로 여기로 옵니다. 별도의 취소 이벤트는 없습니다
+- `On Matchmaking Started` - 실행이 받아들여졌습니다. 이때부터 `Get Active Matchmaking Policy`가 그 정책을 돌려줍니다
+- `On Matchmaking State Changed` (`OldState`, `NewState`) - 상태가 바뀔 때마다
+- `On Matchmaking Updated` (`State`, `ElapsedSeconds`) - 상태가 바뀔 때 + 실행 중 1초마다. 타이머 없이 "Searching... 0:42" 같은 표시를 만들 수 있습니다
+- `On Matchmaking Complete` (`Result`, `ErrorMessage`) - 어떻게든 실행이 끝났습니다. 취소된 실행도 `Result` = `Canceled`로 여기로 옵니다. 별도의 취소 이벤트는 없습니다
 
 순서는 언제나 Started가 처음, Complete가 마지막입니다. 문전에서 거절된 실행도 이 짝을
 지킵니다. 특정 실행 하나를 붙들고 있는 코드는 여전히 정책 객체의 `OnStateChanged`와
@@ -45,7 +45,7 @@ Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필
 
 상태는 `Searching`, `Joining`, `Hosting`, `Complete` 넷입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 방을 만들 때만 나옵니다.
 
-언제든 `Cancel Easy Quick Match`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 취소 시점에 이미 성사되던 참가나 생성은 되돌려집니다.
+언제든 `Cancel Easy Matchmaking`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 취소 시점에 이미 성사되던 참가나 생성은 되돌려집니다.
 
 `OnSuccess` 뒤에는 `Is Easy Session Host`로 남의 방에 들어간 건지 자기가 호스트가 된 건지 알 수 있습니다.
 
@@ -55,7 +55,7 @@ Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필
 
 **후보에서 빠지는 세션**
 
-- **비밀번호가 걸린 세션** - Quick Match는 비밀번호를 넘길 수 없어서 아예 건너뜁니다.
+- **비밀번호가 걸린 세션** - Matchmaking는 비밀번호를 넘길 수 없어서 아예 건너뜁니다.
 - **이미 거절당한 세션** - 참가를 거절한 곳은 그 판이 끝날 때까지 다시 시도하지 않습니다.
 
 **남은 후보의 순서**
@@ -67,7 +67,7 @@ Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필
 
 ## 점수 계산 바꾸기 - 함수 하나만 오버라이드
 
-점수 계산은 `UEasyQuickMatchPolicy::ScoreSession`에 있고 **BlueprintNativeEvent**입니다. 정책을 상속받아(블루프린트든 C++든) 이 함수 하나만 오버라이드한 뒤, 그 클래스를 Quick Match의 `Policy Class` 핀에 넘기세요.
+점수 계산은 `UEasyMatchmakingPolicy::ScoreSession`에 있고 **BlueprintNativeEvent**입니다. 정책을 상속받아(블루프린트든 C++든) 이 함수 하나만 오버라이드한 뒤, 그 클래스를 Matchmaking의 `Policy Class` 핀에 넘기세요.
 
 ```
 ScoreSession(Session) -> float   // 높을수록 먼저 참가
@@ -87,4 +87,4 @@ Override ScoreSession:
 ## 정책을 새로 짤 때와 흐름을 직접 짤 때
 
 - *어느* 세션이 이길지만 바꾸고 싶다면 `ScoreSession`을 오버라이드하면 끝입니다.
-- *흐름* 자체가 다르다면(파티 인원을 고려한 재시도, 지역 폴백 같은 것) `Find` / `Join` / `Create` 노드를 직접 이어 붙여도 됩니다. Quick Match는 편의 기능이지 가둬 두는 틀이 아닙니다.
+- *흐름* 자체가 다르다면(파티 인원을 고려한 재시도, 지역 폴백 같은 것) `Find` / `Join` / `Create` 노드를 직접 이어 붙여도 됩니다. Matchmaking는 편의 기능이지 가둬 두는 틀이 아닙니다.

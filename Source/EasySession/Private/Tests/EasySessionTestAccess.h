@@ -6,7 +6,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasyQuickMatchPolicy.h"
+#include "EasyMatchmakingPolicy.h"
 #include "EasySessionJoinApproval.h"
 #include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
@@ -200,26 +200,26 @@ public:
 		return true;
 	}
 
-	/** Feed a finished search into the quick match policy, standing in for a search pass completing with these results. */
-	static void DriveQuickMatchSearch(UEasyQuickMatchPolicy& Policy, const TArray<FEasySessionSearchResult>& Results)
+	/** Feed a finished search into the matchmaking policy, standing in for a search pass completing with these results. */
+	static void DriveMatchmakingSearch(UEasyMatchmakingPolicy& Policy, const TArray<FEasySessionSearchResult>& Results)
 	{
 		Policy.HandleSearchComplete(EEasySessionResult::Success, FString(), Results);
 	}
 
-	/** The host params the quick match fallback would create its session with. */
-	static FEasySessionHostParams MakeQuickMatchFallbackHostParams(const UEasyQuickMatchPolicy& Policy)
+	/** The host params the matchmaking fallback would create its session with. */
+	static FEasySessionHostParams MakeMatchmakingFallbackHostParams(const UEasyMatchmakingPolicy& Policy)
 	{
 		return Policy.MakeFallbackHostParams();
 	}
 
-	/** The candidates the quick match run will try, in try order. */
-	static TArray<FEasySessionSearchResult> GetQuickMatchCandidates(const UEasyQuickMatchPolicy& Policy)
+	/** The candidates the matchmaking run will try, in try order. */
+	static TArray<FEasySessionSearchResult> GetMatchmakingCandidates(const UEasyMatchmakingPolicy& Policy)
 	{
 		return Policy.Candidates;
 	}
 
-	/** The sessions the quick match run refuses to retry. */
-	static TSet<FString> GetQuickMatchFailedSessionKeys(const UEasyQuickMatchPolicy& Policy)
+	/** The sessions the matchmaking run refuses to retry. */
+	static TSet<FString> GetMatchmakingFailedSessionKeys(const UEasyMatchmakingPolicy& Policy)
 	{
 		return Policy.FailedSessionKeys;
 	}

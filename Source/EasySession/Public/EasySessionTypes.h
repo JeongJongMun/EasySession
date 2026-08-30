@@ -51,8 +51,8 @@ enum class EEasySessionResult : uint8
 	/** The search completed but no joinable session was found. */
 	NoSessionsFound,
 
-	/** QuickMatch is already running. Cancel it before starting a new one. */
-	QuickMatchAlreadyInProgress,
+	/** Matchmaking is already running. Cancel it before starting a new one. */
+	MatchmakingAlreadyInProgress,
 
 	/** The online service failed to join the session. */
 	JoinFailure,
@@ -251,7 +251,7 @@ struct EASYSESSION_API FEasySessionHostParams
 	//~ Marking them is what keeps the fold line where we put it.
 	//~ From five fields up, UK2Node_MakeStruct leaves only the first two visible and folds the rest on its own (AllocateDefaultPins in K2Node_MakeStruct.cpp).
 	//~ It only does that while no field carries AdvancedDisplay, so without the markers adding a field would silently move the fold line.
-	//~ Search and Quick Match params are marked for the same reason.
+	//~ Search and Matchmaking params are marked for the same reason.
 	//~ A pin with a connection stays visible either way (SGraphPin::IsPinVisibleAsAdvanced), so folding one never hides live wiring.
 
 	/**
@@ -453,12 +453,12 @@ struct EASYSESSION_API FEasySessionSearchResult
 };
 
 /**
- * State of a running Quick Match pass.
+ * State of a running Matchmaking pass.
  */
 UENUM(BlueprintType)
-enum class EEasyQuickMatchState : uint8
+enum class EEasyMatchmakingState : uint8
 {
-	/** No quick match is running. */
+	/** No matchmaking is running. */
 	Idle,
 
 	/** Searching for sessions. */
@@ -470,16 +470,16 @@ enum class EEasyQuickMatchState : uint8
 	/** No session was found - creating our own session instead. */
 	Hosting,
 
-	/** QuickMatch has finished. Check the completion result for the outcome. */
+	/** Matchmaking has finished. Check the completion result for the outcome. */
 	Complete
 };
 
 /**
- * Parameters for Quick Match.
+ * Parameters for Matchmaking.
  * The search filters default to "any public session".
  */
 USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasyQuickMatchParams
+struct EASYSESSION_API FEasyMatchmakingParams
 {
 	GENERATED_BODY()
 

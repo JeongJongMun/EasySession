@@ -82,64 +82,64 @@ public:
 		FailureReasons.Add(Reason);
 	}
 
-	/** When set, entering Hosting cancels this subsystem's quick match - after the create was dispatched, before its completion arrives. */
+	/** When set, entering Hosting cancels this subsystem's matchmaking - after the create was dispatched, before its completion arrives. */
 	UPROPERTY()
-	TObjectPtr<UEasySessionSubsystem> CancelQuickMatchOnHosting;
+	TObjectPtr<UEasySessionSubsystem> CancelMatchmakingOnHosting;
 
-	/** Bind to a quick match policy's OnStateChanged. */
+	/** Bind to a matchmaking policy's OnStateChanged. */
 	UFUNCTION()
-	void HandleQuickMatchState(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState)
+	void HandleMatchmakingState(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState)
 	{
-		if (NewState == EEasyQuickMatchState::Hosting && CancelQuickMatchOnHosting)
+		if (NewState == EEasyMatchmakingState::Hosting && CancelMatchmakingOnHosting)
 		{
-			CancelQuickMatchOnHosting->CancelQuickMatch();
+			CancelMatchmakingOnHosting->CancelMatchmaking();
 		}
 	}
 
-	/** Everything seen from the subsystem's quick match events, in arrival order. Heartbeat ticks are kept out - they land in QuickMatchElapsedSeen. */
+	/** Everything seen from the subsystem's matchmaking events, in arrival order. Heartbeat ticks are kept out - they land in MatchmakingElapsedSeen. */
 	UPROPERTY()
-	TArray<FString> QuickMatchJournal;
+	TArray<FString> MatchmakingJournal;
 
-	/** Elapsed seconds seen on OnQuickMatchUpdated, in arrival order. */
+	/** Elapsed seconds seen on OnMatchmakingUpdated, in arrival order. */
 	UPROPERTY()
-	TArray<int32> QuickMatchElapsedSeen;
+	TArray<int32> MatchmakingElapsedSeen;
 
-	/** Bind to the subsystem's OnQuickMatchStarted. */
+	/** Bind to the subsystem's OnMatchmakingStarted. */
 	UFUNCTION()
-	void HandleQuickMatchStarted()
+	void HandleMatchmakingStarted()
 	{
-		QuickMatchJournal.Add(TEXT("Started"));
+		MatchmakingJournal.Add(TEXT("Started"));
 	}
 
-	/** Bind to the subsystem's OnQuickMatchStateChanged. */
+	/** Bind to the subsystem's OnMatchmakingStateChanged. */
 	UFUNCTION()
-	void HandleQuickMatchTransition(EEasyQuickMatchState OldState, EEasyQuickMatchState NewState)
+	void HandleMatchmakingTransition(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState)
 	{
-		const UEnum* StateEnum = StaticEnum<EEasyQuickMatchState>();
-		QuickMatchJournal.Add(FString::Printf(TEXT("State=%s>%s"),
+		const UEnum* StateEnum = StaticEnum<EEasyMatchmakingState>();
+		MatchmakingJournal.Add(FString::Printf(TEXT("State=%s>%s"),
 			*StateEnum->GetNameStringByValue(static_cast<int64>(OldState)),
 			*StateEnum->GetNameStringByValue(static_cast<int64>(NewState))));
 	}
 
-	/** Bind to the subsystem's OnQuickMatchUpdated. */
+	/** Bind to the subsystem's OnMatchmakingUpdated. */
 	UFUNCTION()
-	void HandleQuickMatchUpdated(EEasyQuickMatchState QuickMatchState, int32 ElapsedSeconds)
+	void HandleMatchmakingUpdated(EEasyMatchmakingState MatchmakingState, int32 ElapsedSeconds)
 	{
-		QuickMatchElapsedSeen.Add(ElapsedSeconds);
+		MatchmakingElapsedSeen.Add(ElapsedSeconds);
 	}
 
-	/** Bind to the subsystem's OnQuickMatchComplete. */
+	/** Bind to the subsystem's OnMatchmakingComplete. */
 	UFUNCTION()
-	void HandleQuickMatchCompleted(EEasySessionResult Result, const FString& ErrorMessage)
+	void HandleMatchmakingCompleted(EEasySessionResult Result, const FString& ErrorMessage)
 	{
-		QuickMatchJournal.Add(FString::Printf(TEXT("Completed=%s"), *EasySession::ResultToString(Result)));
+		MatchmakingJournal.Add(FString::Printf(TEXT("Completed=%s"), *EasySession::ResultToString(Result)));
 	}
 
 	/** How many journal entries match the given prefix, so a test can assert an event fired exactly once. */
 	int32 CountJournal(const TCHAR* Prefix) const
 	{
 		int32 Count = 0;
-		for (const FString& Entry : QuickMatchJournal)
+		for (const FString& Entry : MatchmakingJournal)
 		{
 			if (Entry.StartsWith(Prefix))
 			{

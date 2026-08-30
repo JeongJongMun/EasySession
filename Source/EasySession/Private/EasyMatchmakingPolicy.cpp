@@ -1,11 +1,11 @@
 // Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
-#include "EasyQuickMatchPolicy.h"
+#include "EasyMatchmakingPolicy.h"
 
 #include "EasySession.h"
 #include "EasySessionSubsystem.h"
 
-float UEasyQuickMatchPolicy::ScoreSession_Implementation(const FEasySessionSearchResult& Session) const
+float UEasyMatchmakingPolicy::ScoreSession_Implementation(const FEasySessionSearchResult& Session) const
 {
 	// Lower ping buckets always win over higher ones.
 	int32 BucketIndex = PingBucketsMs.Num();
@@ -35,11 +35,11 @@ float UEasyQuickMatchPolicy::ScoreSession_Implementation(const FEasySessionSearc
 	return BucketScore + FillRatio * 100.0f - NoRoomPenalty;
 }
 
-void UEasyQuickMatchPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEasyQuickMatchParams& InParams, FEasySessionCompleteDelegate InOnComplete)
+void UEasyMatchmakingPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEasyMatchmakingParams& InParams, FEasySessionCompleteDelegate InOnComplete)
 {
-	if (State != EEasyQuickMatchState::Idle)
+	if (State != EEasyMatchmakingState::Idle)
 	{
-		InOnComplete.ExecuteIfBound(EEasySessionResult::QuickMatchAlreadyInProgress, TEXT("This quick match policy is already running."));
+		InOnComplete.ExecuteIfBound(EEasySessionResult::MatchmakingAlreadyInProgress, TEXT("This matchmaking policy is already running."));
 		return;
 	}
 
@@ -50,7 +50,7 @@ void UEasyQuickMatchPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEas
 	FailedSessionKeys.Empty();
 	bCancelRequested = false;
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickMatch started (MaxPasses=%d, HostFallback=%d)"), Params.MaxSearchPasses, Params.bAllowHostFallback ? 1 : 0);
+	UE_LOG(LogEasySession, Log, TEXT("Matchmaking started (MaxPasses=%d, HostFallback=%d)"), Params.MaxSearchPasses, Params.bAllowHostFallback ? 1 : 0);
 
 	RunStartTimeSeconds = FPlatformTime::Seconds();
 	RunEndTimeSeconds = 0.0;
@@ -62,11 +62,11 @@ void UEasyQuickMatchPolicy::Start(UEasySessionSubsystem& InSubsystem, const FEas
 		return true;
 	}), 1.0f);
 
-	SetState(EEasyQuickMatchState::Searching);
+	SetState(EEasyMatchmakingState::Searching);
 	RunSearchPass();
 }
 
-int32 UEasyQuickMatchPolicy::GetElapsedSeconds() const
+int32 UEasyMatchmakingPolicy::GetElapsedSeconds() const
 {
 	if (RunStartTimeSeconds <= 0.0)
 	{
@@ -77,9 +77,9 @@ int32 UEasyQuickMatchPolicy::GetElapsedSeconds() const
 	return static_cast<int32>(End - RunStartTimeSeconds);
 }
 
-void UEasyQuickMatchPolicy::Cancel()
+void UEasyMatchmakingPolicy::Cancel()
 {
-	if (State == EEasyQuickMatchState::Idle || State == EEasyQuickMatchState::Complete)
+	if (State == EEasyMatchmakingState::Idle || State == EEasyMatchmakingState::Complete)
 	{
 		return;
 	}
@@ -91,24 +91,24 @@ void UEasyQuickMatchPolicy::Cancel()
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(PassDelayTickerHandle);
 		PassDelayTickerHandle.Reset();
-		Complete(EEasySessionResult::Canceled, TEXT("Quick Match was canceled."));
+		Complete(EEasySessionResult::Canceled, TEXT("Matchmaking was canceled."));
 	}
 }
 
-void UEasyQuickMatchPolicy::SetState(EEasyQuickMatchState NewState)
+void UEasyMatchmakingPolicy::SetState(EEasyMatchmakingState NewState)
 {
 	if (State == NewState)
 	{
 		return;
 	}
 
-	const EEasyQuickMatchState OldState = State;
+	const EEasyMatchmakingState OldState = State;
 	State = NewState;
 	OnStateChanged.Broadcast(OldState, NewState);
 	OnUpdated.Broadcast(NewState, GetElapsedSeconds());
 }
 
-void UEasyQuickMatchPolicy::RunSearchPass()
+void UEasyMatchmakingPolicy::RunSearchPass()
 {
 	UEasySessionSubsystem* SubsystemPtr = Subsystem.Get();
 	if (SubsystemPtr == nullptr)
@@ -122,15 +122,15 @@ void UEasyQuickMatchPolicy::RunSearchPass()
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickMatch search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
-	SubsystemPtr->FindEasySessions(Params.Search, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleSearchComplete));
+	UE_LOG(LogEasySession, Log, TEXT("Matchmaking search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
+	SubsystemPtr->FindEasySessions(Params.Search, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleSearchComplete));
 }
 
-void UEasyQuickMatchPolicy::HandleSearchComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
+void UEasyMatchmakingPolicy::HandleSearchComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
 {
 	if (bCancelRequested)
 	{
-		Complete(EEasySessionResult::Canceled, TEXT("Quick Match was canceled."));
+		Complete(EEasySessionResult::Canceled, TEXT("Matchmaking was canceled."));
 		return;
 	}
 
@@ -143,12 +143,12 @@ void UEasyQuickMatchPolicy::HandleSearchComplete(EEasySessionResult Result, cons
 	BuildCandidateListAndJoin(Results);
 }
 
-void UEasyQuickMatchPolicy::BuildCandidateListAndJoin(const TArray<FEasySessionSearchResult>& Results)
+void UEasyMatchmakingPolicy::BuildCandidateListAndJoin(const TArray<FEasySessionSearchResult>& Results)
 {
 	Candidates.Empty();
 	for (const FEasySessionSearchResult& Result : Results)
 	{
-		// QuickMatch cannot supply a password, so protected sessions are never candidates.
+		// Matchmaking cannot supply a password, so protected sessions are never candidates.
 		if (Result.bPasswordProtected)
 		{
 			continue;
@@ -184,15 +184,15 @@ void UEasyQuickMatchPolicy::BuildCandidateListAndJoin(const TArray<FEasySessionS
 	}
 
 	NextCandidateIndex = 0;
-	SetState(EEasyQuickMatchState::Joining);
+	SetState(EEasyMatchmakingState::Joining);
 	TryJoinNextCandidate();
 }
 
-void UEasyQuickMatchPolicy::TryJoinNextCandidate()
+void UEasyMatchmakingPolicy::TryJoinNextCandidate()
 {
 	if (bCancelRequested)
 	{
-		Complete(EEasySessionResult::Canceled, TEXT("Quick Match was canceled."));
+		Complete(EEasySessionResult::Canceled, TEXT("Matchmaking was canceled."));
 		return;
 	}
 
@@ -215,11 +215,11 @@ void UEasyQuickMatchPolicy::TryJoinNextCandidate()
 	}
 
 	const FEasySessionSearchResult& Candidate = Candidates[NextCandidateIndex];
-	UE_LOG(LogEasySession, Log, TEXT("QuickMatch joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
-	SubsystemPtr->JoinEasySession(Candidate, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleJoinComplete));
+	UE_LOG(LogEasySession, Log, TEXT("Matchmaking joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
+	SubsystemPtr->JoinEasySession(Candidate, FString(), FString(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleJoinComplete));
 }
 
-void UEasyQuickMatchPolicy::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)
+void UEasyMatchmakingPolicy::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
 	if (bCancelRequested)
 	{
@@ -250,13 +250,13 @@ void UEasyQuickMatchPolicy::HandleJoinComplete(EEasySessionResult Result, const 
 	TryJoinNextCandidate();
 }
 
-void UEasyQuickMatchPolicy::FinishPassAndContinue()
+void UEasyMatchmakingPolicy::FinishPassAndContinue()
 {
 	++PassesCompleted;
 
 	if (bCancelRequested)
 	{
-		Complete(EEasySessionResult::Canceled, TEXT("Quick Match was canceled."));
+		Complete(EEasySessionResult::Canceled, TEXT("Matchmaking was canceled."));
 		return;
 	}
 
@@ -273,7 +273,7 @@ void UEasyQuickMatchPolicy::FinishPassAndContinue()
 		return;
 	}
 
-	SetState(EEasyQuickMatchState::Searching);
+	SetState(EEasyMatchmakingState::Searching);
 
 	if (Params.DelayBetweenPassesSeconds <= 0.0f)
 	{
@@ -289,7 +289,7 @@ void UEasyQuickMatchPolicy::FinishPassAndContinue()
 	}), Params.DelayBetweenPassesSeconds);
 }
 
-void UEasyQuickMatchPolicy::HostFallbackSession()
+void UEasyMatchmakingPolicy::HostFallbackSession()
 {
 	UEasySessionSubsystem* SubsystemPtr = Subsystem.Get();
 	if (SubsystemPtr == nullptr)
@@ -303,12 +303,12 @@ void UEasyQuickMatchPolicy::HostFallbackSession()
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickMatch found no session - hosting our own."));
-	SetState(EEasyQuickMatchState::Hosting);
-	SubsystemPtr->CreateEasySession(MakeFallbackHostParams(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyQuickMatchPolicy::HandleHostComplete));
+	UE_LOG(LogEasySession, Log, TEXT("Matchmaking found no session - hosting our own."));
+	SetState(EEasyMatchmakingState::Hosting);
+	SubsystemPtr->CreateEasySession(MakeFallbackHostParams(), FEasySessionCompleteDelegate::CreateUObject(this, &UEasyMatchmakingPolicy::HandleHostComplete));
 }
 
-FEasySessionHostParams UEasyQuickMatchPolicy::MakeFallbackHostParams() const
+FEasySessionHostParams UEasyMatchmakingPolicy::MakeFallbackHostParams() const
 {
 	// The fallback room must be one this run's own search would find: on the searched network, with every required key advertised at the required value.
 	FEasySessionHostParams FallbackParams = Params.Host;
@@ -321,7 +321,7 @@ FEasySessionHostParams UEasyQuickMatchPolicy::MakeFallbackHostParams() const
 	return FallbackParams;
 }
 
-void UEasyQuickMatchPolicy::HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage)
+void UEasyMatchmakingPolicy::HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
 	if (bCancelRequested)
 	{
@@ -332,7 +332,7 @@ void UEasyQuickMatchPolicy::HandleHostComplete(EEasySessionResult Result, const 
 	Complete(Result, ErrorMessage);
 }
 
-void UEasyQuickMatchPolicy::CompleteAsCanceled(EEasySessionResult StepResult)
+void UEasyMatchmakingPolicy::CompleteAsCanceled(EEasySessionResult StepResult)
 {
 	// The step finished after the cancel. If it succeeded, undo it, so Canceled always means "not in a match".
 	UEasySessionSubsystem* SubsystemPtr = Subsystem.Get();
@@ -343,10 +343,10 @@ void UEasyQuickMatchPolicy::CompleteAsCanceled(EEasySessionResult StepResult)
 		SubsystemPtr->DestroyEasySession();
 	}
 
-	Complete(EEasySessionResult::Canceled, TEXT("Quick Match was canceled."));
+	Complete(EEasySessionResult::Canceled, TEXT("Matchmaking was canceled."));
 }
 
-bool UEasyQuickMatchPolicy::CompleteIfAlreadyInSession(UEasySessionSubsystem& InSubsystem)
+bool UEasyMatchmakingPolicy::CompleteIfAlreadyInSession(UEasySessionSubsystem& InSubsystem)
 {
 	// A failed join's leftover session is queued for destruction and gone before the next candidate runs - only a session that stays counts.
 	if (!InSubsystem.IsInSession() || InSubsystem.IsSessionBeingDestroyed())
@@ -355,13 +355,13 @@ bool UEasyQuickMatchPolicy::CompleteIfAlreadyInSession(UEasySessionSubsystem& In
 	}
 
 	// An accepted invite or the game's own Create or Join got here first. Every remaining step would fail against it.
-	Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Quick Match stopped."));
+	Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Matchmaking stopped."));
 	return true;
 }
 
-void UEasyQuickMatchPolicy::Complete(EEasySessionResult Result, const FString& ErrorMessage)
+void UEasyMatchmakingPolicy::Complete(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	if (State == EEasyQuickMatchState::Complete)
+	if (State == EEasyMatchmakingState::Complete)
 	{
 		return;
 	}
@@ -381,12 +381,12 @@ void UEasyQuickMatchPolicy::Complete(EEasySessionResult Result, const FString& E
 	// Frozen before the Complete state broadcast, so every listener reads the same final time.
 	RunEndTimeSeconds = FPlatformTime::Seconds();
 
-	UE_LOG(LogEasySession, Log, TEXT("QuickMatch complete: %s"), *EasySession::ResultToString(Result));
-	SetState(EEasyQuickMatchState::Complete);
+	UE_LOG(LogEasySession, Log, TEXT("Matchmaking complete: %s"), *EasySession::ResultToString(Result));
+	SetState(EEasyMatchmakingState::Complete);
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
 }
 
-FString UEasyQuickMatchPolicy::GetSessionKey(const FEasySessionSearchResult& Session)
+FString UEasyMatchmakingPolicy::GetSessionKey(const FEasySessionSearchResult& Session)
 {
 	return Session.NativeResult.IsValid() ? Session.NativeResult.GetSessionIdStr() : Session.SessionDisplayName;
 }

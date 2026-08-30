@@ -74,21 +74,21 @@
 어느 쪽인지 말해주고 `ErrorMessage`에 호스트가 쓴 이유가 담기며, 로딩 화면은 뜨지 않습니다.
 [비밀번호로 잠근 세션](Guide-Sessions.ko.md#비밀번호로-잠근-세션)을 보세요.
 
-## 5. 아니면 Quick Match 하나로 끝내기
+## 5. 아니면 Matchmaking 하나로 끝내기
 
 ```
-[Button Clicked] -> [Quick Match Easy Session]
-                      QuickMatchParams:
+[Button Clicked] -> [Start Easy Matchmaking]
+                      MatchmakingParams:
                         Host -> Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
                       OnSuccess -> (가장 좋은 방에 참가했거나, 직접 호스트가 됨)
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)에 참가하고, 없으면 직접 방을
+Matchmaking는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)에 참가하고, 없으면 직접 방을
 만듭니다. 어느 쪽이 됐는지는 `Is Easy Session Host`로 확인합니다.
 
 **Host > Map Name을 비워두면** 직접 호스트가 될 때 지금 있는 맵에서 리슨 서버를 엽니다.
-메뉴에서 Quick Match를 부른다면 메뉴 맵이 경기장이 되므로, 대개는 채우는 게 맞습니다. 이
+메뉴에서 Matchmaking를 부른다면 메뉴 맵이 경기장이 되므로, 대개는 채우는 게 맞습니다. 이
 직접 호스트가 되게 하려면 **Allow Host Fallback**을 켜세요. 기본값은 꺼짐입니다.
 
 ## 6. PIE로 테스트하기
@@ -103,7 +103,7 @@ Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 빌드와 같은 네트워크 경로를 씁니다.
 
 > 팁: UI 없이 콘솔 명령(`~` 키)만으로도 전부 테스트할 수 있습니다.
-> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.QuickMatch`,
+> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,
 > `EasySession.Destroy`, `EasySession.Status`. 개발 빌드에만 있고 Shipping 빌드에서는
 > 컴파일 단계에서 빠집니다.
 
@@ -113,6 +113,6 @@ Quick Match는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 - [LAN 설정](Setup-LAN.ko.md) - 로컬 검색이 깨지는 원인과 한 대에서 테스트하는 법
 - [Steam 설정](Setup-Steam.ko.md) - 인터넷 플레이에 필요한 플러그인 두 개와 ini 설정
 - [세션 가이드](Guide-Sessions.ko.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
-- [Quick Match 가이드](Guide-QuickMatch.ko.md) - 방을 고르는 기준과 커스텀 점수 계산
+- [Matchmaking 가이드](Guide-Matchmaking.ko.md) - 방을 고르는 기준과 커스텀 점수 계산
 - [API 레퍼런스](API.ko.md) - 모든 노드, 조회, 구조체, 설정
 - [FAQ](FAQ.ko.md) - 자주 겪는 문제

@@ -44,16 +44,16 @@ FString UEasySessionStatics::GetEasySessionPassword(const UObject* WorldContextO
 	return Subsystem != nullptr ? Subsystem->GetSessionPassword() : FString();
 }
 
-bool UEasySessionStatics::IsEasyQuickMatchRunning(const UObject* WorldContextObject)
+bool UEasySessionStatics::IsEasyMatchmakingRunning(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsQuickMatchRunning();
+	return Subsystem != nullptr && Subsystem->IsMatchmakingRunning();
 }
 
-EEasyQuickMatchState UEasySessionStatics::GetEasyQuickMatchState(const UObject* WorldContextObject)
+EEasyMatchmakingState UEasySessionStatics::GetEasyMatchmakingState(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetQuickMatchState() : EEasyQuickMatchState::Idle;
+	return Subsystem != nullptr ? Subsystem->GetMatchmakingState() : EEasyMatchmakingState::Idle;
 }
 
 FString UEasySessionStatics::GetEasySessionStateLabel(const UObject* WorldContextObject)
@@ -150,11 +150,11 @@ FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextO
 	return Subsystem != nullptr ? Subsystem->GetSessionJoinCode() : FString();
 }
 
-void UEasySessionStatics::CancelEasyQuickMatch(const UObject* WorldContextObject)
+void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObject)
 {
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
 	{
-		Subsystem->CancelQuickMatch();
+		Subsystem->CancelMatchmaking();
 	}
 }
 

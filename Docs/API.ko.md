@@ -24,7 +24,7 @@
 2. [조회 블루프린트 노드](#2-조회-블루프린트-노드) - 세션 상태, 참가자, 검색 결과
 3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - Travel, 취소, 초대
 4. [이벤트](#4-이벤트) | 5. [구조체](#5-구조체) | 6. [열거형](#6-열거형)
-7. [UEasyQuickMatchPolicy](#7-ueasyquickmatchpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ 참고](#9-c-참고) | 10. [콘솔 명령](#10-콘솔-명령-개발-빌드-전용)
+7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ 참고](#9-c-참고) | 10. [콘솔 명령](#10-콘솔-명령-개발-빌드-전용)
 
 ## 1. 비동기 블루프린트 노드
 
@@ -50,7 +50,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 버튼을 연타해�
 | **Update Easy Session** | `NewHostParams` | `UpdateSession` 호출. 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 정원, 광고 여부, 난입 허용, 초대 허용, 표시 이름, 숨김, 비밀번호, 지역, 참가 코드, 커스텀 데이터가 대상입니다. Map Name과 Host Mode는 무시됩니다. 세션 권한 필요 |
 | **Destroy Easy Session** | - | `DestroySession` 호출. 이 게임의 네임드 세션만 지우고 맵에는 그대로 남습니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
 | **Leave Easy Session** | - | Destroy Easy Session에 귀갓길까지. 네임드 세션을 지운 뒤 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 방을 닫습니다 |
-| **Quick Match Easy Session** | `QuickMatchParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-QuickMatch.ko.md)) |
+| **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
 | **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 넘깁니다. NULL/LAN에는 친구 개념이 없어 실패합니다 |
 
 > **세션 권한 필요**는 그 세션을 만든 게임을 뜻합니다. 리슨 서버라면 호스트 플레이어의 게임,
@@ -88,8 +88,8 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Player Count | `GetSessionPlayerCount` | 지금 세션에 있는 플레이어 수 |
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | 정원. 세션이 없으면 0 |
 | Get Last Easy Search Results | `GetLastSearchResults` | 마지막 검색 결과이며 어디서든 읽을 수 있습니다. 새 검색이 도는 동안에는 비어 있습니다 |
-| Is Easy Quick Match Running | `IsQuickMatchRunning` | Quick Match가 돌고 있는가 |
-| Get Easy Quick Match State | `GetQuickMatchState` | 어느 단계인가. Searching, Joining, Hosting, Complete |
+| Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
+| Get Easy Matchmaking State | `GetMatchmakingState` | 어느 단계인가. Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
@@ -105,7 +105,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 | 노드 | 무엇을 답하는가 |
 |---|---|
-| Get Active Quick Match Policy | 실행 중인 정책 객체. 진행 상황은 서브시스템의 이벤트로도 릴레이되므로, 정책 없이도 받을 수 있습니다 |
+| Get Active Matchmaking Policy | 실행 중인 정책 객체. 진행 상황은 서브시스템의 이벤트로도 릴레이되므로, 정책 없이도 받을 수 있습니다 |
 
 > **이 함수들은 어떤 세션에 대해 답하는가?** 플레이어가 찾고, 참가하고, 플레이하는 게임 세션입니다.
 > 프로세스당 정확히 하나만 존재하므로(README의 제약 사항 참고) 세션을 인자로 받는 함수가 없습니다.
@@ -114,15 +114,15 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 > 게임 세션에 대해 답합니다.
 >
 > 여기 있는 것 중 일부는 애초에 세션에 대한 질문이 아닙니다. `Is Easy Session Busy`와
-> `Get Easy Session Queue Status`는 작업 큐를, `Is Easy Quick Match Running`,
-> `Get Easy Quick Match State`, `Get Online Subsystem Name (EasySession)`,
+> `Get Easy Session Queue Status`는 작업 큐를, `Is Easy Matchmaking Running`,
+> `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)`,
 > `Is Online Subsystem Available (EasySession)`은 프로세스를 설명합니다. 이들은 세션이 무엇이든 의미가 그대로입니다.
 
 ## 3. 동작 블루프린트 노드
 
 비동기가 아니라 즉시 반환합니다. 상태를 바꾸고 실행 핀이 있습니다.
 
-돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Easy Quick Match`는
+돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Easy Matchmaking`는
 진행 중이던 온라인 작업이 끝난 뒤에야 실제로 취소되고, `Server Travel Easy Session`은 맵이 로드되기
 전에 돌아옵니다.
 
@@ -133,7 +133,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 하는 일 |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
-| Cancel Easy Quick Match | `CancelQuickMatch` | 진행 중인 Quick Match를 `Canceled`로 끝냅니다. 이미 성사되던 참가나 생성은 되돌려집니다 |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Matchmaking를 `Canceled`로 끝냅니다. 이미 성사되던 참가나 생성은 되돌려집니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |
@@ -159,10 +159,10 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session이 끝났을 때. 매치만 끝나고 세션은 남습니다 |
 | `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session이 끝났을 때 |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session이 끝났을 때. 호스트든 나가는 클라이언트든 똑같이 발화합니다 |
-| `OnQuickMatchStarted` | - | Quick Match 실행이 받아들여지고 정책이 등록됐을 때. 한 실행의 이벤트 중 언제나 첫 번째입니다 |
-| `OnQuickMatchStateChanged` | `OldState`, `NewState` | Quick Match 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
-| `OnQuickMatchUpdated` | `State`, `ElapsedSeconds` | Quick Match 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
-| `OnQuickMatchComplete` | `Result`, `ErrorMessage` | Quick Match 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
+| `OnMatchmakingStarted` | - | Matchmaking 실행이 받아들여지고 정책이 등록됐을 때. 한 실행의 이벤트 중 언제나 첫 번째입니다 |
+| `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
+| `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Matchmaking 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
+| `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 작업이 끝난 것이 아닙니다. 연결이 끊기거나 네트워크 오류가 났을 때이며, 죽은 세션은 알아서 정리됩니다 |
 | `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다 |
 
@@ -192,7 +192,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `bPasswordProtected`는 `Join Easy Session` 전에 비밀번호를 물어볼지 판단하는 근거입니다.
 
-### 5.4 FEasyQuickMatchParams
+### 5.4 FEasyMatchmakingParams
 `Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
 
 ### 5.5 FEasySessionPlayerInfo *(읽기 전용)*
@@ -225,10 +225,10 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.ko.md)) |
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |
 | **`Timeout`** | 온라인 서비스가 끝내 답하지 않았습니다. 결과를 알 수 없으므로 남은 것이 있으면 정리됩니다. `RequestTimeoutSeconds` 참고 |
-| **`Canceled`** | `Cancel Easy Quick Match`가 Quick Match를 중단시켰습니다 |
+| **`Canceled`** | `Cancel Easy Matchmaking`가 Matchmaking를 중단시켰습니다 |
 | `NoOnlineSubsystem` | 온라인 서브시스템이 없습니다. `DefaultEngine.ini`를 확인하세요 |
-| `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Map Name 없는 Quick Match |
-| `QuickMatchAlreadyInProgress` | Quick Match가 이미 돌고 있습니다 |
+| `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Map Name 없는 Matchmaking |
+| `MatchmakingAlreadyInProgress` | Matchmaking가 이미 돌고 있습니다 |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | 온라인 서비스가 그 호출을 거절했습니다. 서비스가 한 말은 `ErrorMessage`에 담깁니다 |
 | `UnknownFailure` | 더 구체적인 사유가 없었습니다 |
 
@@ -250,9 +250,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | `TravelFailure` | 세션의 맵을 로드하지 못했습니다 |
 | `Rejected` | 호스트가 사유를 대며 접속을 거절했습니다. 비밀번호 불일치, 더 이상 받지 않는 매치 등이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
 
-### 6.4 EEasyQuickMatchState
+### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Quick Match 한 번의 진행 단계이며 `OnStateChanged`로 알려줍니다.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnStateChanged`로 알려줍니다.
 
 ### 6.5 EEasySessionHostMode
 
@@ -262,9 +262,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `Any`에 `NorthAmericaEast`부터 `Oceania`까지 큰 단위의 세계 지역 아홉 개를 더한 열거형입니다. 한 지역 안이면 쾌적한 핑으로 플레이할 수 있도록 나눴습니다. 게임 고유의 분할이 필요하면 `Any`로 두고 `CustomSettings` 키로 필터하세요 ([가이드](Guide-Sessions.ko.md)).
 
-## 7. UEasyQuickMatchPolicy
+## 7. UEasyMatchmakingPolicy
 
-`Quick Match Easy Session` 뒤에서 실제로 일하는 객체입니다. 검색하고, 찾은 것 중 가장 좋은 방에 참가하고, 없으면 직접 호스트가 됩니다.
+`Start Easy Matchmaking` 뒤에서 실제로 일하는 객체입니다. 검색하고, 찾은 것 중 가장 좋은 방에 참가하고, 없으면 직접 호스트가 됩니다.
 
 블루프린트나 C++로 서브클래스를 만들고, 매치메이킹 기준을 바꾸려면
 **`ScoreSession(Session) -> float`**(값이 클수록 먼저 참가)만 오버라이드하면 됩니다.
@@ -286,7 +286,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 작업 함수들은 델리게이트 콜백과 함께 네이티브에서 호출할 수 있습니다. `CreateEasySession`,
 `FindEasySessions`, `JoinEasySession`, `DestroyEasySession`, `UpdateEasySession`,
-`StartQuickMatch`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
+`StartMatchmaking`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.
 Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 시작할 때 한 번 바인딩하세요.
@@ -295,4 +295,4 @@ Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습
 
 ## 10. 콘솔 명령 *(개발 빌드 전용)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.QuickMatch [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`
+`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`

@@ -203,7 +203,7 @@ UI를 갱신하려면 서브시스템(`Get Easy Session Subsystem`)에서 아래
 
 - `OnSessionCreated`, `OnSessionsFound`, `OnSessionJoined`, `OnSessionUpdated`, `OnSessionStarted`, `OnSessionEnded`, `OnSessionDestroyed` - 각 작업이 끝날 때 발생합니다. 누가 시작했든 상관없습니다
 - `OnSessionFailure` - 세션 연결이 끊겼거나 네트워크 오류가 났습니다. EasySession이 죽은 세션을 알아서 파괴하므로 플레이어는 즉시 다시 들어갈 수 있습니다
-- `OnQuickMatchStarted`, `OnQuickMatchStateChanged`, `OnQuickMatchUpdated`, `OnQuickMatchComplete` - Quick Match 한 번의 진행 전체. 자세한 내용은 [Quick Match 가이드](Guide-QuickMatch.ko.md)에 있습니다
+- `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
 
 어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.
 

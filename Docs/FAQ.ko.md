@@ -73,7 +73,7 @@ LogEasySession: Warning: Not joining the invited session: this player is already
 
 ## "엔진 내장 Create Session / Find Sessions 노드와 뭐가 다른가요?"
 
-엔진에도 최소한의 세션 노드(`Create Session`, `Find Sessions` 등)가 있습니다. 빠른 프로토타입에는 쓸 만하지만, 옵션이 거의 없이 온라인 서비스를 직접 호출하고 **실패 사유를 주지 않습니다** (OnFailure 핀이 아무것도 싣지 않습니다). EasySession의 노드는 서브시스템을 거치며 다음을 더합니다. 작업 큐잉(EasySession 자신의 호출끼리는 절대 겹쳐서 서비스를 망가뜨리지 않음), 리슨 서버 자동 설정, 정확한 플레이어와 슬롯 집계, 타임아웃 대신 즉시 오는 상세한 에러, 커스텀 세션 데이터와 필터, 그리고 Quick Match 매치메이킹.
+엔진에도 최소한의 세션 노드(`Create Session`, `Find Sessions` 등)가 있습니다. 빠른 프로토타입에는 쓸 만하지만, 옵션이 거의 없이 온라인 서비스를 직접 호출하고 **실패 사유를 주지 않습니다** (OnFailure 핀이 아무것도 싣지 않습니다). EasySession의 노드는 서브시스템을 거치며 다음을 더합니다. 작업 큐잉(EasySession 자신의 호출끼리는 절대 겹쳐서 서비스를 망가뜨리지 않음), 리슨 서버 자동 설정, 정확한 플레이어와 슬롯 집계, 타임아웃 대신 즉시 오는 상세한 에러, 커스텀 세션 데이터와 필터, 그리고 Matchmaking 매치메이킹.
 
 둘 중 하나를 골라서 계속 쓰세요. 큐잉은 EasySession을 거치는 호출만 덮으므로, 엔진 노드가 같은 시각에 돌면 그건 여전히 서비스에 따로 도달합니다. 바로 아래 항목을 참고하세요.
 
@@ -89,6 +89,6 @@ EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스�
 
 들어가 있습니다. 대개 이전에 실패한 흐름이 남긴 것입니다. `Destroy Easy Session`을 먼저 부르고(상황이 꼬여 있어도 안전합니다) 다시 시도하세요. EasySession은 네트워크 연결이 끊기면 죽은 세션을 자동으로 파괴하므로, 이 문제는 주로 네트워크와 무관한 로직 버그(예: 이중 호스팅) 뒤에 생깁니다.
 
-## "진행 중인 Quick Match를 취소할 수 있나요?"
+## "진행 중인 Matchmaking를 취소할 수 있나요?"
 
-가능합니다. `Cancel Easy Quick Match`를 부르세요. Quick Match 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 진행 중이던 온라인 작업은 먼저 끝나야 하므로(호출 도중에는 중단할 수 없습니다) 취소에 잠시 걸릴 수 있습니다.
+가능합니다. `Cancel Easy Matchmaking`를 부르세요. Matchmaking 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 진행 중이던 온라인 작업은 먼저 끝나야 하므로(호출 도중에는 중단할 수 없습니다) 취소에 잠시 걸릴 수 있습니다.

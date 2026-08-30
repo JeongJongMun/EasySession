@@ -8,7 +8,7 @@
 
 #include "EasySessionSubsystem.h"
 
-#include "EasyQuickMatchPolicy.h"
+#include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionRequest.h"
