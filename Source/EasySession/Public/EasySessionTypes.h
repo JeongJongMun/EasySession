@@ -10,6 +10,23 @@
 struct FEasySessionSearchResult;
 
 /**
+ * Which call a search makes to the online service.
+ * Default describes the sessions to look for; the others name one exact session and read Search Target Id instead.
+ */
+UENUM(BlueprintType)
+enum class EEasySessionSearchMode : uint8
+{
+	/** Search for sessions matching the filters. */
+	Default,
+
+	/** Ask for the session this friend is in. */
+	ByFriend UMETA(DisplayName = "By Friend"),
+
+	/** Ask for the session with this id. */
+	BySessionId UMETA(DisplayName = "By Session Id")
+};
+
+/**
  * How the session host runs the game.
  */
 UENUM(BlueprintType)
@@ -406,22 +423,22 @@ struct EASYSESSION_API FEasySessionSearchParams
 	bool bIncludeHiddenSessions = false;
 
 	/**
-	 * C++ only. When set, the request asks the service for this friend's session instead of running a discovery search.
-	 * The discovery params (MaxResults, LANQuery, TimeoutSeconds) are ignored; the filters above still apply.
+	 * Which call the search makes. Anything but Default names one exact session through Search Target Id.
+	 * The discovery params (Max Results, LAN Query, Timeout Seconds) are then ignored; the filters above still apply.
 	 */
-	FUniqueNetIdPtr FriendId;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	EEasySessionSearchMode SearchMode = EEasySessionSearchMode::Default;
+
+	/** The friend or session the mode above asks about. Ignored while the mode is Default. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	FUniqueNetIdRepl SearchTargetId;
 
 	/**
-	 * C++ only. When set, the request asks the service for this exact session instead of running a discovery search.
-	 * Takes precedence over FriendId, which then rides along as the "is this friend in it" verification the service offers.
+	 * Only return sessions hosted by this player.
+	 * Runs as a normal search with an owner filter, so Max Results still bounds what the filter gets to see.
 	 */
-	FUniqueNetIdPtr SessionId;
-
-	/**
-	 * C++ only. Only return sessions hosted by this player.
-	 * Runs as a normal discovery search with an owner filter, so MaxResults still bounds what the filter gets to see.
-	 */
-	FUniqueNetIdPtr OwnerId;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
+	FUniqueNetIdRepl OwnerId;
 
 	/** Only return the session advertising this join code, hidden or not. Case does not matter. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -430,8 +447,8 @@ struct EASYSESSION_API FEasySessionSearchParams
 	/** Returns true if the search params are valid. */
 	bool IsValid() const;
 
-	/** @return Whether these params name one specific session (friend, session id, owner or join code) rather than describing a discovery. */
-	bool IsSpecificSessionQuery() const { return FriendId.IsValid() || SessionId.IsValid() || OwnerId.IsValid() || !JoinCode.IsEmpty(); }
+	/** @return Whether these params name one specific session (a search mode, an owner or a join code) rather than describing the sessions to look for. */
+	bool IsSpecificSessionQuery() const { return SearchMode != EEasySessionSearchMode::Default || OwnerId.IsValid() || !JoinCode.IsEmpty(); }
 
 	/** @return Whether this session clears every filter above, and so belongs in the results. */
 	bool ShouldInclude(const FEasySessionSearchResult& Result) const;
@@ -586,8 +603,9 @@ struct EASYSESSION_API FEasySessionFriend
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsPlayingThisGame = false;
 
-	/** The friend's unique id. Not exposed to Blueprint. */
-	FUniqueNetIdPtr NativeId;
+	/** The friend's unique id. Hand it to a search's Search Target Id to find the session they are in. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FUniqueNetIdRepl NativeId;
 
 	/** Returns true if this friend can be used with invite functions. */
 	bool IsValid() const { return NativeId.IsValid(); }

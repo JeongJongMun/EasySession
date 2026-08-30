@@ -828,7 +828,7 @@ bool UEasySessionSubsystem::ShowInviteUI()
 // caller passes whichever struct it has and the id is taken out here.
 bool UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
 {
-	return Social.IsValid() && Social->ShowProfileUI(Friend.NativeId);
+	return Social.IsValid() && Social->ShowProfileUI(Friend.NativeId.GetUniqueNetId());
 }
 
 bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)

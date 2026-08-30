@@ -154,7 +154,8 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> Shared = State;
 	FEasySessionSearchParams LookupParams;
-	LookupParams.FriendId = FriendId;
+	LookupParams.SearchMode = EEasySessionSearchMode::ByFriend;
+	LookupParams.SearchTargetId = FUniqueNetIdRepl(FriendId);
 	Subsystem->FindEasySessions(LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
 		[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 		{

@@ -94,7 +94,8 @@ bool FEasySessionSessionIdLookupTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> Shared = State;
 	FEasySessionSearchParams LookupParams;
-	LookupParams.SessionId = SessionId;
+	LookupParams.SearchMode = EEasySessionSearchMode::BySessionId;
+	LookupParams.SearchTargetId = FUniqueNetIdRepl(SessionId);
 	Subsystem->FindEasySessions(LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
 		[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 		{
@@ -181,9 +182,9 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 
 				FEasySessionSearchParams Params;
 				Params.bLANQuery = true;
-				Params.OwnerId = State->CaseIndex == 0
+				Params.OwnerId = FUniqueNetIdRepl(State->CaseIndex == 0
 					? State->BaseResult.Session.OwningUserId
-					: (Identity.IsValid() ? Identity->CreateUniquePlayerId(TEXT("EasySessionSomeoneElse")) : nullptr);
+					: (Identity.IsValid() ? Identity->CreateUniquePlayerId(TEXT("EasySessionSomeoneElse")) : nullptr));
 				Subsystem->FindEasySessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 					{

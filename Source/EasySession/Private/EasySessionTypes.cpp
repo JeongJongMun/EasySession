@@ -101,6 +101,12 @@ bool FEasySessionSettings::IsValid() const
 
 bool FEasySessionSearchParams::IsValid() const
 {
+	// A targeted mode with no id has nothing to ask the service about.
+	if (SearchMode != EEasySessionSearchMode::Default && !SearchTargetId.IsValid())
+	{
+		return false;
+	}
+
 	return MaxResults > 0 && TimeoutSeconds > 0.0f;
 }
 
@@ -128,7 +134,7 @@ bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Res
 		return false;
 	}
 	if (OwnerId.IsValid() &&
-		(!Result.NativeResult.Session.OwningUserId.IsValid() || *Result.NativeResult.Session.OwningUserId != *OwnerId))
+		(!Result.NativeResult.Session.OwningUserId.IsValid() || *Result.NativeResult.Session.OwningUserId != *OwnerId.GetUniqueNetId()))
 	{
 		return false;
 	}

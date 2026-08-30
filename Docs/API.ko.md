@@ -190,9 +190,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Region`과 `bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 지역 절과 참가 코드 절에서 다룹니다.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String)
+`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `SearchMode`(`EEasySessionSearchMode`), `SearchTargetId`(Unique Net Id), `OwnerId`(Unique Net Id)
 
-`JoinCode`는 그 코드를 광고하는 세션 하나로 결과를 좁힙니다. 숨긴 세션도 걸리므로, 참가 전에 프라이빗 방의 정보를 미리 보여주는 UI를 만들 수 있습니다. C++에서는 같은 구조체의 대상 질의 id인 `FriendId`, `SessionId`, `OwnerId`도 채워 특정 세션 하나를 조회할 수 있습니다. 각 필드의 규칙은 헤더에 있습니다. 고유 넷 id는 블루프린트 형태가 없어 핀으로는 못 씁니다.
+이 중 넷은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `SearchMode`는 서비스에 다른 호출을 하도록 바꾸고(By Friend 또는 By Session Id), `SearchTargetId`가 누구인지 또는 어느 세션인지를 지정합니다. 이때 발견용 필드는 무시되고 필터는 그대로 적용됩니다. 특정 세션을 지목한 검색은 숨긴 세션도 보며, 그 결과는 `On Sessions Found`와 `Get Last Easy Search Results`에 실리지 않습니다.
 
 ### 5.4 FEasySessionSearchResult *(읽기 전용)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
@@ -216,9 +216,10 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)
 
 ### 5.8 FEasySessionFriend *(읽기 전용)*
-`DisplayName`, `bIsOnline`, `bIsPlayingThisGame`
+`DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId`(Unique Net Id)
 
 `Read Easy Friends`가 돌려주며, 초대와 프로필 함수에 그대로 넘기면 됩니다.
+`NativeId`를 검색의 `SearchTargetId`에 넣으면 그 친구가 있는 세션을 찾습니다.
 
 ### 5.9 FEasyDisconnectInfo *(읽기 전용)*
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)
@@ -278,6 +279,10 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 ### 6.6 EEasySessionRegion
 
 `Any`에 `NorthAmericaEast`부터 `Oceania`까지 큰 단위의 세계 지역 아홉 개를 더한 열거형입니다. 한 지역 안이면 쾌적한 핑으로 플레이할 수 있도록 나눴습니다. 게임 고유의 분할이 필요하면 `Any`로 두고 `CustomSettings` 키로 필터하세요 ([가이드](Guide-Sessions.ko.md)).
+
+### 6.7 EEasySessionSearchMode
+
+`Default`는 필터가 묘사하는 세션들을 찾습니다. `ByFriend`와 `BySessionId`는 대신 특정 세션 하나를 서비스에 물으며, 누구인지 또는 어느 세션인지는 `SearchTargetId`에서 읽습니다.
 
 ## 7. UEasyMatchmakingPolicy
 

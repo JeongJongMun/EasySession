@@ -396,7 +396,7 @@ void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams&
 	}
 
 	// A by-id query needs no search object. Its completion delegate is a call parameter, so there is no handle to manage.
-	if (Params.SessionId.IsValid())
+	if (Params.SearchMode == EEasySessionSearchMode::BySessionId)
 	{
 		const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 		const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
@@ -414,12 +414,10 @@ void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams&
 
 		UE_LOG(LogEasySession, Log, TEXT("Searching for a session by id."));
 
-		// The optional friend id becomes the service's own "is this friend in it" verification.
-		const FUniqueNetId& VerifyFriendId = Params.FriendId.IsValid() ? *Params.FriendId : *LocalUserId;
-
+		// The service offers a "verify this friend is in it" argument; without one to name, the searcher stands in for it.
 		// NULL answers inside this call, completing the request before it returns - only an unanswered false is a failure to report.
 		const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
-		if (!Sessions->FindSessionById(*LocalUserId, *Params.SessionId, VerifyFriendId,
+		if (!Sessions->FindSessionById(*LocalUserId, *Params.SearchTargetId.GetUniqueNetId(), *LocalUserId,
 				FOnSingleSessionResultCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindSessionByIdComplete))
 			&& GetActiveRequest() == Request)
 		{
@@ -429,7 +427,7 @@ void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams&
 	}
 
 	// A friend query rides the Find slot without a search object: one call per request, answered through its own delegate.
-	if (Params.FriendId.IsValid())
+	if (Params.SearchMode == EEasySessionSearchMode::ByFriend)
 	{
 		FindFriendCompleteHandle = Sessions->AddOnFindFriendSessionCompleteDelegate_Handle(0,
 			FOnFindFriendSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindFriendSessionComplete));
@@ -438,7 +436,7 @@ void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams&
 
 		// NULL answers inside this call, completing the request before it returns - only an unanswered false is a failure to report.
 		const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
-		if (!Sessions->FindFriendSession(0, *Params.FriendId) && GetActiveRequest() == Request)
+		if (!Sessions->FindFriendSession(0, *Params.SearchTargetId.GetUniqueNetId()) && GetActiveRequest() == Request)
 		{
 			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindFriendSession request was rejected by the online subsystem."));
 		}
@@ -747,7 +745,7 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 	}
 
 	// By-id and friend queries complete through their own handlers - a discovery completion arriving meanwhile is someone else's.
-	if (Request->SearchParams.SessionId.IsValid() || Request->SearchParams.FriendId.IsValid())
+	if (Request->SearchParams.SearchMode != EEasySessionSearchMode::Default)
 	{
 		return;
 	}
@@ -820,7 +818,7 @@ void UEasySessionSubsystem::FinishActiveSearch(const TArray<FOnlineSessionSearch
 void UEasySessionSubsystem::HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults)
 {
 	const TSharedPtr<FEasySessionRequest> Request = GetActiveSearchRequest();
-	if (!Request.IsValid() || !Request->SearchParams.FriendId.IsValid() || Request->SearchParams.SessionId.IsValid())
+	if (!Request.IsValid() || Request->SearchParams.SearchMode != EEasySessionSearchMode::ByFriend)
 	{
 		return;
 	}
@@ -832,7 +830,7 @@ void UEasySessionSubsystem::HandleFindFriendSessionComplete(int32 LocalUserNum, 
 void UEasySessionSubsystem::HandleFindSessionByIdComplete(int32 LocalUserNum, bool bWasSuccessful, const FOnlineSessionSearchResult& SessionResult)
 {
 	const TSharedPtr<FEasySessionRequest> Request = GetActiveSearchRequest();
-	if (!Request.IsValid() || !Request->SearchParams.SessionId.IsValid())
+	if (!Request.IsValid() || Request->SearchParams.SearchMode != EEasySessionSearchMode::BySessionId)
 	{
 		return;
 	}

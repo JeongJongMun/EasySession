@@ -127,7 +127,7 @@ bool FEasySessionSocial::SendInviteToFriend(const FEasySessionFriend& Friend)
 		return false;
 	}
 
-	if (!Sessions->SendSessionInviteToFriend(0, NAME_GameSession, *Friend.NativeId))
+	if (!Sessions->SendSessionInviteToFriend(0, NAME_GameSession, *Friend.NativeId.GetUniqueNetId()))
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend failed. The online subsystem may not support invites (e.g. NULL/LAN)."));
 		return false;
@@ -209,7 +209,7 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 				Entry.DisplayName = OnlineFriend->GetDisplayName();
 				Entry.bIsOnline = OnlineFriend->GetPresence().bIsOnline;
 				Entry.bIsPlayingThisGame = OnlineFriend->GetPresence().bIsPlayingThisGame;
-				Entry.NativeId = OnlineFriend->GetUserId();
+				Entry.NativeId = FUniqueNetIdRepl(OnlineFriend->GetUserId());
 			}
 
 			UE_LOG(LogEasySession, Log, TEXT("Friends list read: %d friend(s)."), Result.Num());
@@ -276,7 +276,8 @@ void FEasySessionSocial::QueryNextFriendSession()
 	// One request per friend, enqueued only when the previous one answered - a Create or Join the game asks for meanwhile runs between two queries instead of waiting out the whole sweep.
 	UEasySessionSubsystem* OwnerSub = &Owner;
 	FEasySessionSearchParams QueryParams;
-	QueryParams.FriendId = FriendSessionEntries[CurrentFriendQuery].Friend.NativeId;
+	QueryParams.SearchMode = EEasySessionSearchMode::ByFriend;
+	QueryParams.SearchTargetId = FriendSessionEntries[CurrentFriendQuery].Friend.NativeId;
 	Owner.FindEasySessions(QueryParams,
 		FEasySessionFindCompleteDelegate::CreateWeakLambda(&Owner,
 			[OwnerSub](EEasySessionResult Result, const FString& /*ErrorMessage*/, const TArray<FEasySessionSearchResult>& Results)
