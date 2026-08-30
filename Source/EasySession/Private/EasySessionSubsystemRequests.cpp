@@ -19,7 +19,7 @@
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionJoinApproval.h"
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"

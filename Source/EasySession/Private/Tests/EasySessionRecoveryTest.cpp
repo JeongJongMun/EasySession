@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
@@ -86,7 +86,7 @@ namespace EasySessionSecondDisconnectTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -189,7 +189,7 @@ bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
 
 	// Returning to the menu means browsing to a map, which a headless test world has
 	// no use for. Turning it off leaves the session cleanup, which is what is on trial.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 
@@ -224,7 +224,7 @@ namespace EasySessionCleanupOnceTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -305,7 +305,7 @@ bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
 
 	// Returning to the menu means browsing to a map, which a headless test world has
 	// no use for. Turning it off leaves the session cleanup, which is what is on trial.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 
@@ -343,7 +343,7 @@ namespace EasySessionTravelFailureTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -439,7 +439,7 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 
 	// Returning to the menu means browsing to a map, which a headless test world has
 	// no use for. Turning it off leaves the recovery behavior, which is what is on trial.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 
@@ -476,7 +476,7 @@ namespace EasySessionNetworkFilterTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.ForeignGameInstance.Get());
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
@@ -585,7 +585,7 @@ bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
 
 	// Returning to the menu means browsing to a map, which a headless test world has
 	// no use for. Turning it off leaves the filter decisions, which are what is on trial.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 

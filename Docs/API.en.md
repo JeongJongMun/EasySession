@@ -26,7 +26,7 @@ argument so they can find the world.
 2. [Query Blueprint nodes](#2-query-blueprint-nodes) - session state, players, search results
 3. [Action Blueprint nodes](#3-action-blueprint-nodes) - travel, cancel, invites
 4. [Events](#4-events) | 5. [Structs](#5-structs) | 6. [Enums](#6-enums)
-7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ notes](#9-c-notes) | 10. [Console commands](#10-console-commands-development-builds-only)
+7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionConfig](#8-ueasysessionconfig-project-settings---plugins---easysession) | 9. [C++ notes](#9-c-notes) | 10. [Console commands](#10-console-commands-development-builds-only)
 
 ## 1. Async Blueprint nodes
 
@@ -287,7 +287,7 @@ The object behind `Start Easy Matchmaking`: it searches, joins the best result i
 
 Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> float`** (higher = joined first) for custom pick-a-session criteria. Editable defaults: `PingBucketsMs` (default `[50, 100, 150]`), `TopCandidateRandomization` (default 3). Query with `GetState` and `GetElapsedSeconds`, or bind `OnStateChanged` / `OnUpdated`.
 
-## 8. UEasySessionSettings (Project Settings -> Plugins -> EasySession)
+## 8. UEasySessionConfig (Project Settings -> Plugins -> EasySession)
 
 | Setting | Default | Effect |
 |---|---|---|

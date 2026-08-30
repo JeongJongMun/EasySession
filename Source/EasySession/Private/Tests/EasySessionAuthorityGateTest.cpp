@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -42,7 +42,7 @@ namespace EasySessionAuthorityGateTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -187,7 +187,7 @@ bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
 
 	// A refused travel must not browse anywhere, and a headless world has no menu to
 	// return to either way.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 

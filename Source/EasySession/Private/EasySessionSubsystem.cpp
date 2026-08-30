@@ -13,7 +13,7 @@
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionJoinApproval.h"
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
@@ -93,7 +93,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	WorldInitializedActorsHandle = FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UEasySessionSubsystem::HandleWorldInitializedActors);
 
-	if (IsRunningDedicatedServer() && GetDefault<UEasySessionSettings>()->bAutoHostOnDedicatedServer)
+	if (IsRunningDedicatedServer() && GetDefault<UEasySessionConfig>()->bAutoHostOnDedicatedServer)
 	{
 		DedicatedAutoHostTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float DeltaTime)
 		{
@@ -769,7 +769,7 @@ void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason 
 		bHasPendingDisconnectInfo = true;
 	}
 
-	const bool bReturnToMenu = GetDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect;
+	const bool bReturnToMenu = GetDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect;
 
 	if (IsInSession())
 	{
@@ -955,7 +955,7 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySes
 
 void UEasySessionSubsystem::AutoHostDedicatedServerSession()
 {
-	FEasySessionHostParams HostParams = GetDefault<UEasySessionSettings>()->DedicatedServerHostParams;
+	FEasySessionHostParams HostParams = GetDefault<UEasySessionConfig>()->DedicatedServerHostParams;
 	HostParams.HostMode = EEasySessionHostMode::DedicatedServer;
 	HostParams.MapName.Empty();
 

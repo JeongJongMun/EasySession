@@ -2,7 +2,7 @@
 
 #include "EasySessionRequestQueue.h"
 
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "HAL/PlatformTime.h"
 
 FEasySessionRequestQueue::FEasySessionRequestQueue(FExecuteActive InExecuteActive, FDeadlineReached InDeadlineReached)
@@ -124,7 +124,7 @@ void FEasySessionRequestQueue::ProcessNext()
 
 	Active = Pending[0];
 	Pending.RemoveAt(0);
-	Active->MarkStarted(FPlatformTime::Seconds(), GetDefault<UEasySessionSettings>()->RequestTimeoutSeconds);
+	Active->MarkStarted(FPlatformTime::Seconds(), GetDefault<UEasySessionConfig>()->RequestTimeoutSeconds);
 	StartWatchdog();
 
 	ExecuteActive();

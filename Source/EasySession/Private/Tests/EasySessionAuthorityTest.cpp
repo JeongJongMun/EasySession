@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
@@ -66,7 +66,7 @@ namespace EasySessionAuthorityTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -148,7 +148,7 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 
 	// Tearing the session down ends with a return to the menu, which a headless test
 	// world has no use for. Turning it off leaves the session cleanup on trial.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 

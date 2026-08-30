@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
@@ -40,7 +40,7 @@ namespace EasySessionReplicatedStateTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
+		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -159,7 +159,7 @@ bool FEasySessionReplicatedStateTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 

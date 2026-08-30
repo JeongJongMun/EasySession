@@ -3,7 +3,7 @@
 #include "EasySessionSocial.h"
 
 #include "EasySession.h"
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -62,7 +62,7 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 	UE_LOG(LogEasySession, Log, TEXT("Invite accepted for session '%s'."), *Session.SessionDisplayName);
 	Owner.OnSessionInviteAccepted.Broadcast(Session);
 
-	if (GetDefault<UEasySessionSettings>()->bAutoJoinAcceptedInvites)
+	if (GetDefault<UEasySessionConfig>()->bAutoJoinAcceptedInvites)
 	{
 		JoinInvitedSession(Session);
 	}
@@ -76,7 +76,7 @@ void FEasySessionSocial::JoinInvitedSession(const FEasySessionSearchResult& Sess
 		return;
 	}
 
-	if (!GetDefault<UEasySessionSettings>()->bAcceptInvitesWhileInSession)
+	if (!GetDefault<UEasySessionConfig>()->bAcceptInvitesWhileInSession)
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Not joining the invited session: this player is already in one, and Accept Invites While In Session is disabled."));
 		return;

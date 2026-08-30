@@ -170,7 +170,7 @@ bool FEasySessionWaitForAbandonedCreate::Update()
 
 /**
  * A create abandoned by the watchdog can leave a session behind, and CleanupRequest
- * destroys it so the next create starts clean - the behavior EasySessionSettings
+ * destroys it so the next create starts clean - the behavior UEasySessionConfig
  * promises for Request Timeout Seconds. NULL completes creates synchronously and can
  * never abandon one for real, so the cleanup is entered directly with the state the
  * watchdog would arrive with: a create-typed request, abandoned, session existing.

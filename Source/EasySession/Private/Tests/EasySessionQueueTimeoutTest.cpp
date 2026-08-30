@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
@@ -73,7 +73,7 @@ bool FEasySessionWaitForQueueDrain::Update()
 	}
 
 	// Restore the project setting the test overrode.
-	if (UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>())
+	if (UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>())
 	{
 		Settings->RequestTimeoutSeconds = State->OriginalTimeout;
 	}
@@ -100,7 +100,7 @@ bool FEasySessionQueueDrainTest::RunTest(const FString& Parameters)
 	}
 
 	// Shorten the watchdog so a stalled request fails quickly.
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->OriginalTimeout = Settings->RequestTimeoutSeconds;
 	Settings->RequestTimeoutSeconds = TestTimeoutSeconds;
 

@@ -5,7 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySession.h"
-#include "EasySessionSettings.h"
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -55,7 +55,7 @@ namespace EasySessionSearchRecoveryTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds = State.OriginalTimeout;
+		GetMutableDefault<UEasySessionConfig>()->RequestTimeoutSeconds = State.OriginalTimeout;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -94,7 +94,7 @@ bool FEasySessionWaitForSearchRecovery::Update()
 		//
 		// This one is given the real deadline back: a LAN search needs its five
 		// seconds, and the short deadline above exists only to cut the first one off.
-		GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds = State->OriginalTimeout;
+		GetMutableDefault<UEasySessionConfig>()->RequestTimeoutSeconds = State->OriginalTimeout;
 
 		State->Step = EStep::AwaitingRecoverySearch;
 		State->StartTime = FPlatformTime::Seconds();
@@ -144,7 +144,7 @@ bool FEasySessionSearchRecoveryTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->OriginalTimeout = Settings->RequestTimeoutSeconds;
 	Settings->RequestTimeoutSeconds = TestRequestTimeoutSeconds;
 
@@ -173,7 +173,7 @@ namespace EasySessionFailedSearchTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds = State.OriginalTimeout;
+		GetMutableDefault<UEasySessionConfig>()->RequestTimeoutSeconds = State.OriginalTimeout;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -220,7 +220,7 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 		CurrentTest->TestEqual(TEXT("The watchdog gave up on the failed search"), Result, EEasySessionResult::Timeout);
 
 		// The recovery search gets the real deadline back, same as the abandoned-search test.
-		GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds = State->OriginalTimeout;
+		GetMutableDefault<UEasySessionConfig>()->RequestTimeoutSeconds = State->OriginalTimeout;
 
 		State->bRecoveryStarted = true;
 		State->StartTime = FPlatformTime::Seconds();
@@ -268,7 +268,7 @@ bool FEasySessionFailedSearchRecoveryTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	UEasySessionSettings* Settings = GetMutableDefault<UEasySessionSettings>();
+	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->OriginalTimeout = Settings->RequestTimeoutSeconds;
 	Settings->RequestTimeoutSeconds = TestRequestTimeoutSeconds;
 
@@ -363,7 +363,7 @@ bool FEasySessionForeignSearchTest::RunTest(const FString& Parameters)
 	}
 
 	// The watchdog must not interfere here - this search is meant to run to the end.
-	State->OriginalTimeout = GetMutableDefault<UEasySessionSettings>()->RequestTimeoutSeconds;
+	State->OriginalTimeout = GetMutableDefault<UEasySessionConfig>()->RequestTimeoutSeconds;
 
 	Subsystem->FindEasySessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>&)

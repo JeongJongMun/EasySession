@@ -5,14 +5,14 @@
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
 #include "EasySessionTypes.h"
-#include "EasySessionSettings.generated.h"
+#include "EasySessionConfig.generated.h"
 
 /**
  * Project-wide settings for the EasySession plugin.
  * Found in Project Settings > Plugins > EasySession.
  */
 UCLASS(config = Game, defaultconfig, meta = (DisplayName = "EasySession Settings", ToolTip = "Project-wide settings for the EasySession plugin."))
-class EASYSESSION_API UEasySessionSettings : public UDeveloperSettings
+class EASYSESSION_API UEasySessionConfig : public UDeveloperSettings
 {
 	GENERATED_BODY()
 

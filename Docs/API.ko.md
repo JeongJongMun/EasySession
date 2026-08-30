@@ -24,7 +24,7 @@
 2. [조회 블루프린트 노드](#2-조회-블루프린트-노드) - 세션 상태, 참가자, 검색 결과
 3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - Travel, 취소, 초대
 4. [이벤트](#4-이벤트) | 5. [구조체](#5-구조체) | 6. [열거형](#6-열거형)
-7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionSettings](#8-ueasysessionsettings-project-settings---plugins---easysession) | 9. [C++ 참고](#9-c-참고) | 10. [콘솔 명령](#10-콘솔-명령-개발-빌드-전용)
+7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionConfig](#8-ueasysessionconfig-project-settings---plugins---easysession) | 9. [C++ 참고](#9-c-참고) | 10. [콘솔 명령](#10-콘솔-명령-개발-빌드-전용)
 
 ## 1. 비동기 블루프린트 노드
 
@@ -279,7 +279,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 편집 가능한 기본값은 `PingBucketsMs`(기본 `[50, 100, 150]`), `TopCandidateRandomization`(기본 3)입니다.
 상태는 `GetState`와 `GetElapsedSeconds`로 조회하거나 `OnStateChanged` / `OnUpdated`에 바인딩하세요.
 
-## 8. UEasySessionSettings (Project Settings -> Plugins -> EasySession)
+## 8. UEasySessionConfig (Project Settings -> Plugins -> EasySession)
 
 | 설정 | 기본값 | 효과 |
 |---|---|---|
