@@ -169,8 +169,14 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 		case FEasySessionRequest::EType::Join:		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle); break;
 		case FEasySessionRequest::EType::Destroy:	Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle); break;
 		case FEasySessionRequest::EType::Update:	Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle); break;
-		case FEasySessionRequest::EType::Start:		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle); break;
-		case FEasySessionRequest::EType::End:		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle); break;
+		case FEasySessionRequest::EType::Start:
+			Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle);
+			Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
+			break;
+		case FEasySessionRequest::EType::End:
+			Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
+			Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
+			break;
 		default: break;
 	}
 
@@ -330,18 +336,37 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	return Settings;
 }
 
-void UEasySessionSubsystem::AdvertiseMatchInProgress(bool bMatchInProgress)
+bool UEasySessionSubsystem::AdvertiseMatchInProgress(bool bMatchInProgress)
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	if (NamedSession == nullptr)
 	{
-		return;
+		return false;
 	}
 
-	// The update completion fires while a Start or End request is still active, and the update handler's request-type guard drops it.
+	UpdateCompleteHandle = Sessions->AddOnUpdateSessionCompleteDelegate_Handle(
+		FOnUpdateSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleUpdateSessionComplete));
+
 	NamedSession->SessionSettings.Set(EasySession::SettingKey_MatchInProgress, bMatchInProgress ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	Sessions->UpdateSession(NAME_GameSession, NamedSession->SessionSettings, true);
+	return Sessions->UpdateSession(NAME_GameSession, NamedSession->SessionSettings, true);
+}
+
+void UEasySessionSubsystem::CompleteMatchStateRequest(bool bAdvertised)
+{
+	// The match state itself already changed, so a refused re-advertise is a stale advertisement, not a failed Start or End.
+	if (!bAdvertised)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("The match state changed but re-advertising it failed - searching players see the old value until the next update."));
+	}
+
+	// The OSS only changes this game's own copy of the session, so the new state is replicated for the clients here now and the ones that join later.
+	if (IsSessionAuthority())
+	{
+		PushHostSessionState();
+	}
+
+	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
 void UEasySessionSubsystem::ExecuteFind()
@@ -918,7 +943,20 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 
 void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful)
 {
-	if (!GetActiveRequest().IsValid() || GetActiveRequest()->Type != FEasySessionRequest::EType::Update || SessionName != GetActiveRequest()->SessionName)
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+	if (!Request.IsValid() || SessionName != Request->SessionName)
+	{
+		return;
+	}
+
+	// Start and End re-advertise as their second phase, so their completion lands here too.
+	if (Request->Type == FEasySessionRequest::EType::Start || Request->Type == FEasySessionRequest::EType::End)
+	{
+		CompleteMatchStateRequest(bWasSuccessful);
+		return;
+	}
+
+	if (Request->Type != FEasySessionRequest::EType::Update)
 	{
 		return;
 	}
@@ -1027,16 +1065,13 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 
 	UE_LOG(LogEasySession, Log, TEXT("Session started."));
 
-	AdvertiseMatchInProgress(true);
-
-	// The OSS only changes the local session copy - replicate the new state so
-	// every client (present or future) converges on it.
-	if (IsSessionAuthority())
+	// Phase two: re-advertise so searching players see the match running. Its completion finishes this request.
+	// NULL answers inside the call and finishes the request there - only a refusal with the request still active is ours to complete.
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+	if (!AdvertiseMatchInProgress(true) && GetActiveRequest() == Request)
 	{
-		PushHostSessionState();
+		CompleteMatchStateRequest(false);
 	}
-
-	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
 void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWasSuccessful)
@@ -1054,14 +1089,11 @@ void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWa
 
 	UE_LOG(LogEasySession, Log, TEXT("Session ended."));
 
-	AdvertiseMatchInProgress(false);
-
-	// The OSS only changes the local session copy - replicate the new state so
-	// every client (present or future) converges on it.
-	if (IsSessionAuthority())
+	// Phase two: re-advertise so searching players see the match over. Its completion finishes this request.
+	// NULL answers inside the call and finishes the request there - only a refusal with the request still active is ours to complete.
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+	if (!AdvertiseMatchInProgress(false) && GetActiveRequest() == Request)
 	{
-		PushHostSessionState();
+		CompleteMatchStateRequest(false);
 	}
-
-	CompleteActiveRequest(EEasySessionResult::Success);
 }

@@ -540,8 +540,16 @@ private:
 	/** Server: push the current local session state to the replicated state actor. */
 	void PushHostSessionState();
 
-	/** Keep the advertised in-match key current. Called when Start and End succeed. */
-	void AdvertiseMatchInProgress(bool bMatchInProgress);
+	/**
+	 * Re-advertise the session with the in-progress key set, as the second phase of the Start or End request that is running.
+	 * Staying inside that request is what keeps this off the queue's toes: no other operation can start while it is in flight.
+	 *
+	 * @return Whether the service accepted the update. False completes the phase on the spot.
+	 */
+	bool AdvertiseMatchInProgress(bool bMatchInProgress);
+
+	/** Finish a Start or End request whose re-advertise phase is over, telling the caller the match state change succeeded either way. */
+	void CompleteMatchStateRequest(bool bAdvertised);
 
 	/** Spawn/refresh the state actor after every map load while hosting. */
 	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);

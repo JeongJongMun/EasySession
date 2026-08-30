@@ -103,7 +103,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("The default search lists the in-match session"), State->Delivered->Num(), 1);
+			CurrentTest->TestEqual(TEXT("The default search lists the in-progress session"), State->Delivered->Num(), 1);
 			if (State->Delivered->Num() == 1)
 			{
 				CurrentTest->TestTrue(TEXT("And the result says the match is running"), (*State->Delivered)[0].bMatchInProgress);
@@ -178,7 +178,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 }
 
 /**
- * The session state never rides the wire, so the advertised in-match key stands in for
+ * The session state never rides the wire, so the advertised in-progress key stands in for
  * it: Create writes it off, Start flips it on, End flips it back, and the search filter
  * plus the result flag read it. The results are injected because one process cannot
  * find its own LAN session.
