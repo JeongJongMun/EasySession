@@ -633,6 +633,86 @@ struct EASYSESSION_API FEasyFriendSession
 };
 
 /**
+ * One advertised custom setting on the wire. A TMap cannot replicate, so Custom Settings ride as an array of these.
+ */
+USTRUCT()
+struct EASYSESSION_API FEasySessionReplicatedSetting
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FString Key;
+
+	UPROPERTY()
+	FString Value;
+
+	bool operator==(const FEasySessionReplicatedSetting& Other) const
+	{
+		return Key == Other.Key && Value == Other.Value;
+	}
+};
+
+/**
+ * The settings a session member is allowed to see, replicated to every client after an update.
+ * That includes the join code, so anyone in the room can share it. Only the password and its friends exception stay on the host.
+ * Not exposed to Blueprint - clients read the values through the regular session getters.
+ */
+USTRUCT()
+struct EASYSESSION_API FEasySessionReplicatedSettings
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FString SessionDisplayName;
+
+	UPROPERTY()
+	FString JoinCode;
+
+	UPROPERTY()
+	int32 MaxPlayers = 0;
+
+	UPROPERTY()
+	bool bShouldAdvertise = true;
+
+	UPROPERTY()
+	bool bAllowJoinInProgress = true;
+
+	UPROPERTY()
+	bool bAllowInvites = true;
+
+	UPROPERTY()
+	bool bHidden = false;
+
+	UPROPERTY()
+	bool bPasswordProtected = false;
+
+	UPROPERTY()
+	EEasySessionRegion Region = EEasySessionRegion::Any;
+
+	UPROPERTY()
+	TArray<FEasySessionReplicatedSetting> CustomSettings;
+
+	/** Distinguishes a payload the host wrote from the property's defaults. */
+	UPROPERTY()
+	bool bValid = false;
+
+	bool operator==(const FEasySessionReplicatedSettings& Other) const
+	{
+		return SessionDisplayName == Other.SessionDisplayName
+			&& JoinCode == Other.JoinCode
+			&& MaxPlayers == Other.MaxPlayers
+			&& bShouldAdvertise == Other.bShouldAdvertise
+			&& bAllowJoinInProgress == Other.bAllowJoinInProgress
+			&& bAllowInvites == Other.bAllowInvites
+			&& bHidden == Other.bHidden
+			&& bPasswordProtected == Other.bPasswordProtected
+			&& Region == Other.Region
+			&& CustomSettings == Other.CustomSettings
+			&& bValid == Other.bValid;
+	}
+};
+
+/**
  * Information about a single player in the current session.
  */
 USTRUCT(BlueprintType)

@@ -328,7 +328,7 @@ FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
 
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession == nullptr || !IsSessionAuthority())
+	if (NamedSession == nullptr)
 	{
 		return Params;
 	}
@@ -869,6 +869,7 @@ void UEasySessionSubsystem::EnsureStateActor()
 	if (StateActor.IsValid() && StateActor->GetWorld() == World)
 	{
 		PushHostSessionState();
+		PushReplicatedSessionSettings();
 		return;
 	}
 
@@ -876,6 +877,7 @@ void UEasySessionSubsystem::EnsureStateActor()
 	SpawnParams.ObjectFlags |= RF_Transient;
 	StateActor = World->SpawnActor<AEasySessionStateActor>(SpawnParams);
 	PushHostSessionState();
+	PushReplicatedSessionSettings();
 }
 
 void UEasySessionSubsystem::PushHostSessionState()
@@ -884,6 +886,70 @@ void UEasySessionSubsystem::PushHostSessionState()
 	{
 		Actor->SetHostSessionState(GetLocalSessionState());
 	}
+}
+
+void UEasySessionSubsystem::PushReplicatedSessionSettings()
+{
+	AEasySessionStateActor* Actor = StateActor.Get();
+	if (Actor == nullptr)
+	{
+		return;
+	}
+
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return;
+	}
+
+	const FOnlineSessionSettings& Settings = NamedSession->SessionSettings;
+
+	FEasySessionReplicatedSettings Payload;
+	Payload.MaxPlayers = Settings.NumPublicConnections;
+	Payload.bShouldAdvertise = Settings.bShouldAdvertise;
+	Payload.bAllowJoinInProgress = Settings.bAllowJoinInProgress;
+	Payload.bAllowInvites = Settings.bAllowInvites;
+	Payload.bValid = true;
+
+	for (const TPair<FName, FOnlineSessionSetting>& Setting : Settings.Settings)
+	{
+		if (Setting.Key == EasySession::SettingKey_DisplayName)
+		{
+			Payload.SessionDisplayName = Setting.Value.Data.ToString();
+		}
+		else if (Setting.Key == EasySession::SettingKey_Hidden)
+		{
+			int32 Hidden = 0;
+			Setting.Value.Data.GetValue(Hidden);
+			Payload.bHidden = Hidden != 0;
+		}
+		else if (Setting.Key == EasySession::SettingKey_PasswordProtected)
+		{
+			int32 Protected = 0;
+			Setting.Value.Data.GetValue(Protected);
+			Payload.bPasswordProtected = Protected != 0;
+		}
+		else if (Setting.Key == EasySession::SettingKey_Region)
+		{
+			int32 RegionValue = 0;
+			Setting.Value.Data.GetValue(RegionValue);
+			Payload.Region = static_cast<EEasySessionRegion>(RegionValue);
+		}
+		else if (Setting.Key == EasySession::SettingKey_JoinCode)
+		{
+			Setting.Value.Data.GetValue(Payload.JoinCode);
+		}
+		else if (!EasySession::IsReservedSettingKey(Setting.Key))
+		{
+			FEasySessionReplicatedSetting Custom;
+			Custom.Key = Setting.Key.ToString();
+			Custom.Value = Setting.Value.Data.ToString();
+			Payload.CustomSettings.Add(MoveTemp(Custom));
+		}
+	}
+
+	Actor->SetReplicatedSessionSettings(Payload);
 }
 
 void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitializedParams& Params)
@@ -917,6 +983,55 @@ void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState H
 
 	ReplicatedHostSessionState = HostState;
 	bHasReplicatedHostSessionState = true;
+}
+
+void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings)
+{
+	// A default payload means the host has not written one yet; the authority already holds the real values.
+	if (!Settings.bValid || IsSessionAuthority())
+	{
+		return;
+	}
+
+	// PostNetInit and the OnRep can both deliver the same payload - apply it once.
+	if (AppliedReplicatedSessionSettings == Settings)
+	{
+		return;
+	}
+	AppliedReplicatedSessionSettings = Settings;
+
+	// Patch the local session copy, so the regular getters return the host's values without any new API.
+	// Without a session copy there is nothing to patch and nothing for a listener to read - skip the event too.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession != nullptr)
+	{
+		FOnlineSessionSettings& Local = NamedSession->SessionSettings;
+		Local.NumPublicConnections = Settings.MaxPlayers;
+		Local.bShouldAdvertise = Settings.bShouldAdvertise;
+		Local.bAllowJoinInProgress = Settings.bAllowJoinInProgress;
+		Local.bAllowInvites = Settings.bAllowInvites;
+		Local.Set(EasySession::SettingKey_DisplayName, Settings.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		Local.Set(EasySession::SettingKey_JoinCode, Settings.JoinCode, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		Local.Set(EasySession::SettingKey_Hidden, Settings.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		Local.Set(EasySession::SettingKey_PasswordProtected, Settings.bPasswordProtected ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		Local.Set(EasySession::SettingKey_Region, static_cast<int32>(Settings.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+		// Replace the custom settings wholesale, so a key the host removed disappears here too.
+		for (auto It = Local.Settings.CreateIterator(); It; ++It)
+		{
+			if (!EasySession::IsReservedSettingKey(It.Key()))
+			{
+				It.RemoveCurrent();
+			}
+		}
+		for (const FEasySessionReplicatedSetting& Custom : Settings.CustomSettings)
+		{
+			Local.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		}
+
+		OnSessionSettingsChanged.Broadcast();
+	}
 }
 
 

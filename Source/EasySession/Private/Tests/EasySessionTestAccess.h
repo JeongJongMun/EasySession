@@ -10,6 +10,7 @@
 #include "EasySessionJoinApproval.h"
 #include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
+#include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
 #include "GameFramework/OnlineReplStructs.h"
 #include "EasySessionTypes.h"
@@ -47,6 +48,19 @@ public:
 		return Subsystem.ReplicatedHostSessionState;
 	}
 
+	/** The settings payload the state actor would replicate to session members. Default (bValid false) while no actor exists. */
+	static FEasySessionReplicatedSettings GetStateActorReplicatedSettings(const UEasySessionSubsystem& Subsystem)
+	{
+		const AEasySessionStateActor* Actor = Subsystem.StateActor.Get();
+		return Actor != nullptr ? Actor->GetReplicatedSessionSettings() : FEasySessionReplicatedSettings();
+	}
+
+	/** Hand the client apply path a payload, standing in for the state actor's OnRep arriving. */
+	static void DriveReplicatedSessionSettings(UEasySessionSubsystem& Subsystem, const FEasySessionReplicatedSettings& Settings)
+	{
+		Subsystem.HandleReplicatedSessionSettings(Settings);
+	}
+
 	/** Whether the subsystem is still holding a search object. */
 	static bool HasActiveSearch(const UEasySessionSubsystem& Subsystem)
 	{
@@ -77,10 +91,6 @@ public:
 		return Protected != 0;
 	}
 
-	/**
-	 * The stored type of an advertised session setting.
-	 * A test needs the type and not just the value, because rewriting a number as a string leaves the key in place and makes every reader see zero.
-	 */
 	/** The open public slots the session currently advertises to searchers. */
 	static int32 GetOpenPublicConnections(const UEasySessionSubsystem& Subsystem)
 	{
@@ -97,6 +107,10 @@ public:
 		return NamedSession != nullptr ? NamedSession->RegisteredPlayers.Num() : -1;
 	}
 
+	/**
+	 * The stored type of an advertised session setting.
+	 * A test needs the type and not just the value, because rewriting a number as a string leaves the key in place and makes every reader see zero.
+	 */
 	static EOnlineKeyValuePairDataType::Type GetAdvertisedSettingType(const UEasySessionSubsystem& Subsystem, FName Key)
 	{
 		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();

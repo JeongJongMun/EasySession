@@ -122,7 +122,7 @@ public:
 
 	/**
 	 * @return The settings the current session is advertising, so one field can be changed and passed to Update Easy Session.
-	 *         Host only. Returns defaults on a client, and when there is no session.
+	 *         Works for every player in the session; the password and its friends exception are only filled on the host, the one game that holds them.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionSettings GetEasySessionSettings(const UObject* WorldContextObject);

@@ -98,7 +98,7 @@ node name without spaces.
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
 | Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports |
-| Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Host only |
+| Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Works for every member; the password is only filled on the host |
 | Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the room can read and share it |
 
 `To String (EasySessionResult)` (C++ `ResultToString`) turns a result enum into text.
@@ -166,6 +166,7 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnSessionStarted` | `Result`, `ErrorMessage` | Start Easy Session finished - the match is running |
 | `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session finished - the match is over, the session is not |
 | `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session finished |
+| `OnSessionSettingsChanged` | - | Fired on a client when the host's updated settings arrive. The regular getters already return the new values - refresh the UI from them |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session finished, both on the host and on a client that left |
 | `OnMatchmakingStarted` | - | A Matchmaking run was accepted and its policy registered. Always the first event of a run |
 | `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |

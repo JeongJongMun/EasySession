@@ -45,6 +45,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionFailureEvent, const FStr
 /** Multicast event fired when the player accepts an invite from the platform overlay. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, const FEasySessionSearchResult&, Session);
 
+/** Multicast event fired on a client when the host's session settings arrive. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasySessionSettingsChangedEvent);
+
 /** Multicast event fired when a matchmaking run is accepted and its policy is registered. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyMatchmakingStartedEvent);
 
@@ -114,6 +117,13 @@ public:
 	/** Fired when an Update Session operation completes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionUpdated;
+
+	/**
+	 * Fired on a client when the host changes the session settings.
+	 * The local session copy is already reconciled when this fires, so the regular getters return the new values.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionSettingsChangedEvent OnSessionSettingsChanged;
 
 	/** Fired when a Start Session operation completes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
@@ -270,7 +280,7 @@ public:
 	 * Get these, edit the one field, pass them to Update Easy Session - building fresh settings instead resets every field you did not fill in.
 	 *
 	 * @return The settings the current session is advertising, so a change can be made without restating everything else.
-	 *         Host only. Returns defaults on a client and when there is no session.
+	 *         Works for every player in the session; the password and its friends exception are only filled on the host, the one game that holds them.
 	 */
 	FEasySessionSettings GetSessionSettings() const;
 
@@ -285,6 +295,12 @@ public:
 	 * Clients cache it for display and reconcile their local session copy.
 	 */
 	void HandleReplicatedHostSessionState(EEasySessionState HostState);
+
+	/**
+	 * Internal: receive the host's replicated session settings (called by the state actor).
+	 * Clients patch their local session copy so the regular getters return the host's values, then broadcast OnSessionSettingsChanged.
+	 */
+	void HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings);
 
 	/** @return Whether the local player is hosting the current session. Always false on a dedicated server, which has no local player - call IsSessionAuthority there instead. */
 	bool IsHost() const;
@@ -538,6 +554,9 @@ private:
 	/** Server: push the current local session state to the replicated state actor. */
 	void PushHostSessionState();
 
+	/** Server: push the member-visible settings of the current session to the replicated state actor. */
+	void PushReplicatedSessionSettings();
+
 	/**
 	 * Re-advertise the session with the in-progress key set, as the second phase of the Start or End request that is running.
 	 * Staying inside that request is what keeps this off the queue's toes: no other operation can start while it is in flight.
@@ -597,6 +616,9 @@ private:
 
 	/** Whether a replicated host state has been received for the current session. */
 	bool bHasReplicatedHostSessionState = false;
+
+	/** Latest session settings applied through replication (clients only). Guards against re-applying the same payload. */
+	FEasySessionReplicatedSettings AppliedReplicatedSessionSettings;
 
 	/** Delegate handle for per-map state actor respawns. */
 	FDelegateHandle WorldInitializedActorsHandle;

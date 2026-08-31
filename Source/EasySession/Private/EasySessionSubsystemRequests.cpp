@@ -987,6 +987,9 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 			FMath::Max(0, NamedSession->SessionSettings.NumPublicConnections - NamedSession->RegisteredPlayers.Num());
 	}
 
+	// Joined players learn about the update through the replicated state actor.
+	PushReplicatedSessionSettings();
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 

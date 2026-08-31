@@ -25,6 +25,15 @@ void AEasySessionStateActor::SetHostSessionState(EEasySessionState NewState)
 	}
 }
 
+void AEasySessionStateActor::SetReplicatedSessionSettings(const FEasySessionReplicatedSettings& NewSettings)
+{
+	if (HasAuthority() && !(ReplicatedSessionSettings == NewSettings))
+	{
+		ReplicatedSessionSettings = NewSettings;
+		ForceNetUpdate();
+	}
+}
+
 void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& Reason)
 {
 	// The host tears its own session down separately - only remote players react.
@@ -47,11 +56,17 @@ void AEasySessionStateActor::PostNetInit()
 	// Covers the initial replication on late joiners, where the property may
 	// arrive with the actor before any OnRep fires.
 	PushStateToSubsystem();
+	PushSettingsToSubsystem();
 }
 
 void AEasySessionStateActor::OnRep_HostSessionState()
 {
 	PushStateToSubsystem();
+}
+
+void AEasySessionStateActor::OnRep_ReplicatedSessionSettings()
+{
+	PushSettingsToSubsystem();
 }
 
 void AEasySessionStateActor::PushStateToSubsystem()
@@ -63,8 +78,18 @@ void AEasySessionStateActor::PushStateToSubsystem()
 	}
 }
 
+void AEasySessionStateActor::PushSettingsToSubsystem()
+{
+	UGameInstance* GameInstance = GetGameInstance();
+	if (UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr)
+	{
+		Subsystem->HandleReplicatedSessionSettings(ReplicatedSessionSettings);
+	}
+}
+
 void AEasySessionStateActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	DOREPLIFETIME(AEasySessionStateActor, HostSessionState);
+	DOREPLIFETIME(AEasySessionStateActor, ReplicatedSessionSettings);
 }

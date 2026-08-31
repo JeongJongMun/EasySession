@@ -29,6 +29,12 @@ public:
 	/** Server: replicate the host's session lifecycle state to every client. */
 	void SetHostSessionState(EEasySessionState NewState);
 
+	/** Server: replicate the settings a session member is allowed to see, so an update reaches joined players. */
+	void SetReplicatedSessionSettings(const FEasySessionReplicatedSettings& NewSettings);
+
+	/** @return The settings payload this actor replicates. For the subsystem and tests. */
+	const FEasySessionReplicatedSettings& GetReplicatedSessionSettings() const { return ReplicatedSessionSettings; }
+
 	/** Server: send every remote player back to the menu with a reason. */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastReturnToMenu(const FText& Reason);
@@ -43,11 +49,22 @@ private:
 	/** Give the replicated state to the local subsystem, which caches it for its queries. */
 	void PushStateToSubsystem();
 
+	/** Give the replicated settings to the local subsystem, which reconciles its session copy. */
+	void PushSettingsToSubsystem();
+
 	/** Runs on clients whenever the host's state changes. */
 	UFUNCTION()
 	void OnRep_HostSessionState();
 
+	/** Runs on clients whenever the host changes the session settings. */
+	UFUNCTION()
+	void OnRep_ReplicatedSessionSettings();
+
 	/** The host's authoritative session lifecycle state. */
 	UPROPERTY(ReplicatedUsing = OnRep_HostSessionState)
 	EEasySessionState HostSessionState = EEasySessionState::NoSession;
+
+	/** The host's authoritative session settings, trimmed to what members may see. */
+	UPROPERTY(ReplicatedUsing = OnRep_ReplicatedSessionSettings)
+	FEasySessionReplicatedSettings ReplicatedSessionSettings;
 };

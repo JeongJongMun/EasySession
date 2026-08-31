@@ -71,6 +71,17 @@ public:
 	/** @return How many times OnSessionsFound fired. */
 	int32 FoundBroadcasts() const { return SessionsFoundBroadcasts; }
 
+	/** How many times OnSessionSettingsChanged fired, so a test can prove the dedup guard holds. */
+	UPROPERTY()
+	int32 SettingsChangedBroadcasts = 0;
+
+	/** Bind to OnSessionSettingsChanged. */
+	UFUNCTION()
+	void HandleSettingsChanged()
+	{
+		++SettingsChangedBroadcasts;
+	}
+
 	/** Reasons seen on OnSessionFailure, in order. */
 	UPROPERTY()
 	TArray<FString> FailureReasons;

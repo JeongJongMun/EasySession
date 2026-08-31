@@ -180,6 +180,12 @@ Update:
 
 > On LAN (NULL), changing the advertise flag leaves the LAN beacon as it was: the engine's `FOnlineSessionNull::UpdateSession` swaps the settings without recomputing the beacon.
 
+Joined players receive the update automatically. The plugin replicates the member-visible
+settings - display name, max players, the flags, region, join code and custom settings -
+to every client, patches their local session copy so the regular getters return the new
+values, and fires `OnSessionSettingsChanged` for the UI to refresh on. Only the password
+and its friends exception stay on the host.
+
 ## Destroy Session
 
 `Destroy Easy Session` removes this game's named session - and only that. The player

@@ -94,7 +94,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
 | Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용 |
-| Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 호스트 전용 |
+| Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호만 호스트에서만 채워집니다 |
 | Get Easy Session Join Code | `GetSessionJoinCode` | 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 방에 있는 누구나 읽고 공유할 수 있습니다 |
 
 `To String (EasySessionResult)`(C++ `ResultToString`)는 결과 열거형을 텍스트로 바꿉니다.
@@ -158,6 +158,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnSessionStarted` | `Result`, `ErrorMessage` | Start Easy Session이 끝났을 때. 매치가 진행 중이 됩니다 |
 | `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session이 끝났을 때. 매치만 끝나고 세션은 남습니다 |
 | `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session이 끝났을 때 |
+| `OnSessionSettingsChanged` | - | 호스트가 바꾼 설정이 클라이언트에 도착했을 때. 이미 일반 게터가 새 값을 돌려주는 상태이니, 게터로 UI만 갱신하면 됩니다 |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session이 끝났을 때. 호스트든 나가는 클라이언트든 똑같이 발화합니다 |
 | `OnMatchmakingStarted` | - | Matchmaking 실행이 받아들여지고 정책이 등록됐을 때. 한 실행의 이벤트 중 언제나 첫 번째입니다 |
 | `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
