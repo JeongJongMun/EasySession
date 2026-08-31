@@ -81,6 +81,22 @@ public:
 	 * The stored type of an advertised session setting.
 	 * A test needs the type and not just the value, because rewriting a number as a string leaves the key in place and makes every reader see zero.
 	 */
+	/** The open public slots the session currently advertises to searchers. */
+	static int32 GetOpenPublicConnections(const UEasySessionSubsystem& Subsystem)
+	{
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		return NamedSession != nullptr ? NamedSession->NumOpenPublicConnections : -1;
+	}
+
+	/** How many players are registered with the session. */
+	static int32 GetRegisteredPlayerCount(const UEasySessionSubsystem& Subsystem)
+	{
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		return NamedSession != nullptr ? NamedSession->RegisteredPlayers.Num() : -1;
+	}
+
 	static EOnlineKeyValuePairDataType::Type GetAdvertisedSettingType(const UEasySessionSubsystem& Subsystem, FName Key)
 	{
 		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();

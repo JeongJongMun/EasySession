@@ -979,6 +979,14 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 		GameMode->GameSession->MaxPlayers = Params.MaxPlayers;
 	}
 
+	// UpdateSession never re-derives the open slot count, so recompute it from the registered players.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr)
+	{
+		NamedSession->NumOpenPublicConnections =
+			FMath::Max(0, NamedSession->SessionSettings.NumPublicConnections - NamedSession->RegisteredPlayers.Num());
+	}
+
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
 
