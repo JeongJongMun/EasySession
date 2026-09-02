@@ -53,9 +53,10 @@ Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and 
 | Include In Progress Sessions | true | Turn off to hide sessions whose match already started. Sessions refusing join-in-progress never appear either way |
 
 `Find Easy Friend Sessions` is the friends-flavored search: it reads the friends list
-and finds the session each friend playing this game is in, one entry per friend. A
-friend session joins like any other search result. Like the friends list itself, it
-is not supported on NULL/LAN.
+and finds the session each friend playing this game is in, one entry per friend. The
+entries come back ordered for a list: friends in a joinable session first, then the rest
+by presence (playing this game, online, offline) and name. A friend session joins like
+any other search result. Like the friends list itself, it is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess` and are also cached - `Get Last Easy Search Results` returns them anywhere, anytime (useful for server browser UIs).
 

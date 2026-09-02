@@ -147,10 +147,19 @@ enum class EEasySessionState : uint8
 	Destroying
 };
 
+struct FEasySessionFriend;
+struct FEasyFriendSession;
+
 namespace EasySession
 {
 	/** Convert a result value to a human readable string. */
 	EASYSESSION_API FString ResultToString(EEasySessionResult Result);
+
+	/** Order friends for display: playing this game first, then online, then offline, each group by name. */
+	EASYSESSION_API void SortFriends(TArray<FEasySessionFriend>& Friends);
+
+	/** Order friend sessions for display: friends in a joinable session first, then the order Sort Friends gives. */
+	EASYSESSION_API void SortFriendSessions(TArray<FEasyFriendSession>& FriendSessions);
 
 	/** Custom session setting key holding the session display name. */
 	EASYSESSION_API extern const FName SettingKey_DisplayName;

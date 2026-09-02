@@ -212,6 +212,7 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 				Entry.NativeId = FUniqueNetIdRepl(OnlineFriend->GetUserId());
 			}
 
+			EasySession::SortFriends(Result);
 			UE_LOG(LogEasySession, Log, TEXT("Friends list read: %d friend(s)."), Result.Num());
 			UserDelegate.ExecuteIfBound(EEasySessionResult::Success, FString(), Result);
 		}));
@@ -324,7 +325,8 @@ void FEasySessionSocial::FinishFriendSessions(EEasySessionResult Result, const F
 
 	const FEasyFriendSessionsCompleteDelegate Delegate = MoveTemp(FriendSessionsDelegate);
 	FriendSessionsDelegate = FEasyFriendSessionsCompleteDelegate();
-	const TArray<FEasyFriendSession> Entries = MoveTemp(FriendSessionEntries);
+	TArray<FEasyFriendSession> Entries = MoveTemp(FriendSessionEntries);
 	FriendSessionEntries.Reset();
+	EasySession::SortFriendSessions(Entries);
 	Delegate.ExecuteIfBound(Result, ErrorMessage, Entries);
 }
