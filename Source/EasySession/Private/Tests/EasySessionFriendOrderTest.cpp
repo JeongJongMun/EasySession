@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionSocial.h"
 #include "EasySessionTypes.h"
 
 namespace EasySessionFriendOrderTest
@@ -53,20 +54,20 @@ bool FEasySessionFriendOrderTest::RunTest(const FString& Parameters)
 	Entries.Add(MakeEntry(TEXT("Kai"), false, false, false));       // offline
 	Entries.Add(MakeEntry(TEXT("Ada"), true, true, true));          // in a session
 
-	EasySession::SortFriendSessions(Entries);
+	FEasySessionSocial::SortFriendSessions(Entries);
 	TestEqual(TEXT("Sessions first, then playing, online, offline; names sorted case-insensitively inside each group"),
 		Names(Entries), FString(TEXT("Ada,bob,Amy,Mia,Kai,zed")));
 
 	// Sorting again changes nothing - a refresh must not shuffle rows the player is looking at.
 	const FString Before = Names(Entries);
-	EasySession::SortFriendSessions(Entries);
+	FEasySessionSocial::SortFriendSessions(Entries);
 	TestEqual(TEXT("The order is stable under a second sort"), Names(Entries), Before);
 
 	TArray<FEasySessionFriend> Friends;
 	Friends.Add(MakeFriend(TEXT("Cy"), false, false));
 	Friends.Add(MakeFriend(TEXT("Bo"), true, false));
 	Friends.Add(MakeFriend(TEXT("Al"), true, true));
-	EasySession::SortFriends(Friends);
+	FEasySessionSocial::SortFriends(Friends);
 	TestEqual(TEXT("Read Easy Friends orders playing, online, offline"),
 		Friends[0].DisplayName + Friends[1].DisplayName + Friends[2].DisplayName, FString(TEXT("AlBoCy")));
 

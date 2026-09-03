@@ -52,15 +52,30 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
 
 	// The friend session sweep starts with the same read, so it must fail the same way.
+	// It is a queue operation, and the operation must have ended before the caller hears the result.
 	bool bSessionsCallbackFired = false;
 	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
-		[this, &bSessionsCallbackFired](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
+		[this, &bSessionsCallbackFired, Subsystem](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
 		{
 			bSessionsCallbackFired = true;
 			TestNotEqual(TEXT("Friend session search fails on NULL"), Result, EEasySessionResult::Success);
 			TestEqual(TEXT("No friend sessions returned"), FriendSessions.Num(), 0);
+			TestFalse(TEXT("The sweep has ended by the time its result is delivered"), Subsystem->IsFriendSearchRunning());
 		}));
 	TestTrue(TEXT("Friend sessions callback fired"), bSessionsCallbackFired);
+	TestFalse(TEXT("No sweep is left running"), Subsystem->IsFriendSearchRunning());
+	TestFalse(TEXT("A failed sweep never counted as busy"), Subsystem->IsBusy());
+
+	// A finished sweep must not block the next one, and a cancel with nothing running is a no-op.
+	Subsystem->CancelFriendSearch();
+	bool bSecondFired = false;
+	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
+		[this, &bSecondFired](EEasySessionResult Result, const FString&, const TArray<FEasyFriendSession>&)
+		{
+			bSecondFired = true;
+			TestNotEqual(TEXT("The second sweep is not refused as already running"), Result, EEasySessionResult::FriendSearchAlreadyInProgress);
+		}));
+	TestTrue(TEXT("Second friend sessions callback fired"), bSecondFired);
 
 	// Invite helpers must report unsupported instead of crashing.
 	TestFalse(TEXT("ShowInviteUI unsupported on NULL"), Subsystem->ShowInviteUI());

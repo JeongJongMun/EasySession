@@ -50,6 +50,12 @@ bool UEasySessionStatics::IsEasyMatchmakingRunning(const UObject* WorldContextOb
 	return Subsystem != nullptr && Subsystem->IsMatchmakingRunning();
 }
 
+bool UEasySessionStatics::IsEasyFriendSearchRunning(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsFriendSearchRunning();
+}
+
 EEasyMatchmakingState UEasySessionStatics::GetEasyMatchmakingState(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
@@ -154,6 +160,14 @@ FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextO
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->GetSessionJoinCode() : FString();
+}
+
+void UEasySessionStatics::CancelEasyFriendSearch(const UObject* WorldContextObject)
+{
+	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
+	{
+		Subsystem->CancelFriendSearch();
+	}
 }
 
 void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObject)

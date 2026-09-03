@@ -49,39 +49,6 @@ namespace EasySession
 			|| Key == SETTING_BEACONPORT;
 	}
 
-	static int32 FriendPresenceRank(const FEasySessionFriend& Friend)
-	{
-		return Friend.bIsPlayingThisGame ? 2 : (Friend.bIsOnline ? 1 : 0);
-	}
-
-	static bool FriendComesFirst(const FEasySessionFriend& A, const FEasySessionFriend& B)
-	{
-		const int32 RankA = FriendPresenceRank(A);
-		const int32 RankB = FriendPresenceRank(B);
-		if (RankA != RankB)
-		{
-			return RankA > RankB;
-		}
-		return A.DisplayName.Compare(B.DisplayName, ESearchCase::IgnoreCase) < 0;
-	}
-
-	void SortFriends(TArray<FEasySessionFriend>& Friends)
-	{
-		Friends.StableSort(FriendComesFirst);
-	}
-
-	void SortFriendSessions(TArray<FEasyFriendSession>& FriendSessions)
-	{
-		FriendSessions.StableSort([](const FEasyFriendSession& A, const FEasyFriendSession& B)
-		{
-			if (A.bHasSession != B.bHasSession)
-			{
-				return A.bHasSession;
-			}
-			return FriendComesFirst(A.Friend, B.Friend);
-		});
-	}
-
 	FString GenerateJoinCode()
 	{
 		// Codes are read over voice chat and typed on gamepads, so every character must survive both.

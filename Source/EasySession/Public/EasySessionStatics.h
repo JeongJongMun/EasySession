@@ -56,6 +56,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasyMatchmakingRunning(const UObject* WorldContextObject);
 
+	/** @return Whether a Find Easy Friend Sessions sweep is running. It is not part of Is Easy Session Busy, because it only reads. */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasyFriendSearchRunning(const UObject* WorldContextObject);
+
 	/** @return Which step a Matchmaking run is on: Searching, Joining, Hosting, Complete. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static EEasyMatchmakingState GetEasyMatchmakingState(const UObject* WorldContextObject);
@@ -145,6 +149,10 @@ public:
 	/** Cancel the running Matchmaking. A join or host that succeeds after the cancel is undone. Does nothing when no matchmaking is running. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyMatchmaking(const UObject* WorldContextObject);
+
+	/** Stop the running Find Easy Friend Sessions sweep. It completes with Canceled. Does nothing when none is running. */
+	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static void CancelEasyFriendSearch(const UObject* WorldContextObject);
 
 	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.

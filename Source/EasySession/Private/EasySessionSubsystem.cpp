@@ -5,6 +5,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasyFriendSessionOperation.h"
 #include "EasyMatchmakingOperation.h"
 #include "EasySessionOperation.h"
 #include "EasySessionRequest.h"
@@ -928,13 +929,45 @@ bool UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo&
 
 void UEasySessionSubsystem::FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete)
 {
-	if (!Social.IsValid())
+	if (!Social.IsValid() || !RequestQueue.IsValid())
 	{
 		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The session subsystem is shutting down."), {});
 		return;
 	}
 
-	Social->FindFriendSessions(MoveTemp(OnComplete));
+	if (IsFriendSearchRunning())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, TEXT("A friend session search is already running."), {});
+		return;
+	}
+
+	const TSharedRef<FEasyFriendSessionOperation> Operation = MakeShared<FEasyFriendSessionOperation>(*this);
+	RequestQueue->BeginOperation(Operation);
+
+	// Registered before Start: a friends read that fails inside Start ends the operation before Start returns.
+	Operation->Start(FEasyFriendSessionsCompleteDelegate::CreateWeakLambda(this,
+		[this, WeakOperation = TWeakPtr<FEasyFriendSessionOperation>(Operation), UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
+		{
+			const TSharedPtr<FEasyFriendSessionOperation> Ended = WeakOperation.Pin();
+			if (Ended.IsValid() && RequestQueue.IsValid())
+			{
+				RequestQueue->EndOperation(*Ended);
+			}
+			UserDelegate.ExecuteIfBound(Result, ErrorMessage, FriendSessions);
+		}));
+}
+
+void UEasySessionSubsystem::CancelFriendSearch()
+{
+	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindOperation(EEasySessionOperationType::FriendSearch))
+	{
+		Operation->Cancel();
+	}
+}
+
+bool UEasySessionSubsystem::IsFriendSearchRunning() const
+{
+	return RequestQueue.IsValid() && RequestQueue->FindOperation(EEasySessionOperationType::FriendSearch).IsValid();
 }
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)

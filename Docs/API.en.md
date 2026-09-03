@@ -94,6 +94,7 @@ node name without spaces.
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | How many it holds. 0 when there is no session |
 | Get Last Easy Search Results | `GetLastSearchResults` | The last search's results, readable anywhere. Empty while a new search runs |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Is a Matchmaking run in progress |
+| Is Easy Friend Search Running | `IsFriendSearchRunning` | Is a Find Easy Friend Sessions sweep in progress. Not part of Is Easy Session Busy: it only reads |
 | Get Easy Matchmaking State | `GetMatchmakingState` | Which step it is on: Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
@@ -155,6 +156,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`, undoing a join or host that succeeds after the cancel |
+| Cancel Easy Friend Search | `CancelFriendSearch` | Ends a Find Easy Friend Sessions sweep with `Canceled`. The lookup in flight is ignored |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |

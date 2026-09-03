@@ -90,6 +90,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | 정원. 세션이 없으면 0 |
 | Get Last Easy Search Results | `GetLastSearchResults` | 마지막 검색 결과이며 어디서든 읽을 수 있습니다. 새 검색이 도는 동안에는 비어 있습니다 |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
+| Is Easy Friend Search Running | `IsFriendSearchRunning` | Find Easy Friend Sessions 스윕이 돌고 있는가. 읽기만 하므로 Is Easy Session Busy에는 포함되지 않습니다 |
 | Get Easy Matchmaking State | `GetMatchmakingState` | 어느 단계인가. Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
@@ -149,6 +150,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Matchmaking를 `Canceled`로 끝냅니다. 이미 성사되던 참가나 생성은 되돌려집니다 |
+| Cancel Easy Friend Search | `CancelFriendSearch` | 진행 중인 Find Easy Friend Sessions 스윕을 `Canceled`로 끝냅니다. 진행 중이던 조회 하나의 답은 버립니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |

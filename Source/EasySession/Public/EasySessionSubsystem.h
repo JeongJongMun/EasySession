@@ -417,11 +417,18 @@ public:
 	 * Read the friends list and find the session each friend playing this game is in.
 	 * Each friend's lookup is its own request on the queue, one at a time, so the game's own session operations run between them instead of waiting out the sweep.
 	 * One sweep at a time; a second call while one runs fails with FriendSearchAlreadyInProgress.
+	 * The sweep is a queue operation that does not count as busy, because it only reads.
 	 * Not supported on the NULL (LAN) subsystem.
 	 *
 	 * @param OnComplete Called with one entry per friend. Entries with bHasSession carry a session joinable with JoinEasySession.
 	 */
 	void FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete = FEasyFriendSessionsCompleteDelegate());
+
+	/** Stop the running friend session sweep. It completes with Canceled and the lookup in flight is ignored. Does nothing when none is running. */
+	void CancelFriendSearch();
+
+	/** @return Whether a friend session sweep is running. Unlike Matchmaking it is not part of IsBusy. */
+	bool IsFriendSearchRunning() const;
 
 public:
 	
