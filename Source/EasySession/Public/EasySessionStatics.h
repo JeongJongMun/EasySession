@@ -56,7 +56,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasyMatchmakingRunning(const UObject* WorldContextObject);
 
-	/** @return Whether a Find Easy Friend Sessions sweep is running. It is not part of Is Easy Session Busy, because it only reads. */
+	/** @return Whether Find Easy Friend Sessions is running. It is not part of Is Easy Session Busy, because it only reads. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasyFriendSearchRunning(const UObject* WorldContextObject);
 
@@ -150,7 +150,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyMatchmaking(const UObject* WorldContextObject);
 
-	/** Stop the running Find Easy Friend Sessions sweep. It completes with Canceled. Does nothing when none is running. */
+	/** Stop the running Find Easy Friend Sessions. It completes with Canceled. Does nothing when none is running. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyFriendSearch(const UObject* WorldContextObject);
 

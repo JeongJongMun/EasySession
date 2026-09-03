@@ -56,7 +56,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 친구마다 어떤 세션에 있는지 찾아 친구 한 명당 한 항목으로 돌려줍니다. 항목은 목록에 바로
 쓸 수 있는 순서로 옵니다: 참가 가능한 세션에 있는 친구가 맨 위, 나머지는 접속 상태(이 게임
 플레이 중, 온라인, 오프라인)와 이름순입니다. 친구의 세션은 다른 검색 결과처럼 그대로 참가에
-씁니다. 더 필요 없어진 스윕은 `Cancel Easy Friend Search`로 멈추고, 새로고침 버튼은
+씁니다. 더 필요 없어진 친구 세션 검색은 `Cancel Easy Friend Search`로 멈추고, 새로고침 버튼은
 `Is Easy Friend Search Running`으로 기다립니다. 친구 목록과 마찬가지로 NULL/LAN에서는
 지원되지 않습니다.
 

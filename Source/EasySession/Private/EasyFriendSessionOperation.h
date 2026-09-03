@@ -12,8 +12,8 @@ class UEasySessionSubsystem;
  * The friend session search as a queue operation.
  *
  * It reads the friends list, then asks the queue for the session of each friend playing this game, one friend at a time.
- * The next lookup is enqueued only when the previous one answered, so a Create or Join the game asks for meanwhile runs between two lookups instead of waiting out the sweep.
- * A lookup that fails only means no session for that friend; the sweep goes on.
+ * The next lookup is enqueued only when the previous one answered, so a Create or Join the game asks for meanwhile runs between two lookups instead of waiting out the whole search.
+ * A lookup that fails only means no session for that friend; the search goes on.
  *
  * It does not count as busy: it only reads, and nothing about the player's own session changes while it runs.
  */
@@ -24,7 +24,7 @@ public:
 	explicit FEasyFriendSessionOperation(UEasySessionSubsystem& InOwner);
 
 	/**
-	 * Read the friends list and start the sweep.
+	 * Read the friends list and start the search.
 	 * Call once, after the queue registered this operation: a read that fails inside the call ends the operation before it returns.
 	 *
 	 * @param InOnComplete Called once with every friend, in display order.
@@ -54,7 +54,7 @@ private:
 
 	UEasySessionSubsystem& Owner;
 
-	/** Fired once when the sweep finishes. */
+	/** Fired once when the search finishes. */
 	FEasyFriendSessionsCompleteDelegate OnComplete;
 
 	/** One entry per friend. Entries of friends playing this game gain their session as the queue answers. */
@@ -66,7 +66,7 @@ private:
 	/** Index of the entry whose lookup is on the queue, INDEX_NONE between lookups. */
 	int32 Current = INDEX_NONE;
 
-	/** How many lookups the sweep asks for in total, for the status line. */
+	/** How many lookups the search asks for in total, for the status line. */
 	int32 LookupCount = 0;
 
 	/** Whether Finish ran. A late answer after a cancel is ignored. */

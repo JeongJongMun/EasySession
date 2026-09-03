@@ -56,7 +56,7 @@ Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and 
 and finds the session each friend playing this game is in, one entry per friend. The
 entries come back ordered for a list: friends in a joinable session first, then the rest
 by presence (playing this game, online, offline) and name. A friend session joins like
-any other search result. `Cancel Easy Friend Search` stops a sweep a menu no longer needs,
+any other search result. `Cancel Easy Friend Search` stops a friend session search a menu no longer needs,
 and `Is Easy Friend Search Running` tells a Refresh button to wait. Like the friends list
 itself, it is not supported on NULL/LAN.
 

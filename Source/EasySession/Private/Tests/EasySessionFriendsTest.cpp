@@ -51,7 +51,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		}));
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
 
-	// The friend session sweep starts with the same read, so it must fail the same way.
+	// The friend session search starts with the same read, so it must fail the same way.
 	// It is a queue operation, and the operation must have ended before the caller hears the result.
 	bool bSessionsCallbackFired = false;
 	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
@@ -60,20 +60,20 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 			bSessionsCallbackFired = true;
 			TestNotEqual(TEXT("Friend session search fails on NULL"), Result, EEasySessionResult::Success);
 			TestEqual(TEXT("No friend sessions returned"), FriendSessions.Num(), 0);
-			TestFalse(TEXT("The sweep has ended by the time its result is delivered"), Subsystem->IsFriendSearchRunning());
+			TestFalse(TEXT("The search has ended by the time its result is delivered"), Subsystem->IsFriendSearchRunning());
 		}));
 	TestTrue(TEXT("Friend sessions callback fired"), bSessionsCallbackFired);
-	TestFalse(TEXT("No sweep is left running"), Subsystem->IsFriendSearchRunning());
-	TestFalse(TEXT("A failed sweep never counted as busy"), Subsystem->IsBusy());
+	TestFalse(TEXT("No search is left running"), Subsystem->IsFriendSearchRunning());
+	TestFalse(TEXT("A failed search never counted as busy"), Subsystem->IsBusy());
 
-	// A finished sweep must not block the next one, and a cancel with nothing running is a no-op.
+	// A finished search must not block the next one, and a cancel with nothing running is a no-op.
 	Subsystem->CancelFriendSearch();
 	bool bSecondFired = false;
 	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
 		[this, &bSecondFired](EEasySessionResult Result, const FString&, const TArray<FEasyFriendSession>&)
 		{
 			bSecondFired = true;
-			TestNotEqual(TEXT("The second sweep is not refused as already running"), Result, EEasySessionResult::FriendSearchAlreadyInProgress);
+			TestNotEqual(TEXT("The second search is not refused as already running"), Result, EEasySessionResult::FriendSearchAlreadyInProgress);
 		}));
 	TestTrue(TEXT("Second friend sessions callback fired"), bSecondFired);
 

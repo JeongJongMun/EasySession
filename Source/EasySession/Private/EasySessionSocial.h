@@ -53,7 +53,7 @@ public:
 	 */
 	bool ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
 
-	/** Read the platform friends list, in display order. The friend session sweep built on it lives in FEasyFriendSessionOperation. */
+	/** Read the platform friends list, in display order. The friend session search built on it lives in FEasyFriendSessionOperation. */
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete);
 
 	/** Order friends for display: playing this game first, then online, then offline, each group by name. */

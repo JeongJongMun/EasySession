@@ -100,7 +100,7 @@ void FEasyFriendSessionOperation::HandleQueryComplete(EEasySessionResult Result,
 	FEasyFriendSession& Entry = Entries[Current];
 	Current = INDEX_NONE;
 
-	// Whatever one lookup reported, the sweep goes on - a failed lookup only means no session for that friend.
+	// Whatever one lookup reported, the search goes on - a failed lookup only means no session for that friend.
 	if (Result == EEasySessionResult::Success && Results.Num() > 0 && Results[0].IsValid())
 	{
 		Entry.Session = Results[0];
