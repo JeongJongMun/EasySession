@@ -64,6 +64,16 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 
 런타임 모듈 `EasySession` 하나입니다. 코어 서브시스템, 세션/매치메이킹 API, 블루프린트 노드를 담습니다.
 
+## 지원
+
+- **버그와 기능 요청** - [GitHub Issues](https://github.com/JeongJongMun/EasySession/issues)
+- **질문과 설정 도움** - [Discord](https://discord.gg/ewjqRCfhSe)
+- **이메일** - jjm13.dev@gmail.com
+
+문제를 알려주실 때는 엔진 버전, 사용 중인 온라인 서브시스템(NULL 또는 Steam), 관련 로그를
+함께 적어주세요. 콘솔에서 `EasySession.Status`를 치면 세션 상태와 요청 큐가 출력되는데,
+첫 질문의 대부분은 여기서 답이 나옵니다.
+
 ## 라이선스
 
 [MIT](LICENSE) - 상업과 비상업 프로젝트 모두 자유롭게 사용할 수 있습니다.

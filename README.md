@@ -64,6 +64,16 @@ These guides are still being written and do not yet cover every feature.
 
 One runtime module, `EasySession`: the core subsystem, the session/matchmaking API, and the Blueprint nodes.
 
+## Support
+
+- **Bugs and feature requests** - [GitHub Issues](https://github.com/JeongJongMun/EasySession/issues)
+- **Questions and setup help** - [Discord](https://discord.gg/ewjqRCfhSe)
+- **Email** - jjm13.dev@gmail.com
+
+When reporting a problem, include your engine version, the online subsystem you use
+(NULL or Steam), and the relevant log lines. `EasySession.Status` in the console prints
+the session state and the request queue, which answers most of the first questions.
+
 ## License
 
 [MIT](LICENSE) - free to use in commercial and non-commercial projects.
