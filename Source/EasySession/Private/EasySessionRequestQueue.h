@@ -51,6 +51,9 @@ public:
 	/** @return Whether nothing is running and nothing is waiting. */
 	bool IsIdle() const { return !Active.IsValid() && Pending.IsEmpty(); }
 
+	/** @return The type of the active request, or of the first waiting one while nothing is active yet. Unset when idle. */
+	TOptional<FEasySessionRequest::EType> GetCurrentType() const;
+
 	/** @return Whether a request of this type is running or waiting. */
 	bool Contains(FEasySessionRequest::EType Type) const;
 

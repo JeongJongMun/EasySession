@@ -78,6 +78,12 @@ bool UEasySessionStatics::IsEasySessionBusy(const UObject* WorldContextObject)
 	return Subsystem != nullptr && Subsystem->IsBusy();
 }
 
+EEasySessionActivity UEasySessionStatics::GetEasySessionActivity(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetActivity() : EEasySessionActivity::None;
+}
+
 TArray<FEasySessionSearchResult> UEasySessionStatics::GetLastEasySearchResults(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

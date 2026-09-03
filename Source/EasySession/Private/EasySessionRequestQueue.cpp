@@ -28,6 +28,19 @@ void FEasySessionRequestQueue::Enqueue(TSharedRef<FEasySessionRequest> Request)
 	ScheduleNext();
 }
 
+TOptional<FEasySessionRequest::EType> FEasySessionRequestQueue::GetCurrentType() const
+{
+	if (Active.IsValid())
+	{
+		return Active->Type;
+	}
+	if (!Pending.IsEmpty())
+	{
+		return Pending[0]->Type;
+	}
+	return TOptional<FEasySessionRequest::EType>();
+}
+
 bool FEasySessionRequestQueue::Contains(FEasySessionRequest::EType Type) const
 {
 	if (Active.IsValid() && Active->Type == Type)

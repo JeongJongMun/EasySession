@@ -84,6 +84,7 @@ bool FEasySessionCheckBusyWindow::Update()
 		return false;
 	}
 
+	CurrentTest->TestEqual(TEXT("Activity is None once the queue is idle"), Subsystem->GetActivity(), EEasySessionActivity::None);
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
@@ -133,6 +134,10 @@ bool FEasySessionBusyWindowTest::RunTest(const FString& Parameters)
 			State->bFailureBeforeCallback = Listener->FailureReasons.Num() > 0;
 			State->CreateResult = Result;
 		}));
+
+	// The create waits for the next tick, and the activity already names it.
+	TestEqual(TEXT("Activity names the queued create"), Subsystem->GetActivity(), EEasySessionActivity::Creating);
+	TestTrue(TEXT("Busy agrees with the activity"), Subsystem->IsBusy());
 
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionCheckBusyWindow(State));
 	return true;

@@ -147,6 +147,44 @@ enum class EEasySessionState : uint8
 	Destroying
 };
 
+/**
+ * What the plugin is doing right now, whoever started it.
+ * Is Easy Session Busy says whether anything runs; this says which operation, so a status line can name an invite join or a recovery no menu asked for.
+ */
+UENUM(BlueprintType)
+enum class EEasySessionActivity : uint8
+{
+	/** Nothing is running. */
+	None,
+
+	/** A session is being created. */
+	Creating,
+
+	/** A session search is running. */
+	Searching,
+
+	/** A session is being joined. */
+	Joining,
+
+	/** The current session is being destroyed. */
+	Leaving,
+
+	/** The session settings are being updated. */
+	Updating,
+
+	/** The match is being started. */
+	Starting,
+
+	/** The match is being ended. */
+	Ending,
+
+	/** A Matchmaking run is working through its steps. */
+	Matchmaking,
+
+	/** A travel this plugin started has not reached its map yet. */
+	Traveling
+};
+
 struct FEasySessionFriend;
 struct FEasyFriendSession;
 

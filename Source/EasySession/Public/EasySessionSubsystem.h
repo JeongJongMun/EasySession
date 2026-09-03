@@ -48,6 +48,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, con
 /** Multicast event fired on a client when the host's session settings arrive. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasySessionSettingsChangedEvent);
 
+/** Multicast event fired when Is Busy flips, so a UI can enable and disable its buttons without polling. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionBusyChangedEvent, bool, bBusy);
+
 /** Multicast event fired when a matchmaking run is accepted and its policy is registered. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyMatchmakingStartedEvent);
 
@@ -124,6 +127,13 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionSettingsChangedEvent OnSessionSettingsChanged;
+
+	/**
+	 * Fired whenever Is Busy changes, with the new value.
+	 * Bind once and enable or disable session buttons from the flag instead of reading Is Busy every tick.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionBusyChangedEvent OnBusyChanged;
 
 	/** Fired when a Start Session operation completes. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
@@ -332,6 +342,13 @@ public:
 	 * @return Whether a request is running or queued, a Matchmaking is working through its steps, or a travel this plugin started has not reached its map yet.
 	 */
 	bool IsBusy() const;
+
+	/**
+	 * Names the operation behind IsBusy, whoever started it, so a status line can read "Joining the session..." for an invite join too.
+	 *
+	 * @return Which operation is running. None exactly when IsBusy is false.
+	 */
+	EEasySessionActivity GetActivity() const;
 
 	/** @return What the session queue is doing right now, for status UI and bug reports, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle". */
 	FString GetQueueStatus() const;
@@ -616,6 +633,15 @@ private:
 
 	/** Whether a replicated host state has been received for the current session. */
 	bool bHasReplicatedHostSessionState = false;
+
+	/** Broadcast On Busy Changed when Is Busy differs from the last value reported. */
+	void RefreshBusyState();
+
+	/** The Is Busy value On Busy Changed last reported. */
+	bool bLastReportedBusy = false;
+
+	/** Ticker that watches Is Busy for the transitions no single call site sees, such as a travel ending. */
+	FTSTicker::FDelegateHandle BusyTickerHandle;
 
 	/** Latest session settings applied through replication (clients only). Guards against re-applying the same payload. */
 	FEasySessionReplicatedSettings AppliedReplicatedSessionSettings;

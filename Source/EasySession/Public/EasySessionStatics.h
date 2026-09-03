@@ -76,6 +76,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);
 
+	/**
+	 * Names the operation behind Is Easy Session Busy, whoever started it. Get Activity Message turns it into a status line.
+	 *
+	 * @return Which operation is running. None exactly when Is Easy Session Busy is false.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionActivity GetEasySessionActivity(const UObject* WorldContextObject);
+
 	/** @return The results of the most recent session search. Empty while a new search is running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionSearchResult> GetLastEasySearchResults(const UObject* WorldContextObject);

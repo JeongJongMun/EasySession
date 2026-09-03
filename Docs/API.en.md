@@ -85,6 +85,7 @@ node name without spaces.
 | Get Easy Session State | `GetSessionState` | Where the session is in its lifecycle. Clients read the host's replicated value, so every player sees the same thing |
 | Get Easy Session State Label | - | The same state ready to display, e.g. "In Match (InProgress)" |
 | Is Easy Session Busy | `IsBusy` | An operation or the level load after it is running. Bind a button's Is Enabled to this |
+| Get Easy Session Activity | `GetActivity` | Which operation is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking or Traveling. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
 | Get Easy Session Display Name | `GetSessionDisplayName` | The name the session is advertised under |
 | Get Easy Session Password | `GetSessionPassword` | The password this game is hosting with, to show the host. **Empty on clients** - it never leaves the host |
 | Get Easy Session Player Names | `GetSessionPlayerNames` | Everyone in the session, names only. Works on the host and on clients |
@@ -123,6 +124,20 @@ there is no C++ column.
 > Session Queue Status` describe the operation queue, and `Is Easy Matchmaking Running`,
 > `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)` and
 > `Is Online Subsystem Available (EasySession)` describe the process. Those keep their meaning whatever sessions exist.
+
+### 2.3 UI text helpers (`UEasySessionUIStatics`)
+
+Pure functions for the text a session UI shows. None of them touch session state, so a menu needs no string assembly of its own.
+
+| Node | C++ | Returns |
+|---|---|---|
+| Get Result Message | `GetResultMessage` | A player facing sentence for a result, e.g. "The session is full". Success reads "Done" |
+| Get Activity Message | `GetActivityMessage` | "Creating the session..." style line for a Get Easy Session Activity value. None gives empty text, so a status line clears itself with it |
+| Format Matchmaking Status | `FormatMatchmakingStatus` | "Searching... 12s" style line from a matchmaking state and elapsed seconds. Idle reads "Ready" |
+| Format Session Slots | `FormatSessionSlots` | "1/4   ping 32ms" for a search result |
+| Get Region Display Name | `GetRegionDisplayName` | "North America East" for a region |
+| Get Region Options | `GetRegionOptions` | Every region's display name in enum order, for a combo box |
+| Region From Index | `RegionFromIndex` | The region behind a combo box index. Out of range gives Any |
 
 ## 3. Action Blueprint nodes
 
@@ -173,6 +188,7 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
 | `OnSessionFailure` | `Reason` (String) | Not an operation finishing - the connection died or a network error hit. The dead session is cleaned up for you |
+| `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which operation began |
 | `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
 
 `Result` and `ErrorMessage` are the same values the node's own pins would have given you.
@@ -295,6 +311,10 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 ### 6.7 EEasySessionSearchMode
 
 `Default` searches for the sessions the filters describe. `ByFriend` and `BySessionId` ask the service for one exact session instead, reading `SearchTargetId` for who or which.
+
+### 6.8 EEasySessionActivity
+
+`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the operation whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
 
 ## 7. UEasyMatchmakingPolicy
 

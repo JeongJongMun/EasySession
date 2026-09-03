@@ -81,6 +81,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session State | `GetSessionState` | 세션이 수명주기의 어디에 있는가. 클라이언트는 호스트가 복제한 값을 읽으므로 모든 플레이어가 같은 값을 봅니다 |
 | Get Easy Session State Label | - | 같은 상태를 바로 표시할 수 있는 문자열로. 예: "In Match (InProgress)" |
 | Is Easy Session Busy | `IsBusy` | 작업이나 그 뒤에 이어지는 레벨 로드가 진행 중인가. 버튼의 Is Enabled에 연결하세요 |
+| Get Easy Session Activity | `GetActivity` | 지금 어떤 작업이 도는지: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling. Is Easy Session Busy가 false일 때만 None. 메뉴가 시작하지 않은 초대 참가나 복구도 이름을 붙입니다 |
 | Get Easy Session Display Name | `GetSessionDisplayName` | 세션이 광고되는 이름 |
 | Get Easy Session Password | `GetSessionPassword` | 이 게임이 호스팅 중인 세션의 비밀번호. 호스트에게 보여주기 위한 것으로, **클라이언트에서는 빈 값**입니다. 비밀번호는 호스트를 떠나지 않습니다 |
 | Get Easy Session Player Names | `GetSessionPlayerNames` | 세션에 있는 모두의 이름. 호스트와 클라이언트 양쪽에서 동작합니다 |
@@ -117,6 +118,20 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 > `Get Easy Session Queue Status`는 작업 큐를, `Is Easy Matchmaking Running`,
 > `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)`,
 > `Is Online Subsystem Available (EasySession)`은 프로세스를 설명합니다. 이들은 세션이 무엇이든 의미가 그대로입니다.
+
+### 2.3 UI 텍스트 헬퍼 (`UEasySessionUIStatics`)
+
+세션 UI가 보여줄 텍스트를 만드는 순수 함수들입니다. 세션 상태를 건드리지 않으므로 메뉴가 문자열을 직접 조립할 필요가 없습니다.
+
+| 노드 | C++ | 반환 |
+|---|---|---|
+| Get Result Message | `GetResultMessage` | 결과를 플레이어에게 보여줄 한 문장으로. 예: "The session is full". Success는 "Done" |
+| Get Activity Message | `GetActivityMessage` | Get Easy Session Activity 값을 "Creating the session..." 같은 상태 줄로. None은 빈 텍스트라 상태 줄을 지우는 데 그대로 씁니다 |
+| Format Matchmaking Status | `FormatMatchmakingStatus` | 매치메이킹 상태와 경과 초로 "Searching... 12s" 같은 상태 줄. Idle은 "Ready" |
+| Format Session Slots | `FormatSessionSlots` | 검색 결과의 "1/4   ping 32ms" |
+| Get Region Display Name | `GetRegionDisplayName` | 리전의 표시명. 예: "North America East" |
+| Get Region Options | `GetRegionOptions` | 모든 리전의 표시명을 열거형 순서대로. 콤보 박스용 |
+| Region From Index | `RegionFromIndex` | 콤보 박스 인덱스의 리전. 범위를 벗어나면 Any |
 
 ## 3. 동작 블루프린트 노드
 
@@ -165,6 +180,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Matchmaking 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 작업이 끝난 것이 아닙니다. 연결이 끊기거나 네트워크 오류가 났을 때이며, 죽은 세션은 알아서 정리됩니다 |
+| `OnBusyChanged` | `bBusy` | Is Easy Session Busy가 바뀌었을 때. 한 번 바인딩해 두고 이 플래그로 세션 버튼을 켜고 끄면 매 틱 폴링이 필요 없습니다. true로 바뀐 순간 Get Easy Session Activity가 어떤 작업이 시작됐는지 알려줍니다 |
 | `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다 |
 
 `Result`와 `ErrorMessage`는 해당 노드의 출력 핀으로 받았을 값과 같습니다.
@@ -284,6 +300,10 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 ### 6.7 EEasySessionSearchMode
 
 `Default`는 필터가 묘사하는 세션들을 찾습니다. `ByFriend`와 `BySessionId`는 대신 특정 세션 하나를 서비스에 물으며, 누구인지 또는 어느 세션인지는 `SearchTargetId`에서 읽습니다.
+
+### 6.8 EEasySessionActivity
+
+`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - 플러그인이 지금 하고 있는 일. `Get Easy Session Activity`로 읽습니다. 누가 시작했든 작업에 이름을 붙이므로, 상태 위젯이 메뉴가 요청한 적 없는 초대 참가나 연결 끊김 복구도 서술할 수 있습니다. `Get Activity Message`가 이를 문장으로 바꿉니다.
 
 ## 7. UEasyMatchmakingPolicy
 

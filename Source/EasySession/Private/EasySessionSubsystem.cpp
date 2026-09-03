@@ -93,6 +93,13 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	WorldInitializedActorsHandle = FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UEasySessionSubsystem::HandleWorldInitializedActors);
 
+	// Requests finish on a later tick and travels end inside the engine, so the busy flag is watched here rather than at every call site.
+	BusyTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
+	{
+		RefreshBusyState();
+		return true;
+	}));
+
 	if (IsRunningDedicatedServer() && GetDefault<UEasySessionConfig>()->bAutoHostOnDedicatedServer)
 	{
 		DedicatedAutoHostTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float DeltaTime)
@@ -140,6 +147,12 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(InviteBindTickerHandle);
 		InviteBindTickerHandle.Reset();
+	}
+
+	if (BusyTickerHandle.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(BusyTickerHandle);
+		BusyTickerHandle.Reset();
 	}
 
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
@@ -559,17 +572,53 @@ int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
 
 bool UEasySessionSubsystem::IsBusy() const
 {
-	// Matchmaking is included on purpose. Matchmaking is a policy state machine that
-	// enqueues one request per step, so the queue is briefly empty between steps -
-	// reporting "not busy" there would let a UI re-enable its buttons mid-search.
-	// Travel is included for the same reason: hosting, joining and starting a match
-	// all end in a level load that the player experiences as part of the operation.
+	// Matchmaking counts because the queue empties between its steps.
+	// Travel counts because the level load is the end of the operation.
 	return !RequestQueue->IsIdle() || IsMatchmakingRunning() || Travel->IsTraveling();
+}
+
+EEasySessionActivity UEasySessionSubsystem::GetActivity() const
+{
+	// Matchmaking wins over its own steps. Each step is a queued request, and naming
+	// the steps would flicker between Searching and Joining during one run.
+	if (IsMatchmakingRunning())
+	{
+		return EEasySessionActivity::Matchmaking;
+	}
+
+	const TOptional<FEasySessionRequest::EType> Type = RequestQueue->GetCurrentType();
+	if (Type.IsSet())
+	{
+		switch (Type.GetValue())
+		{
+			case FEasySessionRequest::EType::Create: return EEasySessionActivity::Creating;
+			case FEasySessionRequest::EType::Find: return EEasySessionActivity::Searching;
+			case FEasySessionRequest::EType::Join: return EEasySessionActivity::Joining;
+			case FEasySessionRequest::EType::Destroy: return EEasySessionActivity::Leaving;
+			case FEasySessionRequest::EType::Update: return EEasySessionActivity::Updating;
+			case FEasySessionRequest::EType::Start: return EEasySessionActivity::Starting;
+			case FEasySessionRequest::EType::End: return EEasySessionActivity::Ending;
+		}
+	}
+
+	return Travel->IsTraveling() ? EEasySessionActivity::Traveling : EEasySessionActivity::None;
 }
 
 FString UEasySessionSubsystem::GetQueueStatus() const
 {
 	return RequestQueue->DescribeStatus(Travel->IsTraveling());
+}
+
+void UEasySessionSubsystem::RefreshBusyState()
+{
+	const bool bBusy = IsBusy();
+	if (bBusy == bLastReportedBusy)
+	{
+		return;
+	}
+
+	bLastReportedBusy = bBusy;
+	OnBusyChanged.Broadcast(bBusy);
 }
 
 FName UEasySessionSubsystem::GetOnlineSubsystemName() const
@@ -655,6 +704,9 @@ void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Reque
 	Request->SessionName = NAME_GameSession;
 
 	RequestQueue->Enqueue(Request);
+
+	// Reported right away, so the UI disables its buttons on the same frame as the click.
+	RefreshBusyState();
 }
 
 const TSharedPtr<FEasySessionRequest>& UEasySessionSubsystem::GetActiveRequest() const
