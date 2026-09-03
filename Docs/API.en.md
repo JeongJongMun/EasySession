@@ -99,7 +99,7 @@ node name without spaces.
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
-| Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports |
+| Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports. Running operations are appended, e.g. `Idle; Matchmaking (Searching, 12s)` |
 | Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Works for every member; the password is only filled on the host |
 | Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the room can read and share it |
 
@@ -340,6 +340,14 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 Operations are callable natively with delegate callbacks: `CreateEasySession`,
 `FindEasySessions`, `JoinEasySession`, `DestroyEasySession`, `UpdateEasySession`,
 `StartMatchmaking`. Blueprint and C++ take the same code path.
+
+Every session call is one request on a queue that runs them one at a time. Matchmaking
+and `FindEasyFriendSessions` are made of several requests, so the queue also keeps a list
+of these operations: it refuses a second of the same kind, cancels them on shutdown, and
+folds them into `IsBusy`, `GetActivity` and `GetQueueStatus`. Matchmaking counts as busy;
+the friend search only reads, so it does not. Each operation submits its own requests
+through the same public functions a game uses, so a request from the game slips in between
+two of its steps instead of waiting for the whole operation.
 
 `OnModifyServerTravelURL` and `OnModifyClientTravelURL` are C++ only delegates on the
 subsystem. They give you the travel URL just before travel so you can append your own

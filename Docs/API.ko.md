@@ -95,7 +95,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
-| Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용 |
+| Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용. 돌고 있는 작업이 뒤에 붙습니다. 예: `Idle; Matchmaking (Searching, 12s)` |
 | Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호만 호스트에서만 채워집니다 |
 | Get Easy Session Join Code | `GetSessionJoinCode` | 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 방에 있는 누구나 읽고 공유할 수 있습니다 |
 
@@ -332,6 +332,13 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 작업 함수들은 델리게이트 콜백과 함께 네이티브에서 호출할 수 있습니다. `CreateEasySession`,
 `FindEasySessions`, `JoinEasySession`, `DestroyEasySession`, `UpdateEasySession`,
 `StartMatchmaking`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
+
+세션 호출은 전부 큐에 요청 하나로 들어가고, 큐는 한 번에 하나씩 실행합니다. Matchmaking과
+`FindEasyFriendSessions`는 요청 여러 개로 이루어지므로 큐가 이런 작업의 목록도 함께 가집니다.
+같은 종류의 작업이 둘 등록되는 것을 거부하고, 종료 시 취소하며, `IsBusy`, `GetActivity`,
+`GetQueueStatus`에 반영합니다. Matchmaking은 Busy로 치고, 친구 검색은 읽기만 하므로 치지
+않습니다. 작업은 게임이 쓰는 것과 같은 공개 함수로 자기 요청을 하나씩 제출하므로, 게임의
+요청은 작업 전체를 기다리지 않고 두 단계 사이에 끼어 실행됩니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.
 Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 시작할 때 한 번 바인딩하세요.
