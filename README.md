@@ -67,7 +67,7 @@ One runtime module, `EasySession`: the core subsystem, the session/matchmaking A
 ## Support
 
 - **Bugs and feature requests** - [GitHub Issues](https://github.com/JeongJongMun/EasySession/issues)
-- **Questions and setup help** - [Discord](https://discord.gg/ewjqRCfhSe)
+- **Questions and setup help** - [Discord](https://discord.gg/dR9UM2nCvB)
 - **Email** - jjm13.dev@gmail.com
 
 When reporting a problem, include your engine version, the online subsystem you use

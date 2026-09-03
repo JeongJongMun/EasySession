@@ -67,7 +67,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 ## 지원
 
 - **버그와 기능 요청** - [GitHub Issues](https://github.com/JeongJongMun/EasySession/issues)
-- **질문과 설정 도움** - [Discord](https://discord.gg/ewjqRCfhSe)
+- **질문과 설정 도움** - [Discord](https://discord.gg/dR9UM2nCvB)
 - **이메일** - jjm13.dev@gmail.com
 
 문제를 알려주실 때는 엔진 버전, 사용 중인 온라인 서브시스템(NULL 또는 Steam), 관련 로그를
