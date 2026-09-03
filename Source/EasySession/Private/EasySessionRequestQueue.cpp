@@ -2,6 +2,7 @@
 
 #include "EasySessionRequestQueue.h"
 
+#include "EasySession.h"
 #include "EasySessionConfig.h"
 #include "HAL/PlatformTime.h"
 
@@ -39,6 +40,72 @@ TOptional<FEasySessionRequest::EType> FEasySessionRequestQueue::GetCurrentType()
 		return Pending[0]->Type;
 	}
 	return TOptional<FEasySessionRequest::EType>();
+}
+
+bool FEasySessionRequestQueue::IsBusy() const
+{
+	return !IsIdle() || FindBusyOperation().IsValid();
+}
+
+bool FEasySessionRequestQueue::BeginOperation(TSharedRef<IEasySessionOperation> Operation)
+{
+	if (FindOperation(Operation->GetType()).IsValid())
+	{
+		return false;
+	}
+
+	UE_LOG(LogEasySession, Verbose, TEXT("Operation started: %s"), EasySession::OperationTypeToString(Operation->GetType()));
+	Operations.Add(MoveTemp(Operation));
+	return true;
+}
+
+void FEasySessionRequestQueue::EndOperation(const IEasySessionOperation& Operation)
+{
+	const int32 Removed = Operations.RemoveAll([&Operation](const TSharedRef<IEasySessionOperation>& Entry)
+	{
+		return &Entry.Get() == &Operation;
+	});
+
+	if (Removed > 0)
+	{
+		UE_LOG(LogEasySession, Verbose, TEXT("Operation ended: %s"), EasySession::OperationTypeToString(Operation.GetType()));
+	}
+}
+
+TSharedPtr<IEasySessionOperation> FEasySessionRequestQueue::FindOperation(EEasySessionOperationType Type) const
+{
+	for (const TSharedRef<IEasySessionOperation>& Operation : Operations)
+	{
+		if (Operation->GetType() == Type)
+		{
+			return Operation;
+		}
+	}
+
+	return nullptr;
+}
+
+TSharedPtr<IEasySessionOperation> FEasySessionRequestQueue::FindBusyOperation() const
+{
+	for (const TSharedRef<IEasySessionOperation>& Operation : Operations)
+	{
+		if (Operation->CountsAsBusy())
+		{
+			return Operation;
+		}
+	}
+
+	return nullptr;
+}
+
+void FEasySessionRequestQueue::CancelOperations()
+{
+	// Each cancel calls EndOperation, which edits the list this loop would be walking.
+	const TArray<TSharedRef<IEasySessionOperation>> Snapshot = Operations;
+	for (const TSharedRef<IEasySessionOperation>& Operation : Snapshot)
+	{
+		Operation->Cancel();
+	}
 }
 
 bool FEasySessionRequestQueue::Contains(FEasySessionRequest::EType Type) const
@@ -92,31 +159,41 @@ void FEasySessionRequestQueue::ScheduleNext()
 
 FString FEasySessionRequestQueue::DescribeStatus(bool bIdleButTraveling) const
 {
+	FString Status;
 	if (!Active.IsValid())
 	{
 		if (Pending.Num() > 0)
 		{
-			return FString::Printf(TEXT("Idle, %d queued"), Pending.Num());
+			Status = FString::Printf(TEXT("Idle, %d queued"), Pending.Num());
 		}
+		else
+		{
+			// Say so rather than reporting "Idle" while Is Busy answers true.
+			Status = bIdleButTraveling ? TEXT("Idle, traveling") : TEXT("Idle");
+		}
+	}
+	else
+	{
+		const double Elapsed = Active->GetElapsedSeconds(FPlatformTime::Seconds());
+		Status = Active->TimeoutSeconds > 0.0
+			? FString::Printf(TEXT("%s (running %.1fs of %.0fs)"), Active->GetTypeName(), Elapsed, Active->TimeoutSeconds)
+			: FString::Printf(TEXT("%s (running %.1fs, no timeout)"), Active->GetTypeName(), Elapsed);
 
-		// Say so rather than reporting "Idle" while Is Busy answers true.
-		return bIdleButTraveling ? FString(TEXT("Idle, traveling")) : FString(TEXT("Idle"));
+		if (Pending.Num() > 0)
+		{
+			TArray<FString> QueuedNames;
+			QueuedNames.Reserve(Pending.Num());
+			for (const TSharedRef<FEasySessionRequest>& Queued : Pending)
+			{
+				QueuedNames.Add(Queued->GetTypeName());
+			}
+			Status += FString::Printf(TEXT(", queued: %s"), *FString::Join(QueuedNames, TEXT(", ")));
+		}
 	}
 
-	const double Elapsed = Active->GetElapsedSeconds(FPlatformTime::Seconds());
-	FString Status = Active->TimeoutSeconds > 0.0
-		? FString::Printf(TEXT("%s (running %.1fs of %.0fs)"), Active->GetTypeName(), Elapsed, Active->TimeoutSeconds)
-		: FString::Printf(TEXT("%s (running %.1fs, no timeout)"), Active->GetTypeName(), Elapsed);
-
-	if (Pending.Num() > 0)
+	for (const TSharedRef<IEasySessionOperation>& Operation : Operations)
 	{
-		TArray<FString> QueuedNames;
-		QueuedNames.Reserve(Pending.Num());
-		for (const TSharedPtr<FEasySessionRequest>& Queued : Pending)
-		{
-			QueuedNames.Add(Queued->GetTypeName());
-		}
-		Status += FString::Printf(TEXT(", queued: %s"), *FString::Join(QueuedNames, TEXT(", ")));
+		Status += TEXT("; ") + Operation->DescribeProgress();
 	}
 
 	return Status;

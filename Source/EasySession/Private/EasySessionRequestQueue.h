@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Containers/Ticker.h"
+#include "EasySessionOperation.h"
 #include "EasySessionRequest.h"
 
 /**
@@ -18,6 +19,9 @@
  * One executes the request that just became active; the other reacts to a deadline.
  * The subsystem drives completion too, by popping the active request and letting the queue move on.
  * It has to, because it owns the delegate handles to clear and the events to broadcast.
+ *
+ * The queue also keeps the list of multi-step operations, see IEasySessionOperation.
+ * An operation submits its own requests; the list only says which operations exist, so busy, already-running, cancel and the status line agree.
  */
 class FEasySessionRequestQueue
 {
@@ -48,8 +52,30 @@ public:
 	/** @return The request running right now, or null while the queue is idle. */
 	const TSharedPtr<FEasySessionRequest>& GetActive() const { return Active; }
 
-	/** @return Whether nothing is running and nothing is waiting. */
+	/** @return Whether nothing is running and nothing is waiting. Operations do not count; they occupy no slot. */
 	bool IsIdle() const { return !Active.IsValid() && Pending.IsEmpty(); }
+
+	/** @return Whether a request is running or waiting, or an operation that counts as busy is running. */
+	bool IsBusy() const;
+
+	/**
+	 * Register a multi-step operation. One of each type runs at a time, so a second of the same type is refused.
+	 *
+	 * @return Whether the operation was registered.
+	 */
+	bool BeginOperation(TSharedRef<IEasySessionOperation> Operation);
+
+	/** Forget an operation. The operation calls this itself when it completes or is canceled. */
+	void EndOperation(const IEasySessionOperation& Operation);
+
+	/** @return The running operation of this type, or null. */
+	TSharedPtr<IEasySessionOperation> FindOperation(EEasySessionOperationType Type) const;
+
+	/** @return The running operation that counts as busy, or null. */
+	TSharedPtr<IEasySessionOperation> FindBusyOperation() const;
+
+	/** Cancel every operation. Each cancel ends its operation from inside the call, so the walk runs over a copy of the list. */
+	void CancelOperations();
 
 	/** @return The type of the active request, or of the first waiting one while nothing is active yet. Unset when idle. */
 	TOptional<FEasySessionRequest::EType> GetCurrentType() const;
@@ -57,7 +83,7 @@ public:
 	/** @return Whether a request of this type is running or waiting. */
 	bool Contains(FEasySessionRequest::EType Type) const;
 
-	/** One line for status UI and bug reports, e.g. "Create (running 2.4s of 30s), queued: Start" or "Idle, 1 queued". */
+	/** One line for status UI and bug reports, e.g. "Create (running 2.4s of 30s), queued: Start; Friend search 3/7" or "Idle, 1 queued". */
 	FString DescribeStatus(bool bIdleButTraveling) const;
 
 private:
@@ -88,6 +114,9 @@ private:
 
 	/** Requests waiting their turn, oldest first. */
 	TArray<TSharedRef<FEasySessionRequest>> Pending;
+
+	/** Multi-step operations in progress, in registration order. At most one per type. */
+	TArray<TSharedRef<IEasySessionOperation>> Operations;
 
 	/** Ticker handle for the deadline watchdog, which runs once a second while a request is active. */
 	FTSTicker::FDelegateHandle WatchdogHandle;

@@ -9,6 +9,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySessionJoinApproval.h"
 #include "EasySessionRequest.h"
+#include "EasySessionRequestQueue.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
@@ -37,6 +38,12 @@ public:
 	static void SetCreatedActiveSession(UEasySessionSubsystem& Subsystem, bool bCreated)
 	{
 		Subsystem.bCreatedActiveSession = bCreated;
+	}
+
+	/** The subsystem's request queue, so a test can register operations without a real matchmaking or friend search. */
+	static FEasySessionRequestQueue& GetRequestQueue(UEasySessionSubsystem& Subsystem)
+	{
+		return *Subsystem.RequestQueue;
 	}
 
 	/**

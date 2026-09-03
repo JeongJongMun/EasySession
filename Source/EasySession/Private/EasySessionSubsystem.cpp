@@ -5,6 +5,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasySessionOperation.h"
 #include "EasySessionRequest.h"
 #include "EasySessionRequestQueue.h"
 #include "EasySessionServerGate.h"
@@ -167,6 +168,9 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle);
 		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
 	}
+
+	// Operations end themselves when canceled, and they may still hold a step's delegate - cancel before the queue goes.
+	RequestQueue->CancelOperations();
 
 	// Destroying these unbinds everything they registered, tickers included.
 	RequestQueue.Reset();
@@ -574,7 +578,22 @@ bool UEasySessionSubsystem::IsBusy() const
 {
 	// Matchmaking counts because the queue empties between its steps.
 	// Travel counts because the level load is the end of the operation.
-	return !RequestQueue->IsIdle() || IsMatchmakingRunning() || Travel->IsTraveling();
+	return RequestQueue->IsBusy() || IsMatchmakingRunning() || Travel->IsTraveling();
+}
+
+namespace
+{
+	/** The activity a busy operation shows as. Only operations that count as busy reach here. */
+	EEasySessionActivity OperationActivity(EEasySessionOperationType Type)
+	{
+		switch (Type)
+		{
+			case EEasySessionOperationType::Matchmaking: return EEasySessionActivity::Matchmaking;
+			case EEasySessionOperationType::FriendSearch:
+			default:
+				return EEasySessionActivity::None;
+		}
+	}
 }
 
 EEasySessionActivity UEasySessionSubsystem::GetActivity() const
@@ -584,6 +603,11 @@ EEasySessionActivity UEasySessionSubsystem::GetActivity() const
 	if (IsMatchmakingRunning())
 	{
 		return EEasySessionActivity::Matchmaking;
+	}
+
+	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindBusyOperation())
+	{
+		return OperationActivity(Operation->GetType());
 	}
 
 	const TOptional<FEasySessionRequest::EType> Type = RequestQueue->GetCurrentType();
