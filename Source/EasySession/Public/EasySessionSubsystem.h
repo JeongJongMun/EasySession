@@ -269,9 +269,9 @@ public:
 	/** @return The state of the running Matchmaking. Idle when none is running. */
 	EEasyMatchmakingState GetMatchmakingState() const;
 
-	/** @return The running matchmaking policy, for binding its On State Changed event. */
+	/** @return The running matchmaking policy, for binding its On State Changed event. Null when none is running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
-	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const { return ActiveMatchmakingPolicy; }
+	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const;
 
 	/**
 	 * This and the queries below it are all about the game session and take no session argument - a future party gets its own queries, because these bodies read the world and the match lifecycle, which a party does not have.
@@ -338,8 +338,9 @@ public:
 
 	/**
 	 * Session buttons bind here to disable themselves; IsMatchmakingRunning asks about Matchmaking alone.
+	 * Matchmaking is a queue operation that counts as busy, so it is covered even while the queue is empty between its steps.
 	 *
-	 * @return Whether a request is running or queued, a Matchmaking is working through its steps, or a travel this plugin started has not reached its map yet.
+	 * @return Whether a request is running or queued, a busy operation such as Matchmaking is running, or a travel this plugin started has not reached its map yet.
 	 */
 	bool IsBusy() const;
 
@@ -592,10 +593,6 @@ private:
 	void AutoHostDedicatedServerSession();
 
 private:
-
-	/** The matchmaking policy currently running Matchmaking. Null when idle. */
-	UPROPERTY()
-	TObjectPtr<UEasyMatchmakingPolicy> ActiveMatchmakingPolicy;
 
 	/**
 	 * Whether the session that exists now was created by this process.

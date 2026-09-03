@@ -5,6 +5,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasyMatchmakingOperation.h"
 #include "EasySessionOperation.h"
 #include "EasySessionRequest.h"
 #include "EasySessionRequestQueue.h"
@@ -179,7 +180,6 @@ void UEasySessionSubsystem::Deinitialize()
 	ServerGate.Reset();
 	JoinApproval.Reset();
 
-	ActiveMatchmakingPolicy = nullptr;
 	ActiveSearch.Reset();
 
 	Super::Deinitialize();
@@ -274,15 +274,22 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	}
 
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
-	ActiveMatchmakingPolicy = Policy;
+	const TSharedRef<FEasyMatchmakingOperation> Operation = MakeShared<FEasyMatchmakingOperation>(*Policy);
+	RequestQueue->BeginOperation(Operation);
 	Policy->OnStateChanged.AddDynamic(this, &UEasySessionSubsystem::RelayMatchmakingStateChanged);
 	Policy->OnUpdated.AddDynamic(this, &UEasySessionSubsystem::RelayMatchmakingUpdated);
 	OnMatchmakingStarted.Broadcast();
 
 	Policy->Start(*this, MatchmakingParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this, UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
+		[this, WeakOperation = TWeakPtr<FEasyMatchmakingOperation>(Operation), UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			ActiveMatchmakingPolicy = nullptr;
+			// Ended before anyone hears about it, so a listener asking Is Matchmaking Running gets the answer that matches the event.
+			const TSharedPtr<FEasyMatchmakingOperation> Ended = WeakOperation.Pin();
+			if (Ended.IsValid() && RequestQueue.IsValid())
+			{
+				RequestQueue->EndOperation(*Ended);
+			}
+
 			// Observers first: the requester's delegate often tears down the very UI that is listening.
 			OnMatchmakingComplete.Broadcast(Result, ErrorMessage);
 			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
@@ -301,20 +308,32 @@ void UEasySessionSubsystem::RelayMatchmakingUpdated(EEasyMatchmakingState Matchm
 
 void UEasySessionSubsystem::CancelMatchmaking()
 {
-	if (ActiveMatchmakingPolicy != nullptr)
+	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindOperation(EEasySessionOperationType::Matchmaking))
 	{
-		ActiveMatchmakingPolicy->Cancel();
+		Operation->Cancel();
 	}
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const
 {
-	return ActiveMatchmakingPolicy != nullptr && ActiveMatchmakingPolicy->GetState() != EEasyMatchmakingState::Idle && ActiveMatchmakingPolicy->GetState() != EEasyMatchmakingState::Complete;
+	return RequestQueue.IsValid() && RequestQueue->FindOperation(EEasySessionOperationType::Matchmaking).IsValid();
 }
 
 EEasyMatchmakingState UEasySessionSubsystem::GetMatchmakingState() const
 {
-	return ActiveMatchmakingPolicy != nullptr ? ActiveMatchmakingPolicy->GetState() : EEasyMatchmakingState::Idle;
+	const UEasyMatchmakingPolicy* Policy = GetActiveMatchmakingPolicy();
+	return Policy != nullptr ? Policy->GetState() : EEasyMatchmakingState::Idle;
+}
+
+UEasyMatchmakingPolicy* UEasySessionSubsystem::GetActiveMatchmakingPolicy() const
+{
+	if (!RequestQueue.IsValid())
+	{
+		return nullptr;
+	}
+
+	const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindOperation(EEasySessionOperationType::Matchmaking);
+	return Operation.IsValid() ? StaticCastSharedPtr<FEasyMatchmakingOperation>(Operation)->GetPolicy() : nullptr;
 }
 
 bool UEasySessionSubsystem::IsInSession() const
@@ -576,9 +595,9 @@ int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
 
 bool UEasySessionSubsystem::IsBusy() const
 {
-	// Matchmaking counts because the queue empties between its steps.
+	// The queue counts its busy operations, Matchmaking among them, so an empty queue between steps still reads busy.
 	// Travel counts because the level load is the end of the operation.
-	return RequestQueue->IsBusy() || IsMatchmakingRunning() || Travel->IsTraveling();
+	return RequestQueue->IsBusy() || Travel->IsTraveling();
 }
 
 namespace
@@ -598,13 +617,8 @@ namespace
 
 EEasySessionActivity UEasySessionSubsystem::GetActivity() const
 {
-	// Matchmaking wins over its own steps. Each step is a queued request, and naming
-	// the steps would flicker between Searching and Joining during one run.
-	if (IsMatchmakingRunning())
-	{
-		return EEasySessionActivity::Matchmaking;
-	}
-
+	// A busy operation wins over its own steps. Each matchmaking step is a queued request,
+	// and naming the steps would flicker between Searching and Joining during one run.
 	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindBusyOperation())
 	{
 		return OperationActivity(Operation->GetType());
