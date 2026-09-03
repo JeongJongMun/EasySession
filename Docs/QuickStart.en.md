@@ -26,7 +26,9 @@ wiring your first node, and it shows what the finished flow looks like.
 5. Host in one window, Find and Join in the other.
 
 The widgets behind it live in `/EasySession/Examples/UI/`. `WBP_MainMenu` is the one to
-read first - it uses every node in the steps below.
+read first - it uses every node in the steps below. The status line at its bottom is
+`Modules/WBP_SessionStatus`, a widget that binds the plugin's events once and narrates
+whatever runs, whoever started it. Drop it on any screen that should show session progress.
 
 ## 3. Host a session
 
