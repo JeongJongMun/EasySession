@@ -36,8 +36,8 @@ why none of them return a value directly: each one finishes through its `OnSucce
 `ErrorMessage` (String). A request rejected before it ever reaches the service - no
 online subsystem, a parameter that cannot work - fails on `OnFailure` immediately.
 
-EasySession runs its own operations one at a time, so pressing a button repeatedly
-produces results in order instead of errors. The queue covers what goes through EasySession; the engine's
+EasySession runs its own operations one at a time, so a call made while another is still
+running waits its turn instead of failing. The queue covers what goes through EasySession; the engine's
 own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 
 | Node | Inputs | Notes |
