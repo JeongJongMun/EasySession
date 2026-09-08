@@ -32,10 +32,10 @@ public:
 	void Start(FEasyFriendSessionsCompleteDelegate InOnComplete);
 
 	//~ Begin IEasySessionOperation interface
-	EEasySessionOperationType GetType() const override { return EEasySessionOperationType::FriendSearch; }
-	bool CountsAsBusy() const override { return false; }
-	void Cancel() override;
-	FString DescribeProgress() const override;
+	virtual EEasySessionOperationType GetType() const override { return EEasySessionOperationType::FriendSearch; }
+	virtual bool CountsAsBusy() const override { return false; }
+	virtual void Cancel() override;
+	virtual FString DescribeProgress() const override;
 	//~ End IEasySessionOperation interface
 
 private:

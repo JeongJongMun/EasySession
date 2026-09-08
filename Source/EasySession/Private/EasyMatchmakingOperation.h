@@ -21,10 +21,10 @@ public:
 	explicit FEasyMatchmakingOperation(UEasyMatchmakingPolicy& InPolicy);
 
 	//~ Begin IEasySessionOperation interface
-	EEasySessionOperationType GetType() const override { return EEasySessionOperationType::Matchmaking; }
-	bool CountsAsBusy() const override { return true; }
-	void Cancel() override;
-	FString DescribeProgress() const override;
+	virtual EEasySessionOperationType GetType() const override { return EEasySessionOperationType::Matchmaking; }
+	virtual bool CountsAsBusy() const override { return true; }
+	virtual void Cancel() override;
+	virtual FString DescribeProgress() const override;
 	//~ End IEasySessionOperation interface
 
 	/** @return The policy running this matchmaking. */
