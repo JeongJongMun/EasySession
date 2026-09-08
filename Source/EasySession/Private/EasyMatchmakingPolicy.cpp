@@ -318,6 +318,14 @@ FEasySessionHostParams UEasyMatchmakingPolicy::MakeFallbackHostParams() const
 	{
 		FallbackParams.Region = Params.Search.Region;
 	}
+
+	// The fallback room is public: a password or hidden flag would keep this run's own searchers out of it.
+	if (!FallbackParams.Password.IsEmpty() || FallbackParams.bHidden)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Matchmaking fallback ignores Host Password and Hidden: the room must be one other searchers can join."));
+		FallbackParams.Password.Empty();
+		FallbackParams.bHidden = false;
+	}
 	return FallbackParams;
 }
 

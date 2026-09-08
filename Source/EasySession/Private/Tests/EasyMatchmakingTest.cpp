@@ -255,6 +255,8 @@ bool FEasyMatchmakingWaitFallbackFilters::Update()
 		CurrentTest->TestEqual(TEXT("The filter-only key was added"), ReadBack.CustomSettings.FindRef(TEXT("Region")), FString(TEXT("KR")));
 		CurrentTest->TestEqual(TEXT("The host-only key survived"), ReadBack.CustomSettings.FindRef(TEXT("MOTD")), FString(TEXT("Hello")));
 		CurrentTest->TestEqual(TEXT("The fallback session advertises the searched region"), ReadBack.Region, EEasySessionRegion::EastAsia);
+		CurrentTest->TestFalse(TEXT("The fallback session advertises no password"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
+		CurrentTest->TestFalse(TEXT("The fallback session is not hidden"), ReadBack.bHidden);
 
 		Subsystem->DestroyEasySession();
 		State->bCleanupIssued = true;
@@ -278,9 +280,10 @@ bool FEasyMatchmakingWaitFallbackFilters::Update()
 }
 
 /**
- * The fallback host inherits the search filters. Host params used to be passed to Create
- * as given, so a LAN search could fall back to an online session, and a run filtering on
- * GameMode=Deathmatch could open a room its own search would never return.
+ * The fallback host inherits the search filters and drops what would hide it. Host params
+ * used to be passed to Create as given, so a LAN search could fall back to an online
+ * session, a run filtering on GameMode=Deathmatch could open a room its own search would
+ * never return, and a host password or hidden flag opened a room no searcher could join.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingFallbackFiltersTest, "EasySession.Matchmaking.FallbackHostMatchesTheFilters", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
@@ -310,6 +313,9 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 	Params.Host.CustomSettings.Add(TEXT("MOTD"), TEXT("Hello"));
 	// Also on purpose: the LAN search must pull the fallback onto the LAN.
 	Params.Host.bIsLANMatch = false;
+	// And on purpose: neither may reach the fallback room, or the next searcher skips it.
+	Params.Host.Password = TEXT("1234");
+	Params.Host.bHidden = true;
 	Params.Host.bStartListening = false;
 	Params.bAllowHostFallback = true;
 	Params.MaxSearchPasses = 1;
@@ -330,7 +336,10 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("The LAN search pulls the fallback onto the LAN"), Folded.bIsLANMatch);
 		TestEqual(TEXT("The folded params carry the filtered value"), Folded.CustomSettings.FindRef(TEXT("GameMode")), FString(TEXT("Deathmatch")));
 		TestEqual(TEXT("The folded params carry the searched region"), Folded.Region, EEasySessionRegion::EastAsia);
+		TestTrue(TEXT("The folded params drop the host password"), Folded.Password.IsEmpty());
+		TestFalse(TEXT("The folded params are not hidden"), Folded.bHidden);
 	}
+	AddExpectedMessage(TEXT("Matchmaking fallback ignores Host Password and Hidden"), ELogVerbosity::Warning, EAutomationExpectedMessageFlags::Contains, 0);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitFallbackFilters(State));

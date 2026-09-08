@@ -32,7 +32,8 @@ When the fallback does host, it inherits the search's filters: the session is cr
 the network the search looked at (`LAN Query`), and every `Required Custom Settings` pair
 is advertised on it, overwriting the same key in Host > Custom Settings. A searched
 `Region` is advertised the same way. The room a run opens is one its own search would
-have found.
+have found, so Host `Password` and `Hidden` do not apply to it: with either set, the
+fallback logs a warning and opens a public room.
 
 ### Matchmaking one specific room
 
