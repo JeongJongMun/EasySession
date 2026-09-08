@@ -100,7 +100,14 @@ void FEasyFriendSessionOperation::HandleQueryComplete(EEasySessionResult Result,
 	FEasyFriendSession& Entry = Entries[Current];
 	Current = INDEX_NONE;
 
-	// Whatever one lookup reported, the search goes on - a failed lookup only means no session for that friend.
+	// A lookup the service never answered may still answer later. Asking the next friend now would hand that answer to the wrong friend, so the search ends here.
+	if (Result == EEasySessionResult::Timeout)
+	{
+		Finish(EEasySessionResult::Timeout, TEXT("The online service did not answer a friend lookup in time."));
+		return;
+	}
+
+	// Any other failure only means no session for that friend - the search goes on.
 	if (Result == EEasySessionResult::Success && Results.Num() > 0 && Results[0].IsValid())
 	{
 		Entry.Session = Results[0];
