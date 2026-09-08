@@ -269,7 +269,7 @@ public:
 	/** @return The state of the running Matchmaking. Idle when none is running. */
 	EEasyMatchmakingState GetMatchmakingState() const;
 
-	/** @return The running matchmaking policy, for binding its On State Changed event. Null when none is running. */
+	/** @return The running matchmaking policy. Null when none is running. For progress, bind the subsystem's On Matchmaking events: they start before this object exists. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const;
 
