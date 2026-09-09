@@ -784,7 +784,7 @@ enum class EEasyDisconnectReason : uint8
 	/** No disconnect has been recorded. */
 	None,
 
-	/** The connection to the host was lost (host quit, crashed, or the network dropped). */
+	/** The connection to the host was lost, before or after the map loaded: the host quit, crashed, or the network failed. */
 	ConnectionLost,
 
 	/** The host destroyed the session and sent everyone back to the menu. */
@@ -793,7 +793,7 @@ enum class EEasyDisconnectReason : uint8
 	/** Traveling to the session's map failed. */
 	TravelFailure,
 
-	/** The host refused the connection (wrong password, not joinable) and Reason Text says why. */
+	/** The host's join approval refused the connection (wrong password, not joinable). Reason Text is the refusal message. */
 	Rejected
 };
 
@@ -810,7 +810,7 @@ struct EASYSESSION_API FEasyDisconnectInfo
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	EEasyDisconnectReason Reason = EEasyDisconnectReason::None;
 
-	/** Human readable description, suitable for showing in a popup. */
+	/** Human readable description. Safe to show to the player or write to a log without changes. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FText ReasonText;
 };

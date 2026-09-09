@@ -282,10 +282,10 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | 값 | 뜻 |
 |---|---|
 | `None` | 기록된 것이 없습니다 |
-| `ConnectionLost` | 연결이 죽었습니다. 호스트가 나갔거나, 튕겼거나, 네트워크가 끊겼습니다 |
+| `ConnectionLost` | 연결이 죽었습니다. 호스트가 나갔거나, 튕겼거나, 네트워크가 끊겼습니다. 조인 도중 호스트가 죽은 경우도 여기입니다 |
 | `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 돌려보냈습니다 |
 | `TravelFailure` | 세션의 맵을 로드하지 못했습니다 |
-| `Rejected` | 호스트가 사유를 대며 접속을 거절했습니다. 비밀번호 불일치, 더 이상 받지 않는 매치 등이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
+| `Rejected` | 호스트의 승인 검사가 사유를 대며 접속을 거절했습니다. 비밀번호 불일치, 더 이상 받지 않는 매치 등이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
 
 ### 6.4 EEasyMatchmakingState
 

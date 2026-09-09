@@ -795,21 +795,28 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 		return;
 	}
 
-	// Only these two carry a sentence written for the player - a wrong password, a full
-	// match, a version mismatch. The first arrives while joining, the second once
-	// connected. Every other type leaves a debug dump, which belongs in the log.
-	const bool bHostRefused =
+	EEasyDisconnectReason DisconnectReason = EEasyDisconnectReason::ConnectionLost;
+	FText ReasonText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
+
+	// Only these two types carry a message written for the player. Every other type carries debug text, which belongs in the log.
+	const bool bHasMessage =
 		(FailureType == ENetworkFailure::PendingConnectionFailure ||
 			FailureType == ENetworkFailure::FailureReceived) &&
 		!ErrorString.IsEmpty();
 
-	const FText PopupText = bHostRefused
-		? FText::FromString(ErrorString)
-		: NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
+	if (bHasMessage)
+	{
+		// A lost host connection has a message too, so only the gate's RefusalMark in front means a refusal.
+		FString Message = ErrorString;
+		if (Message.RemoveFromStart(FEasySessionServerGate::RefusalMark, ESearchCase::CaseSensitive))
+		{
+			DisconnectReason = EEasyDisconnectReason::Rejected;
+		}
 
-	NotifyDisconnectedFromSession(
-		bHostRefused ? EEasyDisconnectReason::Rejected : EEasyDisconnectReason::ConnectionLost,
-		PopupText);
+		ReasonText = FText::FromString(Message);
+	}
+
+	NotifyDisconnectedFromSession(DisconnectReason, ReasonText);
 }
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)

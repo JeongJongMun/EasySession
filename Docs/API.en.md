@@ -293,10 +293,10 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 | Value | Means |
 |---|---|
 | `None` | Nothing was recorded |
-| `ConnectionLost` | The link died - the host quit, crashed, or the network dropped |
+| `ConnectionLost` | The link died - the host quit, crashed, or the network dropped. A host that died while you were joining lands here too |
 | `HostDestroyedSession` | The host deliberately sent everyone back, via `Destroy Easy Session For Everyone` |
 | `TravelFailure` | The session's map failed to load |
-| `Rejected` | The host refused the connection and said why: a wrong password, a match no longer taking players. `ReasonText` is the host's own sentence, safe to show |
+| `Rejected` | The host's join approval refused the connection and said why: a wrong password, a match no longer taking players. `ReasonText` is the host's own sentence, safe to show |
 
 ### 6.4 EEasyMatchmakingState
 

@@ -131,10 +131,10 @@ Event Construct
 
 | Reason | 언제 |
 |---|---|
-| `ConnectionLost` | 호스트가 나갔거나, 죽었거나, 네트워크가 끊김 |
+| `ConnectionLost` | 호스트가 나갔거나, 죽었거나, 네트워크가 끊김. 조인 도중 호스트가 죽은 경우도 여기 |
 | `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 내보냄 |
 | `TravelFailure` | 세션의 맵으로 이동하지 못함 |
-| `Rejected` | 호스트가 연결을 거절함. 비밀번호가 틀렸거나 매치가 닫혀 있음. 사유는 `Reason Text`에 |
+| `Rejected` | 호스트의 승인 검사가 연결을 거절함. 비밀번호가 틀렸거나 매치가 닫혀 있음. 사유는 `Reason Text`에 |
 
 비콘이 잘 동작하더라도 이 핸들러는 남겨 두세요. 연결이 끊기는 모든 경우를 받아내는 안전망입니다.
 

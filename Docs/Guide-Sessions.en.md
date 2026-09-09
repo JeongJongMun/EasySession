@@ -135,10 +135,10 @@ rather than matching the text. There are four of them:
 
 | Reason | When |
 |---|---|
-| `ConnectionLost` | The host quit, crashed, or the network dropped |
+| `ConnectionLost` | The host quit, crashed, or the network dropped - a host that died while you were joining lands here too |
 | `HostDestroyedSession` | The host sent everyone out with `Destroy Easy Session For Everyone` |
 | `TravelFailure` | Traveling to the session's map failed |
-| `Rejected` | The host refused the connection - wrong password, or a closed match. `Reason Text` says which |
+| `Rejected` | The host's join approval refused the connection - wrong password, or a closed match. `Reason Text` says which |
 
 Keep this handler even with the beacon working: it is the safety net for every way a
 connection can end.

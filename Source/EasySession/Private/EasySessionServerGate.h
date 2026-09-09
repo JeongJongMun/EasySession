@@ -79,6 +79,9 @@ public:
 	 */
 	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
 
+	/** Prefix on every refusal message PreLogin writes. The engine reports a refusal and a lost host connection with the same failure type, so the client checks this prefix to know which one it received. */
+	static constexpr const TCHAR* RefusalMark = TEXT("EasySession: ");
+
 private:
 
 	/** Refuse the arriving player when ApproveJoin says no, by writing the reason into ErrorMessage. */

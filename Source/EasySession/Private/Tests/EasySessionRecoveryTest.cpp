@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionConfig.h"
+#include "EasySessionServerGate.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
@@ -542,11 +543,23 @@ bool FEasySessionWaitForNetworkFilter::Update()
 			GEngine->BroadcastNetworkFailure(nullptr, nullptr, ENetworkFailure::ConnectionLost, TEXT("stray"));
 			CurrentTest->TestEqual(TEXT("A worldless failure outside a session is ignored"), State->Listener->FailureReasons.Num(), ReasonsBefore);
 
-			// A refusal the host wrote reaches the player verbatim.
-			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::FailureReceived, TEXT("Wrong password."));
-			const FEasyDisconnectInfo Refusal = Subsystem->ConsumeLastDisconnectInfo();
-			CurrentTest->TestEqual(TEXT("A host-written refusal is recorded as a rejection"), Refusal.Reason, EEasyDisconnectReason::Rejected);
-			CurrentTest->TestEqual(TEXT("With the host's own sentence"), Refusal.ReasonText.ToString(), FString(TEXT("Wrong password.")));
+			// A message the host sent after the map loaded is shown unchanged, but it is not a refusal: a host that exits the game sends one too.
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::FailureReceived, TEXT("Host closed the connection."));
+			const FEasyDisconnectInfo HostClosed = Subsystem->ConsumeLastDisconnectInfo();
+			CurrentTest->TestEqual(TEXT("A host-sent failure after connecting is a lost connection"), HostClosed.Reason, EEasyDisconnectReason::ConnectionLost);
+			CurrentTest->TestEqual(TEXT("With the host's message unchanged"), HostClosed.ReasonText.ToString(), FString(TEXT("Host closed the connection.")));
+
+			// The engine's own pending-connection message means the host connection was lost, not a refusal.
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::PendingConnectionFailure, TEXT("Your connection to the host has been lost."));
+			const FEasyDisconnectInfo LostHost = Subsystem->ConsumeLastDisconnectInfo();
+			CurrentTest->TestEqual(TEXT("A host lost before the map loaded is a lost connection"), LostHost.Reason, EEasyDisconnectReason::ConnectionLost);
+			CurrentTest->TestEqual(TEXT("With the engine's message unchanged"), LostHost.ReasonText.ToString(), FString(TEXT("Your connection to the host has been lost.")));
+
+			// The same failure type with the gate's RefusalMark in front is a refusal, and the mark is removed before the message is shown.
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::PendingConnectionFailure, FString(FEasySessionServerGate::RefusalMark) + TEXT("Wrong session password."));
+			const FEasyDisconnectInfo Marked = Subsystem->ConsumeLastDisconnectInfo();
+			CurrentTest->TestEqual(TEXT("A marked pending failure is a rejection"), Marked.Reason, EEasyDisconnectReason::Rejected);
+			CurrentTest->TestEqual(TEXT("With the mark removed"), Marked.ReasonText.ToString(), FString(TEXT("Wrong session password.")));
 
 			Finish(*State);
 			return true;

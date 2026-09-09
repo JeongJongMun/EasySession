@@ -155,7 +155,7 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 		if (PendingConnection == nullptr)
 		{
 			UE_LOG(LogEasySession, Warning, TEXT("PreLogin: could not find the pending connection for '%s'. Rejecting to protect the password session."), *NewPlayer.ToString());
-			ErrorMessage = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
+			ErrorMessage = RefusalMark + NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
 			return;
 		}
 
@@ -166,6 +166,6 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 	FString Reason;
 	if (ApproveJoin(NewPlayer, SuppliedPassword, Reason) != EEasyJoinApprovalResult::Approved)
 	{
-		ErrorMessage = Reason;
+		ErrorMessage = RefusalMark + Reason;
 	}
 }
