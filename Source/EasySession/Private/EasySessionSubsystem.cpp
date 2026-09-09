@@ -1195,7 +1195,7 @@ void UEasySessionSubsystem::AutoHostDedicatedServerSession()
 {
 	FEasySessionHostParams HostParams = GetDefault<UEasySessionConfig>()->DedicatedServerHostParams;
 	HostParams.HostMode = EEasySessionHostMode::DedicatedServer;
-	HostParams.MapName.Empty();
+	HostParams.InitialMapName.Empty();
 
 	UE_LOG(LogEasySession, Log, TEXT("Dedicated server detected. Auto hosting session '%s'."), *HostParams.SessionDisplayName);
 

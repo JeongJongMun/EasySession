@@ -9,22 +9,22 @@
 | 필드 | 기본값 | 설명 |
 |---|---|---|
 | Search | (기본값) | Find Easy Sessions와 같은 필터 |
-| Host | (기본값) | 참가할 곳이 없어 직접 호스트할 때 씁니다. Map Name은 아래 참고 |
+| Host | (기본값) | 참가할 곳이 없어 직접 호스트할 때 씁니다. Initial Map Name은 아래 참고 |
 | Allow Host Fallback | false | 기본값은 검색과 참가만 하고, 아무것도 없으면 `NoSessionsFound`로 실패합니다. 켜면 그때 직접 호스트가 됩니다 |
 | Max Search Passes | 3 | 포기하거나 직접 호스트하기 전까지 검색을 몇 번 돌릴지. 3이면 검색을 세 번 합니다 |
 | Delay Between Passes | 2.0초 | 다음 검색까지 이만큼 쉽니다 |
 | Join Password | (비어 있음) | 비밀번호 방 후보에 참가할 때 보냅니다. 없으면 비밀번호 방은 후보에서 빠집니다 |
 
-### Host > Map Name을 채울지 말지
+### Host > Initial Map Name을 채울지 말지
 
-Matchmaking는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받습니다. Map Name을
+Matchmaking는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받습니다. Initial Map Name을
 비워두면 호스트 폴백이 지금 있는 맵에서 리슨 서버를 엽니다. 거부되지 않습니다.
 
 **그래도 대개는 채우는 게 맞습니다.** 메뉴 위젯에서 Matchmaking를 부르는 것이 보통인데, 그때
-Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방을 찾던 플레이어가 자기 메뉴에서
+Initial Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방을 찾던 플레이어가 자기 메뉴에서
 남을 맞이하게 됩니다.
 
-`Allow Host Fallback`은 기본값이 꺼짐이라, 켜지 않으면 Map Name은 볼 일이 없습니다.
+`Allow Host Fallback`은 기본값이 꺼짐이라, 켜지 않으면 Initial Map Name은 볼 일이 없습니다.
 플러그인의 예제도 꺼둔 채로 검색과 참가만 합니다.
 
 폴백이 실제로 호스트할 때는 검색의 필터를 물려받습니다. 검색이 본 네트워크(`LAN Query`)에서

@@ -45,7 +45,6 @@ namespace EasySession
 			|| Key == SettingKey_MatchInProgress
 			|| Key == SettingKey_JoinCode
 			|| Key == SettingKey_JoinApproval
-			|| Key == SETTING_MAPNAME
 			|| Key == SETTING_BEACONPORT;
 	}
 
@@ -204,10 +203,6 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 			int32 MatchInProgress = 0;
 			Setting.Value.Data.GetValue(MatchInProgress);
 			Result.bMatchInProgress = MatchInProgress != 0;
-		}
-		else if (Setting.Key == SETTING_MAPNAME)
-		{
-			Result.MapName = Setting.Value.Data.ToString();
 		}
 		else if (!EasySession::IsReservedSettingKey(Setting.Key))
 		{

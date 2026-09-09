@@ -13,7 +13,7 @@
 | 필드 | 기본값 | 설명 |
 |---|---|---|
 | Session Display Name | "My Session" | 검색 결과에 보이는 이름 |
-| Map Name | (비어 있음) | `?listen`을 붙여 그 맵으로 이동합니다. 비워두면 현재 맵에서 리슨을 시작합니다 |
+| Initial Map Name | (비어 있음) | 세션을 만든 뒤 `?listen`을 붙여 그 맵으로 이동합니다. 비워두면 현재 맵에서 리슨을 시작합니다. 세션은 자기 맵을 광고하지 않습니다 |
 | Host Mode | Listen Server | 또는 Dedicated Server - 코드 경로는 있으나 1.0에서는 검증되지 않음 |
 | Max Players | 4 | 공개 커넥션 수. 엔진의 접속 정원(Server full)도 이 값을 따릅니다 |
 | Is LAN Match | false | NULL 서브시스템에서는 자동으로 켜집니다 |
@@ -62,7 +62,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 결과는 `OnSuccess`로 오고 캐시에도 남습니다. `Get Last Easy Search Results`가 언제 어디서든 그 결과를 돌려주므로 서버 목록 UI를 만들 때 편합니다.
 
-각 `FEasySessionSearchResult`는 표시 이름, 맵 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 지역, 매치 진행 중 여부, 커스텀 세팅 맵을 담고 있습니다.
+각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 지역, 매치 진행 중 여부, 커스텀 세팅 맵을 담고 있습니다.
 
 ## Join Session
 
@@ -169,7 +169,7 @@ Event Construct
 
 | 필드 | 왜 |
 |---|---|
-| Map Name | 맵은 `Server Travel Easy Session`으로 옮깁니다 |
+| Initial Map Name | 세션을 만들 때만 읽습니다. 맵은 `Server Travel Easy Session`으로 옮깁니다 |
 | Host Mode | 리슨이냐 데디케이티드냐는 프로세스를 띄운 방식이라 실행 중에 바뀌지 않습니다 |
 | Is LAN Match | 세션이 LAN에 있는지 온라인 서비스에 있는지는 만들 때 정해집니다 |
 | Use Presence | 살아있는 세션에서는 스팀이 거절합니다. `Can't change presence settings on existing session` 경고만 남고 이전 값이 유지됩니다 |

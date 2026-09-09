@@ -38,7 +38,7 @@
 [Button Clicked] -> [Create Easy Session]
                       HostParams:
                         Session Display Name = "My First Session"
-                        Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
+                        Initial Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
                       OnSuccess -> (이제 호스트입니다)
                       OnFailure -> [Print String: ErrorMessage]
 ```
@@ -46,8 +46,8 @@
 `Create Easy Session` 하나가 호스트에게 필요한 일을 전부 합니다.
 
 - 세션을 만들고 광고합니다
-- Map Name으로 `?listen`을 붙여 Travel하며, 이것이 이 게임을 서버로 만듭니다
-- **Map Name**을 비워두면 대신 현재 맵에서 리슨을 시작합니다
+- Initial Map Name으로 `?listen`을 붙여 Travel하며, 이것이 이 게임을 서버로 만듭니다
+- **Initial Map Name**을 비워두면 대신 현재 맵에서 리슨을 시작합니다
 - 본인을 참가자로 등록하므로 세션의 인원 수가 정확하게 표시됩니다
 
 두 Travel 동작은 기본값인 **Host Mode = Listen Server**를 전제로 합니다. 데디케이티드
@@ -81,7 +81,7 @@
 ```
 [Button Clicked] -> [Start Easy Matchmaking]
                       MatchmakingParams:
-                        Host -> Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
+                        Host -> Initial Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
                       OnSuccess -> (가장 좋은 방에 참가했거나, 직접 호스트가 됨)
                       OnFailure -> [Print String: ErrorMessage]
 ```
@@ -89,7 +89,7 @@
 Matchmaking는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)에 참가하고, 없으면 직접 방을
 만듭니다. 어느 쪽이 됐는지는 `Is Easy Session Host`로 확인합니다.
 
-**Host > Map Name을 비워두면** 직접 호스트가 될 때 지금 있는 맵에서 리슨 서버를 엽니다.
+**Host > Initial Map Name을 비워두면** 직접 호스트가 될 때 지금 있는 맵에서 리슨 서버를 엽니다.
 메뉴에서 Matchmaking를 부른다면 메뉴 맵이 경기장이 되므로, 대개는 채우는 게 맞습니다. 이
 직접 호스트가 되게 하려면 **Allow Host Fallback**을 켜세요. 기본값은 꺼짐입니다.
 

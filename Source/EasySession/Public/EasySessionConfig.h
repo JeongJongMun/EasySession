@@ -67,7 +67,7 @@ public:
 
 	/**
 	 * Host params used when a dedicated server automatically creates its session.
-	 * Map Name is ignored - the server keeps the map it was launched with.
+	 * Initial Map Name is ignored - the server keeps the map it was launched with.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Dedicated Server")
 	FEasySessionHostParams DedicatedServerHostParams;

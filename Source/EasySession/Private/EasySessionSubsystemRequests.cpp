@@ -282,12 +282,6 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	// The title a session browser lists. The service's own name field is the host account.
 	Settings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// The map the host is on, under the engine's own key. Skipped when unnamed.
-	if (!Params.MapName.IsEmpty())
-	{
-		Settings.Set(SETTING_MAPNAME, Params.MapName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	}
-
 	// Whether Find skips this session. Written even when false: an advertised key cannot be deleted later.
 	Settings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
@@ -709,7 +703,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
 	EnsureStateActor();
 
-	if (HostParams.MapName.IsEmpty())
+	if (HostParams.InitialMapName.IsEmpty())
 	{
 		// The host stays on this map, where they logged in before the session existed - so no login has registered them.
 		const IOnlineSessionPtr Sessions = GetSessionInterface();

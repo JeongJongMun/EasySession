@@ -24,7 +24,7 @@ LogEasySession: Warning: Session operation failed: ResolveFailure (The host addr
 or travels to a map with the ?listen option.)
 ```
 
-**호스트** 쪽에서 고치세요. Host Params의 `Start Listening`을 켠 채로 두거나(기본값), `Map Name`을 지정해 호스트가 `?listen`과 함께 이동하게 하세요. 호스트가 Map Name을 지정했는데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*가 꺼져 있는지 확인하세요.
+**호스트** 쪽에서 고치세요. Host Params의 `Start Listening`을 켠 채로 두거나(기본값), `Initial Map Name`을 지정해 호스트가 `?listen`과 함께 이동하게 하세요. 호스트가 Initial Map Name을 지정했는데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*가 꺼져 있는지 확인하세요.
 
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 

@@ -158,7 +158,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	Params.Host.SessionDisplayName = TEXT("EasySession Matchmaking Test");
 	Params.bAllowHostFallback = true;
 	// The travel to this map aborts harmlessly - a headless test has no player controller to travel with.
-	Params.Host.MapName = TEXT("ES_MatchmakingTestMap");
+	Params.Host.InitialMapName = TEXT("ES_MatchmakingTestMap");
 	Params.Host.bIsLANMatch = true;
 	Params.Host.bStartListening = false;
 	Params.MaxSearchPasses = 1;
@@ -180,7 +180,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 /**
  * Host fallback without a map: Matchmaking accepts every parameter set Create accepts.
  *
- * An empty Map Name means "host where this player already is", which Create supports by
+ * An empty Initial Map Name means "host where this player already is", which Create supports by
  * listening on the current map. Matchmaking used to refuse it at the door, so a graph that
  * dropped the node in without filling the params always failed.
  */
@@ -208,7 +208,7 @@ bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Paramete
 	Params.Host.bStartListening = false;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
-	// Map Name is left empty on purpose. That is what a graph gets from the default struct.
+	// Initial Map Name is left empty on purpose. That is what a graph gets from the default struct.
 
 	Subsystem->StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& ErrorMessage)
@@ -588,7 +588,7 @@ bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession AlreadyInSession Test");
 	HostParams.bIsLANMatch = true;
 	HostParams.bStartListening = false;
-	// Empty Map Name: the session simply exists here, no travel follows.
+	// Empty Initial Map Name: the session simply exists here, no travel follows.
 	Subsystem->CreateEasySession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();

@@ -83,10 +83,10 @@ namespace EasySessionConsole
 				HostParams.SessionDisplayName = FString::Printf(TEXT("%s's Session"), FPlatformProcess::UserName());
 				if (Args.Num() > 0)
 				{
-					HostParams.MapName = Args[0];
+					HostParams.InitialMapName = Args[0];
 				}
 
-				Print(FString::Printf(TEXT("Hosting session%s..."), HostParams.MapName.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" (map: %s)"), *HostParams.MapName)));
+				Print(FString::Printf(TEXT("Hosting session%s..."), HostParams.InitialMapName.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" (map: %s)"), *HostParams.InitialMapName)));
 				Subsystem->CreateEasySession(HostParams, MakePrintDelegate(TEXT("Host")));
 			}
 		}));
@@ -157,7 +157,7 @@ namespace EasySessionConsole
 				Params.Host.SessionDisplayName = FString::Printf(TEXT("%s's Session"), FPlatformProcess::UserName());
 				if (Args.Num() > 0)
 				{
-					Params.Host.MapName = Args[0];
+					Params.Host.InitialMapName = Args[0];
 				}
 
 				Print(TEXT("Matchmaking started..."));

@@ -24,7 +24,7 @@ LogEasySession: Warning: Session operation failed: ResolveFailure (The host addr
 or travels to a map with the ?listen option.)
 ```
 
-Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Map Name` so the host travels with `?listen`. If the host set a Map Name and still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
+Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Initial Map Name` so the host travels with `?listen`. If the host set a Initial Map Name and still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
 
 ## "Steam: only the first player can join, everyone after that fails"
 

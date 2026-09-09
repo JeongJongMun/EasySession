@@ -124,7 +124,7 @@ bool FEasySessionBusyWindowTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession Busy Window Test");
 	HostParams.bIsLANMatch = true;
 	// A map name makes the create end in a travel, which is the case the busy contract is about.
-	HostParams.MapName = TEXT("ES_BusyWindowTestMap");
+	HostParams.InitialMapName = TEXT("ES_BusyWindowTestMap");
 
 	State->StartTime = FPlatformTime::Seconds();
 	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(

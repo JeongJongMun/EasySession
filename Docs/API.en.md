@@ -42,7 +42,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 
 | Node | Inputs | Notes |
 |---|---|---|
-| **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`. On a listen server it then travels to Map Name with `?listen` so this game becomes the server, or starts listening on the current map when Map Name is empty. Dedicated servers keep the map they launched with |
+| **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`. On a listen server it then travels to Initial Map Name with `?listen` so this game becomes the server, or starts listening on the current map when Initial Map Name is empty. Dedicated servers keep the map they launched with |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
@@ -204,7 +204,7 @@ What a session advertises about itself. `Update Easy Session` takes exactly this
 so every field here is one a live session can change.
 
 ### 5.2 FEasySessionHostParams *(FEasySessionSettings plus)*
-`MapName` (String), `HostMode` (`EEasySessionHostMode`), `bIsLANMatch`, `bStartListening`, `bUsePresence`, `AdditionalTravelOptions` (String)
+`InitialMapName` (String), `HostMode` (`EEasySessionHostMode`), `bIsLANMatch`, `bStartListening`, `bUsePresence`, `AdditionalTravelOptions` (String)
 
 Hosting is the settings above plus how to bring the server up. These added fields are
 read once, while the session is created, which is why Update cannot change them.
@@ -275,7 +275,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`Timeout`** | The online service never answered. The outcome is unknown, so anything it left behind is cleaned up. See `RequestTimeoutSeconds` |
 | **`Canceled`** | `Cancel Easy Matchmaking` stopped a Matchmaking run |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
-| `InvalidParams` | A parameter cannot work, e.g. Matchmaking with no fallback Map Name |
+| `InvalidParams` | A parameter cannot work, e.g. Matchmaking with no fallback Initial Map Name |
 | `MatchmakingAlreadyInProgress` | A Matchmaking is already running |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | The online service refused that specific call. `ErrorMessage` carries what it said |
 | `UnknownFailure` | Nothing more specific was available |
@@ -333,7 +333,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 | `bAcceptInvitesWhileInSession` | false | An accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first |
 | `RequestTimeoutSeconds` | 30 | How long a request waits for the online service before failing with `Timeout`. **0 waits forever.** A search may replace this with its own `Timeout Override Seconds` |
 | `bAutoHostOnDedicatedServer` | true | A dedicated server advertises itself once its map is up |
-| `DedicatedServerHostParams` | - | Params used by that auto host. Map Name is ignored - the server keeps its launch map |
+| `DedicatedServerHostParams` | - | Params used by that auto host. Initial Map Name is ignored - the server keeps its launch map |
 
 ## 9. C++ notes
 

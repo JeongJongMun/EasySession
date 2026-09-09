@@ -365,11 +365,11 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	GENERATED_BODY()
 
 	/**
-	 * Map to travel to once the session is created (e.g. /Game/Maps/Lobby).
+	 * Map to travel to once the session is created (e.g. /Game/Maps/Lobby). Used only then: the session does not advertise its map.
 	 * Leave empty to stay on the current map. Additional travel options can be appended with '?'.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	FString MapName;
+	FString InitialMapName;
 
 	/** Whether the hosting player's game acts as the server, or a dedicated server hosts the session. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
@@ -386,7 +386,7 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 
 	/**
 	 * Open a listen server as part of hosting, so clients can connect.
-	 * Travels to Map Name with the ?listen option, or starts listening on the current map when Map Name is empty.
+	 * Travels to Initial Map Name with the ?listen option, or starts listening on the current map when Initial Map Name is empty.
 	 *
 	 * Turning this off still advertises the session, but there is no server for players to connect to until you open one yourself.
 	 */
@@ -527,10 +527,6 @@ struct EASYSESSION_API FEasySessionSearchResult
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsDedicatedServer = false;
 
-	/** Map this session is played on. Empty when the host started listening on the map they were already on. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	FString MapName;
-
 	/** Whether a password is required to join this session. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bPasswordProtected = false;
@@ -605,7 +601,7 @@ struct EASYSESSION_API FEasyMatchmakingParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FEasySessionHostParams Host;
 
-	/** Whether to host our own session when no session is found. False by default. Turning it on with an empty Host Map Name hosts on the map this player is already on. */
+	/** Whether to host our own session when no session is found. False by default. Turning it on with an empty Host Initial Map Name hosts on the map this player is already on. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bAllowHostFallback = false;
 

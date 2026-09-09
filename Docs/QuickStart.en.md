@@ -38,7 +38,7 @@ In any Blueprint (a menu widget button, or the Level Blueprint for a quick test)
 [Button Clicked] -> [Create Easy Session]
                       HostParams:
                         Session Display Name = "My First Session"
-                        Map Name = "/Game/Maps/Lobby"   <- your map here
+                        Initial Map Name = "/Game/Maps/Lobby"   <- your map here
                       OnSuccess -> (you are now hosting)
                       OnFailure -> [Print String: ErrorMessage]
 ```
@@ -46,8 +46,8 @@ In any Blueprint (a menu widget button, or the Level Blueprint for a quick test)
 `Create Easy Session` does everything a host needs:
 
 - Creates and advertises the session
-- Travels to Map Name with `?listen` added, which is what makes this game the server
-- Leaving **Map Name** empty starts listening on the current map instead
+- Travels to Initial Map Name with `?listen` added, which is what makes this game the server
+- Leaving **Initial Map Name** empty starts listening on the current map instead
 - Registers you as a player, so your session shows correct player counts
 
 Both travel steps assume the default **Host Mode = Listen Server**. A dedicated server
@@ -81,7 +81,7 @@ first. See [password protected sessions](Guide-Sessions.en.md#password-protected
 ```
 [Button Clicked] -> [Start Easy Matchmaking]
                       MatchmakingParams:
-                        Host -> Map Name = "/Game/Maps/Lobby"   <- your map here
+                        Host -> Initial Map Name = "/Game/Maps/Lobby"   <- your map here
                       OnSuccess -> (joined the best session, or hosting a new one)
                       OnFailure -> [Print String: ErrorMessage]
 ```
@@ -89,7 +89,7 @@ first. See [password protected sessions](Guide-Sessions.en.md#password-protected
 Matchmaking searches, joins the best session (good ping, fuller rooms first), and hosts a
 new session if nothing is found. Use `Is Easy Session Host` to check which outcome you got.
 
-**Leaving Host > Map Name empty** makes the fallback open a listen server on the map this
+**Leaving Host > Initial Map Name empty** makes the fallback open a listen server on the map this
 player is already on. Called from a menu, that turns the menu into the arena, so fill it in
 most of the time. Turn **Allow Host Fallback** on to host at all - it is off by default.
 

@@ -13,7 +13,7 @@ All operations are **queued and executed one at a time** - you can call them in 
 | Field | Default | Notes |
 |---|---|---|
 | Session Display Name | "My Session" | Shown in search results |
-| Map Name | (empty) | Travels there with `?listen`. Empty = start listening on the current map |
+| Initial Map Name | (empty) | Travels there with `?listen` once the session is created. Empty = start listening on the current map. The session does not advertise its map |
 | Host Mode | Listen Server | Or Dedicated Server - code path present, not validated in 1.0 |
 | Max Players | 4 | Public connections. The engine's own login cap ("Server full") follows this value |
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
@@ -62,7 +62,7 @@ itself, it is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess` and are also cached - `Get Last Easy Search Results` returns them anywhere, anytime (useful for server browser UIs).
 
-Each `FEasySessionSearchResult` exposes: display name, map name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, region, in-progress flag, and the custom settings map.
+Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, region, in-progress flag, and the custom settings map.
 
 ## Join Session
 
@@ -175,7 +175,7 @@ Update:
 
 | Field | Why |
 |---|---|
-| Map Name | Move maps with `Server Travel Easy Session` instead |
+| Initial Map Name | Only read when the session is created. Move maps with `Server Travel Easy Session` instead |
 | Host Mode | Listen or dedicated is how the process was started, not a live setting |
 | Is LAN Match | Whether the session lives on the LAN or on the online service is decided at create time |
 | Use Presence | Steam refuses it on a live session - it logs `Can't change presence settings on existing session` and keeps the old value |
