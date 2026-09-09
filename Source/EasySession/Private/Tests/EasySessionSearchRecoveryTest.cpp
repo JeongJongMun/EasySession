@@ -18,13 +18,11 @@
 namespace EasySessionSearchRecoveryTest
 {
 	/**
-	 * Short enough that the watchdog fires while the search is genuinely running.
-	 * A LAN search takes a fixed five seconds whatever the search params ask for
-	 * (LANBeacon.h, LAN_QUERY_TIMEOUT), and the deadline is this plus the search
-	 * budget below - so the two together have to stay under those five seconds.
+	 * Short enough that the deadline passes while the search is genuinely running.
+	 * The engine's own LAN search lasts a fixed five seconds (LANBeacon.h, LAN_QUERY_TIMEOUT), so this has to stay under that.
+	 * The searches that must finish normally get the real deadline back first.
 	 */
 	static constexpr float TestRequestTimeoutSeconds = 0.5f;
-	static constexpr float TestSearchTimeoutSeconds = 0.5f;
 
 	/** Hard limit on the whole run before the test gives up. */
 	static constexpr double MaxWaitSeconds = 30.0;
@@ -49,7 +47,6 @@ namespace EasySessionSearchRecoveryTest
 	{
 		FEasySessionSearchParams Params;
 		Params.bLANQuery = true;
-		Params.TimeoutSeconds = TestSearchTimeoutSeconds;
 		return Params;
 	}
 

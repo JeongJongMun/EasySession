@@ -72,10 +72,7 @@ void UEasySessionSubsystem::HandleRequestDeadline()
 		return;
 	}
 
-	// The online service never called back. Fail the request so the queue keeps
-	// draining, but remember that a timeout means "the outcome is unknown", not
-	// "nothing happened" - the operation may still land afterwards, which is what
-	// completing it as abandoned tells CleanupRequest to deal with.
+	// The service never answered. Fail the request as abandoned: the operation may still finish later, and CleanupRequest handles what it leaves behind.
 	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online service. Continuing with the next request."),
 		Request->GetTypeName(), Request->GetElapsedSeconds(FPlatformTime::Seconds()));
 
@@ -458,7 +455,6 @@ void UEasySessionSubsystem::StartSessionSearch(const FEasySessionSearchParams& P
 	ActiveSearch = MakeShared<FOnlineSessionSearch>();
 	ActiveSearch->MaxSearchResults = Params.MaxResults;
 	ActiveSearch->bIsLanQuery = Params.bLANQuery || ShouldForceLAN();
-	ActiveSearch->TimeoutInSeconds = Params.TimeoutSeconds;
 
 	if (!ActiveSearch->bIsLanQuery)
 	{

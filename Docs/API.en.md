@@ -220,7 +220,7 @@ with `Parse Option`. `Region` and `bUseJoinCode` are covered in the guide's
 sections.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults` (int), `bLANQuery`, `TimeoutSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `SearchMode` (`EEasySessionSearchMode`), `SearchTargetId` (Unique Net Id), `OwnerId` (Unique Net Id)
+`MaxResults` (int), `bLANQuery`, `TimeoutOverrideSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `SearchMode` (`EEasySessionSearchMode`), `SearchTargetId` (Unique Net Id), `OwnerId` (Unique Net Id)
 
 Four of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `SearchMode` picks a different call to the service - By Friend or By Session Id - and `SearchTargetId` says who or which; the discovery fields are then ignored while the filters still apply. A search naming one session also sees hidden ones, and its results stay off `On Sessions Found` and `Get Last Easy Search Results`.
 
@@ -331,7 +331,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 | `bAutoReturnToMenuOnDisconnect` | true | On disconnect or a failed travel, clean up the session and browse to the project's **Game Default Map**, keeping the reason for that map to read. Off leaves the player where they are |
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
 | `bAcceptInvitesWhileInSession` | false | An accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first |
-| `RequestTimeoutSeconds` | 30 | How long a request waits for the online service before failing with `Timeout`. **0 waits forever.** Searching adds its own Timeout Seconds on top of this |
+| `RequestTimeoutSeconds` | 30 | How long a request waits for the online service before failing with `Timeout`. **0 waits forever.** A search may replace this with its own `Timeout Override Seconds` |
 | `bAutoHostOnDedicatedServer` | true | A dedicated server advertises itself once its map is up |
 | `DedicatedServerHostParams` | - | Params used by that auto host. Map Name is ignored - the server keeps its launch map |
 

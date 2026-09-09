@@ -107,7 +107,7 @@ bool FEasySessionSearchParams::IsValid() const
 		return false;
 	}
 
-	return MaxResults > 0 && TimeoutSeconds > 0.0f;
+	return MaxResults > 0 && TimeoutOverrideSeconds >= 0.0f;
 }
 
 bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Result) const

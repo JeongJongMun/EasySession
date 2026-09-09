@@ -224,7 +224,6 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 		{
 			FEasyMatchmakingParams MatchmakingParams;
 			MatchmakingParams.Search.bLANQuery = true;
-			MatchmakingParams.Search.TimeoutSeconds = 5.0f;
 			MatchmakingParams.bAllowHostFallback = false;
 			MatchmakingParams.MaxSearchPasses = 1;
 			MatchmakingParams.DelayBetweenPassesSeconds = 0.0f;
@@ -285,7 +284,6 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
 			FEasySessionSearchParams SearchParams;
-			SearchParams.TimeoutSeconds = 5.0f;
 			UEasyFindSessionsNode* Node = UEasyFindSessionsNode::FindEasySessions(&GameInstance, SearchParams);
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFindSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFindFailure);

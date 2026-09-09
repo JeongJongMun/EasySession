@@ -209,7 +209,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Region`과 `bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 지역 절과 참가 코드 절에서 다룹니다.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults`(int), `bLANQuery`, `TimeoutSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `SearchMode`(`EEasySessionSearchMode`), `SearchTargetId`(Unique Net Id), `OwnerId`(Unique Net Id)
+`MaxResults`(int), `bLANQuery`, `TimeoutOverrideSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `SearchMode`(`EEasySessionSearchMode`), `SearchTargetId`(Unique Net Id), `OwnerId`(Unique Net Id)
 
 이 중 넷은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `SearchMode`는 서비스에 다른 호출을 하도록 바꾸고(By Friend 또는 By Session Id), `SearchTargetId`가 누구인지 또는 어느 세션인지를 지정합니다. 이때 발견용 필드는 무시되고 필터는 그대로 적용됩니다. 특정 세션을 지목한 검색은 숨긴 세션도 보며, 그 결과는 `On Sessions Found`와 `Get Last Easy Search Results`에 실리지 않습니다.
 
@@ -323,7 +323,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 Travel이 실패하면 세션을 정리하고 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끄면 플레이어를 그 자리에 둡니다 |
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
 | `bAcceptInvitesWhileInSession` | false | 초대를 수락하면 지금 있는 세션을 파괴하고 초대받은 세션에 참가합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로 먼저 물어볼 수 있습니다 |
-| `RequestTimeoutSeconds` | 30 | 요청이 온라인 서비스를 기다리다 `Timeout`으로 실패하기까지의 시간. **0이면 무한히 기다립니다.** 검색은 자기 Timeout Seconds를 이 값 위에 더합니다 |
+| `RequestTimeoutSeconds` | 30 | 요청이 온라인 서비스를 기다리다 `Timeout`으로 실패하기까지의 시간. **0이면 무한히 기다립니다.** 검색은 `Timeout Override Seconds`로 이 값을 대신할 수 있습니다 |
 | `bAutoHostOnDedicatedServer` | true | 데디케이티드 서버가 맵을 띄우면 스스로를 광고합니다 |
 | `DedicatedServerHostParams` | - | 위 자동 호스팅이 쓰는 파라미터. Map Name은 무시되고 서버가 실행된 맵을 유지합니다 |
 

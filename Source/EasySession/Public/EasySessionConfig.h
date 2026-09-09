@@ -48,9 +48,9 @@ public:
 
 	/**
 	 * How long a session request may wait for the online service before it is failed with the Timeout result and the queue moves on.
-	 * Online services are not required to ever call back, and Steam's async tasks have no timeout of their own.
+	 * Online services are not required to ever call back: Steam, for one, waits for a lobby list without a timeout of its own.
 	 * Without this, a silent service would stall every request behind it.
-	 * Searching adds its own Timeout Seconds on top of this value.
+	 * A search may replace this value with its own Timeout Override Seconds.
 	 * A timeout means the outcome is unknown, not that nothing happened.
 	 * If the operation completes after the timeout and leaves a session behind, it is destroyed so the next request starts clean.
 	 * Set to 0 to wait forever.

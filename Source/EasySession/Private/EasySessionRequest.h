@@ -77,24 +77,17 @@ public:
 	}
 
 	/**
-	 * Deadline for this request.
-	 * A search runs its own timeout inside the online service, so that time is added on top.
-	 * Otherwise the watchdog would fire on a search that is still working normally.
-	 * 0, or a non-positive setting, disables the deadline.
+	 * Deadline for this request: the configured timeout, which a search may replace with its own Timeout Override Seconds.
+	 * 0 disables the deadline.
 	 */
 	double ComputeTimeoutSeconds(float ConfiguredTimeoutSeconds) const
 	{
-		if (ConfiguredTimeoutSeconds <= 0.0f)
+		if (Type == EType::Find && SearchParams.TimeoutOverrideSeconds > 0.0f)
 		{
-			return 0.0;
+			return SearchParams.TimeoutOverrideSeconds;
 		}
 
-		if (Type == EType::Find)
-		{
-			return ConfiguredTimeoutSeconds + FMath::Max(0.0f, SearchParams.TimeoutSeconds);
-		}
-
-		return ConfiguredTimeoutSeconds;
+		return FMath::Max(0.0f, ConfiguredTimeoutSeconds);
 	}
 
 	/** Whether this request may have left a session behind when it timed out. */

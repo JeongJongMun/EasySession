@@ -39,15 +39,19 @@ bool FEasySessionRequestTimeoutTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Elapsed time is reported"), Request.GetElapsedSeconds(StartTime + 5.0), 5.0);
 	}
 
-	// Searching adds the online service's own search budget on top.
+	// A search replaces the configured timeout with its own override, and 0 means no override.
 	{
 		FEasySessionRequest Request(FEasySessionRequest::EType::Find);
-		Request.SearchParams.TimeoutSeconds = 15.0f;
+		Request.SearchParams.TimeoutOverrideSeconds = 15.0f;
 		Request.MarkStarted(StartTime, ConfiguredTimeout);
 
-		TestEqual(TEXT("Find adds the search timeout to the grace period"), Request.TimeoutSeconds, 45.0);
-		TestFalse(TEXT("A healthy long search is not failed early"), Request.HasTimedOut(StartTime + 40.0));
-		TestTrue(TEXT("A search past both budgets times out"), Request.HasTimedOut(StartTime + 45.0));
+		TestEqual(TEXT("Find uses its override instead of the configured timeout"), Request.TimeoutSeconds, 15.0);
+		TestFalse(TEXT("Not timed out before the override"), Request.HasTimedOut(StartTime + 14.9));
+		TestTrue(TEXT("Timed out at the override"), Request.HasTimedOut(StartTime + 15.0));
+
+		FEasySessionRequest Plain(FEasySessionRequest::EType::Find);
+		Plain.MarkStarted(StartTime, ConfiguredTimeout);
+		TestEqual(TEXT("Find without an override uses the configured timeout"), Plain.TimeoutSeconds, 30.0);
 	}
 
 	// A non-positive setting disables the deadline entirely.

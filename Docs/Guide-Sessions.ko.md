@@ -45,7 +45,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 |---|---|---|
 | Max Results | 50 | 결과를 최대 몇 개까지 받을지 |
 | LAN Query | false | NULL에서는 자동으로 켜집니다 |
-| Timeout Seconds | 15 | 결과를 이만큼 기다리고 포기합니다 |
+| Timeout Override Seconds | 0 | 이 검색만의 대기 시간. 0이면 프로젝트 설정의 `RequestTimeoutSeconds`(30초)를 씁니다. 시간이 지나도 검색이 끝나지 않으면 `Timeout`으로 실패합니다. LAN 검색은 항상 5초 안에 끝납니다 |
 | Min Open Slots | 0 | 빈 자리가 이만큼 이상인 세션만 |
 | Max Ping Ms | 0 | 0이면 제한 없음 |
 | Required Custom Settings | (비어 있음) | 광고된 커스텀 데이터와 정확히 일치하는 것만 통과 |

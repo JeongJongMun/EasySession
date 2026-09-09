@@ -430,9 +430,12 @@ struct EASYSESSION_API FEasySessionSearchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bLANQuery = false;
 
-	/** Maximum time to wait for search results, in seconds. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1.0))
-	float TimeoutSeconds = 15.0f;
+	/**
+	 * Deadline for this search alone, in seconds. 0 uses Request Timeout Seconds from the project settings.
+	 * A search still running when it passes fails with Timeout. A LAN search always answers within five seconds.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 0.0))
+	float TimeoutOverrideSeconds = 0.0f;
 
 	/** Only return sessions with at least this many open player slots. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 0))

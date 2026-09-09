@@ -155,7 +155,6 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Host.SessionDisplayName = TEXT("EasySession Matchmaking Test");
 	Params.bAllowHostFallback = true;
 	// The travel to this map aborts harmlessly - a headless test has no player controller to travel with.
@@ -203,7 +202,6 @@ bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Paramete
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Host.SessionDisplayName = TEXT("EasySession Matchmaking No Map Test");
 	Params.bAllowHostFallback = true;
 	Params.Host.bIsLANMatch = true;
@@ -303,7 +301,6 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Search.RequiredCustomSettings.Add(TEXT("GameMode"), TEXT("Deathmatch"));
 	Params.Search.RequiredCustomSettings.Add(TEXT("Region"), TEXT("KR"));
 	Params.Search.Region = EEasySessionRegion::EastAsia;
@@ -394,7 +391,6 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Search.TimeoutSeconds = 5.0f;
 	Params.bAllowHostFallback = false;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
@@ -482,7 +478,6 @@ bool FEasyMatchmakingCancelUndoTest::RunTest(const FString& Parameters)
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Search.TimeoutSeconds = 5.0f;
 	Params.Host.SessionDisplayName = TEXT("EasySession Cancel Undo Test");
 	Params.bAllowHostFallback = true;
 	Params.Host.bIsLANMatch = true;
@@ -676,7 +671,7 @@ bool FEasySessionWaitForCandidateRun::Update()
 			FEasyMatchmakingParams Params;
 			Params.Search.bLANQuery = true;
 			// A short first pass and a long inter-pass delay open a quiet window to inject into.
-			Params.Search.TimeoutSeconds = 0.5f;
+			Params.Search.TimeoutOverrideSeconds = 0.5f;
 			Params.MaxSearchPasses = 2;
 			Params.DelayBetweenPassesSeconds = 10.0f;
 			Params.bAllowHostFallback = false;
@@ -968,7 +963,6 @@ bool FEasyMatchmakingEventsTest::RunTest(const FString& Parameters)
 	TSharedPtr<FTestState> Shared = State;
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Search.TimeoutSeconds = 5.0f;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
 	Params.bAllowHostFallback = false;
@@ -1022,8 +1016,7 @@ namespace EasyMatchmakingTargetedTest
 	{
 		FEasyMatchmakingParams Params;
 		Params.Search.bLANQuery = true;
-		Params.Search.TimeoutSeconds = 5.0f;
-		Params.Search.JoinCode = Code;
+			Params.Search.JoinCode = Code;
 		Params.JoinPassword = Password;
 		Params.MaxSearchPasses = 1;
 		Params.DelayBetweenPassesSeconds = 0.0f;

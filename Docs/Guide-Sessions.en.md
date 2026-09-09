@@ -45,7 +45,7 @@ Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and 
 |---|---|---|
 | Max Results | 50 | How many results to take at most |
 | LAN Query | false | Forced on automatically under NULL |
-| Timeout Seconds | 15 | How long to wait for results before giving up |
+| Timeout Override Seconds | 0 | Deadline for this search alone. 0 uses `RequestTimeoutSeconds` from the project settings (30). A search still running when it passes fails with `Timeout`. A LAN search always answers within five seconds |
 | Min Open Slots | 0 | Only sessions with at least this many free slots |
 | Max Ping Ms | 0 | 0 = no limit |
 | Required Custom Settings | (empty) | Exact-match filters against advertised custom data |
