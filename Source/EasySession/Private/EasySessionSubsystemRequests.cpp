@@ -637,9 +637,7 @@ void UEasySessionSubsystem::ExecuteUpdate()
 	UpdatedSettings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	UpdatedSettings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// The advertised flag and the password ServerGate checks arriving players against
-	// have to move together. The flag goes out here; the gate's copy is set in
-	// HandleUpdateSessionComplete, once this request is known to have succeeded.
+	// Only the flag goes out here. ServerGate takes the password itself in HandleUpdateSessionComplete, so the two never disagree if this request fails.
 	UpdatedSettings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	UpdatedSettings.Set(EasySession::SettingKey_Region, static_cast<int32>(Params.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -654,6 +652,21 @@ void UEasySessionSubsystem::ExecuteUpdate()
 	else if (!ExistingJoinCode.IsEmpty())
 	{
 		UpdatedSettings.Set(EasySession::SettingKey_JoinCode, FString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+
+	// A custom setting left out of the map is removed. Reserved keys are skipped because Update does not write them again.
+	TArray<FName> DroppedKeys;
+	for (const TPair<FName, FOnlineSessionSetting>& Existing : UpdatedSettings.Settings)
+	{
+		if (!EasySession::IsReservedSettingKey(Existing.Key) && !Params.CustomSettings.Contains(Existing.Key.ToString()))
+		{
+			DroppedKeys.Add(Existing.Key);
+		}
+	}
+
+	for (const FName& Key : DroppedKeys)
+	{
+		UpdatedSettings.Remove(Key);
 	}
 
 	for (const TPair<FString, FString>& Custom : Params.CustomSettings)

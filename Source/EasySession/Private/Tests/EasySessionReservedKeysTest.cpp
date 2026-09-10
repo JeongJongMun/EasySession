@@ -42,6 +42,7 @@ namespace EasySessionReservedKeysTest
 		Params.bIsLANMatch = true;
 		Params.bStartListening = false;
 		Params.CustomSettings.Add(TEXT("GameMode"), TEXT("CTF"));
+		Params.CustomSettings.Add(TEXT("Mods"), TEXT("ModA"));
 		return Params;
 	}
 }
@@ -97,8 +98,10 @@ bool FEasySessionRunReservedKeySteps::Update()
 			ReadBack.CustomSettings.Contains(TEXT("GameMode")));
 
 		// The round trip a game is told to make: read, change one field, hand it back.
+		// Dropping a custom setting is part of that: the map is what the session ends up advertising.
 		FEasySessionSettings Updated = ReadBack;
 		Updated.MaxPlayers = 8;
+		Updated.CustomSettings.Remove(TEXT("Mods"));
 
 		State->Step = EStep::AwaitingUpdate;
 		State->StartTime = FPlatformTime::Seconds();
@@ -128,6 +131,12 @@ bool FEasySessionRunReservedKeySteps::Update()
 			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, SETTING_BEACONPORT), EasySession::GetJoinApprovalBeaconPort());
 
 		CurrentTest->TestEqual(TEXT("Max players took the update"), Subsystem->GetSessionMaxPlayers(), 8);
+
+		// A key left out of the map is gone from the session, and its neighbour is untouched.
+		CurrentTest->TestEqual(TEXT("The dropped custom setting left the session"),
+			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, FName(TEXT("Mods"))), EOnlineKeyValuePairDataType::Empty);
+		CurrentTest->TestEqual(TEXT("The custom setting that stayed is still advertised"),
+			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, FName(TEXT("GameMode"))), EOnlineKeyValuePairDataType::String);
 
 		State->Step = EStep::AwaitingDestroy;
 		State->StartTime = FPlatformTime::Seconds();

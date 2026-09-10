@@ -37,6 +37,8 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and can filter them out as part of the search with `Required Custom Settings` (exact match on every pair).
 
+The map you hand to `Update Easy Session` replaces the session's custom data: a key you leave out is removed from the session too. Change the map you got from `Get Easy Session Settings` rather than building a new one.
+
 ## Find Sessions
 
 `Find Easy Sessions` with `FEasySessionSearchParams`:

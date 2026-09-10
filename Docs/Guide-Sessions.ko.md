@@ -37,6 +37,8 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 찾는 쪽은 각 `FEasySessionSearchResult.CustomSettings`에서 이 값을 다시 읽고, `Required Custom Settings`로 검색 단계에서 걸러낼 수도 있습니다(모든 쌍이 정확히 일치해야 합니다).
 
+`Update Easy Session`에 넘긴 맵이 세션의 커스텀 데이터를 그대로 대신합니다. 맵에서 뺀 키는 세션에서도 사라지므로, `Get Easy Session Settings`로 받은 맵을 고쳐서 넘기세요.
+
 ## Find Sessions
 
 `Find Easy Sessions`에 `FEasySessionSearchParams`를 넘깁니다.
