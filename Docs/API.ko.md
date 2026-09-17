@@ -99,8 +99,6 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호만 호스트에서만 채워집니다 |
 | Get Easy Session Join Code | `GetSessionJoinCode` | 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 방에 있는 누구나 읽고 공유할 수 있습니다 |
 
-`To String (EasySessionResult)`(C++ `ResultToString`)는 결과 열거형을 텍스트로 바꿉니다.
-
 ### 2.2 서브시스템에서 호출하는 노드 (`UEasySessionSubsystem`)
 
 `Get Easy Session Subsystem`에서 호출합니다. 블루프린트와 C++ 이름이 같아 C++ 열이 없습니다.

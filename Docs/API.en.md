@@ -103,8 +103,6 @@ node name without spaces.
 | Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Works for every member; the password is only filled on the host |
 | Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the room can read and share it |
 
-`To String (EasySessionResult)` (C++ `ResultToString`) turns a result enum into text.
-
 ### 2.2 On the subsystem (`UEasySessionSubsystem`)
 
 Call these on `Get Easy Session Subsystem`. The name is the same in Blueprint and C++, so

@@ -188,8 +188,4 @@ public:
 	/** Open the platform profile overlay (e.g. Steam) for a player in the session. @return Success, or Not Supported By Service on a service without an overlay such as NULL/LAN. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player);
-
-	/** Convert a session result value to a human readable string. */
-	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (DisplayName = "To String (EasySessionResult)", CompactNodeTitle = "->"))
-	static FString ResultToString(EEasySessionResult Result);
 };

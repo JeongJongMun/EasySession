@@ -221,8 +221,3 @@ EEasySessionResult UEasySessionStatics::ShowEasyProfileUIForPlayer(const UObject
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->ShowProfileUIForPlayer(Player) : EEasySessionResult::NoOnlineSubsystem;
 }
-
-FString UEasySessionStatics::ResultToString(EEasySessionResult Result)
-{
-	return EasySession::ResultToString(Result);
-}
