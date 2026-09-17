@@ -10,7 +10,7 @@
 |---|---|---|
 | Search | (defaults) | Same filters as Find Easy Sessions |
 | Host | (defaults) | Used when falling back to hosting. Initial Map Name is covered below |
-| Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there. Turn it on to host instead |
+| Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there, or with the search's own result such as `Timeout` when the search itself failed. Turn it on to host instead |
 | Max Search Passes | 3 | How many search passes to run before giving up or hosting. 3 means three searches |
 | Delay Between Passes | 2.0s | How long to rest before the next search |
 | Join Password | (empty) | Sent when joining a password protected candidate. Without one, protected sessions are never candidates |

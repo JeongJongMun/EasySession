@@ -10,7 +10,7 @@
 |---|---|---|
 | Search | (기본값) | Find Easy Sessions와 같은 필터 |
 | Host | (기본값) | 참가할 곳이 없어 직접 호스트할 때 씁니다. Initial Map Name은 아래 참고 |
-| Allow Host Fallback | false | 기본값은 검색과 참가만 하고, 아무것도 없으면 `NoSessionsFound`로 실패합니다. 켜면 그때 직접 호스트가 됩니다 |
+| Allow Host Fallback | false | 기본값은 검색과 참가만 하고, 아무것도 없으면 `NoSessionsFound`로, 검색 자체가 실패하면 `Timeout` 같은 그 검색의 결과로 실패합니다. 켜면 그때 직접 호스트가 됩니다 |
 | Max Search Passes | 3 | 포기하거나 직접 호스트하기 전까지 검색을 몇 번 돌릴지. 3이면 검색을 세 번 합니다 |
 | Delay Between Passes | 2.0초 | 다음 검색까지 이만큼 쉽니다 |
 | Join Password | (비어 있음) | 비밀번호 방 후보에 참가할 때 보냅니다. 없으면 비밀번호 방은 후보에서 빠집니다 |

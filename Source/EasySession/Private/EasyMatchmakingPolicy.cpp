@@ -136,7 +136,7 @@ void UEasyMatchmakingPolicy::HandleSearchComplete(EEasySessionResult Result, con
 
 	if (Result != EEasySessionResult::Success || Results.IsEmpty())
 	{
-		FinishPassAndContinue();
+		FinishPassAndContinue(Result, ErrorMessage);
 		return;
 	}
 
@@ -250,7 +250,7 @@ void UEasyMatchmakingPolicy::HandleJoinComplete(EEasySessionResult Result, const
 	TryJoinNextCandidate();
 }
 
-void UEasyMatchmakingPolicy::FinishPassAndContinue()
+void UEasyMatchmakingPolicy::FinishPassAndContinue(EEasySessionResult SearchResult, const FString& SearchError)
 {
 	++PassesCompleted;
 
@@ -265,6 +265,11 @@ void UEasyMatchmakingPolicy::FinishPassAndContinue()
 		if (Params.bAllowHostFallback)
 		{
 			HostFallbackSession();
+		}
+		else if (SearchResult != EEasySessionResult::Success)
+		{
+			// A failed search found nothing because it never ran, so it keeps its own result.
+			Complete(SearchResult, SearchError);
 		}
 		else
 		{

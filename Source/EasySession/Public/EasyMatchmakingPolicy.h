@@ -99,8 +99,13 @@ private:
 	/** Called when a join attempt finished. */
 	void HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
-	/** Schedule the next search pass, or fall back to hosting / failure when out of passes. */
-	void FinishPassAndContinue();
+	/**
+	 * Schedule the next search pass, or fall back to hosting / failure when out of passes.
+	 *
+	 * @param SearchResult The result of this pass's search. A failure other than Success ends the run with it when no pass is left.
+	 * @param SearchError The message that came with SearchResult.
+	 */
+	void FinishPassAndContinue(EEasySessionResult SearchResult = EEasySessionResult::Success, const FString& SearchError = FString());
 
 	/** Host our own session because no session could be joined. */
 	void HostFallbackSession();
