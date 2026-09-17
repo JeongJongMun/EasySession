@@ -310,9 +310,10 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 	Params.Host.CustomSettings.Add(TEXT("MOTD"), TEXT("Hello"));
 	// Also on purpose: the LAN search must pull the fallback onto the LAN.
 	Params.Host.bIsLANMatch = false;
-	// And on purpose: neither may reach the fallback room, or the next searcher skips it.
+	// And on purpose: none of these may reach the fallback room, or the next searcher skips it.
 	Params.Host.Password = TEXT("1234");
 	Params.Host.bHidden = true;
+	Params.Host.bShouldAdvertise = false;
 	Params.Host.bStartListening = false;
 	Params.bAllowHostFallback = true;
 	Params.MaxSearchPasses = 1;
@@ -335,8 +336,8 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("The folded params carry the searched region"), Folded.Region, EEasySessionRegion::EastAsia);
 		TestTrue(TEXT("The folded params drop the host password"), Folded.Password.IsEmpty());
 		TestFalse(TEXT("The folded params are not hidden"), Folded.bHidden);
+		TestTrue(TEXT("The folded params are advertised"), Folded.bShouldAdvertise);
 	}
-	AddExpectedMessage(TEXT("Matchmaking fallback ignores Host Password and Hidden"), ELogVerbosity::Warning, EAutomationExpectedMessageFlags::Contains, 0);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitFallbackFilters(State));

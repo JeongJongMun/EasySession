@@ -32,13 +32,13 @@ When the fallback does host, it inherits the search's filters: the session is cr
 the network the search looked at (`LAN Query`), and every `Required Custom Settings` pair
 is advertised on it, overwriting the same key in Host > Custom Settings. A searched
 `Region` is advertised the same way. The room a run opens is one its own search would
-have found, so Host `Password` and `Hidden` do not apply to it: with either set, the
-fallback logs a warning and opens a public room.
+have found, so Host `Password`, `Hidden` and `Should Advertise` do not apply to it: the
+fallback always opens a public room.
 
 ### Matchmaking one specific room
 
 The targeted queries `Find Easy Sessions` takes work here too: set `Search > Join Code`
-(or, from C++, a session id, friend or owner) and the passes hunt for that one room -
+(or, from C++, a friend or owner) and the passes hunt for that one room -
 hidden sessions included - joining it the moment it appears. `Join Password` rides along
 for protected rooms. With `Allow Host Fallback` off, this is "keep trying to get into
 my friends' room" in one call.
