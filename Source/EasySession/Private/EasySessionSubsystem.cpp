@@ -683,7 +683,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	// NextURL and returns true - so this entry check is the only gate.
 	if (!IsSessionAuthority())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session."));
+		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session. %s"), RequiresSessionAuthorityFix);
 		return false;
 	}
 
@@ -1171,7 +1171,8 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySes
 	if (World == nullptr || !IsSessionAuthority())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the server that created the session."));
-		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority, TEXT("Only the game that created the session can destroy it for everyone."));
+		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority,
+			FString::Printf(TEXT("Only the game that created the session can destroy it for everyone. %s"), RequiresSessionAuthorityFix));
 		return;
 	}
 

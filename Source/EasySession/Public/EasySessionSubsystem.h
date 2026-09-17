@@ -600,6 +600,9 @@ private:
 
 private:
 
+	/** The fix appended to every RequiresSessionAuthority message. Is Easy Session Host would be wrong here, because it is false on a dedicated server. */
+	static constexpr const TCHAR* RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
+
 	/**
 	 * Whether the session that exists now was created by this process.
 	 * Neither value the engine offers can answer that.

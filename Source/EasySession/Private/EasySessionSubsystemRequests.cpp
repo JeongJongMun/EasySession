@@ -43,12 +43,6 @@
 #include "OnlineSubsystemUtils.h"
 #include "UObject/UObjectGlobals.h"
 
-namespace
-{
-	/** The fix line appended to every RequiresSessionAuthority message, shared so it cannot drift per operation. Is Easy Session Host would be wrong here - it is false on a dedicated server. */
-	const TCHAR* const RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
-}
-
 void UEasySessionSubsystem::ExecuteActiveRequest()
 {
 	switch (GetActiveRequest()->Type)
