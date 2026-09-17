@@ -240,7 +240,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId`(Unique Net Id)
 
 `Read Easy Friends`가 돌려주며, 초대와 프로필 함수에 그대로 넘기면 됩니다.
-`NativeId`를 검색의 `SearchTargetId`에 넣으면 그 친구가 있는 세션을 찾습니다.
+`NativeId`를 검색의 `SearchTargetId`에 넣고 `SearchMode`를 By Friend로 두면 그 친구가 있는 세션을 찾습니다.
 
 ### 5.9 FEasyDisconnectInfo *(읽기 전용)*
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)

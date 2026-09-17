@@ -169,6 +169,11 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
+	// A friend id left with the Default mode would run a plain search that ignores the friend.
+	FEasySessionSearchParams IdWithoutMode;
+	IdWithoutMode.SearchTargetId = FUniqueNetIdRepl(FriendId);
+	TestFalse(TEXT("A friend id without the By Friend mode is refused"), IdWithoutMode.IsValid());
+
 	TSharedPtr<FTestState> Shared = State;
 	FEasySessionSearchParams LookupParams;
 	LookupParams.SearchMode = EEasySessionSearchMode::ByFriend;

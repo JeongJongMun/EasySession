@@ -370,7 +370,7 @@ void UEasySessionSubsystem::ExecuteFind()
 	const FEasySessionSearchParams& Params = GetActiveRequest()->SearchParams;
 	if (!Params.IsValid())
 	{
-		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Search params are invalid."));
+		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Search params are invalid: Max Results must be above 0, Timeout Override Seconds must not be negative, and Search Mode and Search Target Id must be set together."));
 		return;
 	}
 

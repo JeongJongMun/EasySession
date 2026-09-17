@@ -251,7 +251,7 @@ One entry per friend from `Find Easy Friend Sessions`. `Session` is only valid w
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId` (Unique Net Id)
 
 Returned by `Read Easy Friends`; pass one back to the invite and profile functions.
-`NativeId` goes into a search's `SearchTargetId` to find the session that friend is in.
+`NativeId` goes into a search's `SearchTargetId`, with `SearchMode` set to By Friend, to find the session that friend is in.
 
 ### 5.9 FEasyDisconnectInfo *(read-only)*
 `Reason` (`EEasyDisconnectReason`), `ReasonText` (Text)

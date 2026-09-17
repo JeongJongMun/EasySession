@@ -101,8 +101,8 @@ bool FEasySessionSettings::IsValid() const
 
 bool FEasySessionSearchParams::IsValid() const
 {
-	// A targeted mode with no id has nothing to ask the service about.
-	if (SearchMode != EEasySessionSearchMode::Default && !SearchTargetId.IsValid())
+	// The mode and the target id must be set together: one without the other asks about no one or ignores the id.
+	if ((SearchMode != EEasySessionSearchMode::Default) != SearchTargetId.IsValid())
 	{
 		return false;
 	}
