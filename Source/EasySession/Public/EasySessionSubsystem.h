@@ -48,7 +48,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionInviteAcceptedEvent, con
 /** Multicast event fired on a client when the host's session settings arrive. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasySessionSettingsChangedEvent);
 
-/** Multicast event fired when Is Busy flips, so a UI can enable and disable its buttons without polling. */
+/** Multicast event fired when Is Busy changes, so a UI can enable and disable its buttons without polling. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionBusyChangedEvent, bool, bBusy);
 
 /** Multicast event fired when a matchmaking run is accepted and its policy is registered. */
@@ -61,8 +61,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionRe
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendSessionsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasyFriendSession>&, FriendSessions);
 
 /**
- * Core subsystem of the EasySession plugin.
- * Automatically created for each game instance - no custom GameInstance class required.
+ * The EasySession subsystem is responsible for every session operation of the plugin.
+ * It is created automatically for each game instance, so no custom GameInstance class is needed.
  *
  * All operations are queued and executed one at a time, so they can be called in any order without breaking the underlying online subsystem.
  * Each operation reports its result through the optional completion delegate and the matching multicast event.
@@ -72,8 +72,8 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
-	//~ Internal collaborators, not separate systems.
-	//~ They read the private queries this subsystem already has rather than forcing those onto the public API.
+	//~ Internal helpers, not separate systems.
+	//~ They read this subsystem's private queries, which keeps those off the public API.
 	//~ On the public API users would have to tell them apart from the queries meant for them.
 	friend class FEasySessionSocial;
 	friend class FEasySessionServerGate;
@@ -143,11 +143,14 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnSessionEnded;
 
-	/** Fired when a Matchmaking run is accepted and its policy is registered - the first of that run's events, and the moment Get Active Matchmaking Policy starts returning it. */
+	/**
+	 * Fired when a matchmaking run is accepted and its policy is registered.
+	 * It is the first event of that run, and from then on Get Active Matchmaking Policy returns the policy.
+	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasyMatchmakingStartedEvent OnMatchmakingStarted;
 
-	/** Relays the active policy's OnStateChanged, so progress UI can bind here once instead of chasing each run's policy. */
+	/** Relays the active policy's OnStateChanged, so progress UI can bind here once instead of binding to each run's policy. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasyMatchmakingStateEvent OnMatchmakingStateChanged;
 
@@ -155,18 +158,22 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasyMatchmakingUpdatedEvent OnMatchmakingUpdated;
 
-	/** Fired when a Matchmaking run completes, a canceled one included - cancellation arrives as the Canceled result, never as a separate event. */
+	/** Fired when a matchmaking run completes, a canceled one included. A cancel arrives as the Canceled result, never as a separate event. */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnMatchmakingComplete;
 
-	/** Fired when something fails outside any node's result: the connection drops, or a travel or listen server started by EasySession fails (e.g. a wrong Initial Map Name). */
+	/**
+	 * Fired when something fails outside any node's result.
+	 * That is a dropped connection, or a travel or listen server started by EasySession that fails, for example on a wrong Initial Map Name.
+	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionFailureEvent OnSessionFailure;
 
 	/**
 	 * Fired when the player accepts an invite from the platform overlay.
 	 * With Auto Join Accepted Invites on, this player joins the invited session right after this event, unless they are already in one.
-	 * A player who is already in a session joins only when Accept Invites While In Session is on, and their current session is destroyed first - which disconnects everyone if they were hosting it.
+	 * A player who is already in a session joins only when Accept Invites While In Session is on.
+	 * Their current session is destroyed first, which disconnects everyone if they were hosting it.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionInviteAcceptedEvent OnSessionInviteAccepted;
@@ -184,7 +191,7 @@ public:
 
 	/**
 	 * Search for sessions matching the given filters.
-	 * Results are also cached and can be read back via GetLastSearchResults.
+	 * The results are also stored as the last search results, readable with GetLastSearchResults.
 	 * Starting a search clears the previous results, so nothing can display sessions from an older search while this one is running.
 	 *
 	 * @param SearchParams Parameters describing what to search for.
@@ -204,33 +211,33 @@ public:
 
 
 	/**
-	 * Start the match: transitions the session to InProgress.
-	 * When Allow Join In Progress is disabled, new players are refused from here until the match ends - except on Steam, which already refused them from the first join onwards.
-	 * Needs session authority - only the game that created the session can start the match.
+	 * Start the match. The session moves to InProgress.
+	 * When Allow Join In Progress is off, new players are refused from here until the match ends. Steam refused them from the first join onwards already.
+	 * Needs session authority: only the game that created the session can start the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
 	void StartEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * End the match: transitions the session back to Ended so a new match can be started.
-	 * Needs session authority - only the game that created the session can end the match.
+	 * End the match. The session moves to Ended, so a new match can be started.
+	 * Needs session authority: only the game that created the session can end the match.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
 	void EndEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Destroy the current session, leaving it if we are a client.
+	 * Destroy the current session. On a client this leaves the session.
 	 *
 	 * @param OnComplete Called when the operation completes.
 	 */
 	void DestroyEasySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Leave the session: destroy this game's named session, then return to the menu map.
-	 * A leaving host takes the room with it, so it closes the room the polite way instead - every client hears "The host has left the game." before the connection dies.
-	 * The menu travel runs whatever the destroy reported - the player asked to leave, and a named session that failed to delete is no reason to keep them on the map.
+	 * Leave the session: destroy this game's named session, then travel to the menu map.
+	 * A leaving host takes the session with it, so it destroys the session for everyone and every client receives "The host has left the game." first.
+	 * The menu travel runs whatever the destroy reported, because the player asked to leave.
 	 *
 	 * @param OnComplete Called with the destroy's result, after the menu travel was requested.
 	 */
@@ -238,7 +245,7 @@ public:
 
 	/**
 	 * Update the advertised properties of the current session.
-	 * Needs session authority - only the game that created the session can update it.
+	 * Needs session authority: only the game that created the session can update it.
 	 *
 	 * Every field is applied as given, including Password.
 	 * Pass settings from GetSessionSettings and change only what you mean to change.
@@ -260,21 +267,29 @@ public:
 
 public:
 
-	/** Cancel the running Matchmaking. A join or host that succeeds after the cancel is undone. Does nothing when no matchmaking is running. */
+	/**
+	 * Cancel the running matchmaking. A search ends inside this call.
+	 * A join or host that completes after the cancel is undone.
+	 * Does nothing when no matchmaking is running.
+	 */
 	void CancelMatchmaking();
 
-	/** @return Whether Matchmaking is currently running. */
+	/** @return Whether matchmaking is running. */
 	bool IsMatchmakingRunning() const;
 
-	/** @return The state of the running Matchmaking. Idle when none is running. */
+	/** @return The state of the running matchmaking. Idle when none is running. */
 	EEasyMatchmakingState GetMatchmakingState() const;
 
-	/** @return The running matchmaking policy. Null when none is running. For progress, bind the subsystem's On Matchmaking events: they start before this object exists. */
+	/**
+	 * The running matchmaking policy, or null when none is running.
+	 * For progress, bind the subsystem's On Matchmaking events: they fire before this object exists.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const;
 
 	/**
-	 * This and the queries below it are all about the game session and take no session argument - a future party gets its own queries, because these bodies read the world and the match lifecycle, which a party does not have.
+	 * This and the queries below are about the game session and take no session argument.
+	 * A future party session gets its own queries, because these read the world and the match lifecycle, which a party does not have.
 	 *
 	 * @return Whether the local player is currently in a session.
 	 */
@@ -287,7 +302,8 @@ public:
 	EEasySessionState GetSessionState() const;
 
 	/**
-	 * Get these, edit the one field, pass them to Update Easy Session - building fresh settings instead resets every field you did not fill in.
+	 * Get these, change the one field, and pass them to Update Easy Session.
+	 * Building new settings instead resets every field you did not fill in.
 	 *
 	 * @return The settings the current session is advertising, so a change can be made without restating everything else.
 	 *         Works for every player in the session; the password and its friends exception are only filled on the host, the one game that holds them.
@@ -296,35 +312,47 @@ public:
 
 	/**
 	 * @return The join code the current session advertises, or empty when it advertises none.
-	 *         Works for every player in the session, so anyone in the room can share the code.
+	 *         Works for every player in the session, so any session member can share the code.
 	 */
 	FString GetSessionJoinCode() const;
 
 	/**
-	 * Internal: receive the host's replicated session state (called by the state actor).
-	 * Clients cache it for display and reconcile their local session copy.
+	 * Internal, called by the state actor: receive the host's replicated session state.
+	 * Clients store it for display and update their local session copy.
 	 */
 	void HandleReplicatedHostSessionState(EEasySessionState HostState);
 
 	/**
-	 * Internal: receive the host's replicated session settings (called by the state actor).
-	 * Clients patch their local session copy so the regular getters return the host's values, then broadcast OnSessionSettingsChanged.
+	 * Internal, called by the state actor: receive the host's replicated session settings.
+	 * Clients write them into their local session copy so the regular getters return the host's values, then broadcast OnSessionSettingsChanged.
 	 */
 	void HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings);
 
-	/** @return Whether the local player is hosting the current session. Always false on a dedicated server, which has no local player - call IsSessionAuthority there instead. */
+	/**
+	 * @return Whether the local player is hosting the current session.
+	 *         Always false on a dedicated server, which has no local player. Call IsSessionAuthority there instead.
+	 */
 	bool IsHost() const;
 
-	/** @return Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it. Is Host is not the same question - it is false on a dedicated server. */
+	/**
+	 * @return Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
+	 *         Is Host is a different question, and false on a dedicated server.
+	 */
 	bool IsSessionAuthority() const;
 
-	/** @return The display names of all players currently in the session, including the local player. Read from the replicated player states, so both the host and clients get the list. */
+	/**
+	 * @return The display names of all players in the session, including the local player.
+	 *         Read from the replicated player states, so both the host and clients get the list.
+	 */
 	TArray<FString> GetSessionPlayerNames() const;
 
 	/** @return The display name of the current session. Empty when no session exists. */
 	FString GetSessionDisplayName() const;
 
-	/** @return The password of the session this game is hosting, for the host to share. Empty on clients and for password-less sessions - the password never leaves the host. */
+	/**
+	 * @return The password of the session this game is hosting, for the host to share.
+	 *         Empty on clients and for sessions without a password, because the password never leaves the host.
+	 */
 	FString GetSessionPassword() const;
 
 	/** @return Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host. */
@@ -337,15 +365,17 @@ public:
 	int32 GetSessionMaxPlayers() const;
 
 	/**
-	 * Session buttons bind here to disable themselves; IsMatchmakingRunning asks about Matchmaking alone.
+	 * Session buttons read this to disable themselves. IsMatchmakingRunning asks about matchmaking alone.
 	 * Matchmaking is a queue operation that counts as busy, so it is covered even while the queue is empty between its steps.
 	 *
-	 * @return Whether a request is running or queued, a busy operation such as Matchmaking is running, or a travel this plugin started has not reached its map yet.
+	 * @return Whether a request is running or queued, a busy operation such as matchmaking is running,
+	 *         or a travel this plugin started has not loaded its map yet.
 	 */
 	bool IsBusy() const;
 
 	/**
-	 * Names the operation behind IsBusy, whoever started it, so a status line can read "Joining the session..." for an invite join too.
+	 * Names the operation behind IsBusy, including operations the game did not start.
+	 * A status line can then read "Joining the session..." for a join from an invite too.
 	 *
 	 * @return Which operation is running. None exactly when IsBusy is false.
 	 */
@@ -366,28 +396,27 @@ public:
 	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.
 	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
-	 * Needs session authority - only the game that created the session can travel it, and it returns false for other games.
+	 * Needs session authority: only the game that created the session can travel it. Returns false for other games.
 	 */
 	bool ServerTravelToMap(const FString& MapName);
 
 	/**
-	 * Drop a travel this plugin requested that has not started loading its map.
-	 * Matchmaking uses it when a cancel lands after a join or host already succeeded, right before destroying that session.
+	 * Cancel a travel this plugin requested that has not started loading its map.
+	 * Matchmaking uses it when a cancel arrives after a join or host already succeeded, right before destroying that session.
 	 */
 	void CancelPendingTravel();
 
 	/**
-	 * Cancel the search this requester asked for. The requester hears Canceled inside this call.
-	 * A LAN search is stopped in the online service at once.
-	 * An internet search cannot be stopped there, so it finishes in the background: it no longer counts as busy, its answer is dropped, and the next search queues behind it, which keeps two searches from overlapping in the service.
-	 * Matchmaking uses it so a cancel during a search ends the run at once.
+	 * Cancel the search this requester asked for. The requester's delegate receives Canceled inside this call.
+	 * A LAN search is stopped in the online subsystem. An internet search cannot be, so its request keeps the active slot until it completes.
+	 * Until then it does not count as busy, its late completion is dropped, and the next search waits behind it instead of overlapping it.
 	 *
 	 * @return Whether a search of this requester was running.
 	 */
 	bool CancelSearch(const UObject* Requester);
 
 	/**
-	 * Matchmaking reads this to tell a session on its way out from one that is here to stay.
+	 * Matchmaking reads this to tell a session being destroyed from one that stays.
 	 *
 	 * @return Whether a destroy for the current session is already running or waiting.
 	 */
@@ -395,8 +424,9 @@ public:
 
 	/**
 	 * Destroy the session for every player.
-	 * Remote clients record Reason as a Host Destroyed Session disconnect and return to the menu, where reading it with Consume Last Easy Disconnect Info is what shows it to the player.
-	 * Needs session authority - only the game that created the session can do this.
+	 * Clients record Reason as a Host Destroyed Session disconnect and travel back to the menu.
+	 * There, Consume Last Easy Disconnect Info returns it so the menu can show it to the player.
+	 * Needs session authority: only the game that created the session can do this.
 	 *
 	 * @param OnComplete Called with the destroy's result, after the host's own menu travel was requested.
 	 */
@@ -404,16 +434,32 @@ public:
 
 public:
 	
-	/** Invite a friend to the current session. @return Success, or why the invite could not be sent. */
+	/**
+	 * Invite a friend to the current session.
+	 *
+	 * @return Success, or why the invite could not be sent.
+	 */
 	EEasySessionResult SendSessionInviteToFriend(const FEasySessionFriend& Friend);
 
-	/** Open the platform invite overlay (e.g. Steam) for the current session. @return Success, or why the overlay could not be opened. */
+	/**
+	 * Open the platform invite overlay (e.g. Steam) for the current session.
+	 *
+	 * @return Success, or why the overlay could not be opened.
+	 */
 	EEasySessionResult ShowInviteUI();
 
-	/** Open the platform profile overlay (e.g. Steam) for the given friend. @return Success, or why the overlay could not be opened. */
+	/**
+	 * Open the platform profile overlay (e.g. Steam) for the given friend.
+	 *
+	 * @return Success, or why the overlay could not be opened.
+	 */
 	EEasySessionResult ShowProfileUI(const FEasySessionFriend& Friend);
 
-	/** Open the platform profile overlay (e.g. Steam) for a player in the session. @return Success, or why the overlay could not be opened. */
+	/**
+	 * Open the platform profile overlay (e.g. Steam) for a player in the session.
+	 *
+	 * @return Success, or why the overlay could not be opened.
+	 */
 	EEasySessionResult ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player);
 
 	/**
@@ -424,20 +470,21 @@ public:
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete = FEasyFriendsCompleteDelegate());
 
 	/**
-	 * Read the friends list and find the session each friend playing this game is in.
-	 * Each friend's lookup is its own request on the queue, one at a time, so the game's own session operations run between them instead of waiting out the whole search.
-	 * One friend search at a time; a second call while one runs fails with FriendSearchAlreadyInProgress.
-	 * The search is a queue operation that does not count as busy, because it only reads.
-	 * Not supported on the NULL (LAN) subsystem.
+	 * Read the friends list and find the session each friend playing this game is in. Not supported on the NULL (LAN) subsystem.
+	 * Each friend's lookup is its own queued request, so the game's own session operations run between them, and the search does not count as busy.
+	 * One friend search runs at a time. A second call while one runs fails with FriendSearchAlreadyInProgress.
 	 *
 	 * @param OnComplete Called with one entry per friend. Entries with bHasSession carry a session joinable with JoinEasySession.
 	 */
 	void FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete = FEasyFriendSessionsCompleteDelegate());
 
-	/** Stop the running friend session search. It completes with Canceled and the lookup in flight is ignored. Does nothing when none is running. */
+	/**
+	 * Cancel the running friend session search. It completes with Canceled, and the running lookup's late completion is ignored.
+	 * Does nothing when none is running.
+	 */
 	void CancelFriendSearch();
 
-	/** @return Whether a friend session search is running. Unlike Matchmaking it is not part of IsBusy. */
+	/** @return Whether a friend session search is running. Unlike matchmaking it is not part of IsBusy. */
 	bool IsFriendSearchRunning() const;
 
 public:
@@ -445,30 +492,29 @@ public:
 	/** @return Whether a disconnect reason is waiting to be shown (e.g. as a popup on the menu). */
 	bool HasPendingDisconnectInfo() const { return bHasPendingDisconnectInfo; }
 
-	/** Get the last disconnect info and clear the pending flag. Survives map travel. */
+	/** Get the last disconnect info and clear the pending flag. Kept across map travel. */
 	FEasyDisconnectInfo ConsumeLastDisconnectInfo();
 
 	/**
-	 * Record a disconnect and run the recovery flow.
-	 * The dead session is destroyed, then the game returns to the project's Game Default Map when Auto Return To Menu On Disconnect is enabled.
-	 * Called automatically on network and travel failures; call it manually only if you detect disconnects yourself.
-	 * The first reason recorded is kept until it is consumed, so a follow-up failure cannot replace the real cause.
+	 * Record a disconnect, destroy the lost session, and travel to the project's Game Default Map when Auto Return To Menu On Disconnect is on.
+	 * Called automatically on network and travel failures. Call it yourself only if you detect disconnects yourself.
+	 * The first reason recorded is kept until it is consumed, so a later failure cannot replace the first cause.
 	 */
 	void NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText);
 
 public:
 
 	/**
-	 * C++ hook: modify the server travel URL (hosting / server travel) before it is used.
-	 * Bind at startup. The hook fires before the completion callback of the operation that travels, so binding inside that callback misses its own travel.
+	 * C++ delegate: change the server travel URL (hosting and server travel) before it is used.
+	 * Bind at startup. The delegate fires before the completion callback of the operation that travels, so binding inside that callback misses its own travel.
 	 * For one operation's options, use Additional Travel Options on the params instead.
 	 */
 	FEasyModifyTravelURLDelegate OnModifyServerTravelURL;
 
 	/**
-	 * C++ hook: modify the client travel URL (joining a host) before it is used.
-	 * This URL carries the session password as an option - do not log it.
-	 * Bind at startup. The hook fires before the completion callback of the operation that travels, so binding inside that callback misses its own travel.
+	 * C++ delegate: change the client travel URL (joining a host) before it is used.
+	 * This URL carries the session password as an option. Do not log it.
+	 * Bind at startup. The delegate fires before the completion callback of the operation that travels, so binding inside that callback misses its own travel.
 	 * For one operation's options, use Additional Travel Options on the params instead.
 	 */
 	FEasyModifyTravelURLDelegate OnModifyClientTravelURL;
@@ -492,7 +538,7 @@ private:
 
 	/**
 	 * Queue callback: the active request passed its deadline.
-	 * Online services are not guaranteed to report completion, and a request that never completes would stall every queued request behind it.
+	 * The online subsystem is not guaranteed to call back, and a request that never completes would block every queued request behind it.
 	 * This fails it with Timeout so the queue can continue, then cleans up any session the operation may still create afterwards.
 	 */
 	void HandleRequestDeadline();
@@ -500,17 +546,17 @@ private:
 	/**
 	 * Finish the active request and schedule the next one.
 	 *
-	 * bAbandoned says the request is being given up on rather than reporting back, which is what the watchdog does.
+	 * bAbandoned means the watchdog is abandoning the request instead of the online subsystem completing it.
 	 * See CleanupRequest for what changes.
 	 */
 	void CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage = FString(), bool bAbandoned = false);
 
 	/**
-	 * Undo what the request left behind, so the next one starts clean.
+	 * Clean up what the request left behind, so the next one starts clean.
 	 * Every completion passes through here, which is what stops a request type from being cleaned up on one path and forgotten on the other.
 	 *
-	 * A request that reported back has already told the online service it is over.
-	 * One that was abandoned has not, and the online service is still working on it - the only case where the service itself has to be told to stop.
+	 * A request the online subsystem completed is over on both sides.
+	 * An abandoned one is still running in the online subsystem, the only case where it has to be told to stop.
 	 */
 	void CleanupRequest(const FEasySessionRequest& Request, bool bAbandoned);
 
@@ -529,22 +575,22 @@ private:
 	/** Ask the host's approval beacon whether the local player may join. */
 	void RequestJoinApproval();
 
-	/** The beacon's answer: join the session, or fail the request with the reason. */
+	/** The beacon's response: join the session, or fail the request with the reason. */
 	void HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response);
 
-	/** Ask the online service to join. Every join path ends in this step. */
+	/** Ask the online subsystem to join. Every join path ends in this step. */
 	void JoinOnlineSession();
 
-	/** Ask for the session a friend is in, for the active request. It uses the Find slot without a search object and answers through its own delegate. */
+	/** Ask for the session a friend is in, for the active request. It runs as a Find request without a search object and completes through its own delegate. */
 	void StartFriendSessionSearch(const FEasySessionSearchParams& Params);
 
-	/** Start a discovery search for the active request, completing it on the failures the service reports on the spot. */
+	/** Start a discovery search for the active request, completing it on the failures the online subsystem reports inside the call. */
 	void StartSessionSearch(const FEasySessionSearchParams& Params);
 
 	/** Filter what a search returned and finish the active Find request with the results. */
 	void FinishActiveSearch(const TArray<FOnlineSessionSearchResult>& NativeResults);
 
-	/** @return The active Find request when a search completion serves one. Null otherwise. */
+	/** @return The active Find request when a search completion belongs to one. Null otherwise. */
 	TSharedPtr<FEasySessionRequest> GetActiveSearchRequest() const;
 
 	/** Online subsystem delegate handlers. */
@@ -567,7 +613,7 @@ private:
 	UFUNCTION()
 	void RelayMatchmakingUpdated(EEasyMatchmakingState MatchmakingState, int32 ElapsedSeconds);
 
-	/** Hand control back to the engine's main-menu flow (browses to the Game Default Map). */
+	/** Browse to the project's Game Default Map, the engine's main menu. */
 	void ReturnToMenu();
 
 	/** Session state as derived from the local online subsystem session copy. */
@@ -575,7 +621,7 @@ private:
 
 	/**
 	 * Whether this process is the server of the current world.
-	 * Every net mode below NM_Client is a kind of server, so a listen server, a dedicated server and a standalone game all answer true.
+	 * Every net mode below NM_Client is a kind of server, so a listen server, a dedicated server and a standalone game all count.
 	 */
 	bool IsNetworkServer() const;
 
@@ -593,16 +639,16 @@ private:
 
 	/**
 	 * Re-advertise the session with the in-progress key set, as the second phase of the Start or End request that is running.
-	 * Staying inside that request is what keeps this off the queue's toes: no other operation can start while it is in flight.
+	 * Staying inside that request keeps the queue in order: no other request can start while it is running.
 	 *
-	 * @return Whether the service accepted the update. False completes the phase on the spot.
+	 * @return Whether the online subsystem accepted the update. False completes the phase inside the call.
 	 */
 	bool AdvertiseMatchInProgress(bool bMatchInProgress);
 
 	/** Finish a Start or End request whose re-advertise phase is over, telling the caller the match state change succeeded either way. */
 	void CompleteMatchStateRequest(bool bAdvertised);
 
-	/** Spawn/refresh the state actor after every map load while hosting. */
+	/** Spawn or refresh the state actor after every map load while hosting. */
 	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);
 
 	/** Create the automatic session when running as a dedicated server. */
@@ -614,18 +660,13 @@ private:
 	static constexpr const TCHAR* RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
 
 	/**
-	 * Whether the session that exists now was created by this process.
-	 * Neither value the engine offers can answer that.
-	 * Steam never writes FNamedOnlineSession's bHosting - only some services do, NULL among them.
-	 * Comparing the session owner against the local player fails on a dedicated server, which has none.
-	 * Every request passes through this queue, so creating a session is a fact this plugin already knows and can simply record.
-	 *
-	 * Read it through IsSessionAuthority, never directly.
-	 * That pairs it with the session actually existing, so losing the session by any route also clears the authority.
+	 * Whether the session that exists now was created by this process. Recorded here because the engine offers no reliable value.
+	 * Steam never writes FNamedOnlineSession's bHosting, and comparing the session owner against the local player fails on a dedicated server, which has none.
+	 * Read it through IsSessionAuthority, never directly, so that losing the session by any route also clears the authority.
 	 */
 	bool bCreatedActiveSession = false;
 
-	/** The native search object of the running find operation. */
+	/** The native search object of the running Find request. */
 	TSharedPtr<FOnlineSessionSearch> ActiveSearch;
 
 	/** Cached results of the most recent search. */
