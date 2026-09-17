@@ -305,7 +305,7 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 ### 6.5 EEasySessionHostMode
 
-`ListenServer` (the hosting player's game is the server) or `DedicatedServer` (code path present, not validated in 1.0).
+`ListenServer` (the hosting player's game is the server) or `DedicatedServer` (code path present, not validated).
 
 ### 6.6 EEasySessionRegion
 

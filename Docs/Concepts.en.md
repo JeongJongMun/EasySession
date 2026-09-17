@@ -59,7 +59,7 @@ You almost never touch it directly. The one place you will meet the name is conf
 ## Listen server vs dedicated server
 
 - **Listen server** - the hosting player's game *is* the server. No server machines to rent or run; ideal for co-op and small games. This is EasySession's default (`Host Mode = Listen Server`).
-- **Dedicated server** - a server process with no graphics and no local player hosts the game; every player is a client. Requires building a server target (needs a source-built engine). EasySession supports it via `Host Mode = Dedicated Server` and can auto-create the session when the server boots (Project Settings -> Plugins -> EasySession).
+- **Dedicated server** - a server process with no graphics and no local player hosts the game; every player is a client. Requires building a server target (needs a source-built engine). EasySession has a code path for it through `Host Mode = Dedicated Server`, including creating the session when the server boots (Project Settings -> Plugins -> EasySession), but it is not validated.
 
 ## Presence, LAN, and why some settings are ignored
 

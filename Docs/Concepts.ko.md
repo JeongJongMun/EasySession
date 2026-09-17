@@ -59,7 +59,7 @@ Travel은 세션을 없애지 않습니다. 세션은 맵이 아니라 온라인
 ## 리슨 서버와 데디케이티드 서버
 
 - **리슨 서버** - 호스트 플레이어의 게임이 곧 서버입니다. 빌리거나 돌릴 서버 머신이 없습니다. 협동이나 소규모 게임에 알맞고, EasySession의 기본값입니다(`Host Mode = Listen Server`).
-- **데디케이티드 서버** - 그래픽도 로컬 플레이어도 없는 서버 프로세스가 게임을 호스팅하고, 모든 플레이어가 클라이언트입니다. 서버 타깃 빌드가 필요합니다(소스 빌드 엔진 필요). EasySession은 `Host Mode = Dedicated Server`로 지원하며, 서버가 뜰 때 세션을 자동 생성할 수 있습니다(Project Settings -> Plugins -> EasySession).
+- **데디케이티드 서버** - 그래픽도 로컬 플레이어도 없는 서버 프로세스가 게임을 호스팅하고, 모든 플레이어가 클라이언트입니다. 서버 타깃 빌드가 필요합니다(소스 빌드 엔진 필요). EasySession에는 `Host Mode = Dedicated Server`로 동작하는 코드 경로가 있고 서버가 뜰 때 세션을 자동 생성하는 기능도 있지만(Project Settings -> Plugins -> EasySession), 검증되지 않았습니다.
 
 ## Presence, LAN, 그리고 일부 설정이 무시되는 이유
 
