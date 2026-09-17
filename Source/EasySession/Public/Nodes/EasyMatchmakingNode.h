@@ -10,7 +10,7 @@
 class UEasyMatchmakingPolicy;
 
 /**
- * Async node that runs Matchmaking.
+ * Async node that runs matchmaking.
  */
 UCLASS()
 class EASYSESSION_API UEasyMatchmakingNode : public UEasySessionNodeBase
@@ -21,7 +21,7 @@ public:
 
 	/**
 	 * Called when matchmaking finished in a session.
-	 * Use Is Easy Session Host to check whether we joined a session or hosted our own.
+	 * Use Is Easy Session Host to check whether this player joined a session or hosted one.
 	 */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnSuccess;
@@ -32,7 +32,7 @@ public:
 
 	/**
 	 * Start Matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
-	 * Cancel a running Matchmaking with Cancel Easy Matchmaking.
+	 * Cancel a running matchmaking run with Cancel Easy Matchmaking.
 	 *
 	 * @param MatchmakingParams Parameters describing the search and the fallback host session.
 	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when empty.

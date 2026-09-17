@@ -23,23 +23,22 @@ public:
 	//~ End UDeveloperSettings Interface
 
 	/**
-	 * Automatically clean up the session and return to the main menu, the project's Game Default Map.
-	 * Runs when the connection to a session is lost, or when traveling to a session fails.
-	 * Disable to keep the player in place and handle it yourself.
-	 * The reason is preserved and can be read on the menu with Consume Last Disconnect Info.
+	 * Automatically destroy the session and travel to the project's Game Default Map when the connection to a session is lost or traveling to a session fails.
+	 * Turn it off to keep the player in place and handle it yourself.
+	 * The reason is kept and can be read on the menu with Consume Last Easy Disconnect Info.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Recovery")
 	bool bAutoReturnToMenuOnDisconnect = true;
 
 	/**
 	 * Automatically join the session when the player accepts an invite from the platform overlay (e.g. Steam).
-	 * Disable to only receive the On Session Invite Accepted event and handle joining yourself.
+	 * Turn it off to only receive the On Session Invite Accepted event and handle joining yourself.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites")
 	bool bAutoJoinAcceptedInvites = true;
 
 	/**
-	 * Whether an invite can be accepted while this player is already in a session. False by default.
+	 * Whether an invite can be accepted while this player is already in a session.
 	 * With this on, one click in the platform overlay destroys the session they are in before joining the invited one.
 	 * The On Session Invite Accepted event still fires either way, so the game can ask the player first and then join.
 	 */
@@ -47,13 +46,10 @@ public:
 	bool bAcceptInvitesWhileInSession = false;
 
 	/**
-	 * How long a session request may wait for the online service before it is failed with the Timeout result and the queue moves on.
-	 * Online services are not required to ever call back: Steam, for one, waits for a lobby list without a timeout of its own.
-	 * Without this, a silent service would stall every request behind it.
-	 * A search may replace this value with its own Timeout Override Seconds.
-	 * A timeout means the outcome is unknown, not that nothing happened.
-	 * If the operation completes after the timeout and leaves a session behind, it is destroyed so the next request starts clean.
-	 * Set to 0 to wait forever.
+	 * How long a session request may wait for the online subsystem before it completes with Timeout and the queue moves on.
+	 * The online subsystem is not required to ever call back, so without this one request could block every request behind it.
+	 * A search may replace it with its own Timeout Override Seconds.
+	 * Timeout means the outcome is unknown. A session the request still creates afterwards is destroyed, so the next request starts clean. 0 waits forever.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Advanced", meta = (ClampMin = 0.0, UIMin = 0.0))
 	float RequestTimeoutSeconds = 30.0f;
@@ -67,7 +63,7 @@ public:
 
 	/**
 	 * Host params used when a dedicated server automatically creates its session.
-	 * Initial Map Name is ignored - the server keeps the map it was launched with.
+	 * Initial Map Name is ignored. The server keeps the map it was launched with.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Dedicated Server")
 	FEasySessionHostParams DedicatedServerHostParams;

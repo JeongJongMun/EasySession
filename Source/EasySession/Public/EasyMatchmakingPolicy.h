@@ -53,18 +53,18 @@ public:
 
 	/**
 	 * Score a session found by the search. Higher scores are joined first.
-	 * The default implementation scores by ping bucket first, then by fill ratio, and ranks sessions with no open slot below every session that has room.
+	 * The default implementation scores by ping bucket first, then by fill ratio, and ranks sessions with no open slot below every session with one.
 	 * Override this to use custom criteria such as skill or map preference.
 	 */
 	UFUNCTION(BlueprintNativeEvent, Category = "EasySession")
 	float ScoreSession(const FEasySessionSearchResult& Session) const;
 	virtual float ScoreSession_Implementation(const FEasySessionSearchResult& Session) const;
 
-	/** @return The current matchmaking state. */
+	/** The current matchmaking state. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	EEasyMatchmakingState GetState() const { return State; }
 
-	/** @return Whole seconds since this run started. Zero before the start, and it stops counting when the run completes. */
+	/** Whole seconds since this run started. Zero before the start, and it stops counting when the run completes. */
 	UFUNCTION(BlueprintPure, Category = "EasySession")
 	int32 GetElapsedSeconds() const;
 
@@ -73,12 +73,12 @@ public:
 	/** Start the matchmaking run. Called by the EasySessionSubsystem. */
 	void Start(UEasySessionSubsystem& InSubsystem, const FEasyMatchmakingParams& InParams, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Cancel the matchmaking run. The run finishes with the Canceled result, and a join or host that succeeds after the cancel is undone. */
+	/** Cancel the matchmaking run. A search ends inside this call, and a join or host that completes after the cancel is undone. The run completes with Canceled. */
 	void Cancel();
 
 private:
 
-	/** Tests feed crafted search results into the candidate pipeline and read what it decided. */
+	/** Tests feed crafted search results into the candidate list and read what it decided. */
 	friend class FEasySessionTestAccess;
 
 	/** Move to a new state and notify listeners. */
@@ -100,27 +100,27 @@ private:
 	void HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/**
-	 * Schedule the next search pass, or fall back to hosting / failure when out of passes.
+	 * Schedule the next search pass, or host or fail when no pass is left.
 	 *
 	 * @param SearchResult The result of this pass's search. A failure other than Success ends the run with it when no pass is left.
 	 * @param SearchError The message that came with SearchResult.
 	 */
 	void FinishPassAndContinue(EEasySessionResult SearchResult = EEasySessionResult::Success, const FString& SearchError = FString());
 
-	/** Host our own session because no session could be joined. */
+	/** Host a session because no session could be joined. */
 	void HostFallbackSession();
 
-	/** The run's host params with the search's network and required custom settings folded in. */
+	/** The run's host params with the search's LAN flag and required custom settings copied in. */
 	FEasySessionHostParams MakeFallbackHostParams() const;
 
 	/** Called when the host fallback finished. */
 	void HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
-	/** Finish as Canceled. A step that succeeded after the cancel is undone: its pending travel is dropped and its session destroyed. */
+	/** Finish as Canceled. A step that succeeded after the cancel is undone: its pending travel is canceled and its session destroyed. */
 	void CompleteAsCanceled(EEasySessionResult StepResult);
 
 	/**
-	 * Finish as SessionAlreadyExists when this player is already in a session - an accepted invite, or the game's own Create or Join, got there first.
+	 * Finish as SessionAlreadyExists when this player is already in a session, because an accepted invite or the game's own Create or Join ran first.
 	 *
 	 * @return Whether the run finished.
 	 */
@@ -129,7 +129,7 @@ private:
 	/** Finish the run and report the result. */
 	void Complete(EEasySessionResult Result, const FString& ErrorMessage);
 
-	/** Build a stable identifier for a search result, used by the exclusion list. */
+	/** Build a stable identifier for a search result, used by the failed session list. */
 	static FString GetSessionKey(const FEasySessionSearchResult& Session);
 
 private:
@@ -170,6 +170,6 @@ private:
 	/** When the run started, in FPlatformTime seconds. Zero while idle. */
 	double RunStartTimeSeconds = 0.0;
 
-	/** When the run completed, in FPlatformTime seconds. Elapsed time freezes here. */
+	/** When the run completed, in FPlatformTime seconds. Elapsed time stops here. */
 	double RunEndTimeSeconds = 0.0;
 };

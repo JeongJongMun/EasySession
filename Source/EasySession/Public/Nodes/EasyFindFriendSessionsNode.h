@@ -21,13 +21,13 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FEasyFriendSessionsEvent OnSuccess;
 
-	/** Called when the search failed or is not supported (e.g. NULL/LAN). */
+	/** Called when the search failed or is not supported, such as on NULL (LAN). */
 	UPROPERTY(BlueprintAssignable)
 	FEasyFriendSessionsEvent OnFailure;
 
 	/**
 	 * Read the friends list and find the session each friend playing this game is in.
-	 * Every friend is listed; the ones in a joinable session carry it, ready for Join Easy Session.
+	 * Every friend is listed. The ones in a joinable session carry it, ready for Join Easy Session.
 	 * Not supported on the NULL (LAN) subsystem.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Find Easy Friend Sessions", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))

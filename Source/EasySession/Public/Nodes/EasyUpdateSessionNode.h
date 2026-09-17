@@ -28,13 +28,13 @@ public:
 	/**
 	 * Update the advertised properties of the current session.
 	 *
-	 * Only the game hosting the session can update it - clients get a Requires Session Authority failure.
+	 * Only the game that created the session can update it. Other games get a Requires Session Authority failure.
 	 *
 	 * Every field is applied as given, including Password.
 	 * Pass settings from Get Easy Session Settings and change only what you mean to change.
 	 * Otherwise the fields you left at their defaults overwrite the session with those defaults.
 	 *
-	 * @param NewSettings The settings to advertise in place of the current ones. Get Easy Session Settings hands you the current ones to edit.
+	 * @param NewSettings The settings to advertise in place of the current ones. Get Easy Session Settings returns the current ones to edit.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Update Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "NewSettings"))
 	static UEasyUpdateSessionNode* UpdateEasySession(UObject* WorldContextObject, const FEasySessionSettings& NewSettings);

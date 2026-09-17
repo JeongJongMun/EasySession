@@ -21,12 +21,12 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FEasyFriendsEvent OnSuccess;
 
-	/** Called when the read failed or is not supported (e.g. NULL/LAN). */
+	/** Called when the read failed or is not supported, such as on NULL (LAN). */
 	UPROPERTY(BlueprintAssignable)
 	FEasyFriendsEvent OnFailure;
 
 	/**
-	 * Read the local player's friends list from the online service.
+	 * Read the local player's friends list from the online subsystem.
 	 * Not supported on the NULL (LAN) subsystem.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Read Easy Friends", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))

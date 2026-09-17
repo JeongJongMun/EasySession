@@ -8,7 +8,7 @@
 #include "EasyEndSessionNode.generated.h"
 
 /**
- * Async node that ends the match, transitioning the session back to Ended.
+ * Async node that ends the match, moving the session back to Ended.
  */
 UCLASS()
 class EASYSESSION_API UEasyEndSessionNode : public UEasySessionNodeBase
@@ -26,9 +26,9 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * End the match: transitions the session back to Ended so a new match can be started.
+	 * End the match. The session moves to Ended, so a new match can be started.
 	 *
-	 * Only the game hosting the session can end the match - clients get a Requires Session Authority failure.
+	 * Only the game that created the session can end the match. Other games get a Requires Session Authority failure.
 	 * Show the button only when Is Easy Session Authority is true.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "End Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))

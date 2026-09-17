@@ -8,7 +8,7 @@
 #include "EasyLeaveSessionNode.generated.h"
 
 /**
- * Async node that leaves the session: destroys this game's named session, then returns to the menu map.
+ * Async node that leaves the session: destroys this game's named session, then travels to the menu map.
  */
 UCLASS()
 class EASYSESSION_API UEasyLeaveSessionNode : public UEasySessionNodeBase
@@ -17,17 +17,18 @@ class EASYSESSION_API UEasyLeaveSessionNode : public UEasySessionNodeBase
 
 public:
 
-	/** Called when the session was left successfully. The menu map load is already on its way. */
+	/** Called when the session was left successfully. The menu travel has already started. */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnSuccess;
 
-	/** Called when the session could not be destroyed. The menu map load is on its way regardless. */
+	/** Called when the session could not be destroyed. The menu travel has started regardless. */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Leave the session: destroy this game's named session, then return to the menu map (Game Default Map).
-	 * A leaving host closes the room for everyone, telling each client "The host has left the game." first; a custom reason is Destroy Easy Session For Everyone on the subsystem.
+	 * Leave the session: destroy this game's named session, then travel to the menu map (Game Default Map).
+	 * A leaving host destroys the session for everyone, and each client receives "The host has left the game." first.
+	 * For a custom reason use Destroy Easy Session For Everyone on the subsystem.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Leave Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyLeaveSessionNode* LeaveEasySession(UObject* WorldContextObject);

@@ -8,7 +8,7 @@
 #include "EasyDestroySessionNode.generated.h"
 
 /**
- * Async node that destroys the current session (IOnlineSession::DestroySession).
+ * Async node that destroys the current session.
  */
 UCLASS()
 class EASYSESSION_API UEasyDestroySessionNode : public UEasySessionNodeBase
@@ -27,7 +27,7 @@ public:
 
 	/**
 	 * Destroy the named session: the host closes the session, a client removes its own copy and stays on the current map.
-	 * A client leaving for the menu is Leave Easy Session; sending everyone back with a reason is Destroy Easy Session For Everyone on the subsystem.
+	 * A client leaving for the menu is Leave Easy Session. Destroying it for everyone with a reason is Destroy Easy Session For Everyone on the subsystem.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Destroy Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyDestroySessionNode* DestroyEasySession(UObject* WorldContextObject);

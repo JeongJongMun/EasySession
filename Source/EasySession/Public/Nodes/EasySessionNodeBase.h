@@ -10,7 +10,7 @@ class UEasySessionSubsystem;
 
 /**
  * Base class for EasySession async Blueprint nodes.
- * Nodes are thin wrappers - all logic lives in the EasySessionSubsystem.
+ * Nodes are thin wrappers. All logic lives in the EasySessionSubsystem.
  */
 UCLASS(Abstract)
 class EASYSESSION_API UEasySessionNodeBase : public UBlueprintAsyncActionBase
