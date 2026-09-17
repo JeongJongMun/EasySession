@@ -13,7 +13,7 @@
 
 namespace
 {
-	/** How long a connected host gets to answer before the ask completes as Unreachable. */
+	/** How long a connected host gets to respond before the request completes as Unreachable. */
 	constexpr float ResponseTimeoutSeconds = 5.0f;
 }
 
@@ -56,9 +56,8 @@ void AEasySessionJoinApprovalBeaconClient::OnConnected()
 
 void AEasySessionJoinApprovalBeaconClient::ServerRequestJoinApproval_Implementation(const FEasyJoinApprovalRequest& Request)
 {
-	// Runs on the host, on the copy of this actor that AOnlineBeaconHostObject::
-	// SpawnBeaconActor created for this connection. GetUniqueId is the id the joiner
-	// presented at beacon login - the engine already refused the connection if it was invalid.
+	// Runs on the host, on the copy of this actor that AOnlineBeaconHostObject::SpawnBeaconActor created for this connection.
+	// GetUniqueId is the id the joining player presented at beacon login. The engine already refused the connection if it was invalid.
 	FEasyJoinApprovalResponse Response;
 	if (const AEasySessionJoinApprovalBeaconHostObject* HostObject = Cast<AEasySessionJoinApprovalBeaconHostObject>(GetBeaconOwner()))
 	{
@@ -81,9 +80,9 @@ void AEasySessionJoinApprovalBeaconClient::ClientReceiveJoinApproval_Implementat
 
 void AEasySessionJoinApprovalBeaconClient::OnFailure()
 {
-	// Covers refused/unreachable/timed-out connections. Deliberately after the Super
-	// call, which marks the connection Invalid and destroys the beacon's net driver
-	// (CleanupNetDriver). Signal keeps a late failure from double-reporting.
+	// Covers refused, unreachable and timed out connections.
+	// Deliberately after the Super call, which marks the connection Invalid and destroys the beacon's net driver.
+	// Signal keeps a late failure from reporting twice.
 	Super::OnFailure();
 
 	GetWorldTimerManager().ClearTimer(ResponseTimeoutHandle);
@@ -92,7 +91,7 @@ void AEasySessionJoinApprovalBeaconClient::OnFailure()
 
 void AEasySessionJoinApprovalBeaconClient::DestroyBeacon()
 {
-	// A destroyed ask must not answer: dropping the delegate here is what makes StopClient a cancel.
+	// A destroyed request must not respond. Dropping the delegate here is what makes StopClient a cancel.
 	CompleteDelegate.Unbind();
 	GetWorldTimerManager().ClearTimer(ResponseTimeoutHandle);
 

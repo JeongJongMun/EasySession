@@ -60,7 +60,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 	UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
 
 	// Searching already hides a started session, but a result fetched before the match
-	// started and a direct connect both get past that - so the host rejects here too.
+	// started and a direct connect both get past that, so the host refuses here too.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(OwnWorld);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	if (NamedSession != nullptr && !NamedSession->SessionSettings.bAllowJoinInProgress)
@@ -74,7 +74,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 		}
 	}
 
-	// PreLogin consults AtCapacity after the travel, so asking it here refuses a full room before the travel instead.
+	// PreLogin consults AtCapacity after the travel, so asking it here refuses a full session before the travel instead.
 	AGameModeBase* GameMode = OwnWorld ? OwnWorld->GetAuthGameMode() : nullptr;
 	if (GameMode != nullptr && GameMode->GameSession != nullptr && GameMode->GameSession->AtCapacity(/*bSpectator=*/ false))
 	{
@@ -93,7 +93,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 		return EEasyJoinApprovalResult::Approved;
 	}
 
-	// Invited players arrive without the password, and invites only go to friends -
+	// Invited players arrive without the password, and invites only go to friends,
 	// so being a friend of the host counts as knowing it.
 	if (bFriendsBypassPassword && PlayerId.IsValid())
 	{
@@ -106,7 +106,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 		}
 	}
 
-	// Never log the password: on a listen server the log file sits on a player's
+	// Never log the password: on a listen server the log file is on a player's
 	// machine. Logging which kind of failure happened is enough.
 	UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - %s."),
 		*PlayerId.ToString(),
@@ -125,7 +125,7 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 		return;
 	}
 
-	// Another handler may already be rejecting this player - do not overwrite the reason.
+	// Another handler may already be refusing this player, so its reason is kept.
 	if (!ErrorMessage.IsEmpty())
 	{
 		return;
@@ -134,8 +134,8 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 	UWorld* OwnWorld = Owner.GetGameInstance()->GetWorld();
 
 	// The password arrives in the travel URL. The engine sets Connection->PlayerId before
-	// PreLogin, so the joiner's connection can be found by id and its URL read. In-session
-	// map changes must use seamless travel, or players already in would be rejected here.
+	// PreLogin, so the joining player's connection can be found by id and its URL read. In-session
+	// map changes must use seamless travel, or players already in would be refused here.
 	FString SuppliedPassword;
 	if (!SessionPassword.IsEmpty())
 	{

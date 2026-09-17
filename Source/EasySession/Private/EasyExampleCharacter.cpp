@@ -23,7 +23,7 @@ AEasyExampleCharacter::AEasyExampleCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 500.0f, 0.0f);
 
-	// Mesh transform for a standard humanoid - the Blueprint child only picks the asset.
+	// Mesh transform for a standard humanoid. The Blueprint child only picks the asset.
 	GetMesh()->SetRelativeLocationAndRotation(FVector(0.0f, 0.0f, -88.0f), FRotator(0.0f, -90.0f, 0.0f));
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArm"));

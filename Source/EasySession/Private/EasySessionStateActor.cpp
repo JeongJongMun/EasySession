@@ -36,7 +36,7 @@ void AEasySessionStateActor::SetReplicatedSessionSettings(const FEasySessionRepl
 
 void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& Reason)
 {
-	// The host tears its own session down separately - only remote players react.
+	// The host destroys its own session separately. Only remote players react.
 	if (HasAuthority())
 	{
 		return;
@@ -53,7 +53,7 @@ void AEasySessionStateActor::PostNetInit()
 {
 	Super::PostNetInit();
 
-	// Covers the initial replication on late joiners, where the property may
+	// Covers the initial replication on players who join late, where the property may
 	// arrive with the actor before any OnRep fires.
 	PushStateToSubsystem();
 	PushSettingsToSubsystem();

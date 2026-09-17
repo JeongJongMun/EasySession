@@ -49,7 +49,7 @@ void FEasySessionJoinApproval::EnsureHost()
 		return;
 	}
 
-	// Run the beacon only when the session advertised it
+	// Run the beacon only when the session advertised it.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	int32 bJoinApproval = 0;
@@ -68,7 +68,7 @@ void FEasySessionJoinApproval::EnsureHost()
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.ObjectFlags |= RF_Transient;
 
-	// A beacon host is one shared listener per process, so an existing one is reused instead of binding a second port joiners never ask.
+	// A beacon host is one shared listener per process, so an existing one is reused instead of binding a second port no joining player asks.
 	AOnlineBeaconHost* Host = nullptr;
 	for (TActorIterator<AOnlineBeaconHost> It(World); It; ++It)
 	{
@@ -127,7 +127,7 @@ void FEasySessionJoinApproval::EnsureHost()
 		UE_LOG(LogEasySession, Log, TEXT("Registered the join approval on the project's beacon host (port %d)."), Host->GetListenPort());
 	}
 
-	// Joiners reach the beacon at the advertised port, so a beacon that bound elsewhere is unreachable.
+	// Joining players reach the beacon at the advertised port, so a beacon that bound elsewhere is unreachable.
 	const int32 BoundPort = Host->GetListenPort();
 	int32 AdvertisedPort = 0;
 	NamedSession->SessionSettings.Get(SETTING_BEACONPORT, AdvertisedPort);
@@ -153,7 +153,7 @@ void FEasySessionJoinApproval::StopHost()
 
 	if (AOnlineBeaconHost* Host = BeaconHost.Get())
 	{
-		// The project's own host stays up for the project - only one this plugin spawned is torn down.
+		// The project's own host stays up for the project. Only one this plugin spawned is destroyed.
 		if (bOwnsBeaconHost)
 		{
 			Host->DestroyBeacon();
@@ -193,7 +193,7 @@ void FEasySessionJoinApproval::RequestJoinApproval(const FEasySessionSearchResul
 	BeaconClient = Client;
 	if (!Client->RequestApproval(Target, Password, OnComplete))
 	{
-		// The delegate already fired with Unreachable - only the actor is left to clean up.
+		// The delegate already fired with Unreachable. Only the actor is left to destroy.
 		StopClient();
 	}
 }

@@ -20,8 +20,8 @@ class UEasySessionSubsystem;
  * Only EOS reports pending invites, and EOS is not a supported subsystem.
  *
  * Owned by the subsystem and destroyed with it, in Deinitialize.
- * Delegates with handles are bound raw, because Shutdown unbinds them before this object dies.
- * One-shot completion delegates cannot be unbound, so they guard on the subsystem and must not capture this object - it dies first.
+ * Delegates with handles are bound raw, because Shutdown unbinds them before this object is destroyed.
+ * One-shot completion delegates cannot be unbound, so they guard on the subsystem and must not capture this object, which is destroyed first.
  */
 class FEasySessionSocial
 {
@@ -40,10 +40,18 @@ public:
 	/** Stop listening. Called when the subsystem shuts down. */
 	void Shutdown();
 
-	/** Invite a friend to the current session. @return Success, or why the invite could not be sent. */
+	/**
+	 * Invite a friend to the current session.
+	 *
+	 * @return Success, or why the invite could not be sent.
+	 */
 	EEasySessionResult SendInviteToFriend(const FEasySessionFriend& Friend);
 
-	/** Open the platform invite overlay for the current session. @return Success, or why the overlay could not be opened. */
+	/**
+	 * Open the platform invite overlay for the current session.
+	 *
+	 * @return Success, or why the overlay could not be opened.
+	 */
 	EEasySessionResult ShowInviteUI() const;
 
 	/**
@@ -53,7 +61,7 @@ public:
 	 */
 	EEasySessionResult ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
 
-	/** Read the platform friends list, in display order. The friend session search built on it lives in FEasyFriendSessionOperation. */
+	/** Read the platform friends list, in display order. The friend session search built on it is FEasyFriendSessionOperation. */
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete);
 
 	/** Order friends for display: playing this game first, then online, then offline, each group by name. */
@@ -72,7 +80,7 @@ private:
 
 	/**
 	 * Second half of JoinInvitedSession, run once leaving the previous session has completed.
-	 * A player who did leave is sent to the menu when the join fails, because the session they left is destroyed.
+	 * A player who did leave travels to the menu when the join fails, because the session they left is destroyed.
 	 *
 	 * @param LeaveResult Result of destroying the session this player was in. Anything but Success cancels the join.
 	 */

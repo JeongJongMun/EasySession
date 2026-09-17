@@ -9,7 +9,7 @@ class AGameModeBase;
 class UEasySessionSubsystem;
 struct FUniqueNetIdRepl;
 
-/** Answer to "may this player join?". Decided by FEasySessionServerGate. */
+/** Result of a join approval check. Decided by FEasySessionServerGate. */
 UENUM()
 enum class EEasyJoinApprovalResult : uint8
 {
@@ -19,13 +19,13 @@ enum class EEasyJoinApprovalResult : uint8
 	/** The supplied session password did not match. */
 	WrongPassword,
 
-	/** The session has no room for another player. */
+	/** The session has no open slot for another player. */
 	SessionFull,
 
 	/** Refused for another reason. The reason text says which. */
 	Refused,
 
-	/** The joining client could not reach the host. A host never sends this - the beacon client fills it in itself. */
+	/** The joining client could not reach the host. A host never sends this. The beacon client fills it in itself. */
 	Unreachable
 };
 
@@ -72,14 +72,17 @@ public:
 
 	/**
 	 * Decide whether a player may join.
-	 * Checks the join-in-progress policy first, then the room the session has left, then the password, which friends of the host may skip.
+	 * Checks the join-in-progress policy first, then the open slots, then the password, which friends of the host may skip.
 	 * Never returns Unreachable, which only the beacon client produces.
 	 *
 	 * @param OutReason Set to the message shown to the refused player. Untouched when the join is approved.
 	 */
 	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
 
-	/** Prefix on every refusal message PreLogin writes. The engine reports a refusal and a lost host connection with the same failure type, so the client checks this prefix to know which one it received. */
+	/**
+	 * Prefix on every refusal message PreLogin writes.
+	 * The engine reports a refusal and a lost host connection with the same failure type, so the client checks this prefix to know which one it received.
+	 */
 	static constexpr const TCHAR* RefusalMark = TEXT("EasySession: ");
 
 private:
@@ -87,7 +90,7 @@ private:
 	/** Refuse the arriving player when ApproveJoin says no, by writing the reason into ErrorMessage. */
 	void HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage);
 
-	/** Whether the event belongs to the world this subsystem runs in. Ignores PIE instances other than our own. */
+	/** Whether the event belongs to the world this subsystem runs in. Ignores PIE instances other than this one. */
 	bool IsOwnWorld(const AGameModeBase* GameMode) const;
 
 	UEasySessionSubsystem& Owner;

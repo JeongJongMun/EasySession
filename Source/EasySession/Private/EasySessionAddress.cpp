@@ -16,7 +16,7 @@ namespace
 		int32 BracketIndex = INDEX_NONE;
 		if (Address.FindLastChar(TEXT(']'), BracketIndex))
 		{
-			// "[ipv6]:port" - the address is bracketed precisely so the port colon
+			// "[ipv6]:port": the address is bracketed so the port colon
 			// can be told apart from the ones inside the address.
 			return Address.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, BracketIndex);
 		}

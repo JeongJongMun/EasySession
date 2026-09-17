@@ -131,13 +131,13 @@ void FEasySessionSocial::JoinInvitedSessionAfterLeaving(EEasySessionResult Leave
 {
 	if (LeaveResult != EEasySessionResult::Success)
 	{
-		// The session is still there, so this player stays in it rather than being sent anywhere.
+		// The session is still there, so this player stays in it and no travel starts.
 		UE_LOG(LogEasySession, Warning, TEXT("Not joining the invited session: this player could not leave the session they were in."));
 		return;
 	}
 
 	// The session this player was in is destroyed by now, so a failed join would leave them in its map with no session.
-	// Send them to the menu instead.
+	// They travel to the menu instead.
 	Owner.JoinEasySession(Session, FString(), FString(),
 		FEasySessionCompleteDelegate::CreateWeakLambda(&Owner,
 			[this](EEasySessionResult JoinResult, const FString& /*ErrorMessage*/)

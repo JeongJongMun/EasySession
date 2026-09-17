@@ -20,7 +20,7 @@
 // UE_BUILD_SHIPPING only exists after Misc/Build.h fills in the configuration
 // macros UBT did not pass. Testing it before any include works in a unity build,
 // where some earlier file's includes land first, but compiles this file against
-// an undefined macro when it is built standalone - which the packaging build
+// an undefined macro when it is built standalone, which the packaging build
 // treats as an error (C4668).
 #include "Misc/Build.h"
 
@@ -291,8 +291,8 @@ namespace EasySessionConsole
 		TEXT("Run the online configuration diagnostics and log the results."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			// The findings go to the log; put the headline on screen too, so the
-			// command answers "did my service come up?" without a log window.
+			// The findings go to the log. The headline goes on screen too, so the
+			// command says whether the online subsystem loaded without a log window.
 			const EasySessionDiagnostics::FReport Report = EasySessionDiagnostics::RunDiagnostics(World);
 			EasySessionDiagnostics::LogReport(Report);
 			Print(FString::Printf(TEXT("Diagnose: %s (details in the log)"), *Report.Summary));

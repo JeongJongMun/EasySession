@@ -40,8 +40,8 @@ namespace
 	void DiagnoseSteam(UWorld* World, const IOnlineSubsystem& OnlineSub, FReport& Report)
 	{
 		// [OnlineSubsystemSteam] keys that beginners forget most often. bEnabled is not
-		// checked here: a missing key counts as enabled, and Steam being active - the
-		// only way into this function - already proves the key did not stop it.
+		// checked here: a missing key counts as enabled, and Steam being active, the
+		// only way into this function, already proves the key did not stop it.
 		int32 AppId = 0;
 		GConfig->GetInt(TEXT("OnlineSubsystemSteam"), TEXT("SteamDevAppId"), AppId, GEngineIni);
 		if (AppId <= 0)
@@ -139,7 +139,7 @@ EasySessionDiagnostics::FReport EasySessionDiagnostics::RunDiagnostics(UWorld* W
 		return Report;
 	}
 
-	// The configured service failed to load and a different service loaded instead.
+	// The configured online subsystem failed to load and a different one loaded instead.
 	if (!ConfiguredService.IsEmpty() && ActualService != FName(*ConfiguredService))
 	{
 		FString Causes;

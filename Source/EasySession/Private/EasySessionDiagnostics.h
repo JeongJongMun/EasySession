@@ -44,19 +44,19 @@ namespace EasySessionDiagnostics
 	/** Everything one diagnostics run found. */
 	struct FReport
 	{
-		/** One line naming the online service the project asked for and the one that actually loaded. */
+		/** One line naming the online subsystem the project configured and the one that actually loaded. */
 		FString Summary;
 
 		/** The findings, in the order the checks ran. */
 		TArray<FFinding> Findings;
 	};
 
-	/** Run all checks for the given world and return what they found. Writes nothing to the log - pass the report to LogReport for that. */
+	/** Run all checks for the given world and return what they found. Writes nothing to the log. Pass the report to LogReport for that. */
 	FReport RunDiagnostics(UWorld* World);
 
 	/**
 	 * Write the report to the log, fixes as warnings with their ini lines, notes as plain lines.
-	 * NOTE: The log reaches nobody in a packaged build unless it was launched with -log, so a caller that can print to the screen should print the report's Summary too.
+	 * NOTE: A packaged build shows no log unless it was launched with -log, so a caller that can print to the screen should print the report's Summary too.
 	 */
 	void LogReport(const FReport& Report);
 }

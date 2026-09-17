@@ -14,7 +14,7 @@ struct FInputActionValue;
 
 /**
  * Minimal third person character for the example content, set up with Enhanced Input the same way the engine's character templates are.
- * A game is expected to use its own character instead; this one exists so the example maps can be played without any setup.
+ * A game is expected to use its own character instead. This one exists so the example maps can be played without any setup.
  *
  * The input assets live in the plugin's example content, so a project has nothing to configure.
  * Networked movement comes from ACharacter.

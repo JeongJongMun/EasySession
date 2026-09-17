@@ -9,10 +9,10 @@ class UEasySessionSubsystem;
 class UWorld;
 
 /**
- * Sends players to the map the session is played on: the host to its own map, clients to the host's address.
- * Both travel URLs pass through the modify hooks first.
+ * Travels players to the map the session is played on: the host to its own map, clients to the host's address.
+ * Both travel URLs pass through the modify delegates first.
  *
- * Also tracks whether a travel this plugin started is still running, so session operations report busy while the player is watching a level load.
+ * Also tracks whether a travel this plugin started is still running, so session operations report busy while the map loads.
  *
  * Owned by the subsystem and destroyed with it.
  * The map load delegate is bound raw because this object cannot outlive the owner that destroys it.
@@ -47,12 +47,12 @@ public:
 	void NotifyTravelFailed();
 
 	/**
-	 * Drop a travel that was requested but has not started loading its map.
+	 * Cancel a travel that was requested but has not started loading its map.
 	 * Travel URLs load on the engine tick after they are requested, so this works within the same frame as the request.
 	 */
 	void CancelPendingTravel();
 
-	/** @return Whether a travel this plugin started has not reached its map yet. */
+	/** @return Whether a travel this plugin started has not loaded its map yet. */
 	bool IsTraveling() const { return bTravelInFlight; }
 
 	/** Append a travel option string ("A=1?B=2") to a URL, normalizing the '?' separators. */

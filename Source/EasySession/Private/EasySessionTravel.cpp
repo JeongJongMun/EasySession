@@ -44,7 +44,7 @@ void FEasySessionTravel::ListenOnCurrentMap(const FEasySessionHostParams& HostPa
 	{
 		UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
 
-		// No travel URL here, so the engine never reads ?MaxPlayers= - the cap its "Server full" refusal compares against is set by hand.
+		// No travel URL here, so the engine never reads ?MaxPlayers=. The cap its "Server full" refusal compares against is set here instead.
 		AGameModeBase* GameMode = World->GetAuthGameMode();
 		if (GameMode && GameMode->GameSession)
 		{
@@ -83,7 +83,7 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
 
-	// Not yet a server (hosting from the main menu). A client travel hard loads, so ?listen opens the listen server; seamless ServerTravel would drop it.
+	// Not yet a server (hosting from the main menu). A client travel hard loads, so ?listen opens the listen server. A seamless ServerTravel would skip it.
 	if (World->GetNetMode() == NM_Standalone)
 	{
 		APlayerController* PlayerController = Owner.GetGameInstance()->GetFirstLocalPlayerController();
@@ -148,7 +148,7 @@ void FEasySessionTravel::CancelPendingTravel()
 		return;
 	}
 
-	// The engine reads both URLs in TickWorldTravel on the next tick, so emptying them now drops the travel.
+	// The engine reads both URLs in TickWorldTravel on the next tick, so emptying them now cancels the travel.
 	if (FWorldContext* Context = GEngine->GetWorldContextFromWorld(World))
 	{
 		Context->TravelURL.Empty();

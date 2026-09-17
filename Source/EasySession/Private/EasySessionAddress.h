@@ -44,7 +44,7 @@ namespace EasySessionAddress
 	/**
 	 * Make a value safe to carry as a travel option.
 	 * The engine splits options on '?' and '#' (FURL.cpp, ValidNetChar), so a value containing either one would arrive truncated.
-	 * '%' is escaped as well so decoding stays unambiguous; everything else, spaces and '=' included, is left alone.
+	 * '%' is escaped as well so decoding stays unambiguous. Everything else, spaces and '=' included, is left alone.
 	 */
 	FString EncodeTravelOptionValue(const FString& Value);
 

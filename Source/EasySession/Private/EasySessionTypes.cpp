@@ -25,7 +25,7 @@ namespace EasySession
 	/** Custom session setting key holding the shareable join code. */
 	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
 
-	/** Custom session setting key marking a session whose host answers join approval over a beacon. */
+	/** Custom session setting key marking a session whose host runs join approval over a beacon. */
 	const FName SettingKey_JoinApproval = TEXT("EASYJOINAPPROVAL");
 
 	/** Travel URL option carrying the password a client supplies when joining. */
@@ -112,7 +112,7 @@ bool FEasySessionSearchParams::IsValid() const
 
 bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Result) const
 {
-	// Hidden sessions are advertised for invites/direct joins but never listed in searches.
+	// Hidden sessions are advertised for invites and targeted searches but never listed in searches.
 	if (Result.bIsHidden && !bIncludeHiddenSessions)
 	{
 		return false;
@@ -178,7 +178,7 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		}
 		else if (Setting.Key == EasySession::SettingKey_Hidden)
 		{
-			// The value, not the key's presence - both flags are written either way.
+			// The value, not the key's presence. Both flags are written either way.
 			int32 Hidden = 0;
 			Setting.Value.Data.GetValue(Hidden);
 			Result.bIsHidden = Hidden != 0;
