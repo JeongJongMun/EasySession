@@ -95,7 +95,7 @@ node name without spaces.
 | Get Last Easy Search Results | `GetLastSearchResults` | The last search's results, readable anywhere. Empty while a new search runs |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Is a Matchmaking run in progress |
 | Is Easy Friend Search Running | `IsFriendSearchRunning` | Is Find Easy Friend Sessions in progress. Not part of Is Easy Session Busy: it only reads |
-| Get Easy Matchmaking State | `GetMatchmakingState` | Which step it is on: Searching, Joining, Hosting, Complete |
+| Get Easy Matchmaking State | `GetMatchmakingState` | Which step it is on: Searching, Joining, Hosting, Canceling, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
@@ -143,8 +143,8 @@ Pure functions for the text a session UI shows. None of them touch session state
 Not async - these return right away. They change state and have execution pins.
 
 What they return means the request was accepted, not that it finished. `Cancel Easy
-Matchmaking` stops the run only after the online call already running has come back, and
-`Server Travel Easy Session` returns before the new map has loaded.
+Matchmaking` ends a search at once but waits for a join or host already running to come
+back so it can undo it, and `Server Travel Easy Session` returns before the new map has loaded.
 
 ### 3.1 Standalone nodes (`UEasySessionStatics`)
 
@@ -153,7 +153,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Node | C++ | Does |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
-| Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`, undoing a join or host that succeeds after the cancel |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`. A search stops at once; a join or host in flight finishes first and is undone |
 | Cancel Easy Friend Search | `CancelFriendSearch` | Ends Find Easy Friend Sessions with `Canceled`. The lookup in flight is ignored |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite, returns a result |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay, returns a result |
@@ -186,7 +186,7 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnSessionSettingsChanged` | - | Fired on a client when the host's updated settings arrive. The regular getters already return the new values - refresh the UI from them |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session finished, both on the host and on a client that left |
 | `OnMatchmakingStarted` | - | A Matchmaking run was accepted and its policy registered. Always the first event of a run |
-| `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |
+| `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Canceling`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
 | `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, or a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name). Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Last Easy Disconnect Info` has the reason to show the player |
@@ -301,7 +301,7 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 ### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - the phases of one Matchmaking run, reported through `OnStateChanged`.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - the phases of one Matchmaking run, reported through `OnStateChanged`. `Canceling` lasts while a join or host that was in flight at the cancel finishes.
 
 ### 6.5 EEasySessionHostMode
 

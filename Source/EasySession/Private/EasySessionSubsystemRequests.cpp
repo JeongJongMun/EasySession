@@ -80,7 +80,7 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 		return;
 	}
 
-	if (Result != EEasySessionResult::Success)
+	if (Result != EEasySessionResult::Success && Result != EEasySessionResult::Canceled)
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Session operation failed: %s (%s)"), *EasySession::ResultToString(Result), *ErrorMessage);
 	}
@@ -98,8 +98,8 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 
 		case FEasySessionRequest::EType::Find:
 			CompletedRequest->OnFindComplete.ExecuteIfBound(Result, ErrorMessage, LastSearchResults);
-			// A search that saw hidden rooms stays off the public surfaces: no broadcast, no cache.
-			if (CompletedRequest->SearchParams.bIncludeHiddenSessions)
+			// A search that saw hidden rooms stays off the public surfaces: no broadcast, no cache. So does a canceled one: its rooms are nobody's answer.
+			if (CompletedRequest->SearchParams.bIncludeHiddenSessions || CompletedRequest->bCanceled)
 			{
 				LastSearchResults.Empty();
 			}

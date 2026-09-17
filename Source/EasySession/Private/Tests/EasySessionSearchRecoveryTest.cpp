@@ -8,6 +8,7 @@
 #include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -373,6 +374,124 @@ bool FEasySessionForeignSearchTest::RunTest(const FString& Parameters)
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionInterruptOwnSearch(State));
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForOwnSearch(State));
+	return true;
+}
+
+namespace EasySessionCanceledSearchTest
+{
+	/** Hard limit on each step before the test gives up. */
+	static constexpr double MaxWaitSeconds = 30.0;
+
+	struct FTestState
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+		/** Stands in for the matchmaking policy: the requester the search's delegate is bound to. */
+		TStrongObjectPtr<UEasySessionTestEventListener> Requester;
+		bool bCanceled = false;
+		bool bQueueingSeen = false;
+		int32 TicksSinceStart = 0;
+		TOptional<EEasySessionResult> PendingResult;
+		double StartTime = 0.0;
+	};
+
+	static void StartSearch(TSharedPtr<FTestState> State, UEasySessionSubsystem& Subsystem)
+	{
+		State->PendingResult.Reset();
+		State->TicksSinceStart = 0;
+		State->StartTime = FPlatformTime::Seconds();
+
+		FEasySessionSearchParams Params;
+		Params.bLANQuery = true;
+		Subsystem.FindEasySessions(Params, FEasySessionFindCompleteDelegate::CreateWeakLambda(State->Requester.Get(),
+			[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>&)
+			{
+				State->PendingResult = Result;
+			}));
+	}
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForCanceledSearch, TSharedPtr<EasySessionCanceledSearchTest::FTestState>, State);
+bool FEasySessionWaitForCanceledSearch::Update()
+{
+	using namespace EasySessionCanceledSearchTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	++State->TicksSinceStart;
+
+	if (FPlatformTime::Seconds() - State->StartTime > MaxWaitSeconds)
+	{
+		CurrentTest->AddError(TEXT("Timed out waiting for a search to finish."));
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	if (!State->bCanceled)
+	{
+		// Once the search is at the online service, cancel it the way a Steam search is canceled: the service keeps running it.
+		if (!FEasySessionTestAccess::HasActiveSearch(*Subsystem))
+		{
+			return false;
+		}
+
+		FEasySessionTestAccess::MarkActiveSearchAsInternet(*Subsystem);
+		CurrentTest->TestTrue(TEXT("The requester's search was found"), Subsystem->CancelSearch(State->Requester.Get()));
+		CurrentTest->TestEqual(TEXT("The requester hears Canceled inside the call"), State->PendingResult.Get(EEasySessionResult::Success), EEasySessionResult::Canceled);
+		CurrentTest->TestFalse(TEXT("Nothing is busy any more"), Subsystem->IsBusy());
+		CurrentTest->TestTrue(TEXT("While the service still runs the search"), FEasySessionTestAccess::IsActiveRequestCanceled(*Subsystem));
+
+		State->bCanceled = true;
+		StartSearch(State, *Subsystem);
+		return false;
+	}
+
+	// A few ticks in, the next search is waiting: the queue is busy for it, but the slot still belongs to the canceled search.
+	if (!State->bQueueingSeen && State->TicksSinceStart >= 3)
+	{
+		State->bQueueingSeen = true;
+		CurrentTest->TestTrue(TEXT("The next search makes the queue busy"), Subsystem->IsBusy());
+		CurrentTest->TestTrue(TEXT("And waits behind the canceled search"), FEasySessionTestAccess::IsActiveRequestCanceled(*Subsystem));
+	}
+	if (!State->PendingResult.IsSet())
+	{
+		return false;
+	}
+
+	// Success specifically: the service refuses a search while it holds another, so this one only got through after the canceled one ended.
+	CurrentTest->TestEqual(TEXT("The next search ran once the canceled one ended in the service"), State->PendingResult.GetValue(), EEasySessionResult::Success);
+	CurrentTest->TestFalse(TEXT("And nothing is left running"), Subsystem->IsBusy());
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+	return true;
+}
+
+/**
+ * A search whose requester stops waiting while an internet service still runs it.
+ *
+ * Steam cannot stop a lobby query: its cancel only forgets the search, and a query
+ * started meanwhile shares the old one's bookkeeping and breaks. So the canceled search
+ * keeps its slot in the queue until the service answers, counting as nobody's and not
+ * as busy, and the next search runs after it. NULL only runs LAN searches, which it does
+ * stop, so the search is marked as an internet one to reach that path.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionCanceledSearchTest, "EasySession.Search.QueuesBehindACanceledInternetSearch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionCanceledSearchTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionCanceledSearchTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Requester = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	StartSearch(State, *Subsystem);
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForCanceledSearch(State));
 	return true;
 }
 

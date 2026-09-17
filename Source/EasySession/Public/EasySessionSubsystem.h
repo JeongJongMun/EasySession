@@ -377,6 +377,16 @@ public:
 	void CancelPendingTravel();
 
 	/**
+	 * Cancel the search this requester asked for. The requester hears Canceled inside this call.
+	 * A LAN search is stopped in the online service at once.
+	 * An internet search cannot be stopped there, so it finishes in the background: it no longer counts as busy, its answer is dropped, and the next search queues behind it, which keeps two searches from overlapping in the service.
+	 * Matchmaking uses it so a cancel during a search ends the run at once.
+	 *
+	 * @return Whether a search of this requester was running.
+	 */
+	bool CancelSearch(const UObject* Requester);
+
+	/**
 	 * Matchmaking reads this to tell a session on its way out from one that is here to stay.
 	 *
 	 * @return Whether a destroy for the current session is already running or waiting.

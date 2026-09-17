@@ -91,7 +91,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Last Easy Search Results | `GetLastSearchResults` | 마지막 검색 결과이며 어디서든 읽을 수 있습니다. 새 검색이 도는 동안에는 비어 있습니다 |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
 | Is Easy Friend Search Running | `IsFriendSearchRunning` | `Find Easy Friend Sessions`가 진행 중인가. 읽기만 하므로 Is Easy Session Busy에는 포함되지 않습니다 |
-| Get Easy Matchmaking State | `GetMatchmakingState` | 어느 단계인가. Searching, Joining, Hosting, Complete |
+| Get Easy Matchmaking State | `GetMatchmakingState` | 어느 단계인가. Searching, Joining, Hosting, Canceling, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
@@ -137,8 +137,8 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 비동기가 아니라 즉시 반환합니다. 상태를 바꾸고 실행 핀이 있습니다.
 
 돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Easy Matchmaking`는
-진행 중이던 온라인 작업이 끝난 뒤에야 실제로 취소되고, `Server Travel Easy Session`은 맵이 로드되기
-전에 돌아옵니다.
+검색은 즉시 멈추지만 진행 중이던 참가나 생성은 되돌리기 위해 끝날 때까지 기다리고, `Server Travel Easy Session`은
+맵이 로드되기 전에 돌아옵니다.
 
 ### 3.1 바로 쓰는 노드 (`UEasySessionStatics`)
 
@@ -147,7 +147,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 하는 일 |
 |---|---|---|
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
-| Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Matchmaking를 `Canceled`로 끝냅니다. 이미 성사되던 참가나 생성은 되돌려집니다 |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Matchmaking를 `Canceled`로 끝냅니다. 검색은 즉시 멈추고, 진행 중이던 참가나 생성은 끝난 뒤 되돌려집니다 |
 | Cancel Easy Friend Search | `CancelFriendSearch` | 진행 중인 `Find Easy Friend Sessions`를 `Canceled`로 끝냅니다. 조회 중이던 친구 한 명의 답은 버립니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대. 결과 값을 돌려줍니다 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이. 결과 값을 돌려줍니다 |
@@ -178,7 +178,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnSessionSettingsChanged` | - | 호스트가 바꾼 설정이 클라이언트에 도착했을 때. 이미 일반 게터가 새 값을 돌려주는 상태이니, 게터로 UI만 갱신하면 됩니다 |
 | `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session이 끝났을 때. 호스트든 나가는 클라이언트든 똑같이 발화합니다 |
 | `OnMatchmakingStarted` | - | Matchmaking 실행이 받아들여지고 정책이 등록됐을 때. 한 실행의 이벤트 중 언제나 첫 번째입니다 |
-| `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
+| `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Canceling`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Matchmaking 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패한 경우입니다(예: 잘못된 Initial Map Name). `Reason`은 상태 표시나 로그에 쓰세요. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Last Easy Disconnect Info`에 있습니다 |
@@ -290,7 +290,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnStateChanged`로 알려줍니다.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnStateChanged`로 알려줍니다. `Canceling`은 취소 시점에 진행 중이던 참가나 생성이 끝날 때까지 이어집니다.
 
 ### 6.5 EEasySessionHostMode
 

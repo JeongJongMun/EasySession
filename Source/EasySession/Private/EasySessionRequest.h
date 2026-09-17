@@ -112,6 +112,12 @@ public:
 	/** Deadline for this run, frozen when the request starts. 0 = no deadline. */
 	double TimeoutSeconds = 0.0;
 
+	/**
+	 * Whether the requester canceled this request.
+	 * It only holds the online service's slot until the service answers, so it does not count as busy and its answer goes nowhere.
+	 */
+	bool bCanceled = false;
+
 	/** Create: the session to advertise, and how to open the server for it. */
 	FEasySessionHostParams HostParams;
 

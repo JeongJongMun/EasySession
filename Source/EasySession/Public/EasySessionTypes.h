@@ -577,6 +577,9 @@ enum class EEasyMatchmakingState : uint8
 	/** No session was found - creating our own session instead. */
 	Hosting,
 
+	/** Cancel was requested. A running join or host completes first, so it can be undone. */
+	Canceling,
+
 	/** Matchmaking has finished. Check the completion result for the outcome. */
 	Complete
 };

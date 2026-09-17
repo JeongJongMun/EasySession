@@ -55,9 +55,9 @@ They always arrive as Started first and Complete last, a run refused at the door
 included. The policy object still exposes `OnStateChanged` and `OnUpdated` for code
 that holds a specific run.
 
-The states are `Searching`, `Joining`, `Hosting` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
+The states are `Searching`, `Joining`, `Hosting`, `Canceling` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
 
-Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Canceled` result. A join or host that succeeds after the cancel is undone.
+Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Canceled` result. A search stops at once; if the online service cannot stop it, it finishes in the background and a new search queues behind it. A join or host already in flight cannot be stopped, so the state shows `Canceling` until it comes back, and if it succeeded it is undone.
 
 After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
 

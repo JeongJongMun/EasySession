@@ -156,6 +156,29 @@ public:
 		return false;
 	}
 
+	/**
+	 * Make the running search look like an internet one, so canceling it takes the path a Steam search takes.
+	 * NULL searches are LAN, which the service really stops, so that path is otherwise never reached headless.
+	 *
+	 * @return Whether there was a running search to mark.
+	 */
+	static bool MarkActiveSearchAsInternet(UEasySessionSubsystem& Subsystem)
+	{
+		if (!Subsystem.ActiveSearch.IsValid())
+		{
+			return false;
+		}
+		Subsystem.ActiveSearch->bIsLanQuery = false;
+		return true;
+	}
+
+	/** Whether the request running now was canceled: it holds the service's slot with nobody waiting for it. */
+	static bool IsActiveRequestCanceled(const UEasySessionSubsystem& Subsystem)
+	{
+		const TSharedPtr<FEasySessionRequest>& Active = Subsystem.GetActiveRequest();
+		return Active.IsValid() && Active->bCanceled;
+	}
+
 	/** The beacon host the join approval registered on - the plugin's own or the project's. Null while none runs. */
 	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
 	{

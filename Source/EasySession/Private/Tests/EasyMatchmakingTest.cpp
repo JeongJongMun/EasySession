@@ -1171,4 +1171,81 @@ bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingCancelSearching, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
+bool FEasyMatchmakingCancelSearching::Update()
+{
+	using namespace EasyMatchmakingTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	// The search pass reaches the online service a tick after the run starts.
+	if (!FEasySessionTestAccess::HasActiveSearch(*Subsystem))
+	{
+		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
+		{
+			CurrentTest->AddError(TEXT("Timed out waiting for the search pass to start."));
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+		return false;
+	}
+
+	Subsystem->CancelMatchmaking();
+
+	// Everything below holds on the spot: the cancel must not wait for the search to answer.
+	CurrentTest->TestTrue(TEXT("The run completed inside the cancel call"), State->MatchmakingResult.IsSet());
+	CurrentTest->TestEqual(TEXT("With Canceled"), State->MatchmakingResult.Get(EEasySessionResult::Success), EEasySessionResult::Canceled);
+	CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
+	CurrentTest->TestFalse(TEXT("The queue is idle"), Subsystem->IsBusy());
+	CurrentTest->TestFalse(TEXT("The search object is released"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
+	CurrentTest->TestTrue(TEXT("Cancel moved to Canceling first"), State->Listener->MatchmakingJournal.Contains(TEXT("State=Searching>Canceling")));
+	CurrentTest->TestTrue(TEXT("And ended from there"), State->Listener->MatchmakingJournal.Contains(TEXT("State=Canceling>Complete")));
+	CurrentTest->TestEqual(TEXT("Completed is the last entry"),
+		State->Listener->MatchmakingJournal.Num() > 0 ? State->Listener->MatchmakingJournal.Last() : FString(), FString(TEXT("Completed=Canceled")));
+
+	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+	return true;
+}
+
+/**
+ * Cancel while the search pass is at the online service. The run has to end inside the
+ * cancel call rather than when the search answers: the search is given up and the queue
+ * is idle at once, which is what lets a menu react the moment the button is pressed.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingCancelSearchTest, "EasySession.Matchmaking.CancelEndsTheSearchAtOnce", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyMatchmakingCancelSearchTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyMatchmakingTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance->InitializeStandalone();
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnMatchmakingStateChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleMatchmakingTransition);
+	Subsystem->OnMatchmakingComplete.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleMatchmakingCompleted);
+
+	FEasyMatchmakingParams Params;
+	Params.Search.bLANQuery = true;
+	Params.bAllowHostFallback = false;
+
+	Subsystem->StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
+		[State](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			State->MatchmakingResult = Result;
+		}));
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingCancelSearching(State));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

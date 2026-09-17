@@ -44,7 +44,7 @@ TOptional<FEasySessionRequest::EType> FEasySessionRequestQueue::GetCurrentType()
 
 bool FEasySessionRequestQueue::IsBusy() const
 {
-	return !IsIdle() || FindBusyOperation().IsValid();
+	return (Active.IsValid() && !Active->bCanceled) || !Pending.IsEmpty() || FindBusyOperation().IsValid();
 }
 
 bool FEasySessionRequestQueue::BeginOperation(TSharedRef<IEasySessionOperation> Operation)
@@ -175,9 +175,10 @@ FString FEasySessionRequestQueue::DescribeStatus(bool bIdleButTraveling) const
 	else
 	{
 		const double Elapsed = Active->GetElapsedSeconds(FPlatformTime::Seconds());
+		const FString Name = Active->bCanceled ? FString::Printf(TEXT("%s (canceled)"), Active->GetTypeName()) : FString(Active->GetTypeName());
 		Status = Active->TimeoutSeconds > 0.0
-			? FString::Printf(TEXT("%s (running %.1fs of %.0fs)"), Active->GetTypeName(), Elapsed, Active->TimeoutSeconds)
-			: FString::Printf(TEXT("%s (running %.1fs, no timeout)"), Active->GetTypeName(), Elapsed);
+			? FString::Printf(TEXT("%s (running %.1fs of %.0fs)"), *Name, Elapsed, Active->TimeoutSeconds)
+			: FString::Printf(TEXT("%s (running %.1fs, no timeout)"), *Name, Elapsed);
 
 		if (Pending.Num() > 0)
 		{

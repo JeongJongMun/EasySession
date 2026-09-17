@@ -53,9 +53,9 @@ Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필
 지킵니다. 특정 실행 하나를 붙들고 있는 코드는 여전히 정책 객체의 `OnStateChanged`와
 `OnUpdated`를 쓸 수 있습니다.
 
-상태는 `Searching`, `Joining`, `Hosting`, `Complete` 넷입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 방을 만들 때만 나옵니다.
+상태는 `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` 다섯입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 방을 만들 때만 나옵니다.
 
-언제든 `Cancel Easy Matchmaking`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 취소 시점에 이미 성사되던 참가나 생성은 되돌려집니다.
+언제든 `Cancel Easy Matchmaking`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 검색은 즉시 멈춥니다. 온라인 서비스가 검색을 멈출 수 없으면 뒤에서 조용히 끝나고, 새 검색은 그 뒤에 줄을 섭니다. 이미 진행 중인 참가나 생성은 중간에 끊을 수 없어서 돌아올 때까지 `Canceling` 상태로 보이고, 성사됐다면 되돌려집니다.
 
 `OnSuccess` 뒤에는 `Is Easy Session Host`로 남의 방에 들어간 건지 자기가 호스트가 된 건지 알 수 있습니다.
 

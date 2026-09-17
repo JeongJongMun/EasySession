@@ -55,7 +55,7 @@ public:
 	/** @return Whether nothing is running and nothing is waiting. Operations do not count; they occupy no slot. */
 	bool IsIdle() const { return !Active.IsValid() && Pending.IsEmpty(); }
 
-	/** @return Whether a request is running or waiting, or an operation that counts as busy is running. */
+	/** @return Whether a request someone waits for is running or waiting, or an operation that counts as busy is running. A canceled request is not busy. */
 	bool IsBusy() const;
 
 	/**

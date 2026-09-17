@@ -64,6 +64,7 @@ FText UEasySessionUIStatics::FormatMatchmakingStatus(EEasyMatchmakingState State
 		case EEasyMatchmakingState::Searching: return FText::Format(LOCTEXT("Matchmaking_Searching", "Searching... {0}s"), Seconds);
 		case EEasyMatchmakingState::Joining: return FText::Format(LOCTEXT("Matchmaking_Joining", "Joining... {0}s"), Seconds);
 		case EEasyMatchmakingState::Hosting: return FText::Format(LOCTEXT("Matchmaking_Hosting", "Hosting a session... {0}s"), Seconds);
+		case EEasyMatchmakingState::Canceling: return FText::Format(LOCTEXT("Matchmaking_Canceling", "Canceling... {0}s"), Seconds);
 		case EEasyMatchmakingState::Idle:
 		default:
 			return LOCTEXT("Matchmaking_Idle", "Ready");

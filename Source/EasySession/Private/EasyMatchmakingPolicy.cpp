@@ -79,19 +79,27 @@ int32 UEasyMatchmakingPolicy::GetElapsedSeconds() const
 
 void UEasyMatchmakingPolicy::Cancel()
 {
-	if (State == EEasyMatchmakingState::Idle || State == EEasyMatchmakingState::Complete)
+	if (State == EEasyMatchmakingState::Idle || State == EEasyMatchmakingState::Canceling || State == EEasyMatchmakingState::Complete)
 	{
 		return;
 	}
 
 	bCancelRequested = true;
+	SetState(EEasyMatchmakingState::Canceling);
 
-	// If we are only waiting for the next pass, finish right away.
+	// Only waiting for the next pass: nothing is in flight.
 	if (PassDelayTickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(PassDelayTickerHandle);
 		PassDelayTickerHandle.Reset();
 		Complete(EEasySessionResult::Canceled, TEXT("Matchmaking was canceled."));
+		return;
+	}
+
+	// A search ends now: its answer arrives as Canceled inside this call. A join or host in flight finishes first and is undone then.
+	if (UEasySessionSubsystem* SubsystemPtr = Subsystem.Get())
+	{
+		SubsystemPtr->CancelSearch(this);
 	}
 }
 

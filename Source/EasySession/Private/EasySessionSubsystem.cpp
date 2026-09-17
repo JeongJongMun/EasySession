@@ -209,6 +209,29 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	EnqueueRequest(Request);
 }
 
+bool UEasySessionSubsystem::CancelSearch(const UObject* Requester)
+{
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+	if (!Request.IsValid() || Request->Type != FEasySessionRequest::EType::Find || !Request->OnFindComplete.IsBoundToObject(Requester))
+	{
+		return false;
+	}
+
+	// A LAN search is ours to stop, so the request ends here and the service is told on the way out.
+	if (ActiveSearch.IsValid() && ActiveSearch->bIsLanQuery)
+	{
+		CompleteActiveRequest(EEasySessionResult::Canceled, TEXT("The search was canceled."), /*bAbandoned*/ true);
+		return true;
+	}
+
+	// The service runs an internet search to the end whatever it is told, so the request keeps its slot and only the requester is let go.
+	Request->bCanceled = true;
+	FEasySessionFindCompleteDelegate OnFindComplete = MoveTemp(Request->OnFindComplete);
+	Request->OnFindComplete.Unbind();
+	OnFindComplete.ExecuteIfBound(EEasySessionResult::Canceled, TEXT("The search was canceled."), TArray<FEasySessionSearchResult>());
+	return true;
+}
+
 void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
 	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Join);
