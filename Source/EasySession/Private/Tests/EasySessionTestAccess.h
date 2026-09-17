@@ -62,7 +62,7 @@ public:
 		return Actor != nullptr ? Actor->GetReplicatedSessionSettings() : FEasySessionReplicatedSettings();
 	}
 
-	/** Hand the client apply path a payload, standing in for the state actor's OnRep arriving. */
+	/** Give the client apply path a payload, standing in for the state actor's OnRep. */
 	static void DriveReplicatedSessionSettings(UEasySessionSubsystem& Subsystem, const FEasySessionReplicatedSettings& Settings)
 	{
 		Subsystem.HandleReplicatedSessionSettings(Settings);
@@ -98,7 +98,7 @@ public:
 		return Protected != 0;
 	}
 
-	/** The open public slots the session currently advertises to searchers. */
+	/** The open public slots the session currently advertises to searching players. */
 	static int32 GetOpenPublicConnections(const UEasySessionSubsystem& Subsystem)
 	{
 		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
@@ -142,7 +142,7 @@ public:
 	}
 
 	/**
-	 * Mark the running search as failed while the online service still holds it - the shape a synchronous search failure leaves behind.
+	 * Mark the running search as failed while the online subsystem still holds it, the state a synchronous search failure leaves behind.
 	 *
 	 * @return Whether there was a running search to fail.
 	 */
@@ -158,7 +158,7 @@ public:
 
 	/**
 	 * Make the running search look like an internet one, so canceling it takes the path a Steam search takes.
-	 * NULL searches are LAN, which the service really stops, so that path is otherwise never reached headless.
+	 * NULL searches are LAN, which the online subsystem really stops, so that path is otherwise never reached headless.
 	 *
 	 * @return Whether there was a running search to mark.
 	 */
@@ -172,14 +172,14 @@ public:
 		return true;
 	}
 
-	/** Whether the request running now was canceled: it holds the service's slot with nobody waiting for it. */
+	/** Whether the request running now was canceled: it keeps the active slot with no requester waiting for it. */
 	static bool IsActiveRequestCanceled(const UEasySessionSubsystem& Subsystem)
 	{
 		const TSharedPtr<FEasySessionRequest>& Active = Subsystem.GetActiveRequest();
 		return Active.IsValid() && Active->bCanceled;
 	}
 
-	/** The beacon host the join approval registered on - the plugin's own or the project's. Null while none runs. */
+	/** The beacon host the join approval registered on, the plugin's own or the project's. Null while none runs. */
 	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
 	{
 		return Subsystem.JoinApproval.IsValid() ? Subsystem.JoinApproval->GetBeaconHost() : nullptr;
@@ -187,8 +187,8 @@ public:
 
 	/**
 	 * A joinable search result copied from the session this subsystem currently holds.
-	 * The copy shares the live session info, so its address - port 0 when the host never listened - stays readable after the session is destroyed.
-	 * Join approval is turned off in the copy, so joining it does not wait on a beacon nobody hosts.
+	 * The copy shares the live session info, so its address (port 0 when the host never listened) stays readable after the session is destroyed.
+	 * Join approval is turned off in the copy, so joining it does not wait for a beacon no host runs.
 	 */
 	static FOnlineSessionSearchResult MakeSearchResultFromCurrentSession(UEasySessionSubsystem& Subsystem)
 	{
@@ -203,7 +203,7 @@ public:
 		Result.Session = *NamedSession;
 		Result.Session.SessionSettings.Set(EasySession::SettingKey_JoinApproval, 0, EOnlineDataAdvertisementType::ViaOnlineService);
 
-		// Created without a local player, the session may have no owner - and an ownerless result fails the join's validity check.
+		// Created without a local player, the session may have no owner, and an ownerless result fails the join's validity check.
 		if (!Result.Session.OwningUserId.IsValid())
 		{
 			UWorld* World = Subsystem.GetGameInstance() ? Subsystem.GetGameInstance()->GetWorld() : nullptr;
@@ -214,7 +214,7 @@ public:
 		return Result;
 	}
 
-	/** Ask the server gate the join question directly - the approval beacon and PreLogin both route into this same call. */
+	/** Ask the server gate directly whether a player may join. The approval beacon and PreLogin both call this. */
 	static EEasyJoinApprovalResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& SuppliedPassword)
 	{
 		FString Reason;
@@ -224,8 +224,8 @@ public:
 	}
 
 	/**
-	 * Run the abandoned-request cleanup for a request of this type, standing in for the watchdog arriving there.
-	 * NULL completes creates synchronously, so a create genuinely abandoned mid-flight cannot be produced headless.
+	 * Run the abandoned-request cleanup for a request of this type, standing in for the watchdog.
+	 * NULL completes creates synchronously, so a create abandoned while running cannot be produced headless.
 	 */
 	static void CleanupAsAbandoned(UEasySessionSubsystem& Subsystem, FEasySessionRequest::EType Type)
 	{
@@ -235,7 +235,7 @@ public:
 	}
 
 	/**
-	 * Complete the running search with these crafted results, standing in for the online service answering.
+	 * Complete the running search with these crafted results, standing in for the online subsystem completing it.
 	 * One process cannot find its own LAN session, so filter tests inject what a search would have returned.
 	 *
 	 * @return Whether there was a running search to complete.
@@ -247,7 +247,7 @@ public:
 			return false;
 		}
 
-		// Release the service's slot first - NULL refuses every later search in the process while it holds one.
+		// Release the online subsystem's search first. NULL refuses every later search in the process while it holds one.
 		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
 		if (Sessions.IsValid())
 		{

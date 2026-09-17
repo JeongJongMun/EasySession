@@ -39,7 +39,7 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 	Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("First reason")));
 	TestTrue(TEXT("Pending after first notify"), Subsystem->HasPendingDisconnectInfo());
 
-	// A follow-up failure must not overwrite the original cause.
+	// A later failure must not overwrite the original cause.
 	Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::TravelFailure, FText::FromString(TEXT("Second reason")));
 
 	const FEasyDisconnectInfo Info = Subsystem->ConsumeLastDisconnectInfo();
@@ -168,9 +168,9 @@ bool FEasySessionWaitForSecondDisconnect::Update()
 
 /**
  * Recovery must not depend on the game consuming the disconnect reason. Reading the
- * reason is optional - a project can rely on the automatic cleanup alone - so a
- * second disconnect has to destroy the dead session even while the first reason is
- * still sitting there unread.
+ * reason is optional, because a project can rely on the automatic cleanup alone, so a
+ * second disconnect has to destroy the lost session even while the first reason is
+ * still unread.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionSecondDisconnectTest, "EasySession.Recovery.SecondDisconnectCleansUpWithoutConsume", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
@@ -189,7 +189,7 @@ bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
 	}
 
 	// Returning to the menu means browsing to a map, which a headless test world has
-	// no use for. Turning it off leaves the session cleanup, which is what is on trial.
+	// no use for. Turning it off leaves the session cleanup, which is what this test checks.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
@@ -214,7 +214,7 @@ namespace EasySessionCleanupOnceTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
 		TOptional<EEasySessionResult> CreateResult;
@@ -254,7 +254,7 @@ bool FEasySessionWaitForCleanupOnce::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-			// Two failures land in the same recovery: the host dying, then the net
+			// Two failures arrive in the same recovery: the host dying, then the net
 			// driver closing. The first queues the cleanup destroy; the second finds
 			// it already queued.
 			Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Host died")));
@@ -283,8 +283,8 @@ bool FEasySessionWaitForCleanupOnce::Update()
 
 /**
  * Two failures inside one recovery run one cleanup. The connection dropping while the
- * dead session is being destroyed re-enters the disconnect path, and a second queued
- * destroy would complete as NoSessionExists - a failure popup right after a clean
+ * lost session is being destroyed re-enters the disconnect path, and a second queued
+ * destroy would complete as NoSessionExists: a failure popup right after a clean
  * recovery, over a session that was already gone.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionCleanupOnceTest, "EasySession.Recovery.SecondFailureDuringCleanup", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -305,7 +305,7 @@ bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
 	}
 
 	// Returning to the menu means browsing to a map, which a headless test world has
-	// no use for. Turning it off leaves the session cleanup, which is what is on trial.
+	// no use for. Turning it off leaves the session cleanup, which is what this test checks.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
@@ -334,7 +334,7 @@ namespace EasySessionTravelFailureTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
 		int32 Phase = 0;
@@ -375,7 +375,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 			}
 			CurrentTest->TestNotNull(TEXT("The approval beacon is up before the travel"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
 
-			// The engine accepts a travel to a map that does not exist - only the next
+			// The engine accepts a travel to a map that does not exist. Only the next
 			// tick's load fails. The failure broadcast below stands in for that tick.
 			CurrentTest->TestTrue(TEXT("ServerTravelToMap accepted the bad map"), Subsystem->ServerTravelToMap(TEXT("/Game/EasySessionTests/ES_NoSuchMap")));
 			CurrentTest->TestNull(TEXT("The travel stopped the beacon"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
@@ -389,7 +389,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 			CurrentTest->TestFalse(TEXT("The failed travel no longer reports busy"), Subsystem->IsBusy());
 			CurrentTest->TestNotNull(TEXT("The approval beacon is back up"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
 
-			// The same broadcast on a client still tears the dead session down.
+			// The same broadcast on a client still destroys the lost session.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 			GEngine->BroadcastTravelFailure(World, ETravelFailure::ServerTravelFailure, TEXT("Could not reach the host"));
 
@@ -416,9 +416,9 @@ bool FEasySessionWaitForTravelFailure::Update()
 
 /**
  * A failed server travel leaves the host's world, session and connected players exactly
- * where they were - the engine only clears the pending URL. Treating it as a disconnect
- * destroyed a live room over a map name typo. The host now keeps the session and hears
- * about the failure through On Session Failure; a client still cleans up, because its
+ * where they were. The engine only clears the pending URL. Treating it as a disconnect
+ * destroyed a live session over a map name typo. The host now keeps the session and
+ * receives the failure through On Session Failure. A client still cleans up, because its
  * travel failure really does mean it never reached the host.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionTravelFailureTest, "EasySession.Recovery.HostKeepsSessionOnTravelFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -439,7 +439,7 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 	}
 
 	// Returning to the menu means browsing to a map, which a headless test world has
-	// no use for. Turning it off leaves the recovery behavior, which is what is on trial.
+	// no use for. Turning it off leaves the recovery behavior, which is what this test checks.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
@@ -467,7 +467,7 @@ namespace EasySessionNetworkFilterTest
 		/** A second instance whose world stands in for another PIE instance's. */
 		TStrongObjectPtr<UGameInstance> ForeignGameInstance;
 
-		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
 		int32 Phase = 0;
@@ -508,13 +508,13 @@ bool FEasySessionWaitForNetworkFilter::Update()
 				return false;
 			}
 
-			// The host hears about a client's dead connection through the same broadcast.
+			// The host receives a client's dead connection through the same broadcast.
 			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::ConnectionLost, TEXT("a client dropped"));
 			CurrentTest->TestTrue(TEXT("The host keeps its session over a client's failure"), Subsystem->IsInSession());
 			CurrentTest->TestEqual(TEXT("The failure was still reported"), State->Listener->FailureReasons.Num(), 1);
 			CurrentTest->TestFalse(TEXT("No disconnect was recorded for the host"), Subsystem->HasPendingDisconnectInfo());
 
-			// Another instance's world fails - PIE neighbors share the engine broadcast.
+			// Another instance's world fails. PIE neighbors share the engine broadcast.
 			GEngine->BroadcastNetworkFailure(State->ForeignGameInstance->GetWorld(), nullptr, ENetworkFailure::ConnectionLost, TEXT("someone else's world"));
 			CurrentTest->TestTrue(TEXT("A foreign world's failure changes nothing"), Subsystem->IsInSession());
 			CurrentTest->TestEqual(TEXT("And is not reported here"), State->Listener->FailureReasons.Num(), 1);
@@ -569,10 +569,10 @@ bool FEasySessionWaitForNetworkFilter::Update()
 
 /**
  * What counts as a disconnect is decided in HandleNetworkFailure, and every branch of
- * that decision was previously untested - the recovery tests start below it. The costly
- * misjudgment is the host reading a client's dead connection as losing its own session
- * and tearing the room down; the filter rows for foreign worlds and worldless failures
- * keep PIE neighbors and stray broadcasts from doing the same.
+ * that decision was previously untested, because the recovery tests start below it. The
+ * costly mistake is the host reading a client's dead connection as losing its own session
+ * and destroying it. The filter rows for foreign worlds and worldless failures keep PIE
+ * neighbors and stray broadcasts from doing the same.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNetworkFilterTest, "EasySession.Recovery.NetworkFailureFilter", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
@@ -597,7 +597,7 @@ bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
 	}
 
 	// Returning to the menu means browsing to a map, which a headless test world has
-	// no use for. Turning it off leaves the filter decisions, which are what is on trial.
+	// no use for. Turning it off leaves the filter decisions, which are what this test checks.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;

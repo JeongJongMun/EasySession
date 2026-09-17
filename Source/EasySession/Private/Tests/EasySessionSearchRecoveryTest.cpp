@@ -19,7 +19,7 @@
 namespace EasySessionSearchRecoveryTest
 {
 	/**
-	 * Short enough that the deadline passes while the search is genuinely running.
+	 * Short enough that the deadline passes while the search is still running.
 	 * The engine's own LAN search lasts a fixed five seconds (LANBeacon.h, LAN_QUERY_TIMEOUT), so this has to stay under that.
 	 * The searches that must finish normally get the real deadline back first.
 	 */
@@ -86,9 +86,9 @@ bool FEasySessionWaitForSearchRecovery::Update()
 		CurrentTest->TestEqual(TEXT("The watchdog gave up on the first search"), Result, EEasySessionResult::Timeout);
 		CurrentTest->TestFalse(TEXT("Giving up releases the search object"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
 
-		// The point of the whole test. The online service refuses to start a search
-		// while it believes one is running, and says yes anyway, so a search abandoned
-		// without telling it would swallow every search after it.
+		// The point of the whole test. The online subsystem refuses to start a search
+		// while it believes one is running, and returns true anyway, so a search abandoned
+		// without telling it would block every search after it.
 		//
 		// This one is given the real deadline back: a LAN search needs its five
 		// seconds, and the short deadline above exists only to cut the first one off.
@@ -104,9 +104,9 @@ bool FEasySessionWaitForSearchRecovery::Update()
 		return false;
 	}
 
-	// Success specifically, not just "not a timeout": a service holding an abandoned
-	// search refuses this one, which ExecuteFind now reports straight away rather
-	// than waiting out another deadline.
+	// Success specifically, not just "not a timeout": an online subsystem holding an
+	// abandoned search refuses this one, which ExecuteFind reports inside the call
+	// rather than after another deadline.
 	CurrentTest->TestEqual(TEXT("A search after an abandoned one still reaches the online service"), Result, EEasySessionResult::Success);
 	CurrentTest->TestFalse(TEXT("The recovered search releases its search object too"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
 
@@ -118,13 +118,13 @@ bool FEasySessionWaitForSearchRecovery::Update()
 /**
  * Searching has to survive the watchdog giving up on a search.
  *
- * The online service keeps working on a search until it is told to stop, refuses
- * another while one is running, and reports that refusal as success - so a request
+ * The online subsystem keeps running a search until it is told to stop, refuses
+ * another while one is running, and reports that refusal as success. So a request
  * abandoned without a cancel leaves every later search waiting for a callback that
- * will never come, until the game restarts.
+ * never comes, until the game restarts.
  *
  * The second search here is the assertion that matters: it can only reach the
- * service if the first one was cancelled on the way out.
+ * online subsystem if the first one was canceled when it was abandoned.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionSearchRecoveryTest, "EasySession.Search.RecoversFromAnAbandonedSearch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionSearchRecoveryTest::RunTest(const FString& Parameters)
@@ -194,7 +194,7 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 		return true;
 	}
 
-	// The failure is injected while the service holds the running search, which is the
+	// The failure is injected while the online subsystem holds the running search, which is the
 	// state a synchronous LAN failure leaves: SearchState Failed, slot still taken.
 	if (!State->bSearchFailed)
 	{
@@ -230,7 +230,7 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 		return false;
 	}
 
-	// Success specifically: a service still holding the failed search refuses this one
+	// Success specifically: an online subsystem still holding the failed search refuses this one
 	// and the drop detection reports SearchFailure instead.
 	CurrentTest->TestEqual(TEXT("A search after a synchronously failed one still reaches the online service"), Result, EEasySessionResult::Success);
 
@@ -241,12 +241,12 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 /**
  * Searching has to survive a search that fails synchronously.
  *
- * The online service marks such a search Failed but keeps holding it, its cancel only
- * takes a search it believes is running, and nothing else ever releases the slot - so
- * one failed search would swallow every search after it until the game restarts.
+ * The online subsystem marks such a search Failed but keeps holding it. Its cancel only
+ * takes a search it believes is running, and nothing else ever releases it, so one
+ * failed search would block every search after it until the game restarts.
  *
  * The failure is injected by flipping the running search's state, because the real
- * trigger - a LAN broadcast that fails to send - needs a machine with no network.
+ * trigger, a LAN broadcast that fails to send, needs a machine with no network.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFailedSearchRecoveryTest, "EasySession.Search.RecoversFromASynchronouslyFailedSearch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFailedSearchRecoveryTest::RunTest(const FString& Parameters)
@@ -332,7 +332,7 @@ bool FEasySessionWaitForOwnSearch::Update()
 		return false;
 	}
 
-	// Ignoring the foreign completion must not cost us our own: the real one still
+	// Ignoring the foreign completion must not lose our own: the real one still
 	// arrives and still ends the request.
 	CurrentTest->TestNotEqual(TEXT("Our own search still completes"), State->PendingResult.GetValue(), EEasySessionResult::Timeout);
 	Finish(*State);
@@ -340,9 +340,9 @@ bool FEasySessionWaitForOwnSearch::Update()
 }
 
 /**
- * The find-complete delegate belongs to the online service, not to us: every search
- * finishing anywhere in the process rings it. A completion that arrives while our
- * own search has not finished is somebody else's and must not end our request.
+ * The find-complete delegate belongs to the online subsystem, not to this plugin: every
+ * search finishing anywhere in the process fires it. A completion that arrives while our
+ * own search has not finished belongs to another search and must not end our request.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionForeignSearchTest, "EasySession.Search.IgnoresAForeignCompletion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionForeignSearchTest::RunTest(const FString& Parameters)
@@ -360,7 +360,7 @@ bool FEasySessionForeignSearchTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// The watchdog must not interfere here - this search is meant to run to the end.
+	// The watchdog must not interfere here. This search is meant to run to the end.
 	State->OriginalTimeout = GetMutableDefault<UEasySessionConfig>()->RequestTimeoutSeconds;
 
 	Subsystem->FindEasySessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
@@ -428,7 +428,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 
 	if (!State->bCanceled)
 	{
-		// Once the search is at the online service, cancel it the way a Steam search is canceled: the service keeps running it.
+		// Once the search is at the online subsystem, cancel it the way a Steam search is canceled: the online subsystem keeps running it.
 		if (!FEasySessionTestAccess::HasActiveSearch(*Subsystem))
 		{
 			return false;
@@ -457,7 +457,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 		return false;
 	}
 
-	// Success specifically: the service refuses a search while it holds another, so this one only got through after the canceled one ended.
+	// Success specifically: the online subsystem refuses a search while it holds another, so this one only got through after the canceled one ended.
 	CurrentTest->TestEqual(TEXT("The next search ran once the canceled one ended in the service"), State->PendingResult.GetValue(), EEasySessionResult::Success);
 	CurrentTest->TestFalse(TEXT("And nothing is left running"), Subsystem->IsBusy());
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
@@ -465,13 +465,13 @@ bool FEasySessionWaitForCanceledSearch::Update()
 }
 
 /**
- * A search whose requester stops waiting while an internet service still runs it.
+ * A search whose requester cancels it while the online subsystem still runs it.
  *
  * Steam cannot stop a lobby query: its cancel only forgets the search, and a query
- * started meanwhile shares the old one's bookkeeping and breaks. So the canceled search
- * keeps its slot in the queue until the service answers, counting as nobody's and not
- * as busy, and the next search runs after it. NULL only runs LAN searches, which it does
- * stop, so the search is marked as an internet one to reach that path.
+ * started meanwhile shares the old one's state and breaks. So the canceled search
+ * keeps its slot in the queue until the online subsystem completes it, with no requester
+ * and not counting as busy, and the next search runs after it. NULL only runs LAN searches,
+ * which it does stop, so the search is marked as an internet one to reach that path.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionCanceledSearchTest, "EasySession.Search.QueuesBehindACanceledInternetSearch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionCanceledSearchTest::RunTest(const FString& Parameters)

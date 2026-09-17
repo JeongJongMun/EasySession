@@ -34,7 +34,7 @@ namespace EasySessionTest
 			return;
 		}
 
-		// Capture the world first - Shutdown clears the instance's world context.
+		// Capture the world first. Shutdown clears the instance's world context.
 		UWorld* World = GameInstance->GetWorld();
 		GameInstance->Shutdown();
 

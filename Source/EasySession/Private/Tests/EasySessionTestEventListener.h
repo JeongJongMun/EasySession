@@ -93,7 +93,7 @@ public:
 		FailureReasons.Add(Reason);
 	}
 
-	/** When set, entering Hosting cancels this subsystem's matchmaking - after the create was dispatched, before its completion arrives. */
+	/** When set, entering Hosting cancels this subsystem's matchmaking, after the create was sent and before its completion arrives. */
 	UPROPERTY()
 	TObjectPtr<UEasySessionSubsystem> CancelMatchmakingOnHosting;
 
@@ -107,7 +107,7 @@ public:
 		}
 	}
 
-	/** Everything seen from the subsystem's matchmaking events, in arrival order. Heartbeat ticks are kept out - they land in MatchmakingElapsedSeen. */
+	/** Everything seen from the subsystem's matchmaking events, in arrival order. Heartbeat ticks are kept out. They go to MatchmakingElapsedSeen. */
 	UPROPERTY()
 	TArray<FString> MatchmakingJournal;
 
@@ -264,7 +264,7 @@ public:
 	/** @return How many times a pin fired, so a test can catch a node that fires twice as well as one that never fires. */
 	int32 TotalFired() const { return SuccessResults.Num() + FailureResults.Num(); }
 
-	/** Forget everything seen so far, so one listener can walk a list of nodes. */
+	/** Forget everything seen so far, so one listener can serve a list of nodes. */
 	void Reset()
 	{
 		SuccessResults.Reset();
