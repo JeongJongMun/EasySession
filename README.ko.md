@@ -17,7 +17,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 ## 특징
 
 - **기존 프로젝트에 바로 얹힙니다** - 커스텀 `GameInstance`도, 지정된 부모 클래스도 필요 없습니다. 플러그인을 켜면 서브시스템이 자동으로 만들어지고, LAN은 설정 파일을 건드리지 않아도 바로 동작합니다. 이미 만들어둔 게임모드와 위젯을 그대로 쓰면서 노드만 추가하면 됩니다.
-- **빠른 매치 지원** - `Quick Match Easy Session` 노드 하나가 세션을 검색하고, 가장 적합한 방에 참가하고, 없으면 Allow Host Fallback이 켜진 경우 직접 호스트가 됩니다.
+- **매치메이킹 지원** - `Start Easy Matchmaking` 노드 하나가 세션을 검색하고, 가장 적합한 방에 참가하고, 없으면 Allow Host Fallback이 켜진 경우 직접 호스트가 됩니다.
 - **세션 수명주기 전부 블루프린트로 지원** - 만들기, 찾기, 참가, 매치 시작, 매치 종료, 나가기, 설정 변경까지 비동기 노드로 제공합니다. 세션 상태와 참가자 목록, 남은 자리도 노드로 바로 조회되고, C++ API도 같은 형태로 열려 있습니다.
 - **작업 상태와 결과를 알 수 있음** - `Is Busy`로 진행 상황을 추적합니다. 대기 중인 작업은 물론 방을 만들거나 참가한 뒤 이어지는 레벨 로드까지 "작업 중"으로 보므로, 버튼의 Is Enabled에 연결해두면 플레이어가 기다리는 구간 내내 잠깁니다. 작업이 끝나면 결과 열거형과 플레이어에게 그대로 보여줄 수 있는 메시지를 받습니다. 응답이 없는 요청도 정해진 시간이 지나면 실패로 처리되어, 뒤에 기다리던 작업이 멈추지 않습니다.
 - **겹친 호출도 순서대로 처리** - 모든 작업이 큐에 들어가 하나씩 실행됩니다. 앞 작업이 끝나기 전에 부른 호출은 실패 대신 차례를 기다리고, 같은 호출을 반복하면 `SessionAlreadyExists`처럼 사유가 붙은 결과로 끝납니다.
@@ -56,7 +56,7 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 - [Quick Start](Docs/QuickStart.ko.md) - 5분 만에 방 만들고 참가하기
 - [Concepts](Docs/Concepts.ko.md) - 세션, OSS, Travel, 리슨 서버와 데디케이티드가 서로 어떻게 맞물리는지
 - 설정: [LAN](Docs/Setup-LAN.ko.md) | [Steam](Docs/Setup-Steam.ko.md)
-- 가이드: [Sessions](Docs/Guide-Sessions.ko.md) | [Quick Match](Docs/Guide-QuickMatch.ko.md)
+- 가이드: [Sessions](Docs/Guide-Sessions.ko.md) | [Matchmaking](Docs/Guide-Matchmaking.ko.md)
 - [API 레퍼런스](Docs/API.ko.md)
 - [FAQ & Troubleshooting](Docs/FAQ.ko.md)
 
