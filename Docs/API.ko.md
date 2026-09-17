@@ -181,7 +181,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Matchmaking 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
-| `OnSessionFailure` | `Reason`(String) | 작업이 끝난 것이 아닙니다. 연결이 끊기거나 네트워크 오류가 났을 때이며, 죽은 세션은 알아서 정리됩니다 |
+| `OnSessionFailure` | `Reason`(String) | 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패한 경우입니다(예: 잘못된 Initial Map Name). `Reason`은 상태 표시나 로그에 쓰세요. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Last Easy Disconnect Info`에 있습니다 |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy가 바뀌었을 때. 한 번 바인딩해 두고 이 플래그로 세션 버튼을 켜고 끄면 매 틱 폴링이 필요 없습니다. true로 바뀐 순간 Get Easy Session Activity가 어떤 작업이 시작됐는지 알려줍니다 |
 | `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다 |
 

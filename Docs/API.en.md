@@ -189,7 +189,7 @@ bound to them stays correct even when something else in your game drives the ses
 | `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
-| `OnSessionFailure` | `Reason` (String) | Not an operation finishing - the connection died or a network error hit. The dead session is cleaned up for you |
+| `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, or a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name). Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Last Easy Disconnect Info` has the reason to show the player |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which operation began |
 | `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
 

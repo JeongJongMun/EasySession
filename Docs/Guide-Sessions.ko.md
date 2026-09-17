@@ -231,7 +231,7 @@ Event Construct
 UI를 갱신하려면 서브시스템(`Get Easy Session Subsystem`)에서 아래 이벤트를 바인딩하세요.
 
 - `OnSessionCreated`, `OnSessionsFound`, `OnSessionJoined`, `OnSessionUpdated`, `OnSessionStarted`, `OnSessionEnded`, `OnSessionDestroyed` - 각 작업이 끝날 때 발생합니다. 누가 시작했든 상관없습니다
-- `OnSessionFailure` - 세션 연결이 끊겼거나 네트워크 오류가 났습니다. EasySession이 죽은 세션을 알아서 파괴하므로 플레이어는 즉시 다시 들어갈 수 있습니다
+- `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패한 경우입니다(예: 잘못된 Initial Map Name). 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Last Easy Disconnect Info`에 있습니다
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
 
 어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.

@@ -236,7 +236,7 @@ two combine: the code finds the room, the password still gates the door.
 Bind these on the subsystem (`Get Easy Session Subsystem`) for UI updates:
 
 - `OnSessionCreated`, `OnSessionsFound`, `OnSessionJoined`, `OnSessionUpdated`, `OnSessionStarted`, `OnSessionEnded`, `OnSessionDestroyed` - fired as each operation completes, regardless of who initiated it
-- `OnSessionFailure` - the connection to the session was lost or a network error occurred. EasySession automatically destroys the dead session so the player can rejoin immediately
+- `OnSessionFailure` - something failed outside any node's result: the connection dropped, or a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name). A client that lost its session is sent back to the menu, where `Consume Last Easy Disconnect Info` has the reason to show the player
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)
 
 Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.

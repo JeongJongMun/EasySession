@@ -39,7 +39,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasySessionEvent, EEasySessionResu
 /** Multicast event fired when a session search completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasySessionFindEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionSearchResult>&, Results);
 
-/** Multicast event fired when the connection to the session is lost. */
+/** Multicast event fired when something fails outside any node's result, such as a lost connection or a failed travel. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionFailureEvent, const FString&, Reason);
 
 /** Multicast event fired when the player accepts an invite from the platform overlay. */
@@ -159,7 +159,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionEvent OnMatchmakingComplete;
 
-	/** Fired when the connection to the session is lost or a network error occurs. */
+	/** Fired when something fails outside any node's result: the connection drops, or a travel or listen server started by EasySession fails (e.g. a wrong Initial Map Name). */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionFailureEvent OnSessionFailure;
 
