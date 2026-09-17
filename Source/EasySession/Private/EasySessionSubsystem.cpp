@@ -75,7 +75,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		TravelFailureHandle = GEngine->OnTravelFailure().AddUObject(this, &UEasySessionSubsystem::HandleTravelFailure);
 	}
 
-	// The session interface may not be reachable until the world exists - retry until it is.
+	// The session interface may not exist until the world does, so retry until it is.
 	InviteBindTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
 	{
 		if (!GetSessionInterface().IsValid())
@@ -85,8 +85,8 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 		Social->BindInviteDelegates();
 #if !UE_BUILD_SHIPPING
-		// The fixes it prints are for whoever builds the game, not whoever plays it.
-		// Packaged development builds keep it: that is where a service that works in
+		// The fixes it prints are for the developer, not the player.
+		// Packaged development builds keep it: that is where an online subsystem that works in
 		// the editor and not in a build gets diagnosed.
 		EasySessionDiagnostics::LogReport(EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr));
 #endif
@@ -171,7 +171,7 @@ void UEasySessionSubsystem::Deinitialize()
 		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
 	}
 
-	// Operations end themselves when canceled, and they may still hold a step's delegate - cancel before the queue goes.
+	// Operations end themselves when canceled, and they may still hold a step's delegate, so cancel before the queue is destroyed.
 	RequestQueue->CancelOperations();
 
 	// Destroying these unbinds everything they registered, tickers included.
@@ -200,7 +200,7 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	Request->SearchParams = SearchParams;
 	Request->OnFindComplete = MoveTemp(OnComplete);
 
-	// A targeted query names its room, hidden or not - and the hidden-seeing mark keeps it off the public search surfaces.
+	// A targeted query names one session, hidden or not. The hidden-seeing mark keeps its results off OnSessionsFound and the last search results.
 	if (Request->SearchParams.IsSpecificSessionQuery())
 	{
 		Request->SearchParams.bIncludeHiddenSessions = true;
@@ -217,14 +217,14 @@ bool UEasySessionSubsystem::CancelSearch(const UObject* Requester)
 		return false;
 	}
 
-	// A LAN search is ours to stop, so the request ends here and the service is told on the way out.
+	// A LAN search can be stopped, so the request ends here and CleanupRequest tells the online subsystem.
 	if (ActiveSearch.IsValid() && ActiveSearch->bIsLanQuery)
 	{
 		CompleteActiveRequest(EEasySessionResult::Canceled, TEXT("The search was canceled."), /*bAbandoned*/ true);
 		return true;
 	}
 
-	// The service runs an internet search to the end whatever it is told, so the request keeps its slot and only the requester is let go.
+	// The online subsystem runs an internet search to the end whatever it is told, so the request keeps its slot and only the requester's delegate is unbound.
 	Request->bCanceled = true;
 	FEasySessionFindCompleteDelegate OnFindComplete = MoveTemp(Request->OnFindComplete);
 	Request->OnFindComplete.Unbind();
@@ -265,7 +265,7 @@ void UEasySessionSubsystem::DestroyEasySession(FEasySessionCompleteDelegate OnCo
 
 void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComplete)
 {
-	// A leaving host takes the room with it - closing it for everyone tells each client why before the connection dies.
+	// A leaving host takes the session with it. Destroying it for everyone tells each client why before the connection closes.
 	if (IsSessionAuthority())
 	{
 		DestroyEasySessionForEveryone(NSLOCTEXT("EasySession", "HostLeftSession", "The host has left the game."), MoveTemp(OnComplete));
@@ -307,14 +307,14 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	Policy->Start(*this, MatchmakingParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, WeakOperation = TWeakPtr<FEasyMatchmakingOperation>(Operation), UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			// Ended before anyone hears about it, so a listener asking Is Matchmaking Running gets the answer that matches the event.
+			// Ended before the events fire, so a listener calling Is Matchmaking Running gets the value that matches the event.
 			const TSharedPtr<FEasyMatchmakingOperation> Ended = WeakOperation.Pin();
 			if (Ended.IsValid() && RequestQueue.IsValid())
 			{
 				RequestQueue->EndOperation(*Ended);
 			}
 
-			// Observers first: the requester's delegate often tears down the very UI that is listening.
+			// Observers first: the requester's delegate often destroys the very UI that is listening.
 			OnMatchmakingComplete.Broadcast(Result, ErrorMessage);
 			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
 		}));
@@ -370,7 +370,7 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 {
 	const EEasySessionState LocalState = GetLocalSessionState();
 
-	// Clients report the host's replicated state: the session lifecycle lives on the
+	// Clients report the host's replicated state: the session lifecycle is decided on the
 	// host, and every player should agree on it regardless of when they joined.
 	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
 	if (LocalState != EEasySessionState::NoSession && bHasReplicatedHostSessionState &&
@@ -429,7 +429,7 @@ FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
 		}
 	}
 
-	// In the clear on purpose: this game already holds the password to check players
+	// Plain text on purpose: this game already holds the password to check players
 	// against, and blanking it here would leave no way to remove one through Update.
 	if (ServerGate.IsValid())
 	{
@@ -509,7 +509,7 @@ bool UEasySessionSubsystem::IsHost() const
 		return false;
 	}
 
-	// NULL sets bHosting when creating a session, but Steam never touches the flag -
+	// NULL sets bHosting when creating a session, but Steam never writes the flag, so
 	// fall back to comparing the session owner's id with the local player (ids, not
 	// names, for the same reason as the host marker in GetSessionPlayerInfos).
 	if (NamedSession->bHosting)
@@ -702,8 +702,8 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 		return false;
 	}
 
-	// UWorld::ServerTravel does not refuse a client - with no game mode it still sets
-	// NextURL and returns true - so this entry check is the only gate.
+	// UWorld::ServerTravel does not refuse a client. With no game mode it still sets
+	// NextURL and returns true, so this entry check is the only guard.
 	if (!IsSessionAuthority())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session. %s"), RequiresSessionAuthorityFix);
@@ -732,7 +732,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	}
 
 	// The map changes on the next frame, and the arrival world starts its own beacon.
-	// Stopping now frees the beacon port in between - the new beacon fails to bind without this.
+	// Stopping now frees the beacon port in between. Without this the new beacon fails to bind.
 	JoinApproval->StopHost();
 
 	Travel->MarkStarted(TEXT("ServerTravelToMap"));
@@ -762,7 +762,8 @@ bool UEasySessionSubsystem::ShouldForceLAN() const
 
 void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
 {
-	// Where a request's target session is decided. The execute and complete handlers read it from the request; queries and gates are game session only and read the constant.
+	// Where a request's target session is decided. The execute and complete handlers read it from the request.
+	// Queries and gates are game session only and read the constant.
 	Request->SessionName = NAME_GameSession;
 
 	RequestQueue->Enqueue(Request);
@@ -778,8 +779,8 @@ const TSharedPtr<FEasySessionRequest>& UEasySessionSubsystem::GetActiveRequest()
 
 void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
 {
-	// Every net driver reports here, so a beacon query timing out or a replay hiccup
-	// would otherwise tear the session down. Only the game connection counts: the
+	// Every net driver reports here, so a beacon query timing out or a replay error
+	// would otherwise destroy the session. Only the game connection counts: the
 	// world's driver, and the pending one a client uses while still traveling.
 	if (NetDriver != nullptr &&
 		NetDriver->NetDriverName != NAME_GameNetDriver &&
@@ -813,8 +814,8 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	if (IsSessionAuthority())
 	{
 		// On the host this fires for a client whose connection died, not the host's
-		// own. The session is still alive, so returning keeps the host from sending
-		// itself back to the menu over someone else's disconnect.
+		// own. The session is still alive, so returning keeps the host from traveling
+		// to the menu over another player's disconnect.
 		return;
 	}
 
@@ -858,7 +859,7 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
 
-	// A failed server travel leaves the host's world, session and players untouched - only the map change failed, which OnSessionFailure just reported.
+	// A failed server travel leaves the host's world, session and players untouched. Only the map change failed, which OnSessionFailure just reported.
 	if (IsSessionAuthority())
 	{
 		// ServerTravelToMap stopped the beacon for a world that never arrived.
@@ -871,11 +872,10 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 
 void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText)
 {
-	// First reason wins: tearing the session down can fail on its own (the connection
-	// dropping while we leave), and those follow-up failures would replace the real
-	// cause with a symptom. Only the reason is protected, though - reading it is
-	// optional, so a reason nobody collected must never stop a later disconnect from
-	// being cleaned up.
+	// First reason wins: destroying the session can fail on its own (the connection
+	// dropping while we leave), and those later failures would replace the real
+	// cause with a symptom. Only the reason is protected. Reading it is optional,
+	// so a reason the game never read must never stop a later disconnect from being cleaned up.
 	if (!bHasPendingDisconnectInfo)
 	{
 		LastDisconnectInfo.Reason = Reason;
@@ -925,8 +925,9 @@ void UEasySessionSubsystem::ReturnToMenu()
 		return;
 	}
 
-	// ReturnToMainMenu does the cleanup an OpenLevel would skip - the pending net game, the ?listen/?LAN options, the net driver - and the engine already owns the "where is the menu" setting.
-	// Repeated calls are harmless: the engine no-ops once it is already browsing to the default map.
+	// ReturnToMainMenu does the cleanup an OpenLevel would skip: the pending net game, the ?listen and ?LAN options, and the net driver.
+	// The engine also already owns the Game Default Map setting.
+	// Repeated calls are harmless: the engine does nothing once it is already browsing to the default map.
 	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
 	GameInstance->ReturnToMainMenu();
 	Travel->MarkStarted(TEXT("return to menu"));
@@ -1146,15 +1147,15 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 		return;
 	}
 
-	// PostNetInit and the OnRep can both deliver the same payload - apply it once.
+	// PostNetInit and the OnRep can both deliver the same payload, so it is applied once.
 	if (AppliedReplicatedSessionSettings == Settings)
 	{
 		return;
 	}
 	AppliedReplicatedSessionSettings = Settings;
 
-	// Patch the local session copy, so the regular getters return the host's values without any new API.
-	// Without a session copy there is nothing to patch and nothing for a listener to read - skip the event too.
+	// Write the host's values into the local session copy, so the regular getters return them without any new API.
+	// Without a session copy there is nothing to write and nothing for a listener to read, so the event is skipped too.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	if (NamedSession != nullptr)

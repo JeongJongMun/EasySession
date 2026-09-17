@@ -1,9 +1,9 @@
 // Copyright (c) 2026 Langerak. Licensed under the MIT License.
 
 // The request protocol of UEasySessionSubsystem: what each queued request does when
-// it runs, and how its completion comes back from the online service. One class,
-// two files - the same way the engine splits UWorld across World.cpp and
-// LevelActor.cpp. Everything else about the subsystem lives in
+// it runs, and how its completion comes back from the online subsystem. One class,
+// two files, the same way the engine splits UWorld across World.cpp and
+// LevelActor.cpp. Everything else about the subsystem is in
 // EasySessionSubsystem.cpp.
 
 #include "EasySessionSubsystem.h"
@@ -66,7 +66,7 @@ void UEasySessionSubsystem::HandleRequestDeadline()
 		return;
 	}
 
-	// The service never answered. Fail the request as abandoned: the operation may still finish later, and CleanupRequest handles what it leaves behind.
+	// The online subsystem never called back. Fail the request as abandoned: the call may still complete later, and CleanupRequest handles what it leaves behind.
 	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online service. Continuing with the next request."),
 		Request->GetTypeName(), Request->GetElapsedSeconds(FPlatformTime::Seconds()));
 
@@ -98,7 +98,7 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 
 		case FEasySessionRequest::EType::Find:
 			CompletedRequest->OnFindComplete.ExecuteIfBound(Result, ErrorMessage, LastSearchResults);
-			// A search that saw hidden rooms stays off the public surfaces: no broadcast, no cache. So does a canceled one: its rooms are nobody's answer.
+			// A search that saw hidden sessions is not broadcast and not stored as the last search results. Neither is a canceled one, whose results the requester no longer wants.
 			if (CompletedRequest->SearchParams.bIncludeHiddenSessions || CompletedRequest->bCanceled)
 			{
 				LastSearchResults.Empty();
@@ -148,8 +148,8 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 		return;
 	}
 
-	// Unbind first: an abandoned request tells the online service to stop below,
-	// and some of those paths report the operation as finished on the way out.
+	// Unbind first: an abandoned request tells the online subsystem to stop below,
+	// and some of those paths fire the completion delegate while stopping.
 	switch (Request.Type)
 	{
 		case FEasySessionRequest::EType::Create:	Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle); break;
@@ -174,13 +174,13 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 	// A search still held here has to be released, whichever request made it.
 	if (ActiveSearch.IsValid())
 	{
-		// An abandoned search keeps running in the service, which refuses new ones until it ends. InProgress means the one it still holds is ours.
+		// An abandoned search keeps running in the online subsystem, which refuses new ones until it ends. InProgress means the one it still holds is ours.
 		if (bAbandoned && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
 		{
 			UE_LOG(LogEasySession, Warning, TEXT("Cancelling the abandoned search so later searches are not refused."));
 			Sessions->CancelFindSessions();
 		}
-		// A search that failed on the spot is still held too, and cancel only releases one marked InProgress - so mark ours back before asking.
+		// A search that failed inside the call is still held too, and cancel only releases one marked InProgress, so mark ours back before asking.
 		else if (ActiveSearch->SearchState == EOnlineAsyncTaskState::Failed)
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Releasing the failed search so later searches are not refused."));
@@ -191,8 +191,8 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 		ActiveSearch.Reset();
 	}
 
-	// The join's approval ask may still be waiting for an answer. Stopping it here
-	// destroys the beacon client, so a late answer cannot reach a finished request.
+	// The join's approval request may still be waiting for a response. Stopping it here
+	// destroys the beacon client, so a late response cannot reach a finished request.
 	if (Request.Type == FEasySessionRequest::EType::Join)
 	{
 		JoinApproval->StopClient();
@@ -231,7 +231,7 @@ void UEasySessionSubsystem::ExecuteCreate()
 	const bool bIsDedicated = Params.HostMode == EEasySessionHostMode::DedicatedServer;
 
 	// Dedicated hosting means this process is the server, so asking for it from a
-	// game that is not one leaves nobody to open a server: the session would be
+	// game that is not one leaves no process to open a server: the session would be
 	// advertised with no way in. Refuse here instead of letting every client find
 	// out through a connection timeout. The world's net mode is what decides, not
 	// IsRunningDedicatedServer(), so a dedicated server running under PIE counts.
@@ -273,7 +273,7 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
-	// The title a session browser lists. The service's own name field is the host account.
+	// The title a session browser lists. The online subsystem's own name field is the host account.
 	Settings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// Whether Find skips this session. Written even when false: an advertised key cannot be deleted later.
@@ -290,18 +290,18 @@ FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySess
 	// The advertised region. Written even at Any: an advertised key cannot be deleted later.
 	Settings.Set(EasySession::SettingKey_Region, static_cast<int32>(Params.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// The room's shareable code. Generated rather than chosen: codes exist to be short and unambiguous.
+	// The session's shareable code. Generated rather than chosen: codes exist to be short and unambiguous.
 	if (Params.bUseJoinCode)
 	{
 		Settings.Set(EasySession::SettingKey_JoinCode, EasySession::GenerateJoinCode(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 
-	// The port joiners reach the join approval beacon on. Read from config rather than
-	// from a running beacon, because none exists yet - one is created per world, after
+	// The port joining players reach the join approval beacon on. Read from config rather than
+	// from a running beacon, because none exists yet. One is created per world, after
 	// each travel. GetResolvedConnectString reads this key to build the beacon address.
 	Settings.Set(SETTING_BEACONPORT, EasySession::GetJoinApprovalBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// Whether this host runs a join approval beacon. Joiners that find the key ask for
+	// Whether this host runs a join approval beacon. Joining players that find the key ask for
 	// approval before traveling, and the host itself reads it back after each travel to
 	// decide whether the new world needs a beacon of its own.
 	Settings.Set(EasySession::SettingKey_JoinApproval, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
@@ -345,7 +345,7 @@ void UEasySessionSubsystem::CompleteMatchStateRequest(bool bAdvertised)
 		UE_LOG(LogEasySession, Warning, TEXT("The match state changed but re-advertising it failed - searching players see the old value until the next update."));
 	}
 
-	// The OSS only changes this game's own copy of the session, so the new state is replicated for the clients here now and the ones that join later.
+	// The online subsystem only changes this game's own copy of the session, so the new state is replicated for the clients here now and the ones that join later.
 	if (IsSessionAuthority())
 	{
 		PushHostSessionState();
@@ -358,7 +358,7 @@ void UEasySessionSubsystem::ExecuteFind()
 {
 	// A new search invalidates the previous one. Dropping the results here rather
 	// than when the search completes means nothing can show sessions from the last
-	// search while a new one is running - those rooms may already be gone.
+	// search while a new one is running. Those sessions may already be gone.
 	LastSearchResults.Empty();
 
 	const FEasySessionSearchParams& Params = GetActiveRequest()->SearchParams;
@@ -386,7 +386,7 @@ void UEasySessionSubsystem::StartFriendSessionSearch(const FEasySessionSearchPar
 		return;
 	}
 
-	// NULL answers every friend query with "no session" without looking, so that answer would read as a real one.
+	// NULL completes every friend query with "no session" without looking, so that result would read as a real one.
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
 	if (OnlineSub == nullptr || !OnlineSub->GetFriendsInterface().IsValid())
 	{
@@ -399,7 +399,7 @@ void UEasySessionSubsystem::StartFriendSessionSearch(const FEasySessionSearchPar
 
 	UE_LOG(LogEasySession, Log, TEXT("Searching for a friend's session."));
 
-	// A refused call can answer inside it, completing the request before it returns - only an unanswered false is a failure to report.
+	// A refused call can complete the request inside it, before it returns. Only a false with the request still active is a failure to report.
 	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
 	if (!Sessions->FindFriendSession(0, *Params.SearchTargetId.GetUniqueNetId()) && GetActiveRequest() == Request)
 	{
@@ -438,7 +438,7 @@ void UEasySessionSubsystem::StartSessionSearch(const FEasySessionSearchParams& P
 		return;
 	}
 
-	// The online service drops a search it cannot start and still reports success,
+	// The online subsystem drops a search it cannot start and still returns true,
 	// leaving nothing to call back. It marks the one it did accept as in progress,
 	// so an untouched state means ours was the one dropped.
 	if (ActiveSearch->SearchState != EOnlineAsyncTaskState::InProgress)
@@ -469,7 +469,7 @@ void UEasySessionSubsystem::ExecuteJoin()
 		return;
 	}
 
-	// Sessions without the approval key are joined directly - PreLogin still decides,
+	// Sessions without the approval key are joined directly. PreLogin still decides,
 	// just after the travel instead of before it.
 	int32 bJoinApproval = 0;
 	if (GetActiveRequest()->JoinTarget.NativeResult.Session.SessionSettings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) && bJoinApproval != 0)
@@ -483,7 +483,7 @@ void UEasySessionSubsystem::ExecuteJoin()
 
 void UEasySessionSubsystem::RequestJoinApproval()
 {
-	// Asked before the online service join, so a refusal costs no session slot and no map load.
+	// Asked before the online subsystem join, so a refusal costs no session slot and no map load.
 	JoinApproval->RequestJoinApproval(GetActiveRequest()->JoinTarget, GetActiveRequest()->JoinPassword,
 		FEasyJoinApprovalComplete::CreateUObject(this, &UEasySessionSubsystem::HandleJoinApprovalResponse));
 }
@@ -503,7 +503,7 @@ void UEasySessionSubsystem::HandleJoinApprovalResponse(const FEasyJoinApprovalRe
 			break;
 
 		case EEasyJoinApprovalResult::Unreachable:
-			// Join without asking: PreLogin runs the same ApproveJoin on arrival, 
+			// Join without asking: PreLogin runs the same ApproveJoin on arrival,
 			// so an unreachable beacon can only delay a refusal, never skip one.
 			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the join approval beacon - joining directly. A refusal will now arrive after the travel instead of before it."));
 			JoinOnlineSession();
@@ -679,7 +679,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 
-	// This process created the session, so it is the session's server - on a dedicated
+	// This process created the session, so it is the session's server, on a dedicated
 	// server just as much as on a listen server.
 	bCreatedActiveSession = true;
 
@@ -688,7 +688,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	if (HostParams.InitialMapName.IsEmpty())
 	{
-		// The host stays on this map, where they logged in before the session existed - so no login has registered them.
+		// The host stays on this map, where they logged in before the session existed, so no login has registered them.
 		const IOnlineSessionPtr Sessions = GetSessionInterface();
 		const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
 		const FUniqueNetIdRepl HostId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
@@ -717,14 +717,14 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		return;
 	}
 
-	// By-id and friend queries complete through their own handlers - a discovery completion arriving meanwhile is someone else's.
+	// Friend queries complete through their own handler. A discovery completion arriving meanwhile belongs to another search.
 	if (Request->SearchParams.SearchMode != EEasySessionSearchMode::Default)
 	{
 		return;
 	}
 
-	// Every search in the process rings this delegate. The online service settles a
-	// search's state before ringing, so ours still in progress means this is not it.
+	// Every search in the process fires this delegate. The online subsystem sets a
+	// search's state before firing it, so ours still in progress means this is not it.
 	if (ActiveSearch.IsValid() && ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
 	{
 		UE_LOG(LogEasySession, Verbose, TEXT("Ignoring a search completion that belongs to another search."));
@@ -738,7 +738,7 @@ void UEasySessionSubsystem::HandleFindSessionsComplete(bool bWasSuccessful)
 		return;
 	}
 
-	// The search is settled - release it before the funnel runs.
+	// The search is done. Release it before the results are filtered.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (Sessions.IsValid())
 	{
@@ -796,7 +796,7 @@ void UEasySessionSubsystem::HandleFindFriendSessionComplete(int32 LocalUserNum, 
 		return;
 	}
 
-	// False is an answer, not a failure: the friend is not in a joinable session right now.
+	// False is a result, not a failure: the friend is not in a joinable session right now.
 	FinishActiveSearch(bWasSuccessful ? FriendResults : TArray<FOnlineSessionSearchResult>());
 }
 
@@ -837,15 +837,15 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 			return;
 	}
 
-	// Resolve the host address before reporting success, so a dead host fails loudly
-	// instead of the client hanging on a connection timeout.
+	// Resolve the host address before reporting success, so a dead host fails now
+	// instead of the client waiting for a connection timeout.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	FString ConnectString;
 	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(GetActiveRequest()->SessionName, ConnectString) && !ConnectString.IsEmpty();
 
 	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
 	{
-		// Queued before the completion below, so a retry started in its callback runs after this cleanup instead of hitting the half-joined session.
+		// Queued before the completion below, so a retry started in its callback runs after this cleanup instead of running against the half-joined session.
 		DestroyEasySession();
 
 		CompleteActiveRequest(EEasySessionResult::ResolveFailure, FString::Printf(
@@ -883,7 +883,7 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	ServerGate->ClearSessionCredentials();
 	JoinApproval->StopHost();
 
-	// The session is gone - destroy the replicated state actor and clear the cached host state.
+	// The session is gone. Destroy the replicated state actor and clear the cached host state.
 	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
 		Actor->Destroy();
@@ -903,7 +903,7 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 		return;
 	}
 
-	// Start and End re-advertise as their second phase, so their completion lands here too.
+	// Start and End re-advertise as their second phase, so their completion arrives here too.
 	if (Request->Type == FEasySessionRequest::EType::Start || Request->Type == FEasySessionRequest::EType::End)
 	{
 		CompleteMatchStateRequest(bWasSuccessful);
@@ -923,7 +923,7 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session updated successfully."));
 
-	// Only now, so a rejected update leaves the gate matching what is advertised.
+	// Only now, so a refused update leaves the gate matching what is advertised.
 	const FEasySessionSettings& Params = GetActiveRequest()->Settings;
 	ServerGate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
 
@@ -1031,7 +1031,7 @@ void UEasySessionSubsystem::HandleStartSessionComplete(FName SessionName, bool b
 	UE_LOG(LogEasySession, Log, TEXT("Session started."));
 
 	// Phase two: re-advertise so searching players see the match running. Its completion finishes this request.
-	// NULL answers inside the call and finishes the request there - only a refusal with the request still active is ours to complete.
+	// NULL completes the request inside the call. Only a refusal with the request still active is left to complete here.
 	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
 	if (!AdvertiseMatchInProgress(true) && GetActiveRequest() == Request)
 	{
@@ -1055,7 +1055,7 @@ void UEasySessionSubsystem::HandleEndSessionComplete(FName SessionName, bool bWa
 	UE_LOG(LogEasySession, Log, TEXT("Session ended."));
 
 	// Phase two: re-advertise so searching players see the match over. Its completion finishes this request.
-	// NULL answers inside the call and finishes the request there - only a refusal with the request still active is ours to complete.
+	// NULL completes the request inside the call. Only a refusal with the request still active is left to complete here.
 	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
 	if (!AdvertiseMatchInProgress(false) && GetActiveRequest() == Request)
 	{
