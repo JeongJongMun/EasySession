@@ -67,10 +67,10 @@ void UEasySessionSubsystem::HandleRequestDeadline()
 	}
 
 	// The online subsystem never called back. Fail the request as abandoned: the call may still complete later, and CleanupRequest handles what it leaves behind.
-	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online service. Continuing with the next request."),
+	UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online subsystem. Continuing with the next request."),
 		Request->GetTypeName(), Request->GetElapsedSeconds(FPlatformTime::Seconds()));
 
-	CompleteActiveRequest(EEasySessionResult::Timeout, TEXT("The online service did not respond in time."), /*bAbandoned*/ true);
+	CompleteActiveRequest(EEasySessionResult::Timeout, TEXT("The online subsystem did not respond in time."), /*bAbandoned*/ true);
 }
 
 void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage, bool bAbandoned)
@@ -391,7 +391,7 @@ void UEasySessionSubsystem::StartFriendSessionSearch(const FEasySessionSearchPar
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
 	if (OnlineSub == nullptr || !OnlineSub->GetFriendsInterface().IsValid())
 	{
-		CompleteActiveRequest(EEasySessionResult::NotSupportedByService, TEXT("This online service has no friends to look up (e.g. NULL/LAN)."));
+		CompleteActiveRequest(EEasySessionResult::NotSupportedByService, TEXT("This online subsystem has no friends to look up (e.g. NULL/LAN)."));
 		return;
 	}
 
@@ -445,7 +445,7 @@ void UEasySessionSubsystem::StartSessionSearch(const FEasySessionSearchParams& P
 	if (ActiveSearch->SearchState != EOnlineAsyncTaskState::InProgress)
 	{
 		CompleteActiveRequest(EEasySessionResult::SearchFailure,
-			TEXT("Another session search is already running, so this one was dropped by the online service."));
+			TEXT("Another session search is already running, so this one was dropped by the online subsystem."));
 	}
 }
 

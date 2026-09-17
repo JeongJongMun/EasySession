@@ -107,7 +107,7 @@ bool FEasySessionWaitForSearchRecovery::Update()
 	// Success specifically, not just "not a timeout": an online subsystem holding an
 	// abandoned search refuses this one, which ExecuteFind reports inside the call
 	// rather than after another deadline.
-	CurrentTest->TestEqual(TEXT("A search after an abandoned one still reaches the online service"), Result, EEasySessionResult::Success);
+	CurrentTest->TestEqual(TEXT("A search after an abandoned one still reaches the online subsystem"), Result, EEasySessionResult::Success);
 	CurrentTest->TestFalse(TEXT("The recovered search releases its search object too"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
 
 	State->Step = EStep::Done;
@@ -232,7 +232,7 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 
 	// Success specifically: an online subsystem still holding the failed search refuses this one
 	// and the drop detection reports SearchFailure instead.
-	CurrentTest->TestEqual(TEXT("A search after a synchronously failed one still reaches the online service"), Result, EEasySessionResult::Success);
+	CurrentTest->TestEqual(TEXT("A search after a synchronously failed one still reaches the online subsystem"), Result, EEasySessionResult::Success);
 
 	Finish(*State);
 	return true;
@@ -438,7 +438,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 		CurrentTest->TestTrue(TEXT("The requester's search was found"), Subsystem->CancelSearch(State->Requester.Get()));
 		CurrentTest->TestEqual(TEXT("The requester hears Canceled inside the call"), State->PendingResult.Get(EEasySessionResult::Success), EEasySessionResult::Canceled);
 		CurrentTest->TestFalse(TEXT("Nothing is busy any more"), Subsystem->IsBusy());
-		CurrentTest->TestTrue(TEXT("While the service still runs the search"), FEasySessionTestAccess::IsActiveRequestCanceled(*Subsystem));
+		CurrentTest->TestTrue(TEXT("While the online subsystem still runs the search"), FEasySessionTestAccess::IsActiveRequestCanceled(*Subsystem));
 
 		State->bCanceled = true;
 		StartSearch(State, *Subsystem);
@@ -458,7 +458,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 	}
 
 	// Success specifically: the online subsystem refuses a search while it holds another, so this one only got through after the canceled one ended.
-	CurrentTest->TestEqual(TEXT("The next search ran once the canceled one ended in the service"), State->PendingResult.GetValue(), EEasySessionResult::Success);
+	CurrentTest->TestEqual(TEXT("The next search ran once the canceled one ended in the online subsystem"), State->PendingResult.GetValue(), EEasySessionResult::Success);
 	CurrentTest->TestFalse(TEXT("And nothing is left running"), Subsystem->IsBusy());
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;

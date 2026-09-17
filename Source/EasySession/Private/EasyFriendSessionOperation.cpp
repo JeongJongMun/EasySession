@@ -104,7 +104,7 @@ void FEasyFriendSessionOperation::HandleQueryComplete(EEasySessionResult Result,
 	// Asking about the next friend now would deliver that completion to the wrong friend, so the search ends here.
 	if (Result == EEasySessionResult::Timeout)
 	{
-		Finish(EEasySessionResult::Timeout, TEXT("The online service did not answer a friend lookup in time."));
+		Finish(EEasySessionResult::Timeout, TEXT("The online subsystem did not complete a friend lookup in time."));
 		return;
 	}
 

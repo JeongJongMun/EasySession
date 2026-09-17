@@ -46,7 +46,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		[this, &bCallbackFired](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionFriend>& Friends)
 		{
 			bCallbackFired = true;
-			TestEqual(TEXT("Read reports the service has no friends list"), Result, EEasySessionResult::NotSupportedByService);
+			TestEqual(TEXT("Read reports the online subsystem has no friends list"), Result, EEasySessionResult::NotSupportedByService);
 			TestEqual(TEXT("No friends returned"), Friends.Num(), 0);
 		}));
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
@@ -78,7 +78,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Second friend sessions callback fired"), bSecondFired);
 
 	// The invite helpers name the reason rather than returning a bare failure.
-	TestEqual(TEXT("ShowInviteUI reports the service has no overlay"), Subsystem->ShowInviteUI(), EEasySessionResult::NotSupportedByService);
+	TestEqual(TEXT("ShowInviteUI reports the online subsystem has no overlay"), Subsystem->ShowInviteUI(), EEasySessionResult::NotSupportedByService);
 	TestEqual(TEXT("ShowProfileUI refuses a friend with no online id"), Subsystem->ShowProfileUI(FEasySessionFriend()), EEasySessionResult::InvalidParams);
 
 	// A friend struct the friends list never returned is a caller mistake, not a missing feature.
@@ -127,7 +127,7 @@ bool FEasySessionWaitForFriendLookup::Update()
 	}
 
 	// NULL has no friends, so the queued lookup completes with that failure rather than with "no session".
-	CurrentTest->TestEqual(TEXT("The queued friend lookup reports the service has no friends"), State->LookupResult.GetValue(), EEasySessionResult::NotSupportedByService);
+	CurrentTest->TestEqual(TEXT("The queued friend lookup reports the online subsystem has no friends"), State->LookupResult.GetValue(), EEasySessionResult::NotSupportedByService);
 	CurrentTest->TestEqual(TEXT("With no session for the friend"), State->DeliveredCount, 0);
 	CurrentTest->TestEqual(TEXT("And off the public search event"), State->Listener->FoundBroadcasts(), 0);
 	CurrentTest->TestEqual(TEXT("And off the public cache"), Subsystem->GetLastSearchResults().Num(), 0);
