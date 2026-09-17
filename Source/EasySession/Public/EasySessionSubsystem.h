@@ -525,8 +525,8 @@ private:
 	/** Ask the online service to join. Every join path ends in this step. */
 	void JoinOnlineSession();
 
-	/** Route the active request's search to the service call its params ask for: by session id, by friend, or discovery. */
-	void DispatchActiveSearch(const FEasySessionSearchParams& Params);
+	/** Ask for the session a friend is in, for the active request. It uses the Find slot without a search object and answers through its own delegate. */
+	void StartFriendSessionSearch(const FEasySessionSearchParams& Params);
 
 	/** Start a discovery search for the active request, completing it on the failures the service reports on the spot. */
 	void StartSessionSearch(const FEasySessionSearchParams& Params);
@@ -541,7 +541,6 @@ private:
 	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleFindSessionsComplete(bool bWasSuccessful);
 	void HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults);
-	void HandleFindSessionByIdComplete(int32 LocalUserNum, bool bWasSuccessful, const FOnlineSessionSearchResult& SessionResult);
 	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult);
 	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
 	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);

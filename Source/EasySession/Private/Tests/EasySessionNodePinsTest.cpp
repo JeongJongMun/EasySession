@@ -12,6 +12,7 @@
 #include "Nodes/EasyCreateSessionNode.h"
 #include "Nodes/EasyDestroySessionNode.h"
 #include "Nodes/EasyEndSessionNode.h"
+#include "Nodes/EasyFindFriendSessionsNode.h"
 #include "Nodes/EasyFindSessionsNode.h"
 #include "Nodes/EasyJoinSessionNode.h"
 #include "Nodes/EasyLeaveSessionNode.h"
@@ -240,6 +241,16 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 			UEasyReadFriendsNode* Node = UEasyReadFriendsNode::ReadEasyFriends(&GameInstance);
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFriendsSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFriendsFailure);
+			Node->Activate();
+		}, EExpectedPin::Failure, EEasySessionResult::NotSupportedByService });
+
+	// The friend session search starts with the same friends read, so it fails the same way.
+	State->Cases.Add({ TEXT("Find Easy Friend Sessions"),
+		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
+		{
+			UEasyFindFriendSessionsNode* Node = UEasyFindFriendSessionsNode::FindEasyFriendSessions(&GameInstance);
+			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFriendSessionsSuccess);
+			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFriendSessionsFailure);
 			Node->Activate();
 		}, EExpectedPin::Failure, EEasySessionResult::NotSupportedByService });
 

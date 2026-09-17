@@ -374,10 +374,16 @@ void UEasySessionSubsystem::ExecuteFind()
 		return;
 	}
 
-	DispatchActiveSearch(Params);
+	if (Params.SearchMode == EEasySessionSearchMode::ByFriend)
+	{
+		StartFriendSessionSearch(Params);
+		return;
+	}
+
+	StartSessionSearch(Params);
 }
 
-void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams& Params)
+void UEasySessionSubsystem::StartFriendSessionSearch(const FEasySessionSearchParams& Params)
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
@@ -386,55 +392,25 @@ void UEasySessionSubsystem::DispatchActiveSearch(const FEasySessionSearchParams&
 		return;
 	}
 
-	// A by-id query needs no search object. Its completion delegate is a call parameter, so there is no handle to manage.
-	if (Params.SearchMode == EEasySessionSearchMode::BySessionId)
+	// NULL answers every friend query with "no session" without looking, so that answer would read as a real one.
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+	if (OnlineSub == nullptr || !OnlineSub->GetFriendsInterface().IsValid())
 	{
-		const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-		const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
-		FUniqueNetIdPtr LocalUserId = Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr;
-		if (!LocalUserId.IsValid() && Identity.IsValid())
-		{
-			// A stand-in searcher id, for services that never read it and worlds with no logged-in player.
-			LocalUserId = Identity->CreateUniquePlayerId(TEXT("EasySessionSearcher"));
-		}
-		if (!LocalUserId.IsValid())
-		{
-			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("No local player id to search with."));
-			return;
-		}
-
-		UE_LOG(LogEasySession, Log, TEXT("Searching for a session by id."));
-
-		// The service offers a "verify this friend is in it" argument; without one to name, the searcher stands in for it.
-		// NULL answers inside this call, completing the request before it returns - only an unanswered false is a failure to report.
-		const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
-		if (!Sessions->FindSessionById(*LocalUserId, *Params.SearchTargetId.GetUniqueNetId(), *LocalUserId,
-				FOnSingleSessionResultCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindSessionByIdComplete))
-			&& GetActiveRequest() == Request)
-		{
-			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindSessionById request was rejected by the online subsystem."));
-		}
+		CompleteActiveRequest(EEasySessionResult::NotSupportedByService, TEXT("This online service has no friends to look up (e.g. NULL/LAN)."));
 		return;
 	}
 
-	// A friend query rides the Find slot without a search object: one call per request, answered through its own delegate.
-	if (Params.SearchMode == EEasySessionSearchMode::ByFriend)
+	FindFriendCompleteHandle = Sessions->AddOnFindFriendSessionCompleteDelegate_Handle(0,
+		FOnFindFriendSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindFriendSessionComplete));
+
+	UE_LOG(LogEasySession, Log, TEXT("Searching for a friend's session."));
+
+	// A refused call can answer inside it, completing the request before it returns - only an unanswered false is a failure to report.
+	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
+	if (!Sessions->FindFriendSession(0, *Params.SearchTargetId.GetUniqueNetId()) && GetActiveRequest() == Request)
 	{
-		FindFriendCompleteHandle = Sessions->AddOnFindFriendSessionCompleteDelegate_Handle(0,
-			FOnFindFriendSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleFindFriendSessionComplete));
-
-		UE_LOG(LogEasySession, Log, TEXT("Searching for a friend's session."));
-
-		// NULL answers inside this call, completing the request before it returns - only an unanswered false is a failure to report.
-		const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
-		if (!Sessions->FindFriendSession(0, *Params.SearchTargetId.GetUniqueNetId()) && GetActiveRequest() == Request)
-		{
-			CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindFriendSession request was rejected by the online subsystem."));
-		}
-		return;
+		CompleteActiveRequest(EEasySessionResult::SearchFailure, TEXT("FindFriendSession request was rejected by the online subsystem."));
 	}
-
-	StartSessionSearch(Params);
 }
 
 void UEasySessionSubsystem::StartSessionSearch(const FEasySessionSearchParams& Params)
@@ -828,23 +804,6 @@ void UEasySessionSubsystem::HandleFindFriendSessionComplete(int32 LocalUserNum, 
 
 	// False is an answer, not a failure: the friend is not in a joinable session right now.
 	FinishActiveSearch(bWasSuccessful ? FriendResults : TArray<FOnlineSessionSearchResult>());
-}
-
-void UEasySessionSubsystem::HandleFindSessionByIdComplete(int32 LocalUserNum, bool bWasSuccessful, const FOnlineSessionSearchResult& SessionResult)
-{
-	const TSharedPtr<FEasySessionRequest> Request = GetActiveSearchRequest();
-	if (!Request.IsValid() || Request->SearchParams.SearchMode != EEasySessionSearchMode::BySessionId)
-	{
-		return;
-	}
-
-	TArray<FOnlineSessionSearchResult> NativeResults;
-	// False is an answer, not a failure: no session advertises that id right now.
-	if (bWasSuccessful)
-	{
-		NativeResults.Add(SessionResult);
-	}
-	FinishActiveSearch(NativeResults);
 }
 
 void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult)

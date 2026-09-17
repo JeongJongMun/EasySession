@@ -224,7 +224,7 @@ sections.
 ### 5.3 FEasySessionSearchParams
 `MaxResults` (int), `bLANQuery`, `TimeoutOverrideSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `SearchMode` (`EEasySessionSearchMode`), `SearchTargetId` (Unique Net Id), `OwnerId` (Unique Net Id)
 
-Four of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `SearchMode` picks a different call to the service - By Friend or By Session Id - and `SearchTargetId` says who or which; the discovery fields are then ignored while the filters still apply. A search naming one session also sees hidden ones, and its results stay off `On Sessions Found` and `Get Last Easy Search Results`.
+Four of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `SearchMode` picks a different call to the service - By Friend - and `SearchTargetId` says which friend; Max Results and LAN Query are then ignored while the filters and `TimeoutOverrideSeconds` still apply. By Friend needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones, and its results stay off `On Sessions Found` and `Get Last Easy Search Results`.
 
 ### 5.4 FEasySessionSearchResult *(read-only)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
@@ -315,7 +315,7 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 ### 6.7 EEasySessionSearchMode
 
-`Default` searches for the sessions the filters describe. `ByFriend` and `BySessionId` ask the service for one exact session instead, reading `SearchTargetId` for who or which.
+`Default` searches for the sessions the filters describe. `ByFriend` asks the service for the session one friend is in instead, reading `SearchTargetId` for which friend.
 
 ### 6.8 EEasySessionActivity
 

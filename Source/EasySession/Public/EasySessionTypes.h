@@ -20,10 +20,7 @@ enum class EEasySessionSearchMode : uint8
 	Default,
 
 	/** Ask for the session this friend is in. */
-	ByFriend UMETA(DisplayName = "By Friend"),
-
-	/** Ask for the session with this id. */
-	BySessionId UMETA(DisplayName = "By Session Id")
+	ByFriend UMETA(DisplayName = "By Friend")
 };
 
 /**
@@ -467,13 +464,13 @@ struct EASYSESSION_API FEasySessionSearchParams
 	bool bIncludeHiddenSessions = false;
 
 	/**
-	 * Which call the search makes. Anything but Default names one exact session through Search Target Id.
-	 * The discovery params (Max Results, LAN Query, Timeout Seconds) are then ignored; the filters above still apply.
+	 * Which call the search makes. By Friend asks for the session the friend in Search Target Id is in, and needs a service with friends such as Steam.
+	 * Max Results and LAN Query are then ignored; the filters above and Timeout Override Seconds still apply.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	EEasySessionSearchMode SearchMode = EEasySessionSearchMode::Default;
 
-	/** The friend or session the mode above asks about. Ignored while the mode is Default. */
+	/** The friend the mode above asks about. Ignored while the mode is Default. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FUniqueNetIdRepl SearchTargetId;
 

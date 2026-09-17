@@ -213,7 +213,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 ### 5.3 FEasySessionSearchParams
 `MaxResults`(int), `bLANQuery`, `TimeoutOverrideSeconds`(float), `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `SearchMode`(`EEasySessionSearchMode`), `SearchTargetId`(Unique Net Id), `OwnerId`(Unique Net Id)
 
-이 중 넷은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `SearchMode`는 서비스에 다른 호출을 하도록 바꾸고(By Friend 또는 By Session Id), `SearchTargetId`가 누구인지 또는 어느 세션인지를 지정합니다. 이때 발견용 필드는 무시되고 필터는 그대로 적용됩니다. 특정 세션을 지목한 검색은 숨긴 세션도 보며, 그 결과는 `On Sessions Found`와 `Get Last Easy Search Results`에 실리지 않습니다.
+이 중 넷은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `SearchMode`는 서비스에 다른 호출을 하도록 바꾸고(By Friend), `SearchTargetId`가 어느 친구인지를 지정합니다. 이때 Max Results와 LAN Query는 무시되고, 필터와 `TimeoutOverrideSeconds`는 그대로 적용됩니다. By Friend는 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 보며, 그 결과는 `On Sessions Found`와 `Get Last Easy Search Results`에 실리지 않습니다.
 
 ### 5.4 FEasySessionSearchResult *(읽기 전용)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
@@ -304,7 +304,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ### 6.7 EEasySessionSearchMode
 
-`Default`는 필터가 묘사하는 세션들을 찾습니다. `ByFriend`와 `BySessionId`는 대신 특정 세션 하나를 서비스에 물으며, 누구인지 또는 어느 세션인지는 `SearchTargetId`에서 읽습니다.
+`Default`는 필터가 묘사하는 세션들을 찾습니다. `ByFriend`는 대신 친구 한 명이 있는 세션을 서비스에 물으며, 어느 친구인지는 `SearchTargetId`에서 읽습니다.
 
 ### 6.8 EEasySessionActivity
 

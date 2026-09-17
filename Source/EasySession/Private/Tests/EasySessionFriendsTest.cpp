@@ -126,8 +126,8 @@ bool FEasySessionWaitForFriendLookup::Update()
 		return false;
 	}
 
-	// NULL answers the friend query inside the call with "no session" - the queued request completes cleanly instead of erroring.
-	CurrentTest->TestEqual(TEXT("The queued friend lookup completes"), State->LookupResult.GetValue(), EEasySessionResult::Success);
+	// NULL has no friends, so the queued lookup ends by saying so rather than reporting "no session".
+	CurrentTest->TestEqual(TEXT("The queued friend lookup reports the service has no friends"), State->LookupResult.GetValue(), EEasySessionResult::NotSupportedByService);
 	CurrentTest->TestEqual(TEXT("With no session for the friend"), State->DeliveredCount, 0);
 	CurrentTest->TestEqual(TEXT("And off the public search event"), State->Listener->FoundBroadcasts(), 0);
 	CurrentTest->TestEqual(TEXT("And off the public cache"), Subsystem->GetLastSearchResults().Num(), 0);

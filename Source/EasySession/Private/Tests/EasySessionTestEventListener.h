@@ -247,6 +247,20 @@ public:
 		FailureResults.Add(Result);
 	}
 
+	/** Bind to the On Success pin of Find Easy Friend Sessions. */
+	UFUNCTION()
+	void HandleFriendSessionsSuccess(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
+	{
+		SuccessResults.Add(Result);
+	}
+
+	/** Bind to the On Failure pin of Find Easy Friend Sessions. */
+	UFUNCTION()
+	void HandleFriendSessionsFailure(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
+	{
+		FailureResults.Add(Result);
+	}
+
 	/** @return How many times a pin fired, so a test can catch a node that fires twice as well as one that never fires. */
 	int32 TotalFired() const { return SuccessResults.Num() + FailureResults.Num(); }
 
