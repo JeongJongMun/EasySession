@@ -7,7 +7,6 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
-#include "Online/OnlineSessionNames.h"
 #include "OnlineSubsystemUtils.h"
 #include "TimerManager.h"
 

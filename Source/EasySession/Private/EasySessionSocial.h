@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "EasySessionTypes.h"
-#include "Interfaces/OnlineSessionInterface.h"
 
 class UEasySessionSubsystem;
 

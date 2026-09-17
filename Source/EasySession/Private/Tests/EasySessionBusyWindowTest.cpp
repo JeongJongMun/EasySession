@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySession.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"

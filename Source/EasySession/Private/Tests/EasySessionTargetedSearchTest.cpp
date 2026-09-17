@@ -6,7 +6,6 @@
 
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
-#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"

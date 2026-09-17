@@ -5,7 +5,6 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasyMatchmakingPolicy.h"
-#include "EasySession.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"

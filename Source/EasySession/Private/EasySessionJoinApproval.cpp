@@ -4,7 +4,6 @@
 
 #include "EasySession.h"
 #include "EasySessionJoinApprovalBeacon.h"
-#include "EasySessionRequestQueue.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"

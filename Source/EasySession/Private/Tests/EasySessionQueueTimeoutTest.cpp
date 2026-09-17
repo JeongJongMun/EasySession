@@ -9,8 +9,6 @@
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
-#include "OnlineSubsystem.h"
-#include "OnlineSubsystemNames.h"
 #include "UObject/StrongObjectPtr.h"
 
 namespace EasySessionQueueTimeoutTest
