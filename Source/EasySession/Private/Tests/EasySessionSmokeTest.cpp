@@ -80,7 +80,7 @@ bool FEasySessionWaitDestroy::Update()
 
 /**
  * Phase 0 smoke test: create and destroy an empty session on the NULL online subsystem.
- * Verifies that the OSS module chain is loaded and the session interface round-trips.
+ * Verifies that the online subsystem modules are loaded and the session interface round-trips.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNullSmokeTest, "EasySession.Smoke.NullCreateDestroy", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNullSmokeTest::RunTest(const FString& Parameters)

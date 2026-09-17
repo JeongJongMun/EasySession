@@ -39,7 +39,7 @@ namespace EasySessionFriendOrderTest
 
 /**
  * The friend list a UI shows should need no sorting of its own: friends in a joinable session first,
- * then by presence, then by name. The order is a pure function of the entries, so it is checked without an online service.
+ * then by presence, then by name. The order is a pure function of the entries, so it is checked without an online subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendOrderTest, "EasySession.Friends.ListOrdersSessionsThenPresence", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendOrderTest::RunTest(const FString& Parameters)
@@ -58,7 +58,7 @@ bool FEasySessionFriendOrderTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Sessions first, then playing, online, offline; names sorted case-insensitively inside each group"),
 		Names(Entries), FString(TEXT("Ada,bob,Amy,Mia,Kai,zed")));
 
-	// Sorting again changes nothing - a refresh must not shuffle rows the player is looking at.
+	// Sorting again changes nothing. A refresh must not shuffle rows the player is looking at.
 	const FString Before = Names(Entries);
 	FEasySessionSocial::SortFriendSessions(Entries);
 	TestEqual(TEXT("The order is stable under a second sort"), Names(Entries), Before);

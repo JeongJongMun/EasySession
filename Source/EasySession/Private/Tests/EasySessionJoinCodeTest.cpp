@@ -13,7 +13,7 @@
 
 /**
  * The generated code is safe to read aloud and type: six characters, none of them
- * look-alikes (no 0/O, 1/I/L, 8/B), and two codes in a row are not the same room key.
+ * look-alikes (no 0/O, 1/I/L, 8/B), and two codes in a row are not the same.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinCodeAlphabetTest, "EasySession.JoinCode.GeneratedCodeIsReadable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinCodeAlphabetTest::RunTest(const FString& Parameters)
@@ -27,7 +27,7 @@ bool FEasySessionJoinCodeAlphabetTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("'%c' comes from the unambiguous alphabet"), Char), Alphabet.Contains(FString::Chr(Char)));
 	}
 
-	// A collision is one in seven hundred million - two equal codes mean the generator is broken, not unlucky.
+	// A collision is one in seven hundred million, so two equal codes mean the generator is broken, not unlucky.
 	TestNotEqual(TEXT("Two generated codes differ"), First, EasySession::GenerateJoinCode());
 	return true;
 }
@@ -41,16 +41,16 @@ namespace EasySessionJoinCodeTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
-		/** A joinable-but-unreachable result borrowed from the hidden session. */
+		/** A joinable but unreachable result copied from the hidden session. */
 		FOnlineSessionSearchResult BaseResult;
 
 		/** The code the hidden session advertises. */
 		FString JoinCode;
 
-		/** What the code-filtered search delivered - the preview a UI would show. */
+		/** What the code-filtered search delivered, the preview a UI would show. */
 		TArray<FEasySessionSearchResult> PreviewResults;
 
 		TOptional<int32> NormalSearchCount;
@@ -101,7 +101,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 				return true;
 			}
 
-			// A normal search must not list the hidden room, code or no code.
+			// A normal search must not list the hidden session, code or no code.
 			FEasySessionSearchParams NormalSearch;
 			NormalSearch.bLANQuery = true;
 			Subsystem->FindEasySessions(NormalSearch, FEasySessionFindCompleteDelegate::CreateLambda(
@@ -127,7 +127,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			CurrentTest->TestEqual(TEXT("A normal search does not list the hidden room"), State->NormalSearchCount.GetValue(), 0);
 			CurrentTest->TestEqual(TEXT("The normal search reached the public event"), State->Listener->FoundBroadcasts(), 1);
 
-			// The code-filtered search is the preview: the one hidden room, delivered without the public surfaces.
+			// The code-filtered search is the preview: the one hidden session, delivered without the OnSessionsFound broadcast or the last search results.
 			FEasySessionSearchParams CodeSearch;
 			CodeSearch.bLANQuery = true;
 			CodeSearch.JoinCode = State->JoinCode;
@@ -209,10 +209,10 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 				return false;
 			}
 
-			// ResolveFailure, not InvalidParams: the preview was a real joinable target and a join was genuinely tried.
+			// ResolveFailure, not InvalidParams: the preview was a real joinable target and a join was really tried.
 			CurrentTest->TestEqual(TEXT("The previewed room was genuinely joined"), State->JoinResult.GetValue(), EEasySessionResult::ResolveFailure);
 
-			// A code nobody advertises finds nothing, even with the room in the results.
+			// A code no session advertises finds nothing, even with the session in the results.
 			FEasySessionSearchParams WrongSearch;
 			WrongSearch.bLANQuery = true;
 			WrongSearch.JoinCode = TEXT("QQQQQQ");
@@ -248,11 +248,11 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 }
 
 /**
- * The whole life of a join code against a hidden room: advertised and readable by the
- * host, invisible to a normal search, preserved by a read-modify-write update, and the
- * one filter that lets a code search preview the room - off the public search surfaces -
- * whose result then joins like any other. The join itself fails on address resolve,
- * which is what proves the previewed room was real rather than skipped.
+ * The whole life of a join code against a hidden session: advertised and readable by the
+ * host, invisible to a normal search, preserved by a read-modify-write update, and previewed
+ * by a code search that is kept off OnSessionsFound and the last search results, whose
+ * result then joins like any other. The join itself fails on address resolve, which is
+ * what proves the previewed session was real rather than skipped.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinCodeTest, "EasySession.JoinCode.CodeOpensAHiddenRoom", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinCodeTest::RunTest(const FString& Parameters)

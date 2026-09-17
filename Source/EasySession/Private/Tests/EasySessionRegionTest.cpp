@@ -34,7 +34,7 @@ namespace EasySessionRegionTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** A joinable result borrowed from the session, injected as what a search would have returned. */
+		/** A joinable result copied from the session, injected as what a search would have returned. */
 		FOnlineSessionSearchResult BaseResult;
 
 		/** Which entry of SearchCases is running. */
@@ -145,7 +145,7 @@ bool FEasySessionWaitForRegionRun::Update()
 
 /**
  * The advertised region round-trips and the search filter honors it: no filter and the
- * matching filter list the session, any other region drops it. The results are injected
+ * matching filter list the session, any other region excludes it. The results are injected
  * because one process cannot find its own LAN session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRegionFilterTest, "EasySession.Search.FiltersByRegion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

@@ -90,7 +90,7 @@ bool FEasySessionJoinRetryStep::Update()
 				{
 					Shared->FirstResult = Result;
 
-					// The retry the guide invites: started inside the failure callback, before this callstack unwinds.
+					// The retry the guide promises: started inside the failure callback, before this callstack unwinds.
 					SubsystemForRetry->JoinEasySession(Shared->FakeResult, FString(), FString(), FEasySessionCompleteDelegate::CreateLambda(
 						[Shared](EEasySessionResult RetryResultValue, const FString& /*ErrorMessage*/)
 						{
@@ -135,11 +135,11 @@ bool FEasySessionJoinRetryStep::Update()
 /**
  * A join that fails on address resolve leaves a half-joined session for one queued cleanup.
  * That cleanup has to enter the queue before the failure callback runs, or a retry the
- * callback starts lands in front of it and dies on SessionAlreadyExists - against the
+ * callback starts runs in front of it and fails with SessionAlreadyExists, against the
  * guide's promise that the player can retry right away.
  *
  * The unreachable session is real: created without listening, it advertises this process's
- * address with port 0, and its live session info is borrowed into a search result before
+ * address with port 0, and its live session info is copied into a search result before
  * the setup session is destroyed.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinRetryTest, "EasySession.Join.RetryAfterResolveFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -161,7 +161,7 @@ bool FEasySessionJoinRetryTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Join Retry Test");
 	HostParams.bIsLANMatch = true;
-	// No map and no listening: the session advertises this process's address with port 0, the unreachable-host shape.
+	// No map and no listening: the session advertises this process's address with port 0, the form of an unreachable host.
 	HostParams.bStartListening = false;
 	Subsystem->CreateEasySession(HostParams);
 

@@ -48,7 +48,7 @@ namespace EasySessionReservedKeysTest
 }
 
 /**
- * Walks create, update and destroy, checking the reserved keys between the steps.
+ * Runs create, update and destroy, checking the reserved keys between the steps.
  */
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionRunReservedKeySteps, TSharedPtr<EasySessionReservedKeysTest::FTestState>, State);
 bool FEasySessionRunReservedKeySteps::Update()
@@ -88,7 +88,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
 		// What a Blueprint gets from Get Easy Session Settings. The plugin's own keys
-		// must not be in there, or handing this struct straight back to Update rewrites them.
+		// must not be in there, or passing this struct back to Update rewrites them.
 		const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 		CurrentTest->TestFalse(TEXT("Join approval is not exposed as a custom setting"),
 			ReadBack.CustomSettings.Contains(EasySession::SettingKey_JoinApproval.ToString()));
@@ -97,7 +97,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 		CurrentTest->TestTrue(TEXT("The game's own custom setting survives the read"),
 			ReadBack.CustomSettings.Contains(TEXT("GameMode")));
 
-		// The round trip a game is told to make: read, change one field, hand it back.
+		// The round trip a game is told to make: read, change one field, pass it back.
 		// Dropping a custom setting is part of that: the map is what the session ends up advertising.
 		FEasySessionSettings Updated = ReadBack;
 		Updated.MaxPlayers = 8;
@@ -124,7 +124,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
 		// The values matter as much as the types: a string rewrite leaves the key in place
-		// and every reader sees zero, so the host stops standing up its approval beacon.
+		// and every reader sees zero, so the host stops starting its approval beacon.
 		CurrentTest->TestEqual(TEXT("Join approval still reads as enabled"),
 			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_JoinApproval), 1);
 		CurrentTest->TestEqual(TEXT("Beacon port still reads as the configured port"),
@@ -132,7 +132,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 
 		CurrentTest->TestEqual(TEXT("Max players took the update"), Subsystem->GetSessionMaxPlayers(), 8);
 
-		// A key left out of the map is gone from the session, and its neighbour is untouched.
+		// A key left out of the map is gone from the session, and its neighbor is untouched.
 		CurrentTest->TestEqual(TEXT("The dropped custom setting left the session"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, FName(TEXT("Mods"))), EOnlineKeyValuePairDataType::Empty);
 		CurrentTest->TestEqual(TEXT("The custom setting that stayed is still advertised"),
@@ -158,11 +158,11 @@ bool FEasySessionRunReservedKeySteps::Update()
 }
 
 /**
- * Reading the host params and handing them back to Update leaves the plugin's own keys alone.
+ * Reading the host params and passing them back to Update leaves the plugin's own keys alone.
  *
  * The keys are advertised as numbers and Custom Settings is a string map, so a key that leaks
  * into that map comes back as a string. The key stays present, so every reader gets zero
- * instead of a missing key, and the host quietly stops answering join approval.
+ * instead of a missing key, and the host quietly stops running join approval.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.SettingsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)

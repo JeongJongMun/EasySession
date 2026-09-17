@@ -43,7 +43,7 @@ namespace EasySessionAuthorityTest
 	 * Two independent facts make IsHost() false there, and this clears the only one a
 	 * headless test would otherwise still have: NULL sets bHosting when it creates a
 	 * session (OnlineSessionInterfaceNull.cpp, CreateSession) while Steam never writes
-	 * the field at all. The other fact needs no setup - a test game instance has no
+	 * the field at all. The other fact needs no setup. A test game instance has no
 	 * local player either, so the owner-id comparison cannot succeed.
 	 */
 	static bool ClearHostingFlag(UGameInstance* GameInstance)
@@ -97,7 +97,7 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-			// Take away the flag the online service would not have set anyway.
+			// Take away the flag the online subsystem would not have set anyway.
 			CurrentTest->TestTrue(TEXT("Hosting flag cleared"), ClearHostingFlag(State->GameInstance.Get()));
 
 			// With no flag and no local player there is no hosting player to find, which
@@ -127,7 +127,7 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 /**
  * Server authority must not depend on there being a hosting player. A dedicated server
  * has no local player, and Steam never sets the session's hosting flag, so the two
- * things IsHost() looks at are both absent there - yet that process is still the
+ * things IsHost() looks at are both absent there, yet that process is still the
  * server of the session it created.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDedicatedAuthorityTest, "EasySession.Authority.ServerKeepsAuthorityWithoutHostingPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -146,8 +146,8 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// Tearing the session down ends with a return to the menu, which a headless test
-	// world has no use for. Turning it off leaves the session cleanup on trial.
+	// Destroying the session ends with a travel to the menu, which a headless test
+	// world has no use for. Turning it off leaves the session cleanup, which is what this test checks.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;

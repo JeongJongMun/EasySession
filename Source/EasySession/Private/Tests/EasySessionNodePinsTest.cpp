@@ -79,7 +79,7 @@ namespace EasySessionNodePinsTest
 }
 
 /**
- * Walks the case list one node at a time: activate, wait for a pin, assert, move on.
+ * Runs the case list one node at a time: activate, wait for a pin, assert, move on.
  *
  * One command for the whole list rather than one per node, because the queue can finish a
  * request in the same call or several ticks later, and a test should not have to know which.
@@ -154,7 +154,7 @@ bool FEasySessionRunPinCases::Update()
  * Every async node routes a failure to its On Failure pin.
  *
  * Nothing is hosted, so each node hits its own guard clause. That is the cheapest way to
- * reach the failure pin of six nodes without a second machine or a real online service.
+ * reach the failure pin of six nodes without a second machine or a real online subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeFailurePinsTest, "EasySession.Nodes.FailurePinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
@@ -219,7 +219,7 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 		}, EExpectedPin::Failure, EEasySessionResult::InvalidParams });
 
 	// Host fallback off and nothing on the LAN to join, so the run ends with nothing found.
-	// This case must not leave a session behind - the success test that follows creates its own.
+	// This case must not leave a session behind. The success test that follows creates its own.
 	State->Cases.Add({ TEXT("Start Easy Matchmaking"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
@@ -290,7 +290,7 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 		}, EExpectedPin::Success, EEasySessionResult::Success });
 
 	// A LAN search finds nothing here and still succeeds, with an empty result array.
-	// It is the slow case: the NULL subsystem answers only once its own LAN timeout runs out.
+	// It is the slow case: the NULL subsystem completes only once its own LAN timeout passes.
 	State->Cases.Add({ TEXT("Find Easy Sessions"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
@@ -381,7 +381,7 @@ bool FEasySessionWaitForLeaveNode::Update()
 				return false;
 			}
 
-			// The ticket's protagonist is the client: it created nothing and only wants out.
+			// The case is the client: it created nothing and only wants to leave.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 			UEasyLeaveSessionNode* Node = UEasyLeaveSessionNode::LeaveEasySession(State->GameInstance.Get());
@@ -404,7 +404,7 @@ bool FEasySessionWaitForLeaveNode::Update()
 			CurrentTest->TestEqual(TEXT("Leave fires exactly one pin"), State->Listener->TotalFired(), 1);
 			CurrentTest->TestEqual(TEXT("And it is On Success"), State->Listener->SuccessResults.Num(), 1);
 			CurrentTest->TestFalse(TEXT("The named session is gone"), Subsystem->IsInSession());
-			// The menu map load was requested and has not resolved in this headless world - busy is the honest answer.
+			// The menu travel was requested and has not finished in this headless world, so busy is correct.
 			CurrentTest->TestTrue(TEXT("The trip to the menu is on its way"), Subsystem->IsBusy());
 
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
@@ -416,7 +416,7 @@ bool FEasySessionWaitForLeaveNode::Update()
 /**
  * Leave Easy Session is the whole exit: the named session is destroyed and the menu
  * map load is requested, in one node. Destroy Easy Session covers only the named
- * session, which left a client's leave button stranding the player on the host's map.
+ * session, which left a client's leave button leaving the player on the host's map.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLeaveNodeTest, "EasySession.Nodes.LeaveReturnsToTheMenu", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)

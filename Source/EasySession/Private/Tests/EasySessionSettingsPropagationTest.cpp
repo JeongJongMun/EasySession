@@ -58,7 +58,7 @@ namespace EasySessionSettingsPropagationTest
 }
 
 // ---------------------------------------------------------------------------
-// Push path: a successful update lands in the state actor's payload.
+// Push path: a successful update reaches the state actor's payload.
 // ---------------------------------------------------------------------------
 
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForSettingsPush, TSharedPtr<EasySessionSettingsPropagationTest::FTestState>, State);
@@ -130,7 +130,7 @@ bool FEasySessionWaitForSettingsPush::Update()
 				CurrentTest->TestEqual(TEXT("Custom setting value survived"), Custom->Value, TEXT("Conquest"));
 			}
 
-			// The plugin's own keys stay out of the custom list - they are either
+			// The plugin's own keys stay out of the custom list. They are either
 			// dedicated payload fields or internal, like the join approval flag.
 			const bool bLeakedReservedKey = Payload.CustomSettings.ContainsByPredicate(
 				[](const FEasySessionReplicatedSetting& Setting) { return EasySession::IsReservedSettingKey(FName(*Setting.Key)); });
@@ -217,8 +217,8 @@ bool FEasySessionWaitForSettingsApply::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			// A joined client holds a local session copy but no authority - fake
-			// that shape here, because a headless test has no second process.
+			// A joined client holds a local session copy but no authority. That state
+			// is set directly here, because a headless test has no second process.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 			FEasySessionReplicatedSettings Payload;
@@ -233,7 +233,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 			Custom.Value = TEXT("Conquest");
 			Payload.CustomSettings.Add(Custom);
 
-			// A default payload means the host wrote nothing yet - it must change nothing.
+			// A default payload means the host wrote nothing yet. It must change nothing.
 			FEasySessionReplicatedSettings NotWritten = Payload;
 			NotWritten.bValid = false;
 			FEasySessionTestAccess::DriveReplicatedSessionSettings(*Subsystem, NotWritten);
@@ -256,11 +256,11 @@ bool FEasySessionWaitForSettingsApply::Update()
 				static_cast<int32>(EEasySessionRegion::SouthAmerica));
 			CurrentTest->TestEqual(TEXT("The settings changed event fired once"), State->Listener->SettingsChangedBroadcasts, 1);
 
-			// The same payload can arrive twice, through PostNetInit and the OnRep - it must apply once.
+			// The same payload can arrive twice, through PostNetInit and the OnRep, and it must apply once.
 			FEasySessionTestAccess::DriveReplicatedSessionSettings(*Subsystem, Payload);
 			CurrentTest->TestEqual(TEXT("A repeated payload fired no second event"), State->Listener->SettingsChangedBroadcasts, 1);
 
-			// Hand authority back so teardown runs the host's destroy path.
+			// Give authority back so the cleanup runs the host's destroy path.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true);
 			State->Step = EStep::AwaitingDestroy;
 			Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateLambda(

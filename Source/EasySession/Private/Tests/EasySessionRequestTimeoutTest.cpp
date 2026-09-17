@@ -17,7 +17,7 @@
  *
  * The decision is a pure function of "now", so it can be checked directly with
  * fabricated timestamps. That matters because the NULL subsystem completes every
- * operation synchronously and can never produce a real timeout - without this
+ * operation synchronously and can never produce a real timeout. Without this
  * test the watchdog would ship unverified.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRequestTimeoutTest, "EasySession.Subsystem.RequestTimeoutRules", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -174,10 +174,10 @@ bool FEasySessionWaitForAbandonedCreate::Update()
 
 /**
  * A create abandoned by the watchdog can leave a session behind, and CleanupRequest
- * destroys it so the next create starts clean - the behavior UEasySessionConfig
+ * destroys it so the next create starts clean, the behavior UEasySessionConfig
  * promises for Request Timeout Seconds. NULL completes creates synchronously and can
  * never abandon one for real, so the cleanup is entered directly with the state the
- * watchdog would arrive with: a create-typed request, abandoned, session existing.
+ * watchdog would leave: a create-typed request, abandoned, session existing.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAbandonedCreateTest, "EasySession.Subsystem.AbandonedCreateLeavesNoSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAbandonedCreateTest::RunTest(const FString& Parameters)

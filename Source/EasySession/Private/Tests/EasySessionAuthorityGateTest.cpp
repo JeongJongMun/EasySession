@@ -103,8 +103,8 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Authority can end the match"), State->EndResult.GetValue(), EEasySessionResult::Success);
 
-			// Now the same calls from the other side of the fence: a game that holds a
-			// session it did not create - what a joined client looks like.
+			// Now the same calls from a game that holds a session it did not create,
+			// which is what a joined client looks like.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 			Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
@@ -142,13 +142,13 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			CurrentTest->TestEqual(TEXT("Update without authority is refused"),
 				State->UpdateWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
 
-			// The synchronous path has to refuse too - nothing outside the function
+			// The synchronous path has to refuse too. Nothing outside the function
 			// stops a client from reaching it.
 			CurrentTest->TestFalse(TEXT("ServerTravelToMap without authority is refused"),
 				Subsystem->ServerTravelToMap(TEXT("ES13_NoSuchMap")));
 
-			// Leaving a session another process created must stay allowed - that is how a
-			// client leaves - so this call itself doubles as an assertion.
+			// Leaving a session another process created must stay allowed, because that is how a
+			// client leaves, so this call itself is also an assertion.
 			Subsystem->DestroyEasySession();
 			State->Phase = 5;
 			return false;
@@ -166,8 +166,8 @@ bool FEasySessionWaitForAuthorityGates::Update()
 /**
  * Match control needs session authority, not a hosting player. A game that did not
  * create the session (a joined client) must get a clear refusal instead of a Success
- * that only flipped its local session copy - and the refusal must name the reason,
- * because StateChangeFailure would read as the online service saying no.
+ * that only changed its local session copy, and the refusal must name the reason,
+ * because StateChangeFailure would read as the online subsystem refusing.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAuthorityGateTest, "EasySession.Authority.MatchControlNeedsSessionAuthority", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)

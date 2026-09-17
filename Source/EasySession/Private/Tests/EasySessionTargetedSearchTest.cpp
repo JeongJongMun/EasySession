@@ -20,7 +20,7 @@ namespace EasySessionOwnerFilterTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** A joinable result borrowed from the session, injected as what a search would have returned. */
+		/** A joinable result copied from the session, injected as what a search would have returned. */
 		FOnlineSessionSearchResult BaseResult;
 
 		/** 0 = matching owner, 1 = different owner. */
@@ -138,7 +138,7 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 
 /**
  * The owner filter narrows a discovery search to one host's sessions: the matching
- * owner id lists the session, any other drops it. The results are injected because
+ * owner id lists the session, any other excludes it. The results are injected because
  * one process cannot find its own LAN session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionOwnerFilterTest, "EasySession.Search.FiltersByOwner", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

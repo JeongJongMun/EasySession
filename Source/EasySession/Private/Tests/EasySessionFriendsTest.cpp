@@ -31,8 +31,8 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// This test verifies the NULL behavior - skip when another subsystem (e.g. Steam)
-	// is active, since friends would then genuinely be supported.
+	// This test verifies the NULL behavior, so it is skipped when another subsystem
+	// (e.g. Steam) is active, where friends are supported.
 	if (Subsystem->GetOnlineSubsystemName() != NULL_SUBSYSTEM)
 	{
 		AddInfo(FString::Printf(TEXT("Skipped: active subsystem is '%s', not NULL."), *Subsystem->GetOnlineSubsystemName().ToString()));
@@ -40,7 +40,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		return true;
 	}
 
-	// NULL has no friends interface - the callback must fire synchronously with a failure.
+	// NULL has no friends interface. The callback must fire synchronously with a failure.
 	bool bCallbackFired = false;
 	Subsystem->ReadFriends(FEasyFriendsCompleteDelegate::CreateLambda(
 		[this, &bCallbackFired](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionFriend>& Friends)
@@ -52,7 +52,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
 
 	// The friend session search starts with the same read, so it must fail the same way.
-	// It is a queue operation, and the operation must have ended before the caller hears the result.
+	// It is a queue operation, and the operation must have ended before the caller receives the result.
 	bool bSessionsCallbackFired = false;
 	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
 		[this, &bSessionsCallbackFired, Subsystem](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
@@ -77,7 +77,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		}));
 	TestTrue(TEXT("Second friend sessions callback fired"), bSecondFired);
 
-	// The invite helpers name the reason rather than answering with a bare failure.
+	// The invite helpers name the reason rather than returning a bare failure.
 	TestEqual(TEXT("ShowInviteUI reports the service has no overlay"), Subsystem->ShowInviteUI(), EEasySessionResult::NotSupportedByService);
 	TestEqual(TEXT("ShowProfileUI refuses a friend with no online id"), Subsystem->ShowProfileUI(FEasySessionFriend()), EEasySessionResult::InvalidParams);
 
@@ -97,7 +97,7 @@ namespace EasySessionFriendLookupTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** Kept alive for the latent command - a listener local to RunTest would be collected mid-run. */
+		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
 		TOptional<EEasySessionResult> LookupResult;
@@ -126,7 +126,7 @@ bool FEasySessionWaitForFriendLookup::Update()
 		return false;
 	}
 
-	// NULL has no friends, so the queued lookup ends by saying so rather than reporting "no session".
+	// NULL has no friends, so the queued lookup completes with that failure rather than with "no session".
 	CurrentTest->TestEqual(TEXT("The queued friend lookup reports the service has no friends"), State->LookupResult.GetValue(), EEasySessionResult::NotSupportedByService);
 	CurrentTest->TestEqual(TEXT("With no session for the friend"), State->DeliveredCount, 0);
 	CurrentTest->TestEqual(TEXT("And off the public search event"), State->Listener->FoundBroadcasts(), 0);
@@ -138,8 +138,8 @@ bool FEasySessionWaitForFriendLookup::Update()
 
 /**
  * The friend session lookup is a queue request like any other search: it occupies the
- * queue while it runs, completes through the request completion path, and - as a
- * hidden-seeing search - never reaches the public search event or cache.
+ * queue while it runs, completes through the request completion path, and, as a
+ * hidden-seeing search, is never broadcast on OnSessionsFound or stored as the last search results.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendLookupTest, "EasySession.Friends.FriendLookupRidesTheQueue", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)

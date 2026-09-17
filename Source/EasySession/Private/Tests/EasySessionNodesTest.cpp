@@ -84,7 +84,7 @@ bool FEasySessionWaitNodeDestroy::Update()
 }
 
 /**
- * Node plumbing test: drive the create and destroy async nodes exactly like a Blueprint
+ * Node test: drive the create and destroy async nodes exactly like a Blueprint
  * graph would (factory function + Activate) and verify the session state transitions.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodesTest, "EasySession.Nodes.CreateAndDestroy", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

@@ -19,7 +19,7 @@ namespace EasySessionInProgressTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 
-		/** A joinable result borrowed from the session, taken fresh after each state change. */
+		/** A joinable result copied from the session, taken fresh after each state change. */
 		FOnlineSessionSearchResult BaseResult;
 
 		/** What the current find delivered. Unset while it runs. */
@@ -29,7 +29,7 @@ namespace EasySessionInProgressTest
 		double StartTime = 0.0;
 	};
 
-	/** Start a find whose completion lands in State->Delivered. The injection happens in the wait that follows. */
+	/** Start a find whose completion is written to State->Delivered. The injection happens in the wait that follows. */
 	void StartFind(UEasySessionSubsystem& Subsystem, const TSharedPtr<FTestState>& State, bool bIncludeInProgress)
 	{
 		State->Delivered.Reset();
@@ -178,9 +178,9 @@ bool FEasySessionWaitForInProgressRun::Update()
 }
 
 /**
- * The session state never rides the wire, so the advertised in-progress key stands in for
- * it: Create writes it off, Start flips it on, End flips it back, and the search filter
- * plus the result flag read it. The results are injected because one process cannot
+ * The session state is never replicated by the online subsystem, so the advertised in-progress
+ * key stands in for it: Create writes it as off, Start sets it, End clears it, and the search
+ * filter plus the result flag read it. The results are injected because one process cannot
  * find its own LAN session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionInProgressFilterTest, "EasySession.Search.FiltersInProgressSessions", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

@@ -31,7 +31,7 @@ namespace EasySessionDiagnosticsTest
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsSmokeTest, "EasySession.Diagnostics.RunsToCompletion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
 {
-	// Null world: must not crash, and must still name the active service.
+	// Null world: must not crash, and must still name the active online subsystem.
 	const EasySessionDiagnostics::FReport NullWorldReport = EasySessionDiagnostics::RunDiagnostics(nullptr);
 	TestTrue(TEXT("The summary names the services even without a world"), NullWorldReport.Summary.Contains(TEXT("active:")));
 
@@ -47,11 +47,11 @@ bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The findings follow the config. The service mismatch appears exactly when the
- * configured service is not the one that loaded, and its causes name bEnabled=false -
- * the place that knowledge moved to when the always-false bEnabled check in
- * DiagnoseSteam was removed. The checks inside DiagnoseSteam itself stay untested
- * here: they only run when Steam is the active subsystem.
+ * The findings follow the config. The online subsystem mismatch appears exactly when the
+ * configured online subsystem is not the one that loaded, and its causes name bEnabled=false.
+ * That knowledge moved there when the always-false bEnabled check in DiagnoseSteam was
+ * removed. The checks inside DiagnoseSteam itself stay untested here: they only run when
+ * Steam is the active subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsFindingsTest, "EasySession.Diagnostics.FindingsFollowTheConfig", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionDiagnosticsFindingsTest::RunTest(const FString& Parameters)
@@ -73,12 +73,12 @@ bool FEasySessionDiagnosticsFindingsTest::RunTest(const FString& Parameters)
 	FString SavedService;
 	const bool bHadService = GConfig->GetString(TEXT("OnlineSubsystem"), TEXT("DefaultPlatformService"), SavedService, GEngineIni);
 
-	// Ask for the service that actually loaded: nothing to mismatch.
+	// Configure the online subsystem that actually loaded: nothing to mismatch.
 	GConfig->SetString(TEXT("OnlineSubsystem"), TEXT("DefaultPlatformService"), *OnlineSub->GetSubsystemName().ToString(), GEngineIni);
 	const EasySessionDiagnostics::FReport MatchedReport = EasySessionDiagnostics::RunDiagnostics(World);
 	TestTrue(TEXT("No mismatch is reported when the configured service loaded"), FindServiceMismatch(MatchedReport) == nullptr);
 
-	// Ask for Steam while another service loaded: the mismatch appears with its causes.
+	// Configure Steam while another online subsystem loaded: the mismatch appears with its causes.
 	GConfig->SetString(TEXT("OnlineSubsystem"), TEXT("DefaultPlatformService"), TEXT("Steam"), GEngineIni);
 	const EasySessionDiagnostics::FReport MismatchReport = EasySessionDiagnostics::RunDiagnostics(World);
 	const EasySessionDiagnostics::FFinding* Mismatch = FindServiceMismatch(MismatchReport);

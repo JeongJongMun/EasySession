@@ -88,7 +88,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Match started"), Result, EEasySessionResult::Success);
 
-			// Starting an already started match is rejected - reported by a callback
+			// Starting an already started match is refused, reported by a callback
 			// first and a false return after, so the plugin is still inside its own
 			// StartSession call when the callback below runs.
 			State->Step = EStep::AwaitingReentrantPair;
@@ -98,7 +98,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 					Shared->PendingResult = InResult;
 
 					// The shape every Blueprint uses: start something from On Failure.
-					// A search because NULL does not finish that one on the spot, so it
+					// A search because NULL does not finish that one inside the call, so it
 					// is still active when the rejected start reports itself.
 					FEasySessionSearchParams SearchParams;
 					SearchParams.bLANQuery = true;
@@ -130,7 +130,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 				return false;
 			}
 
-			// The whole point. The rejected start must not land on the request that
+			// The whole point. The refused start must not complete the request that
 			// began inside its failure callback.
 			CurrentTest->TestFalse(
 				FString::Printf(TEXT("The search does not carry the start's error (got '%s')"), *State->ReentrantError),
@@ -156,9 +156,9 @@ bool FEasySessionWaitForReentrantRequest::Update()
 
 /**
  * Starting a request from a failure callback is the first thing a Blueprint does.
- * The online service reports a rejected operation by calling back and only then
- * returning false, so the plugin is still inside its own online call when the new
- * request arrives - and the rejection it is about to report belongs to a request
+ * The online subsystem reports a refused call by calling back and only then
+ * returning false, so the plugin is still inside its own online subsystem call when
+ * the new request arrives, and the refusal it is about to report belongs to a request
  * that already finished.
  *
  * The request that starts from the callback must therefore never be the one that

@@ -98,7 +98,8 @@ void UEasySessionSubsystem::CompleteActiveRequest(EEasySessionResult Result, con
 
 		case FEasySessionRequest::EType::Find:
 			CompletedRequest->OnFindComplete.ExecuteIfBound(Result, ErrorMessage, LastSearchResults);
-			// A search that saw hidden sessions is not broadcast and not stored as the last search results. Neither is a canceled one, whose results the requester no longer wants.
+			// A search that saw hidden sessions is not broadcast and not stored as the last search results.
+			// Neither is a canceled one, whose results the requester no longer wants.
 			if (CompletedRequest->SearchParams.bIncludeHiddenSessions || CompletedRequest->bCanceled)
 			{
 				LastSearchResults.Empty();

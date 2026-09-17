@@ -115,9 +115,9 @@ bool FEasySessionWaitForReplicatedState::Update()
 		FString::Printf(TEXT("A replicated match end raises no match events (saw: %s)"), *State->Listener->Describe()),
 		State->Listener->TotalEvents() == 0);
 
-	// Destroying the game instance does not take the session with it - the online
-	// service holds sessions per process, so one left behind fails the next test's
-	// create with SessionAlreadyExists. Waited on rather than fired and forgotten:
+	// Destroying the game instance does not take the session with it. The online
+	// subsystem holds sessions per process, so one left behind fails the next test's
+	// create with SessionAlreadyExists. Waited on rather than started and ignored:
 	// requests start on a later tick, so returning here would end the test first.
 	TSharedPtr<FTestState> Shared = State;
 	State->bCleanupIssued = true;
@@ -132,15 +132,15 @@ bool FEasySessionWaitForReplicatedState::Update()
 }
 
 /**
- * A client only reads the host's match state - it never acts on it. Feeding the
+ * A client only reads the host's match state. It never acts on it. Feeding the
  * replicated state back into Start/End would put a request on the queue that the
  * client has no authority to run, and the failure would leave through the public
- * match events, telling a game its match failed to start when nobody asked for one.
+ * match events, telling a game its match failed to start when the game asked for none.
  *
  * What this can and cannot show: the handler ignores anything that is not an actual
  * client (net mode NM_Client), and a headless test world is standalone, so this
- * guards the contract - the host's state is recorded, and recording it raises no
- * match events - rather than reproducing the failure. The failure itself needs two
+ * guards the contract (the host's state is recorded, and recording it raises no
+ * match events) rather than reproducing the failure. The failure itself needs two
  * connected games and is checked by hand.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReplicatedStateTest, "EasySession.Replication.ClientDoesNotActOnTheHostsMatchState", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

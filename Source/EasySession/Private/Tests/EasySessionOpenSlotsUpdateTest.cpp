@@ -117,7 +117,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 			Lowered.MaxPlayers = Registered > 0 ? Registered - 1 : 0;
 			if (Lowered.MaxPlayers <= 0)
 			{
-				// Nothing was registered, so there is no occupancy to squeeze below - skip to teardown.
+				// Nothing was registered, so there is no occupancy to lower. Skip to the cleanup.
 				State->Step = EStep::AwaitingDestroy;
 				Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&)

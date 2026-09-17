@@ -84,7 +84,7 @@ bool FEasySessionOperationTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("An ended operation is gone"), Queue.FindOperation(EEasySessionOperationType::FriendSearch).IsValid());
 	TestTrue(TEXT("The type is free again after the end"), Queue.BeginOperation(SecondSearch));
 
-	// Every cancel ends its operation from inside the walk - the queue must survive its own list changing under it.
+	// Every cancel ends its operation from inside the loop, so the queue must survive its own list changing under it.
 	Queue.CancelOperations();
 	TestEqual(TEXT("Cancel reached the matchmaking operation"), Matchmaking->CancelCount, 1);
 	TestEqual(TEXT("Cancel reached the second search"), SecondSearch->CancelCount, 1);
@@ -92,7 +92,7 @@ bool FEasySessionOperationTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("Nothing is busy after the cancel"), Queue.IsBusy());
 	TestEqual(TEXT("The status line is plain again"), Queue.DescribeStatus(false), FString(TEXT("Idle")));
 
-	// The subsystem answers Is Busy and Get Activity from the same list.
+	// The subsystem reads Is Busy and Get Activity from the same list.
 	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
 	GameInstance->InitializeStandalone();
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();

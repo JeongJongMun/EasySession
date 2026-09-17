@@ -116,8 +116,8 @@ bool FEasySessionBeaconShareStep::Update()
  * second host, and must take only its own type off again when the session ends.
  *
  * Before this behavior, the second host bound a different port than the session advertised
- * and every approval ask ended Unreachable - join approval was silently off for the whole
- * session, in both directions of who spawned first.
+ * and every approval request ended Unreachable. Join approval was silently off for the whole
+ * session, whichever side spawned first.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconShareTest, "EasySession.JoinApproval.SharesAnExistingBeaconHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)

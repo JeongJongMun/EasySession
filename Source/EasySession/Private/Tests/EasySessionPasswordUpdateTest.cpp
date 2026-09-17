@@ -94,14 +94,14 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestEqual(TEXT("An open session enforces no password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString());
 
 			// Reading the session back has to return what it was created with, or the
-			// read-modify-write below would quietly change fields nobody touched.
+			// read-modify-write below would quietly change fields the caller did not touch.
 			const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 			CurrentTest->TestEqual(TEXT("Read back the display name"), ReadBack.SessionDisplayName, MakeParams().SessionDisplayName);
 			CurrentTest->TestEqual(TEXT("Read back the player limit"), ReadBack.MaxPlayers, 6);
 			CurrentTest->TestFalse(TEXT("Read back join in progress"), ReadBack.bAllowJoinInProgress);
 			CurrentTest->TestEqual(TEXT("Read back the empty password"), ReadBack.Password, FString());
 
-			// Lock the room by changing only the password.
+			// Protect the session by changing only the password.
 			FEasySessionSettings Locked = ReadBack;
 			Locked.Password = TEXT("1234");
 			State->Step = EStep::AwaitingLock;
@@ -118,7 +118,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestEqual(TEXT("Locking the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
 
 			// The advertised flag and the password arriving players are checked against
-			// are set from two different places. Either one alone would be a lie.
+			// are set from two different places. Either one alone would be wrong.
 			CurrentTest->TestTrue(TEXT("A locked session advertises that it is protected"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
 			CurrentTest->TestEqual(TEXT("A locked session enforces the new password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString(TEXT("1234")));
 
@@ -129,7 +129,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestFalse(TEXT("Locking left join in progress alone"), AfterLock.bAllowJoinInProgress);
 			CurrentTest->TestEqual(TEXT("Locking is visible when reading back"), AfterLock.Password, FString(TEXT("1234")));
 
-			// Unlock it again. An empty password has to be able to undo a lock, which
+			// Remove the password again. An empty password has to be able to remove one, which
 			// is why the advertised flag is written for both states instead of only
 			// being added when set.
 			FEasySessionSettings Unlocked = AfterLock;
@@ -150,7 +150,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestFalse(TEXT("An unlocked session stops advertising a password"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
 			CurrentTest->TestEqual(TEXT("An unlocked session enforces no password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString());
 
-			// Sessions live in the online service per process, so one left behind fails
+			// The online subsystem holds sessions per process, so one left behind fails
 			// the next test's create.
 			State->Step = EStep::AwaitingDestroy;
 			Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
@@ -173,12 +173,12 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 }
 
 /**
- * A host must be able to lock and unlock a running session, and both halves of a
- * password have to move together: the flag searching players see, and the value
+ * A host must be able to set and remove the password of a running session, and both halves
+ * of a password have to move together: the flag searching players see, and the value
  * arriving players are checked against. Update used to write neither, reporting
- * Success while the room stayed open.
+ * Success while the session stayed open.
  *
- * The read-modify-write assertions guard the other half of that contract - Update
+ * The read-modify-write assertions guard the other half of that contract: Update
  * applies every field it is given, so a caller needs to be able to ask what the
  * session is running with rather than building params from defaults.
  */
@@ -251,7 +251,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 				return false;
 			}
 
-			// An open room takes anyone, whatever they typed.
+			// An open session admits anyone, whatever they typed.
 			CurrentTest->TestEqual(TEXT("Open room, no password"), Approve(TEXT("")), EEasyJoinApprovalResult::Approved);
 			CurrentTest->TestEqual(TEXT("Open room, stray password"), Approve(TEXT("anything")), EEasyJoinApprovalResult::Approved);
 
@@ -331,7 +331,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 
 /**
  * The join decision table, asked at the single call the approval beacon and PreLogin
- * both route into. The password tests elsewhere only prove the password was stored;
+ * both make. The password tests elsewhere only prove the password was stored;
  * this one proves what the stored value decides.
  *
  * Two rows cannot run headless and stay on the on-device list: the capacity refusal

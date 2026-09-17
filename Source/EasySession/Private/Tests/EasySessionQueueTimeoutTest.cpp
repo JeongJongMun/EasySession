@@ -15,7 +15,7 @@
 
 namespace EasySessionQueueTimeoutTest
 {
-	/** Request timeout used for the test - short enough to keep the test quick. */
+	/** Request timeout used for the test, short enough to keep the test quick. */
 	static constexpr float TestTimeoutSeconds = 1.0f;
 
 	/** Hard limit on how long the test waits before failing. */
@@ -32,12 +32,12 @@ namespace EasySessionQueueTimeoutTest
 }
 
 /**
- * A failing request must not stall the queue - the next request still runs.
+ * A failing request must not block the queue. The next request still runs.
  *
- * This covers the drain behavior only. The watchdog's own timeout rules are
+ * This covers the queue moving on only. The watchdog's own timeout rules are
  * verified separately in EasySessionRequestTimeoutTest, because the NULL
  * subsystem completes every operation synchronously and therefore cannot
- * simulate a service that never answers.
+ * simulate an online subsystem that never calls back.
  */
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForQueueDrain, TSharedPtr<EasySessionQueueTimeoutTest::FTestState>, State);
 bool FEasySessionWaitForQueueDrain::Update()
@@ -56,8 +56,8 @@ bool FEasySessionWaitForQueueDrain::Update()
 
 	if (CurrentTest != nullptr)
 	{
-		// Draining is not enough on its own - the failed request must still have answered
-		// its caller, or a node would hang exactly when the watchdog was meant to save it.
+		// Moving on is not enough on its own. The failed request must still have completed
+		// to its caller, or a node would hang exactly when the watchdog was meant to save it.
 		CurrentTest->TestTrue(TEXT("The failed request answered its caller"), State->StartResult.IsSet());
 		if (State->StartResult.IsSet())
 		{
