@@ -24,7 +24,7 @@ void FEasyFriendSessionOperation::Cancel()
 		return;
 	}
 
-	// The lookup in flight keeps running on the queue; its answer arrives after Finish and is dropped.
+	// The running lookup stays on the queue. Its completion arrives after Finish and is dropped.
 	Pending.Reset();
 	Current = INDEX_NONE;
 	Finish(EEasySessionResult::Canceled, TEXT("The friend search was canceled."));
@@ -100,14 +100,15 @@ void FEasyFriendSessionOperation::HandleQueryComplete(EEasySessionResult Result,
 	FEasyFriendSession& Entry = Entries[Current];
 	Current = INDEX_NONE;
 
-	// A lookup the service never answered may still answer later. Asking the next friend now would hand that answer to the wrong friend, so the search ends here.
+	// A lookup the online subsystem never completed may still complete later.
+	// Asking about the next friend now would deliver that completion to the wrong friend, so the search ends here.
 	if (Result == EEasySessionResult::Timeout)
 	{
 		Finish(EEasySessionResult::Timeout, TEXT("The online service did not answer a friend lookup in time."));
 		return;
 	}
 
-	// Any other failure only means no session for that friend - the search goes on.
+	// Any other failure only means no session for that friend. The search goes on.
 	if (Result == EEasySessionResult::Success && Results.Num() > 0 && Results[0].IsValid())
 	{
 		Entry.Session = Results[0];
@@ -132,7 +133,7 @@ void FEasyFriendSessionOperation::Finish(EEasySessionResult Result, const FStrin
 	}
 	UE_LOG(LogEasySession, Log, TEXT("Friend session search complete: %s, %d friend(s), %d in a session."), *EasySession::ResultToString(Result), Entries.Num(), InSessionCount);
 
-	// The completion ends this operation on the queue, which drops the queue's reference - this local one keeps the object alive until the call returns.
+	// The completion ends this operation on the queue, which drops the queue's reference. This local one keeps the object alive until the call returns.
 	const TSharedRef<IEasySessionOperation> Self = AsShared();
 	TArray<FEasyFriendSession> Delivered = MoveTemp(Entries);
 	Entries.Reset();

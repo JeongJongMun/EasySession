@@ -9,10 +9,10 @@
 class UEasyMatchmakingPolicy;
 
 /**
- * Registers a matchmaking run with the request queue as the operation it is.
+ * The matchmaking run as a queue operation.
  *
  * The policy keeps driving its own steps through the subsystem's public API.
- * This adapter only holds the policy alive and answers the queue's questions about the run.
+ * This object only keeps the policy alive and reports the run's state to the queue.
  */
 class FEasyMatchmakingOperation final : public IEasySessionOperation
 {
@@ -32,6 +32,6 @@ public:
 
 private:
 
-	/** Keeps the policy alive for the run. It used to be a UPROPERTY on the subsystem. */
+	/** Keeps the policy alive for the run. */
 	TStrongObjectPtr<UEasyMatchmakingPolicy> Policy;
 };

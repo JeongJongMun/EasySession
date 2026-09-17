@@ -11,14 +11,12 @@
  * Serializes session requests: one runs at a time, the rest wait in order.
  * Why the serialization exists at all is documented on FEasySessionRequest.
  *
- * This class owns the mechanics only.
- * That means the pending list, the active slot, and the watchdog that notices a request whose deadline passed.
- * It also means the scheduling that starts every request outside the callstack that asked for it.
+ * This class owns only the pending list, the active slot and the deadline watchdog.
+ * It also schedules every request to start outside the callstack that queued it.
  *
- * Carrying out a request stays with the subsystem, which the queue reaches through two callbacks.
- * One executes the request that just became active; the other reacts to a deadline.
- * The subsystem drives completion too, by popping the active request and letting the queue move on.
- * It has to, because it owns the delegate handles to clear and the events to broadcast.
+ * Running a request stays with the subsystem, reached through two callbacks.
+ * One runs the request that just became active, the other handles a passed deadline.
+ * The subsystem completes requests too, by popping the active one, because it owns the delegate handles to clear and the events to broadcast.
  *
  * The queue also keeps the list of multi-step operations, see IEasySessionOperation.
  * An operation submits its own requests; the list only says which operations exist, so busy, already-running, cancel and the status line agree.
@@ -35,7 +33,7 @@ public:
 
 	FEasySessionRequestQueue(FExecuteActive InExecuteActive, FDeadlineReached InDeadlineReached);
 
-	/** Tickers bound to a raw class do not expire with it - they are removed here. */
+	/** Tickers bound to a raw class do not expire with it, so they are removed here. */
 	~FEasySessionRequestQueue();
 
 	/** Adds a request. It starts on the next tick, never inside this call. */
@@ -43,9 +41,8 @@ public:
 
 	/**
 	 * Takes the active request out of its slot and schedules the next one for a later tick.
-	 * A completion callback may call the online subsystem freely.
-	 * What it must not do is start the next queued request, which is why the next one never begins inside this callstack.
-	 * Returns what was active so the caller can finish delivering its callbacks.
+	 * A completion callback may call the online subsystem freely, but the next queued request must not start inside that callstack, so it starts on a later tick.
+	 * Returns what was active so the caller can deliver its callbacks.
 	 */
 	TSharedPtr<FEasySessionRequest> PopActive();
 
@@ -74,7 +71,7 @@ public:
 	/** @return The running operation that counts as busy, or null. */
 	TSharedPtr<IEasySessionOperation> FindBusyOperation() const;
 
-	/** Cancel every operation. Each cancel ends its operation from inside the call, so the walk runs over a copy of the list. */
+	/** Cancel every operation. Each cancel ends its operation from inside the call, so the loop runs over a copy of the list. */
 	void CancelOperations();
 
 	/** @return The type of the active request, or of the first waiting one while nothing is active yet. Unset when idle. */

@@ -100,7 +100,7 @@ TSharedPtr<IEasySessionOperation> FEasySessionRequestQueue::FindBusyOperation() 
 
 void FEasySessionRequestQueue::CancelOperations()
 {
-	// Each cancel calls EndOperation, which edits the list this loop would be walking.
+	// Each cancel calls EndOperation, which edits the list this loop reads.
 	const TArray<TSharedRef<IEasySessionOperation>> Snapshot = Operations;
 	for (const TSharedRef<IEasySessionOperation>& Operation : Snapshot)
 	{
@@ -141,9 +141,9 @@ TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::PopActive()
 
 void FEasySessionRequestQueue::ScheduleNext()
 {
-	// Never start inside the caller's callstack: a completion callback enqueues just
-	// as the slot empties, and the online call still returning would then land on
-	// whatever took the slot. One pending call is enough for any number of requests.
+	// Never start inside the caller's callstack. A completion callback can enqueue just as the slot empties,
+	// and the online subsystem call still returning would then run against the request that took the slot.
+	// One pending call is enough for any number of requests.
 	if (NextRequestHandle.IsValid())
 	{
 		return;
@@ -168,7 +168,7 @@ FString FEasySessionRequestQueue::DescribeStatus(bool bIdleButTraveling) const
 		}
 		else
 		{
-			// Say so rather than reporting "Idle" while Is Busy answers true.
+			// Say so rather than reporting "Idle" while Is Busy is true.
 			Status = bIdleButTraveling ? TEXT("Idle, traveling") : TEXT("Idle");
 		}
 	}

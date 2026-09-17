@@ -12,7 +12,8 @@ class UEasySessionSubsystem;
  * The friend session search as a queue operation.
  *
  * It reads the friends list, then asks the queue for the session of each friend playing this game, one friend at a time.
- * The next lookup is enqueued only when the previous one answered, so a Create or Join the game asks for meanwhile runs between two lookups instead of waiting out the whole search.
+ * The next lookup is enqueued only when the previous one completed.
+ * A Create or Join asked for meanwhile therefore runs between two lookups instead of after the whole search.
  * A lookup that fails only means no session for that friend; the search goes on.
  *
  * It does not count as busy: it only reads, and nothing about the player's own session changes while it runs.
@@ -40,13 +41,13 @@ public:
 
 private:
 
-	/** The friends list arrived. Every friend gets an entry; the ones playing this game get a lookup. */
+	/** The friends list was read. Every friend gets an entry, and the ones playing this game get a lookup. */
 	void HandleFriendsRead(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionFriend>& Friends);
 
 	/** Ask the queue for the next pending friend's session, or finish when none are left. */
 	void QueryNext();
 
-	/** The queue's answer for the friend currently being asked. */
+	/** The lookup completed for the friend currently asked about. */
 	void HandleQueryComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results);
 
 	/** Report everything collected so far, once. */
@@ -57,7 +58,7 @@ private:
 	/** Fired once when the search finishes. */
 	FEasyFriendSessionsCompleteDelegate OnComplete;
 
-	/** One entry per friend. Entries of friends playing this game gain their session as the queue answers. */
+	/** One entry per friend. Entries of friends playing this game gain their session as the lookups complete. */
 	TArray<FEasyFriendSession> Entries;
 
 	/** Indices into Entries still waiting for their lookup. */
@@ -69,6 +70,6 @@ private:
 	/** How many lookups the search asks for in total, for the status line. */
 	int32 LookupCount = 0;
 
-	/** Whether Finish ran. A late answer after a cancel is ignored. */
+	/** Whether Finish ran. A late completion after a cancel is ignored. */
 	bool bFinished = false;
 };

@@ -25,9 +25,8 @@ float UEasyMatchmakingPolicy::ScoreSession_Implementation(const FEasySessionSear
 		? static_cast<float>(Session.MaxPlayers - Session.OpenSlots) / static_cast<float>(Session.MaxPlayers)
 		: 0.0f;
 
-	// Preferring fuller sessions scores a full one highest, and a full one always
-	// rejects the join. Ranked last rather than dropped: the count is a search
-	// snapshot, so it is worth one attempt before hosting a second session.
+	// Preferring fuller sessions would score a full one highest, and a full one always refuses the join.
+	// It is ranked last rather than dropped, because the count is a search snapshot and worth one attempt before hosting a second session.
 	const float NoRoomPenalty = (Session.MaxPlayers > 0 && Session.OpenSlots <= 0)
 		? (PingBucketsMs.Num() + 1) * 1000.0f
 		: 0.0f;
@@ -87,7 +86,7 @@ void UEasyMatchmakingPolicy::Cancel()
 	bCancelRequested = true;
 	SetState(EEasyMatchmakingState::Canceling);
 
-	// Only waiting for the next pass: nothing is in flight.
+	// Only waiting for the next pass: nothing is running.
 	if (PassDelayTickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(PassDelayTickerHandle);
@@ -96,7 +95,7 @@ void UEasyMatchmakingPolicy::Cancel()
 		return;
 	}
 
-	// A search ends now: its answer arrives as Canceled inside this call. A join or host in flight finishes first and is undone then.
+	// A search ends now: its completion arrives as Canceled inside this call. A running join or host completes first and is undone then.
 	if (UEasySessionSubsystem* SubsystemPtr = Subsystem.Get())
 	{
 		SubsystemPtr->CancelSearch(this);
@@ -180,7 +179,7 @@ void UEasyMatchmakingPolicy::BuildCandidateListAndJoin(const TArray<FEasySession
 		return ScoreSession(A) > ScoreSession(B);
 	});
 
-	// Shuffle the best N so that concurrent searchers spread across equally good sessions.
+	// Shuffle the best N so that players searching at the same time spread across equally good sessions.
 	const int32 ShuffleCount = FMath::Min(TopCandidateRandomization, Candidates.Num());
 	for (int32 Index = 0; Index < ShuffleCount - 1; ++Index)
 	{
@@ -248,7 +247,7 @@ void UEasyMatchmakingPolicy::HandleJoinComplete(EEasySessionResult Result, const
 		return;
 	}
 
-	// Never retry a session that already rejected us in this run.
+	// Never retry a session that already refused this player in this run.
 	if (Candidates.IsValidIndex(NextCandidateIndex))
 	{
 		FailedSessionKeys.Add(GetSessionKey(Candidates[NextCandidateIndex]));
@@ -323,7 +322,7 @@ void UEasyMatchmakingPolicy::HostFallbackSession()
 
 FEasySessionHostParams UEasyMatchmakingPolicy::MakeFallbackHostParams() const
 {
-	// The fallback room must be one this run's own search would find: on the searched network, with every required key advertised at the required value.
+	// The fallback session must be one this run's own search would find: on the searched network, with every required key advertised at the required value.
 	FEasySessionHostParams FallbackParams = Params.Host;
 	FallbackParams.bIsLANMatch = Params.Search.bLANQuery;
 	FallbackParams.CustomSettings.Append(Params.Search.RequiredCustomSettings);
@@ -332,7 +331,7 @@ FEasySessionHostParams UEasyMatchmakingPolicy::MakeFallbackHostParams() const
 		FallbackParams.Region = Params.Search.Region;
 	}
 
-	// The fallback room is public so this run's own searchers can find and join it.
+	// The fallback session is public, so players running the same search can find and join it.
 	FallbackParams.Password.Empty();
 	FallbackParams.bHidden = false;
 	FallbackParams.bShouldAdvertise = true;
@@ -366,13 +365,13 @@ void UEasyMatchmakingPolicy::CompleteAsCanceled(EEasySessionResult StepResult)
 
 bool UEasyMatchmakingPolicy::CompleteIfAlreadyInSession(UEasySessionSubsystem& InSubsystem)
 {
-	// A failed join's leftover session is queued for destruction and gone before the next candidate runs - only a session that stays counts.
+	// A failed join's leftover session is queued for destruction and gone before the next candidate runs. Only a session that stays counts.
 	if (!InSubsystem.IsInSession() || InSubsystem.IsSessionBeingDestroyed())
 	{
 		return false;
 	}
 
-	// An accepted invite or the game's own Create or Join got here first. Every remaining step would fail against it.
+	// An accepted invite or the game's own Create or Join ran first. Every remaining step would fail against it.
 	Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Matchmaking stopped."));
 	return true;
 }

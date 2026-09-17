@@ -14,12 +14,12 @@ enum class EEasySessionOperationType : uint8
 /**
  * A multi-step operation the request queue keeps track of.
  *
- * An operation is made of several requests, submitted one at a time through the subsystem's public API as each answer arrives.
+ * An operation is made of several requests, submitted one at a time through the subsystem's public API as each request completes.
  * The queue does not run the steps.
- * It records that the operation exists, so that being busy, being already running, cancellation and the status line have one owner.
+ * It records that the operation exists, so that busy, already running, cancel and the status line agree.
  *
  * Operations are shared references.
- * A step's completion delegate is bound with CreateSP, so it unbinds itself when the operation dies.
+ * A step's completion delegate is bound with CreateSP, so it unbinds itself when the operation is destroyed.
  */
 class IEasySessionOperation : public TSharedFromThis<IEasySessionOperation>
 {
@@ -33,7 +33,7 @@ public:
 	/** @return Whether the subsystem is busy while this runs. Matchmaking is. A friend search only reads, so it is not. */
 	virtual bool CountsAsBusy() const = 0;
 
-	/** Stop the operation. The running step's answer is ignored, the operation completes as Canceled and ends itself on the queue. */
+	/** Cancel the operation. It completes as Canceled and ends itself on the queue. A running step's late completion is ignored. */
 	virtual void Cancel() = 0;
 
 	/** @return One fragment for the status line, e.g. "Matchmaking (Searching, pass 2)" or "Friend search 3/7". */

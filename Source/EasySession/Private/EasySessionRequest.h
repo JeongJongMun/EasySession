@@ -6,24 +6,22 @@
 #include "EasySessionTypes.h"
 
 /**
- * A single queued session operation.
+ * A single queued call to the online subsystem.
  *
  * Requests run strictly one at a time.
- * The online subsystem already rejects a second call of the same kind.
- * A session name can only be created, joined or destroyed once, and searches refuse to overlap, so the queue is not there for that.
- * What it prevents is two different operations overlapping.
- * Steam's DestroySession only refuses while another destroy is running, so it will destroy a session whose create has not finished.
- * Running them in order also turns "rejected because another operation was running" into "runs next", which is what a caller expects from a beginner-friendly API.
+ * The online subsystem already refuses a second call of the same kind, so the queue exists to keep two different calls from overlapping.
+ * Steam's DestroySession, for one, only refuses while another destroy is running, so it would destroy a session whose create has not finished.
+ * Running requests in order also turns "refused because another call was running" into "runs next", which is what a beginner expects.
  *
  * Each request carries its own deadline.
- * The online service is not required to ever call back, and Steam tasks do not implement CancelWhenTimeout.
- * Without a deadline a silent service would stall every request behind it.
+ * The online subsystem is not required to ever call back, and Steam tasks do not implement CancelWhenTimeout.
+ * Without a deadline a request that never completes would block every request behind it.
  */
 class FEasySessionRequest
 {
 public:
 
-	/** Which session operation a request performs. */
+	/** Which online subsystem call a request makes. */
 	enum class EType : uint8
 	{
 		Create,
@@ -41,7 +39,7 @@ public:
 	{
 	}
 
-	/** Human readable name of the operation, for logs and status output. */
+	/** Human readable name of the request type, for logs and status output. */
 	const TCHAR* GetTypeName() const
 	{
 		switch (Type)
@@ -57,7 +55,7 @@ public:
 		}
 	}
 
-	/** Stamp the start time and freeze the deadline for this run. */
+	/** Record the start time and fix the deadline. */
 	void MarkStarted(double NowSeconds, float ConfiguredTimeoutSeconds)
 	{
 		StartTimeSeconds = NowSeconds;
@@ -96,7 +94,7 @@ public:
 		return Type == EType::Create || Type == EType::Join;
 	}
 
-	/** Which operation this request performs. Decides which of the payload fields below are read. */
+	/** Which call this request makes. Decides which of the payload fields below are read. */
 	EType Type;
 
 	/**
@@ -114,7 +112,7 @@ public:
 
 	/**
 	 * Whether the requester canceled this request.
-	 * It only holds the online service's slot until the service answers, so it does not count as busy and its answer goes nowhere.
+	 * It keeps the active slot until the online subsystem completes it, does not count as busy, and its late completion is dropped.
 	 */
 	bool bCanceled = false;
 
@@ -136,7 +134,7 @@ public:
 	/** Join: extra options appended to the client travel URL. */
 	FString JoinTravelOptions;
 
-	/** Called when the request finishes. Find reports through OnFindComplete instead. */
+	/** Called when the request completes. A Find request completes through OnFindComplete instead. */
 	FEasySessionCompleteDelegate OnComplete;
 
 	/** Find: called with the filtered results when the search finishes. */

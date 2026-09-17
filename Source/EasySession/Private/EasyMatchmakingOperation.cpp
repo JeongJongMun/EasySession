@@ -11,7 +11,7 @@ FEasyMatchmakingOperation::FEasyMatchmakingOperation(UEasyMatchmakingPolicy& InP
 
 void FEasyMatchmakingOperation::Cancel()
 {
-	// The policy completes as Canceled, now or once its running step answers, and the subsystem ends this operation from that completion.
+	// The policy completes as Canceled, now or once its running step completes, and the subsystem ends this operation from that completion.
 	if (UEasyMatchmakingPolicy* Running = Policy.Get())
 	{
 		Running->Cancel();
