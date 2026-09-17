@@ -40,18 +40,18 @@ public:
 	/** Stop listening. Called when the subsystem shuts down. */
 	void Shutdown();
 
-	/** Invite a friend to the current session. */
-	bool SendInviteToFriend(const FEasySessionFriend& Friend);
+	/** Invite a friend to the current session. @return Success, or why the invite could not be sent. */
+	EEasySessionResult SendInviteToFriend(const FEasySessionFriend& Friend);
 
-	/** Open the platform invite overlay for the current session. */
-	bool ShowInviteUI() const;
+	/** Open the platform invite overlay for the current session. @return Success, or why the overlay could not be opened. */
+	EEasySessionResult ShowInviteUI() const;
 
 	/**
 	 * Open the platform profile overlay for a unique id.
 	 * Callers pass the NativeId out of whichever struct they hold, because the overlay only ever needs the id.
 	 * Blueprint cannot hold a raw id, which is why the subsystem exposes one typed entry point per struct instead.
 	 */
-	bool ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
+	EEasySessionResult ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
 
 	/** Read the platform friends list, in display order. The friend session search built on it lives in FEasyFriendSessionOperation. */
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete);

@@ -113,7 +113,10 @@ enum class EEasySessionResult : uint8
 	RequiresSessionAuthority,
 
 	/** A friend session search is already running. One runs at a time - wait for its completion. */
-	FriendSearchAlreadyInProgress
+	FriendSearchAlreadyInProgress,
+
+	/** The online service in use does not offer this feature. Friends and invites need Steam; NULL/LAN has none, and that is not a configuration problem. */
+	NotSupportedByService
 };
 
 /**

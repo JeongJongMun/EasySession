@@ -50,8 +50,8 @@ EasySession은 자기 작업을 하나씩 실행하므로, 앞 작업이 끝나�
 | **Destroy Easy Session** | - | `DestroySession` 호출. 이 게임의 네임드 세션만 지우고 맵에는 그대로 남습니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
 | **Leave Easy Session** | - | Destroy Easy Session에 귀갓길까지. 네임드 세션을 지운 뒤 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 방을 닫습니다 |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
-| **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다: 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 실패합니다 |
-| **Find Easy Friend Sessions** | - | 친구 목록을 읽은 뒤, 이 게임을 플레이 중인 친구마다 `FindFriendSession`을 호출합니다. `OnSuccess`가 `FEasyFriendSession` 배열을 넘깁니다. 모든 친구가 나열되고, 참가 가능한 세션에 있는 친구는 그 세션을 들고 맨 위로 정렬됩니다. 서비스가 답하지 않는 조회가 있으면 검색은 `Timeout`으로 끝납니다. NULL/LAN에서는 실패합니다 |
+| **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다: 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 `NotSupportedByService`로 실패합니다 |
+| **Find Easy Friend Sessions** | - | 친구 목록을 읽은 뒤, 이 게임을 플레이 중인 친구마다 `FindFriendSession`을 호출합니다. `OnSuccess`가 `FEasyFriendSession` 배열을 넘깁니다. 모든 친구가 나열되고, 참가 가능한 세션에 있는 친구는 그 세션을 들고 맨 위로 정렬됩니다. 서비스가 답하지 않는 조회가 있으면 검색은 `Timeout`으로 끝납니다. NULL/LAN에서는 `NotSupportedByService`로 실패합니다 |
 
 > **세션 권한 필요**는 그 세션을 만든 게임을 뜻합니다. 리슨 서버라면 호스트 플레이어의 게임,
 > 데디케이티드 서버라면 서버 자신입니다. 그 외에는 `RequiresSessionAuthority` 실패를 받습니다.
@@ -151,10 +151,12 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Matchmaking를 `Canceled`로 끝냅니다. 이미 성사되던 참가나 생성은 되돌려집니다 |
 | Cancel Easy Friend Search | `CancelFriendSearch` | 진행 중인 `Find Easy Friend Sessions`를 `Canceled`로 끝냅니다. 조회 중이던 친구 한 명의 답은 버립니다 |
-| Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대 |
-| Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이 |
-| Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이 |
-| Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이 |
+| Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대. 결과 값을 돌려줍니다 |
+| Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이. 결과 값을 돌려줍니다 |
+| Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이. 결과 값을 돌려줍니다 |
+| Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이. 결과 값을 돌려줍니다 |
+
+> 넷 다 `EEasySessionResult`를 돌려줍니다. NULL/LAN처럼 그 기능이 없는 서비스에서는 `NotSupportedByService`입니다.
 | Server Travel Easy Session | `ServerTravelToMap` | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
 | Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 세션 권한 필요 |
 
@@ -263,6 +265,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |
 | **`Timeout`** | 온라인 서비스가 끝내 답하지 않았습니다. 결과를 알 수 없으므로 남은 것이 있으면 정리됩니다. `RequestTimeoutSeconds` 참고 |
 | **`Canceled`** | `Cancel Easy Matchmaking`가 Matchmaking를 중단시켰습니다 |
+| **`NotSupportedByService`** | 지금 쓰는 온라인 서비스에 그 기능이 없습니다. 친구와 초대는 스팀에만 있고 NULL/LAN에는 없습니다. 설정 문제가 아니므로 그 서비스에서는 버튼을 숨기세요 |
 | `NoOnlineSubsystem` | 온라인 서브시스템이 없습니다. `DefaultEngine.ini`를 확인하세요 |
 | `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Initial Map Name 없는 Matchmaking |
 | `MatchmakingAlreadyInProgress` | Matchmaking가 이미 돌고 있습니다 |

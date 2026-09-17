@@ -51,8 +51,8 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
 | **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the room for everyone with "The host has left the game." |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
-| **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there |
-| **Find Easy Friend Sessions** | - | Reads the friends list, then calls `FindFriendSession` for each friend playing this game. `OnSuccess` carries a `FEasyFriendSession` array - every friend listed, the ones in a joinable session carrying it and sorted to the top. A lookup the service never answers ends the search with `Timeout`. Fails on NULL/LAN |
+| **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
+| **Find Easy Friend Sessions** | - | Reads the friends list, then calls `FindFriendSession` for each friend playing this game. `OnSuccess` carries a `FEasyFriendSession` array - every friend listed, the ones in a joinable session carrying it and sorted to the top. A lookup the service never answers ends the search with `Timeout`. Fails with `NotSupportedByService` on NULL/LAN |
 
 > **Session authority only** means the game that created the session: the host player's
 > game on a listen server, or the server itself on a dedicated server. Anyone else gets
@@ -157,10 +157,12 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`, undoing a join or host that succeeds after the cancel |
 | Cancel Easy Friend Search | `CancelFriendSearch` | Ends Find Easy Friend Sessions with `Canceled`. The lookup in flight is ignored |
-| Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite |
-| Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay |
-| Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend |
-| Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session |
+| Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite, returns a result |
+| Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay, returns a result |
+| Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend, returns a result |
+| Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session, returns a result |
+
+> All four return an `EEasySessionResult`. On a service without the feature, such as NULL/LAN, that is `NotSupportedByService`.
 | Server Travel Easy Session | `ServerTravelToMap` | Moves the whole session to a new map. Session authority only |
 | Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | Ends the session and sends every client back to the menu with a reason. Session authority only |
 
@@ -274,6 +276,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`RequiresSessionAuthority`** | Only the game that created the session may do this. Show the button only when `Is Easy Session Authority` is true |
 | **`Timeout`** | The online service never answered. The outcome is unknown, so anything it left behind is cleaned up. See `RequestTimeoutSeconds` |
 | **`Canceled`** | `Cancel Easy Matchmaking` stopped a Matchmaking run |
+| **`NotSupportedByService`** | The online service in use does not offer that feature. Friends and invites need Steam; NULL/LAN has none. Not a configuration problem - hide the button on such a service |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
 | `InvalidParams` | A parameter cannot work, e.g. Matchmaking with no fallback Initial Map Name |
 | `MatchmakingAlreadyInProgress` | A Matchmaking is already running |

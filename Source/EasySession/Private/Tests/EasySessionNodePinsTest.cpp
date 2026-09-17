@@ -241,7 +241,7 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFriendsSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFriendsFailure);
 			Node->Activate();
-		}, EExpectedPin::Failure, EEasySessionResult::NoOnlineSubsystem });
+		}, EExpectedPin::Failure, EEasySessionResult::NotSupportedByService });
 
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionRunPinCases(State));
 	return true;

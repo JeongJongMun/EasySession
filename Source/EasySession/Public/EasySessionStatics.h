@@ -170,21 +170,24 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession", meta = (WorldContext = "WorldContextObject"))
 	static void DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason);
 
-	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
+	/**
+	 * Invite a friend to the current session.
+	 * @return Success, or why not: Not Supported By Service without invites such as NULL/LAN, No Session Exists with no session to invite to, Invalid Params for a friend Read Easy Friends did not return.
+	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
-	static bool SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
+	static EEasySessionResult SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
 
-	/** Open the platform invite overlay (e.g. Steam) for the current session. */
+	/** Open the platform invite overlay (e.g. Steam) for the current session. @return Success, or Not Supported By Service on a service without an overlay such as NULL/LAN. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
-	static bool ShowEasyInviteUI(const UObject* WorldContextObject);
+	static EEasySessionResult ShowEasyInviteUI(const UObject* WorldContextObject);
 
-	/** Open the platform profile overlay (e.g. Steam) for the given friend. */
+	/** Open the platform profile overlay (e.g. Steam) for the given friend. @return Success, or Not Supported By Service on a service without an overlay such as NULL/LAN. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
-	static bool ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
+	static EEasySessionResult ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
 
-	/** Open the platform profile overlay (e.g. Steam) for a player in the session. */
+	/** Open the platform profile overlay (e.g. Steam) for a player in the session. @return Success, or Not Supported By Service on a service without an overlay such as NULL/LAN. */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
-	static bool ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player);
+	static EEasySessionResult ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player);
 
 	/** Convert a session result value to a human readable string. */
 	UFUNCTION(BlueprintPure, Category = "EasySession", meta = (DisplayName = "To String (EasySessionResult)", CompactNodeTitle = "->"))

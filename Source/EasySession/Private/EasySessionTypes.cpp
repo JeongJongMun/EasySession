@@ -88,6 +88,7 @@ namespace EasySession
 			case EEasySessionResult::Timeout:					return TEXT("Timeout");
 			case EEasySessionResult::RequiresSessionAuthority:	return TEXT("RequiresSessionAuthority");
 			case EEasySessionResult::FriendSearchAlreadyInProgress:	return TEXT("FriendSearchAlreadyInProgress");
+			case EEasySessionResult::NotSupportedByService:		return TEXT("NotSupportedByService");
 			default:											return TEXT("UnknownFailure");
 		}
 	}

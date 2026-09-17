@@ -149,58 +149,71 @@ void FEasySessionSocial::JoinInvitedSessionAfterLeaving(EEasySessionResult Leave
 			}));
 }
 
-bool FEasySessionSocial::SendInviteToFriend(const FEasySessionFriend& Friend)
+EEasySessionResult FEasySessionSocial::SendInviteToFriend(const FEasySessionFriend& Friend)
 {
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
-	if (!Sessions.IsValid() || !Friend.IsValid())
+	if (!Sessions.IsValid())
 	{
-		return false;
+		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: there is no online service to send through."));
+		return EEasySessionResult::NoOnlineSubsystem;
+	}
+
+	if (!Friend.IsValid())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: the friend to invite is not a friend Read Easy Friends returned."));
+		return EEasySessionResult::InvalidParams;
 	}
 
 	if (!Owner.IsInSession())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: there is no session to invite to."));
-		return false;
+		return EEasySessionResult::NoSessionExists;
 	}
 
 	if (!Sessions->SendSessionInviteToFriend(0, NAME_GameSession, *Friend.NativeId.GetUniqueNetId()))
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend failed. The online subsystem may not support invites (e.g. NULL/LAN)."));
-		return false;
+		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend was refused. The online service may not support invites (e.g. NULL/LAN)."));
+		return EEasySessionResult::NotSupportedByService;
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session invite sent to '%s'."), *Friend.DisplayName);
-	return true;
+	return EEasySessionResult::Success;
 }
 
-bool FEasySessionSocial::ShowInviteUI() const
+EEasySessionResult FEasySessionSocial::ShowInviteUI() const
 {
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
 	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
 
 	if (!ExternalUI.IsValid() || !ExternalUI->ShowInviteUI(0, NAME_GameSession))
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("ShowInviteUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
-		return false;
+		UE_LOG(LogEasySession, Warning, TEXT("ShowInviteUI is not supported by the current online service (e.g. NULL/LAN)."));
+		return EEasySessionResult::NotSupportedByService;
 	}
 
-	return true;
+	return EEasySessionResult::Success;
 }
 
-bool FEasySessionSocial::ShowProfileUI(const FUniqueNetIdPtr& TargetId) const
+EEasySessionResult FEasySessionSocial::ShowProfileUI(const FUniqueNetIdPtr& TargetId) const
 {
+	if (!TargetId.IsValid())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ShowProfileUI: the player to show has no online id."));
+		return EEasySessionResult::InvalidParams;
+	}
+
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
 	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
 	const IOnlineIdentityPtr Identity = OnlineSub ? OnlineSub->GetIdentityInterface() : nullptr;
 	const FUniqueNetIdPtr LocalId = Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr;
 
-	if (!ExternalUI.IsValid() || !LocalId.IsValid() || !TargetId.IsValid())
+	if (!ExternalUI.IsValid() || !LocalId.IsValid() || !ExternalUI->ShowProfileUI(*LocalId, *TargetId, FOnProfileUIClosedDelegate()))
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("ShowProfileUI is not supported by the current online subsystem (e.g. NULL/LAN)."));
-		return false;
+		UE_LOG(LogEasySession, Warning, TEXT("ShowProfileUI is not supported by the current online service (e.g. NULL/LAN)."));
+		return EEasySessionResult::NotSupportedByService;
 	}
 
-	return ExternalUI->ShowProfileUI(*LocalId, *TargetId, FOnProfileUIClosedDelegate());
+	return EEasySessionResult::Success;
 }
 
 void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
@@ -210,7 +223,7 @@ void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 
 	if (!Friends.IsValid())
 	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The current online subsystem does not support friends lists (e.g. NULL/LAN)."), {});
+		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, TEXT("This online service has no friends list (e.g. NULL/LAN)."), {});
 		return;
 	}
 	

@@ -46,7 +46,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		[this, &bCallbackFired](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionFriend>& Friends)
 		{
 			bCallbackFired = true;
-			TestNotEqual(TEXT("Read fails on NULL"), Result, EEasySessionResult::Success);
+			TestEqual(TEXT("Read reports the service has no friends list"), Result, EEasySessionResult::NotSupportedByService);
 			TestEqual(TEXT("No friends returned"), Friends.Num(), 0);
 		}));
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
@@ -58,7 +58,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		[this, &bSessionsCallbackFired, Subsystem](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
 		{
 			bSessionsCallbackFired = true;
-			TestNotEqual(TEXT("Friend session search fails on NULL"), Result, EEasySessionResult::Success);
+			TestEqual(TEXT("The friend session search reports the same"), Result, EEasySessionResult::NotSupportedByService);
 			TestEqual(TEXT("No friend sessions returned"), FriendSessions.Num(), 0);
 			TestFalse(TEXT("The search has ended by the time its result is delivered"), Subsystem->IsFriendSearchRunning());
 		}));
@@ -77,10 +77,12 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		}));
 	TestTrue(TEXT("Second friend sessions callback fired"), bSecondFired);
 
-	// Invite helpers must report unsupported instead of crashing.
-	TestFalse(TEXT("ShowInviteUI unsupported on NULL"), Subsystem->ShowInviteUI());
-	TestFalse(TEXT("SendSessionInviteToFriend fails without a valid friend"), Subsystem->SendSessionInviteToFriend(FEasySessionFriend()));
-	TestFalse(TEXT("ShowProfileUI unsupported on NULL"), Subsystem->ShowProfileUI(FEasySessionFriend()));
+	// The invite helpers name the reason rather than answering with a bare failure.
+	TestEqual(TEXT("ShowInviteUI reports the service has no overlay"), Subsystem->ShowInviteUI(), EEasySessionResult::NotSupportedByService);
+	TestEqual(TEXT("ShowProfileUI refuses a friend with no online id"), Subsystem->ShowProfileUI(FEasySessionFriend()), EEasySessionResult::InvalidParams);
+
+	// A friend struct the friends list never returned is a caller mistake, not a missing feature.
+	TestEqual(TEXT("An invite to no one is refused as an invalid parameter"), Subsystem->SendSessionInviteToFriend(FEasySessionFriend()), EEasySessionResult::InvalidParams);
 
 	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;

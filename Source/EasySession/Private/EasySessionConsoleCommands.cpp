@@ -282,7 +282,7 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Print(FString::Printf(TEXT("InviteUI: %s"), Subsystem->ShowInviteUI() ? TEXT("opened") : TEXT("not supported")));
+				Print(FString::Printf(TEXT("InviteUI: %s"), *EasySession::ResultToString(Subsystem->ShowInviteUI())));
 			}
 		}));
 

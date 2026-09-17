@@ -198,28 +198,28 @@ void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldCont
 	}
 }
 
-bool UEasySessionStatics::SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
+EEasySessionResult UEasySessionStatics::SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->SendSessionInviteToFriend(Friend);
+	return Subsystem != nullptr ? Subsystem->SendSessionInviteToFriend(Friend) : EEasySessionResult::NoOnlineSubsystem;
 }
 
-bool UEasySessionStatics::ShowEasyInviteUI(const UObject* WorldContextObject)
+EEasySessionResult UEasySessionStatics::ShowEasyInviteUI(const UObject* WorldContextObject)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->ShowInviteUI();
+	return Subsystem != nullptr ? Subsystem->ShowInviteUI() : EEasySessionResult::NoOnlineSubsystem;
 }
 
-bool UEasySessionStatics::ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
+EEasySessionResult UEasySessionStatics::ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->ShowProfileUI(Friend);
+	return Subsystem != nullptr ? Subsystem->ShowProfileUI(Friend) : EEasySessionResult::NoOnlineSubsystem;
 }
 
-bool UEasySessionStatics::ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player)
+EEasySessionResult UEasySessionStatics::ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->ShowProfileUIForPlayer(Player);
+	return Subsystem != nullptr ? Subsystem->ShowProfileUIForPlayer(Player) : EEasySessionResult::NoOnlineSubsystem;
 }
 
 FString UEasySessionStatics::ResultToString(EEasySessionResult Result)

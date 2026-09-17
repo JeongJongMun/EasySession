@@ -394,17 +394,17 @@ public:
 
 public:
 	
-	/** Invite a friend to the current session. Not supported on the NULL (LAN) subsystem. */
-	bool SendSessionInviteToFriend(const FEasySessionFriend& Friend);
+	/** Invite a friend to the current session. @return Success, or why the invite could not be sent. */
+	EEasySessionResult SendSessionInviteToFriend(const FEasySessionFriend& Friend);
 
-	/** Open the platform invite overlay (e.g. Steam) for the current session. */
-	bool ShowInviteUI();
+	/** Open the platform invite overlay (e.g. Steam) for the current session. @return Success, or why the overlay could not be opened. */
+	EEasySessionResult ShowInviteUI();
 
-	/** Open the platform profile overlay (e.g. Steam) for the given friend. */
-	bool ShowProfileUI(const FEasySessionFriend& Friend);
+	/** Open the platform profile overlay (e.g. Steam) for the given friend. @return Success, or why the overlay could not be opened. */
+	EEasySessionResult ShowProfileUI(const FEasySessionFriend& Friend);
 
-	/** Open the platform profile overlay (e.g. Steam) for a player in the session. */
-	bool ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player);
+	/** Open the platform profile overlay (e.g. Steam) for a player in the session. @return Success, or why the overlay could not be opened. */
+	EEasySessionResult ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player);
 
 	/**
 	 * Read the local player's friends list. Not supported on the NULL (LAN) subsystem.
