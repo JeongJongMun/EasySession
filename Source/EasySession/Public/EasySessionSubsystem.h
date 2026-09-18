@@ -33,6 +33,7 @@ class FEasySessionSocial;
 class FEasySessionTravel;
 struct FEasyJoinApprovalRequest;
 struct FEasyJoinApprovalResponse;
+struct FEasySessionRequestContext;
 
 /** Multicast event fired when a session operation completes. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasySessionEvent, EEasySessionResult, Result, const FString&, ErrorMessage);
@@ -313,6 +314,12 @@ public:
 	 */
 	FString GetSessionJoinCode() const;
 
+	/** Internal, called by the Find request: store the results Get Last Easy Search Results returns. */
+	void SetLastSearchResults(const TArray<FEasySessionSearchResult>& Results) { LastSearchResults = Results; }
+
+	/** Internal, called by the Destroy request: clear the host state a client received through replication. */
+	void ClearReplicatedHostSessionState();
+
 	/**
 	 * Internal, called by the state actor: receive the host's replicated session state.
 	 * Clients store it for display and update their local session copy.
@@ -536,84 +543,13 @@ private:
 	/** Resolve the session interface for the current world context. */
 	IOnlineSessionPtr GetSessionInterface() const;
 
-	/** Whether LAN mode must be forced because the NULL subsystem is active. */
-	bool ShouldForceLAN() const;
-
 	/** Add a request to the queue and start processing if idle. */
 	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/** The request the queue is running right now. Null while the queue is idle. */
 	const TSharedPtr<FEasySessionRequest>& GetActiveRequest() const;
 
-	/** Queue callback: dispatch the request that just became active to its executor. */
-	void ExecuteActiveRequest();
-
-	/**
-	 * Queue callback: the active request passed its deadline.
-	 * The online subsystem is not guaranteed to call back, and a request that never completes would block every queued request behind it.
-	 * This fails it with Timeout so the queue can continue, then cleans up any session the operation may still create afterwards.
-	 */
-	void HandleRequestDeadline();
-
-	/**
-	 * Finish the active request and schedule the next one.
-	 *
-	 * bAbandoned means the watchdog is abandoning the request instead of the online subsystem completing it.
-	 * See CleanupRequest for what changes.
-	 */
-	void CompleteActiveRequest(EEasySessionResult Result, const FString& ErrorMessage = FString(), bool bAbandoned = false);
-
-	/**
-	 * Clean up what the request left behind, so the next one starts clean.
-	 * Every completion passes through here, which is what stops a request type from being cleaned up on one path and forgotten on the other.
-	 *
-	 * A request the online subsystem completed is over on both sides.
-	 * An abandoned one is still running in the online subsystem, the only case where it has to be told to stop.
-	 */
-	void CleanupRequest(const FEasySessionRequest& Request, bool bAbandoned);
-
-	/** Per-operation entry points, called by ExecuteActiveRequest. */
-	void ExecuteCreate();
-	void ExecuteFind();
-	void ExecuteJoin();
-	void ExecuteDestroy();
-	void ExecuteUpdate();
-	void ExecuteStart();
-	void ExecuteEnd();
-
-	/** Build the settings a new session is created and advertised with. */
-	FOnlineSessionSettings MakeCreateSettings(const FEasySessionHostParams& Params);
-
-	/** Ask the host's approval beacon whether the local player may join. */
-	void RequestJoinApproval();
-
-	/** The beacon's response: join the session, or fail the request with the reason. */
-	void HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response);
-
-	/** Ask the online subsystem to join. Every join path ends in this step. */
-	void JoinOnlineSession();
-
-	/** Ask for the session a friend is in, for the active request. It runs as a Find request without a search object and completes through its own delegate. */
-	void StartFriendSessionSearch(const FEasySessionSearchParams& Params);
-
-	/** Start a discovery search for the active request, completing it on the failures the online subsystem reports inside the call. */
-	void StartSessionSearch(const FEasySessionSearchParams& Params);
-
-	/** Filter what a search returned and finish the active Find request with the results. */
-	void FinishActiveSearch(const TArray<FOnlineSessionSearchResult>& NativeResults);
-
-	/** @return The active Find request when a search completion belongs to one. Null otherwise. */
-	TSharedPtr<FEasySessionRequest> GetActiveSearchRequest() const;
-
-	/** Online subsystem delegate handlers. */
-	void HandleCreateSessionComplete(FName SessionName, bool bWasSuccessful);
-	void HandleFindSessionsComplete(bool bWasSuccessful);
-	void HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults);
-	void HandleJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type JoinResult);
-	void HandleDestroySessionComplete(FName SessionName, bool bWasSuccessful);
-	void HandleUpdateSessionComplete(FName SessionName, bool bWasSuccessful);
-	void HandleStartSessionComplete(FName SessionName, bool bWasSuccessful);
-	void HandleEndSessionComplete(FName SessionName, bool bWasSuccessful);
+	/** Engine delegate handlers. */
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
 
@@ -634,40 +570,10 @@ private:
 	 */
 	bool IsNetworkServer() const;
 
-	/**
-	 * Re-advertise the session with the in-progress key set, as the second phase of the Start or End request that is running.
-	 * Staying inside that request keeps the queue in order: no other request can start while it is running.
-	 *
-	 * @return Whether the online subsystem accepted the update. False completes the phase inside the call.
-	 */
-	bool AdvertiseMatchInProgress(bool bMatchInProgress);
-
-	/** Finish a Start or End request whose re-advertise phase is over, telling the caller the match state change succeeded either way. */
-	void CompleteMatchStateRequest(bool bAdvertised);
-
 private:
-
-	/** The fix appended to every RequiresSessionAuthority message. Is Easy Session Host would be wrong here, because it is false on a dedicated server. */
-	static constexpr const TCHAR* RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
-
-	/** The message of every InvalidParams result that refuses host params. */
-	static constexpr const TCHAR* InvalidHostParamsMessage = TEXT("Host params are invalid: Max Players must be above 0, and Initial Map Name must name the map the session is played on.");
-
-	/** The native search object of the running Find request. */
-	TSharedPtr<FOnlineSessionSearch> ActiveSearch;
 
 	/** Cached results of the most recent search. */
 	TArray<FEasySessionSearchResult> LastSearchResults;
-
-	/** Delegate handles for the running operation. Cleared when it completes. */
-	FDelegateHandle CreateCompleteHandle;
-	FDelegateHandle FindCompleteHandle;
-	FDelegateHandle FindFriendCompleteHandle;
-	FDelegateHandle JoinCompleteHandle;
-	FDelegateHandle DestroyCompleteHandle;
-	FDelegateHandle UpdateCompleteHandle;
-	FDelegateHandle StartCompleteHandle;
-	FDelegateHandle EndCompleteHandle;
 
 	/** Latest host session state received through replication (clients only). */
 	EEasySessionState ReplicatedHostSessionState = EEasySessionState::NoSession;
@@ -712,4 +618,7 @@ private:
 	TUniquePtr<FEasySessionSocial> Social;
 	TUniquePtr<FEasySessionBeaconPort> BeaconPort;
 	TUniquePtr<FEasySessionHost> Host;
+
+	/** What every request may use while it runs. Created after the collaborators it refers to. */
+	TUniquePtr<FEasySessionRequestContext> RequestContext;
 };

@@ -10,6 +10,8 @@
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
 #include "EasySessionJoinApproval.h"
+#include "EasySessionCreateRequest.h"
+#include "EasySessionFindRequest.h"
 #include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionStateActor.h"
@@ -94,10 +96,17 @@ public:
 		Subsystem.HandleReplicatedSessionSettings(Settings);
 	}
 
+	/** The native search object of the active Find request. Null while no discovery search runs. */
+	static TSharedPtr<FOnlineSessionSearch> GetActiveSearch(const UEasySessionSubsystem& Subsystem)
+	{
+		const TSharedPtr<FEasySessionFindRequest> FindRequest = FEasySessionFindRequest::Cast(Subsystem.GetActiveRequest());
+		return FindRequest.IsValid() ? FindRequest->Search : nullptr;
+	}
+
 	/** Whether the subsystem is still holding a search object. */
 	static bool HasActiveSearch(const UEasySessionSubsystem& Subsystem)
 	{
-		return Subsystem.ActiveSearch.IsValid();
+		return GetActiveSearch(Subsystem).IsValid();
 	}
 
 	/** Whether the host's replicated state actor exists. */
@@ -190,9 +199,10 @@ public:
 	 */
 	static bool FailActiveSearch(UEasySessionSubsystem& Subsystem)
 	{
-		if (Subsystem.ActiveSearch.IsValid() && Subsystem.ActiveSearch->SearchState == EOnlineAsyncTaskState::InProgress)
+		const TSharedPtr<FOnlineSessionSearch> Search = GetActiveSearch(Subsystem);
+		if (Search.IsValid() && Search->SearchState == EOnlineAsyncTaskState::InProgress)
 		{
-			Subsystem.ActiveSearch->SearchState = EOnlineAsyncTaskState::Failed;
+			Search->SearchState = EOnlineAsyncTaskState::Failed;
 			return true;
 		}
 		return false;
@@ -206,11 +216,12 @@ public:
 	 */
 	static bool MarkActiveSearchAsInternet(UEasySessionSubsystem& Subsystem)
 	{
-		if (!Subsystem.ActiveSearch.IsValid())
+		const TSharedPtr<FOnlineSessionSearch> Search = GetActiveSearch(Subsystem);
+		if (!Search.IsValid())
 		{
 			return false;
 		}
-		Subsystem.ActiveSearch->bIsLanQuery = false;
+		Search->bIsLanQuery = false;
 		return true;
 	}
 
@@ -271,14 +282,14 @@ public:
 	}
 
 	/**
-	 * Run the abandoned-request cleanup for a request of this type, standing in for the watchdog.
+	 * Run the Cleanup of an abandoned Create request, standing in for the watchdog.
 	 * NULL completes creates synchronously, so a create abandoned while running cannot be produced headless.
 	 */
-	static void CleanupAsAbandoned(UEasySessionSubsystem& Subsystem, FEasySessionRequest::EType Type)
+	static void CleanupAbandonedCreate(UEasySessionSubsystem& Subsystem)
 	{
-		FEasySessionRequest Request(Type);
-		Request.SessionName = NAME_GameSession;
-		Subsystem.CleanupRequest(Request, /*bAbandoned*/ true);
+		const TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionCreateRequest>(FEasySessionHostParams(), FEasySessionCompleteDelegate());
+		Request->Bind(*Subsystem.RequestContext, NAME_GameSession);
+		Request->Cleanup(/*bAbandoned*/ true);
 	}
 
 	/**
@@ -289,7 +300,9 @@ public:
 	 */
 	static bool DriveFindCompletion(UEasySessionSubsystem& Subsystem, const TArray<FOnlineSessionSearchResult>& Results)
 	{
-		if (!Subsystem.ActiveSearch.IsValid() || Subsystem.ActiveSearch->SearchState != EOnlineAsyncTaskState::InProgress)
+		const TSharedPtr<FEasySessionFindRequest> FindRequest = FEasySessionFindRequest::Cast(Subsystem.GetActiveRequest());
+		const TSharedPtr<FOnlineSessionSearch> Search = FindRequest.IsValid() ? FindRequest->Search : nullptr;
+		if (!Search.IsValid() || Search->SearchState != EOnlineAsyncTaskState::InProgress)
 		{
 			return false;
 		}
@@ -301,9 +314,9 @@ public:
 			Sessions->CancelFindSessions();
 		}
 
-		Subsystem.ActiveSearch->SearchResults = Results;
-		Subsystem.ActiveSearch->SearchState = EOnlineAsyncTaskState::Done;
-		Subsystem.HandleFindSessionsComplete(true);
+		Search->SearchResults = Results;
+		Search->SearchState = EOnlineAsyncTaskState::Done;
+		FindRequest->HandleFindSessionsComplete(true);
 		return true;
 	}
 

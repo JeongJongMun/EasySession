@@ -105,7 +105,7 @@ void AEasySessionJoinApprovalBeaconClient::OnFailure()
 
 void AEasySessionJoinApprovalBeaconClient::DestroyBeacon()
 {
-	// A destroyed request must not respond. Dropping the delegate here is what makes StopClient a cancel.
+	// A destroyed request must not respond. Dropping the delegate here means that destroying the beacon cancels the request.
 	CompleteDelegate.Unbind();
 	GetWorldTimerManager().ClearTimer(ResponseTimeoutHandle);
 

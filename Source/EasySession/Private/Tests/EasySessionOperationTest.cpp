@@ -60,7 +60,7 @@ bool FEasySessionOperationTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionOperationTest;
 
-	FEasySessionRequestQueue Queue([]() {}, []() {});
+	FEasySessionRequestQueue Queue;
 	TestTrue(TEXT("An empty queue is idle"), Queue.IsIdle());
 	TestFalse(TEXT("An empty queue is not busy"), Queue.IsBusy());
 	TestEqual(TEXT("An empty queue says Idle"), Queue.DescribeStatus(false), FString(TEXT("Idle")));

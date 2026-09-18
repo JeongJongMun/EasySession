@@ -4,7 +4,9 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionRequest.h"
+#include "EasySessionCreateRequest.h"
+#include "EasySessionFindRequest.h"
+#include "EasySessionJoinRequest.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -28,7 +30,7 @@ bool FEasySessionRequestTimeoutTest::RunTest(const FString& Parameters)
 
 	// A normal request uses the configured timeout as-is.
 	{
-		FEasySessionRequest Request(FEasySessionRequest::EType::Create);
+		FEasySessionCreateRequest Request(FEasySessionHostParams{}, FEasySessionCompleteDelegate());
 		Request.MarkStarted(StartTime, ConfiguredTimeout);
 
 		TestEqual(TEXT("Create uses the configured timeout"), Request.TimeoutSeconds, 30.0);
@@ -41,34 +43,27 @@ bool FEasySessionRequestTimeoutTest::RunTest(const FString& Parameters)
 
 	// A search replaces the configured timeout with its own override, and 0 means no override.
 	{
-		FEasySessionRequest Request(FEasySessionRequest::EType::Find);
-		Request.SearchParams.TimeoutOverrideSeconds = 15.0f;
+		FEasySessionSearchParams SearchParams;
+		SearchParams.TimeoutOverrideSeconds = 15.0f;
+		FEasySessionFindRequest Request(SearchParams, FEasySessionFindCompleteDelegate());
 		Request.MarkStarted(StartTime, ConfiguredTimeout);
 
 		TestEqual(TEXT("Find uses its override instead of the configured timeout"), Request.TimeoutSeconds, 15.0);
 		TestFalse(TEXT("Not timed out before the override"), Request.HasTimedOut(StartTime + 14.9));
 		TestTrue(TEXT("Timed out at the override"), Request.HasTimedOut(StartTime + 15.0));
 
-		FEasySessionRequest Plain(FEasySessionRequest::EType::Find);
+		FEasySessionFindRequest Plain(FEasySessionSearchParams{}, FEasySessionFindCompleteDelegate());
 		Plain.MarkStarted(StartTime, ConfiguredTimeout);
 		TestEqual(TEXT("Find without an override uses the configured timeout"), Plain.TimeoutSeconds, 30.0);
 	}
 
 	// A non-positive setting disables the deadline entirely.
 	{
-		FEasySessionRequest Request(FEasySessionRequest::EType::Join);
+		FEasySessionJoinRequest Request(FEasySessionSearchResult{}, FString(), FString(), FEasySessionCompleteDelegate());
 		Request.MarkStarted(StartTime, 0.0f);
 
 		TestEqual(TEXT("Timeout is disabled"), Request.TimeoutSeconds, 0.0);
 		TestFalse(TEXT("Never times out when disabled"), Request.HasTimedOut(StartTime + 100000.0));
-	}
-
-	// Only operations that can leave a session behind are worth cleaning up after.
-	{
-		TestTrue(TEXT("Create can leave a session behind"), FEasySessionRequest(FEasySessionRequest::EType::Create).CouldHaveCreatedSession());
-		TestTrue(TEXT("Join can leave a session behind"), FEasySessionRequest(FEasySessionRequest::EType::Join).CouldHaveCreatedSession());
-		TestFalse(TEXT("Destroy cannot"), FEasySessionRequest(FEasySessionRequest::EType::Destroy).CouldHaveCreatedSession());
-		TestFalse(TEXT("Find cannot"), FEasySessionRequest(FEasySessionRequest::EType::Find).CouldHaveCreatedSession());
 	}
 
 	return true;
@@ -114,7 +109,7 @@ bool FEasySessionWaitForAbandonedCreate::Update()
 			}
 
 			// The session stands in for one a late create left behind after its deadline.
-			FEasySessionTestAccess::CleanupAsAbandoned(*Subsystem, FEasySessionRequest::EType::Create);
+			FEasySessionTestAccess::CleanupAbandonedCreate(*Subsystem);
 
 			State->Phase = 1;
 			State->StartTime = FPlatformTime::Seconds();
@@ -173,7 +168,7 @@ bool FEasySessionWaitForAbandonedCreate::Update()
 }
 
 /**
- * A create abandoned by the watchdog can leave a session behind, and CleanupRequest
+ * A create abandoned by the watchdog can leave a session behind, and the Create request's Cleanup
  * destroys it so the next create starts clean, the behavior UEasySessionConfig
  * promises for Request Timeout Seconds. NULL completes creates synchronously and can
  * never abandon one for real, so the cleanup is entered directly with the state the

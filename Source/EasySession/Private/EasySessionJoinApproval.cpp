@@ -16,7 +16,6 @@
 FEasySessionJoinApproval::~FEasySessionJoinApproval()
 {
 	StopHost();
-	StopClient();
 }
 
 bool FEasySessionJoinApproval::IsAdvertisedBy(const FOnlineSessionSettings& Settings)
@@ -94,40 +93,4 @@ void FEasySessionJoinApproval::WarnIfPortMismatch(const FOnlineSessionSettings& 
 	UE_LOG(LogEasySession, Warning,
 		TEXT("Joining players connect to port %d and do not reach this beacon, so the password and full session checks happen after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
 		AdvertisedPort);
-}
-
-void FEasySessionJoinApproval::RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete)
-{
-	StopClient();
-
-	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-	AEasySessionJoinApprovalBeaconClient* Client = nullptr;
-	if (World != nullptr)
-	{
-		FActorSpawnParameters SpawnParams;
-		SpawnParams.ObjectFlags |= RF_Transient;
-		Client = World->SpawnActor<AEasySessionJoinApprovalBeaconClient>(SpawnParams);
-	}
-
-	if (Client == nullptr)
-	{
-		OnComplete.ExecuteIfBound(FEasyJoinApprovalResponse::Unreachable());
-		return;
-	}
-
-	BeaconClient = Client;
-	if (!Client->RequestApproval(Target, Password, OnComplete))
-	{
-		// The delegate already fired with Unreachable. Only the actor is left to destroy.
-		StopClient();
-	}
-}
-
-void FEasySessionJoinApproval::StopClient()
-{
-	if (AEasySessionJoinApprovalBeaconClient* Client = BeaconClient.Get())
-	{
-		Client->DestroyBeacon();
-	}
-	BeaconClient.Reset();
 }

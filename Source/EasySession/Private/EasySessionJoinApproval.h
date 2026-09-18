@@ -9,11 +9,10 @@
 class FEasySessionBeaconPort;
 class FOnlineSessionSettings;
 class UEasySessionSubsystem;
-struct FEasySessionSearchResult;
 
 /**
- * Runs the connection the join approval beacon uses.
- * The host side stays up for the life of the session. The client side sends one request and closes.
+ * Runs the host side of the join approval beacon, which runs while the session exists.
+ * The joining player side is FEasySessionJoinRequest, which spawns a beacon client actor for one request.
  *
  * Beacons are actors, so they are destroyed with their world.
  * FEasySessionHost calls EnsureHost again in every world the session reaches, and StopHost before a server travel and when the session is destroyed.
@@ -36,7 +35,7 @@ public:
 	{
 	}
 
-	/** Stops the host side and cancels a pending request. */
+	/** Stops the host side. */
 	~FEasySessionJoinApproval();
 
 	/**
@@ -48,16 +47,6 @@ public:
 
 	/** Host: stop the beacon. Safe when none is running. */
 	void StopHost();
-
-	/**
-	 * Joining player: ask Target's host to approve the local player joining.
-	 * OnComplete fires exactly once, with Unreachable when the host cannot be reached.
-	 * A new request cancels a pending one.
-	 */
-	void RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete);
-
-	/** Joining player: cancel a pending request, so its response never arrives. Safe when none is running. */
-	void StopClient();
 
 	/** @return Whether a session with these settings runs the join approval beacon, so a joining player requests join approval before traveling. */
 	static bool IsAdvertisedBy(const FOnlineSessionSettings& Settings);
@@ -77,7 +66,4 @@ private:
 
 	/** Host side of the beacon. Lives exactly as long as the session, per world. */
 	TWeakObjectPtr<AEasySessionJoinApprovalBeaconHostObject> BeaconHostObject;
-
-	/** Joining player side. Lives for one request, from RequestJoinApproval to its response or StopClient. */
-	TWeakObjectPtr<AEasySessionJoinApprovalBeaconClient> BeaconClient;
 };

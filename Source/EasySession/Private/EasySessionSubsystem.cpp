@@ -10,7 +10,13 @@
 #include "EasyFriendSessionOperation.h"
 #include "EasyMatchmakingOperation.h"
 #include "EasySessionOperation.h"
+#include "EasySessionCreateRequest.h"
+#include "EasySessionDestroyRequest.h"
+#include "EasySessionFindRequest.h"
+#include "EasySessionJoinRequest.h"
+#include "EasySessionMatchStateRequest.h"
 #include "EasySessionRequest.h"
+#include "EasySessionUpdateRequest.h"
 #include "EasySessionRequestQueue.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionSocial.h"
@@ -50,13 +56,12 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		UE_LOG(LogEasySession, Log, TEXT("EasySessionSubsystem initialized. Online subsystem: %s"), *OnlineSub->GetSubsystemName().ToString());
 	}
 
-	RequestQueue = MakeUnique<FEasySessionRequestQueue>(
-		[this]() { ExecuteActiveRequest(); },
-		[this]() { HandleRequestDeadline(); });
+	RequestQueue = MakeUnique<FEasySessionRequestQueue>();
 	Travel = MakeUnique<FEasySessionTravel>(*this);
 	Social = MakeUnique<FEasySessionSocial>(*this, *Travel);
 	BeaconPort = MakeUnique<FEasySessionBeaconPort>();
 	Host = MakeUnique<FEasySessionHost>(*this, *BeaconPort);
+	RequestContext = MakeUnique<FEasySessionRequestContext>(FEasySessionRequestContext{ *this, *RequestQueue, *Travel, *Host });
 
 	if (GEngine != nullptr)
 	{
@@ -117,56 +122,29 @@ void UEasySessionSubsystem::Deinitialize()
 		BusyTickerHandle.Reset();
 	}
 
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (Sessions.IsValid())
-	{
-		Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle);
-		Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle);
-		Sessions->ClearOnFindFriendSessionCompleteDelegate_Handle(0, FindFriendCompleteHandle);
-		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
-		Sessions->ClearOnDestroySessionCompleteDelegate_Handle(DestroyCompleteHandle);
-		Sessions->ClearOnUpdateSessionCompleteDelegate_Handle(UpdateCompleteHandle);
-		Sessions->ClearOnStartSessionCompleteDelegate_Handle(StartCompleteHandle);
-		Sessions->ClearOnEndSessionCompleteDelegate_Handle(EndCompleteHandle);
-	}
-
 	// Operations end themselves when canceled, and they may still hold a step's delegate, so cancel before the queue is destroyed.
 	RequestQueue->CancelOperations();
 
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
+	RequestContext.Reset();
 	Host.Reset();
 	BeaconPort.Reset();
 	Social.Reset();
 	Travel.Reset();
 	RequestQueue.Reset();
 
-	ActiveSearch.Reset();
-
 	Super::Deinitialize();
 }
 
 void UEasySessionSubsystem::CreateEasySession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Create);
-	Request->HostParams = HostParams;
-	Request->OnComplete = MoveTemp(OnComplete);
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(HostParams, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Find);
-	Request->SearchParams = SearchParams;
-	Request->OnFindComplete = MoveTemp(OnComplete);
-
-	// A targeted query names one session, hidden or not. The hidden-seeing mark keeps its results off OnSessionsFound and the last search results.
-	if (Request->SearchParams.IsSpecificSessionQuery())
-	{
-		Request->SearchParams.bIncludeHiddenSessions = true;
-	}
-
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete)));
 }
 
 FEasyJoinApprovalResponse UEasySessionSubsystem::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
@@ -176,56 +154,28 @@ FEasyJoinApprovalResponse UEasySessionSubsystem::ApproveJoin(const FEasyJoinAppr
 
 bool UEasySessionSubsystem::CancelSearch(const UObject* Requester)
 {
-	const TSharedPtr<FEasySessionRequest> Request = GetActiveRequest();
-	if (!Request.IsValid() || Request->Type != FEasySessionRequest::EType::Find || !Request->OnFindComplete.IsBoundToObject(Requester))
-	{
-		return false;
-	}
-
-	// A LAN search can be stopped, so the request ends here and CleanupRequest tells the online subsystem.
-	if (ActiveSearch.IsValid() && ActiveSearch->bIsLanQuery)
-	{
-		CompleteActiveRequest(EEasySessionResult::Canceled, TEXT("The search was canceled."), /*bAbandoned*/ true);
-		return true;
-	}
-
-	// The online subsystem runs an internet search to the end whatever it is told, so the request keeps its slot and only the requester's delegate is unbound.
-	Request->bCanceled = true;
-	FEasySessionFindCompleteDelegate OnFindComplete = MoveTemp(Request->OnFindComplete);
-	Request->OnFindComplete.Unbind();
-	OnFindComplete.ExecuteIfBound(EEasySessionResult::Canceled, TEXT("The search was canceled."), TArray<FEasySessionSearchResult>());
-	return true;
+	const TSharedPtr<FEasySessionFindRequest> FindRequest = FEasySessionFindRequest::Cast(GetActiveRequest());
+	return FindRequest.IsValid() && FindRequest->Cancel(Requester);
 }
 
 void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Join);
-	Request->JoinTarget = SearchResult;
-	Request->JoinPassword = Password;
-	Request->JoinTravelOptions = AdditionalTravelOptions;
-	Request->OnComplete = MoveTemp(OnComplete);
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionJoinRequest>(SearchResult, Password, AdditionalTravelOptions, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::StartEasySession(FEasySessionCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Start);
-	Request->OnComplete = MoveTemp(OnComplete);
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionMatchStateRequest>(FEasySessionRequest::EType::Start, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::EndEasySession(FEasySessionCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::End);
-	Request->OnComplete = MoveTemp(OnComplete);
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionMatchStateRequest>(FEasySessionRequest::EType::End, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::DestroyEasySession(FEasySessionCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Destroy);
-	Request->OnComplete = MoveTemp(OnComplete);
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionDestroyRequest>(MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComplete)
@@ -248,10 +198,7 @@ void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComp
 
 void UEasySessionSubsystem::UpdateEasySession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete)
 {
-	TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionRequest>(FEasySessionRequest::EType::Update);
-	Request->Settings = NewSettings;
-	Request->OnComplete = MoveTemp(OnComplete);
-	EnqueueRequest(Request);
+	EnqueueRequest(MakeShared<FEasySessionUpdateRequest>(NewSettings, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
@@ -265,7 +212,7 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	// The host fallback could only fail after the last search pass, so the params are refused before the first one.
 	if (MatchmakingParams.bAllowHostFallback && !MatchmakingParams.Host.IsValid())
 	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, InvalidHostParamsMessage);
+		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, EasySession::InvalidHostParamsMessage);
 		return;
 	}
 
@@ -654,7 +601,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	// NextURL and returns true, so this entry check is the only guard.
 	if (!IsSessionAuthority())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session. %s"), RequiresSessionAuthorityFix);
+		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session. %s"), EasySession::RequiresSessionAuthorityFix);
 		return false;
 	}
 
@@ -705,16 +652,11 @@ IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 	return Online::GetSessionInterface(World);
 }
 
-bool UEasySessionSubsystem::ShouldForceLAN() const
-{
-	return GetOnlineSubsystemName() == NULL_SUBSYSTEM;
-}
-
 void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
 {
-	// Where a request's target session is decided. The execute and complete handlers read it from the request.
+	// Where a request's target session is decided. Every step of the request reads it from the request.
 	// Queries and gates are game session only and read the constant.
-	Request->SessionName = NAME_GameSession;
+	Request->Bind(*RequestContext, NAME_GameSession);
 
 	RequestQueue->Enqueue(Request);
 
@@ -946,6 +888,12 @@ void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 	Social->ReadFriends(MoveTemp(OnComplete));
 }
 
+void UEasySessionSubsystem::ClearReplicatedHostSessionState()
+{
+	ReplicatedHostSessionState = EEasySessionState::NoSession;
+	bHasReplicatedHostSessionState = false;
+}
+
 void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState HostState)
 {
 	// Record what the host reports; that is all a client does with it. Get Session
@@ -1018,7 +966,7 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySes
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the server that created the session."));
 		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority,
-			FString::Printf(TEXT("Only the game that created the session can destroy it for everyone. %s"), RequiresSessionAuthorityFix));
+			FString::Printf(TEXT("Only the game that created the session can destroy it for everyone. %s"), EasySession::RequiresSessionAuthorityFix));
 		return;
 	}
 

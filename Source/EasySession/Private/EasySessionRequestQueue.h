@@ -14,9 +14,10 @@
  * This class owns only the pending list, the active slot and the deadline watchdog.
  * It also schedules every request to start outside the callstack that queued it.
  *
- * Running a request stays with the subsystem, reached through two callbacks.
- * One runs the request that just became active, the other handles a passed deadline.
- * The subsystem completes requests too, by popping the active one, because it owns the delegate handles to clear and the events to broadcast.
+ * What a request does is in the request itself, see FEasySessionRequest.
+ * The queue starts the request that became active and abandons the one that passed its deadline.
+ * A request leaves the active slot by itself, because FEasySessionRequest::Complete calls PopActive between its Cleanup and its Notify.
+ * The queue knows nothing else of the plugin, not even the subsystem that owns it.
  *
  * The queue also keeps the list of multi-step operations, see IEasySessionOperation.
  * An operation submits its own requests; the list only says which operations exist, so busy, already-running, cancel and the status line agree.
@@ -25,13 +26,7 @@ class FEasySessionRequestQueue
 {
 public:
 
-	/** Runs the request that just became active. The request is read via GetActive. */
-	using FExecuteActive = TFunction<void()>;
-
-	/** Reacts to the active request passing its deadline. Must complete it. */
-	using FDeadlineReached = TFunction<void()>;
-
-	FEasySessionRequestQueue(FExecuteActive InExecuteActive, FDeadlineReached InDeadlineReached);
+	FEasySessionRequestQueue() = default;
 
 	/** Tickers bound to a raw class do not expire with it, so they are removed here. */
 	~FEasySessionRequestQueue();
@@ -42,7 +37,7 @@ public:
 	/**
 	 * Takes the active request out of its slot and schedules the next one for a later tick.
 	 * A completion callback may call the online subsystem freely, but the next queued request must not start inside that callstack, so it starts on a later tick.
-	 * Returns what was active so the caller can deliver its callbacks.
+	 * Returns what was active.
 	 */
 	TSharedPtr<FEasySessionRequest> PopActive();
 
@@ -97,14 +92,11 @@ private:
 	/** Stop checking deadlines. */
 	void StopWatchdog();
 
-	/** Watchdog tick: calls DeadlineReached once the active request has passed its deadline. */
+	/**
+	 * Watchdog tick: abandon the active request once it has passed its deadline.
+	 * The online subsystem is not guaranteed to fire the completion delegate, and a request that never completes would block every request behind it.
+	 */
 	bool TickWatchdog(float DeltaTime);
-
-	/** Runs the active request. Supplied by the subsystem. */
-	FExecuteActive ExecuteActive;
-
-	/** Handles a passed deadline. Supplied by the subsystem. */
-	FDeadlineReached DeadlineReached;
 
 	/** The request running right now, or null while the queue is idle. */
 	TSharedPtr<FEasySessionRequest> Active;

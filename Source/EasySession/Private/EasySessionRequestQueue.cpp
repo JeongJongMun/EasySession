@@ -6,12 +6,6 @@
 #include "EasySessionConfig.h"
 #include "HAL/PlatformTime.h"
 
-FEasySessionRequestQueue::FEasySessionRequestQueue(FExecuteActive InExecuteActive, FDeadlineReached InDeadlineReached)
-	: ExecuteActive(MoveTemp(InExecuteActive))
-	, DeadlineReached(MoveTemp(InDeadlineReached))
-{
-}
-
 FEasySessionRequestQueue::~FEasySessionRequestQueue()
 {
 	StopWatchdog();
@@ -218,7 +212,7 @@ void FEasySessionRequestQueue::ProcessNext()
 	Active->MarkStarted(FPlatformTime::Seconds(), GetDefault<UEasySessionConfig>()->RequestTimeoutSeconds);
 	StartWatchdog();
 
-	ExecuteActive();
+	Active->Start();
 }
 
 void FEasySessionRequestQueue::StartWatchdog()
@@ -249,7 +243,13 @@ bool FEasySessionRequestQueue::TickWatchdog(float DeltaTime)
 
 	if (Active->HasTimedOut(FPlatformTime::Seconds()))
 	{
-		DeadlineReached();
+		// The call may still complete later, so the request is abandoned and its Cleanup destroys a session the call still creates.
+		UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online subsystem. Continuing with the next request."),
+			Active->GetTypeName(), Active->GetElapsedSeconds(FPlatformTime::Seconds()));
+
+		// Complete takes the request out of the active slot, so a reference is kept until the call returns.
+		const TSharedRef<FEasySessionRequest> TimedOut = Active.ToSharedRef();
+		TimedOut->Complete(EEasySessionResult::Timeout, TEXT("The online subsystem did not respond in time."), /*bAbandoned*/ true);
 	}
 
 	return true;

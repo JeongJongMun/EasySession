@@ -99,9 +99,6 @@ public:
 	/** @return The server gate, for the credentials it enforces. */
 	const FEasySessionServerGate& GetGate() const { return *Gate; }
 
-	/** @return The join approval. The Join request uses its client side until that side moves into the request. */
-	FEasySessionJoinApproval& GetJoinApproval() { return *JoinApproval; }
-
 private:
 
 	/**
