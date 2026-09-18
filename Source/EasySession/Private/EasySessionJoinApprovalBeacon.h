@@ -145,7 +145,7 @@ public:
 	 * A world actor reaches the subsystem through the game instance and its public API, like any other actor.
 	 * Refuses when there is no subsystem to ask.
 	 *
-	 * @param OutReason Set to the message shown to the refused player.
+	 * @param Requester The id the joining player presented at beacon login.
 	 */
-	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& Password, FString& OutReason) const;
+	FEasyJoinApprovalResponse ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const;
 };

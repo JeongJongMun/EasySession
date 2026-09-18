@@ -7,6 +7,8 @@
 #include "GameFramework/Info.h"
 #include "EasySessionStateActor.generated.h"
 
+class UEasySessionSubsystem;
+
 /**
  * Session-wide replicated state, spawned and managed by the hosting subsystem.
  *
@@ -46,19 +48,22 @@ public:
 
 private:
 
-	/** Give the replicated state to the local subsystem, which stores it for its queries. */
-	void PushStateToSubsystem();
-
-	/** Give the replicated settings to the local subsystem, which updates its session copy. */
-	void PushSettingsToSubsystem();
-
-	/** Runs on clients whenever the host's state changes. */
+	/**
+	 * Runs on clients whenever the host's state changes.
+	 * Passes the state to the local subsystem, which returns it from its session state query.
+	 */
 	UFUNCTION()
 	void OnRep_HostSessionState();
 
-	/** Runs on clients whenever the host changes the session settings. */
+	/**
+	 * Runs on clients whenever the host changes the session settings.
+	 * Passes the settings to the local subsystem, which writes them into its session copy.
+	 */
 	UFUNCTION()
 	void OnRep_ReplicatedSessionSettings();
+
+	/** @return The subsystem of the game instance this actor's world belongs to. Null while the world has none. */
+	UEasySessionSubsystem* GetSubsystem() const;
 
 	/** The host's authoritative session lifecycle state. */
 	UPROPERTY(ReplicatedUsing = OnRep_HostSessionState)

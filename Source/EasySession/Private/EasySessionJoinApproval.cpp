@@ -9,32 +9,12 @@
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
-#include "GameFramework/GameModeBase.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
 
 FEasySessionJoinApproval::~FEasySessionJoinApproval()
 {
-	Shutdown();
-}
-
-void FEasySessionJoinApproval::Initialize()
-{
-	GameModeInitializedHandle = FGameModeEvents::GameModeInitializedEvent.AddRaw(this, &FEasySessionJoinApproval::HandleGameModeInitialized);
-}
-
-void FEasySessionJoinApproval::Shutdown()
-{
-	if (GameModeInitializedHandle.IsValid())
-	{
-		FGameModeEvents::GameModeInitializedEvent.Remove(GameModeInitializedHandle);
-		GameModeInitializedHandle.Reset();
-	}
-
-	FTSTicker::GetCoreTicker().RemoveTicker(DeferredEnsureHostHandle);
-	DeferredEnsureHostHandle.Reset();
-
 	StopHost();
 	StopClient();
 }
@@ -150,26 +130,4 @@ void FEasySessionJoinApproval::StopClient()
 		Client->DestroyBeacon();
 	}
 	BeaconClient.Reset();
-}
-
-void FEasySessionJoinApproval::HandleGameModeInitialized(AGameModeBase* GameMode)
-{
-	// Fires on the server for every world, ours or another PIE instance's.
-	const UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-	if (GameMode == nullptr || OwnWorld == nullptr || GameMode->GetWorld() != OwnWorld)
-	{
-		return;
-	}
-
-	if (Owner.IsSessionAuthority())
-	{
-		// One tick later, so a beacon host the project spawns in RegisterServer or BeginPlay exists first and gets reused.
-		FTSTicker::GetCoreTicker().RemoveTicker(DeferredEnsureHostHandle);
-		DeferredEnsureHostHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float)
-		{
-			DeferredEnsureHostHandle.Reset();
-			EnsureHost();
-			return false;
-		}));
-	}
 }

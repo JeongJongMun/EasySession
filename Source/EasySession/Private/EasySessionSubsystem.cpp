@@ -6,6 +6,7 @@
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionBeaconPort.h"
+#include "EasySessionHost.h"
 #include "EasyFriendSessionOperation.h"
 #include "EasyMatchmakingOperation.h"
 #include "EasySessionOperation.h"
@@ -13,14 +14,12 @@
 #include "EasySessionRequestQueue.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionSocial.h"
-#include "EasySessionStateActor.h"
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionJoinApproval.h"
 #include "EasySessionConfig.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
-#include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "Engine/NetDriver.h"
 #include "GameFramework/GameStateBase.h"
@@ -56,11 +55,8 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		[this]() { HandleRequestDeadline(); });
 	Travel = MakeUnique<FEasySessionTravel>(*this);
 	Social = MakeUnique<FEasySessionSocial>(*this, *Travel);
-	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
-	ServerGate->Initialize();
 	BeaconPort = MakeUnique<FEasySessionBeaconPort>();
-	JoinApproval = MakeUnique<FEasySessionJoinApproval>(*this, *BeaconPort);
-	JoinApproval->Initialize();
+	Host = MakeUnique<FEasySessionHost>(*this, *BeaconPort);
 
 	if (GEngine != nullptr)
 	{
@@ -86,8 +82,6 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		InviteBindTickerHandle.Reset();
 		return false;
 	}), 0.5f);
-
-	WorldInitializedActorsHandle = FWorldDelegates::OnWorldInitializedActors.AddUObject(this, &UEasySessionSubsystem::HandleWorldInitializedActors);
 
 	// Requests finish on a later tick and travels end inside the engine, so the busy flag is watched here rather than at every call site.
 	BusyTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
@@ -127,12 +121,6 @@ void UEasySessionSubsystem::Deinitialize()
 		TravelFailureHandle.Reset();
 	}
 
-	if (WorldInitializedActorsHandle.IsValid())
-	{
-		FWorldDelegates::OnWorldInitializedActors.Remove(WorldInitializedActorsHandle);
-		WorldInitializedActorsHandle.Reset();
-	}
-
 	if (DedicatedAutoHostTickerHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(DedicatedAutoHostTickerHandle);
@@ -169,9 +157,8 @@ void UEasySessionSubsystem::Deinitialize()
 
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
-	JoinApproval.Reset();
+	Host.Reset();
 	BeaconPort.Reset();
-	ServerGate.Reset();
 	Social.Reset();
 	Travel.Reset();
 	RequestQueue.Reset();
@@ -204,16 +191,9 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	EnqueueRequest(Request);
 }
 
-EEasyJoinApprovalResult UEasySessionSubsystem::ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const
+FEasyJoinApprovalResponse UEasySessionSubsystem::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
 {
-	if (!ServerGate.IsValid())
-	{
-		const FEasyJoinApprovalResponse Response = FEasyJoinApprovalResponse::NotAnswering();
-		OutReason = Response.ReasonText;
-		return Response.Result;
-	}
-
-	return ServerGate->ApproveJoin(PlayerId, SuppliedPassword, OutReason);
+	return Host.IsValid() ? Host->ApproveJoin(Request, Requester) : FEasyJoinApprovalResponse::NotAnswering();
 }
 
 bool UEasySessionSubsystem::CancelSearch(const UObject* Requester)
@@ -438,10 +418,10 @@ FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
 
 	// Plain text on purpose: this game already holds the password to check players
 	// against, and blanking it here would leave no way to remove one through Update.
-	if (ServerGate.IsValid())
+	if (Host.IsValid())
 	{
-		Params.Password = ServerGate->GetSessionPassword();
-		Params.bFriendsBypassPassword = ServerGate->GetFriendsBypassPassword();
+		Params.Password = Host->GetGate().GetSessionPassword();
+		Params.bFriendsBypassPassword = Host->GetGate().GetFriendsBypassPassword();
 	}
 
 	return Params;
@@ -491,42 +471,18 @@ bool UEasySessionSubsystem::IsNetworkServer() const
 
 bool UEasySessionSubsystem::IsSessionAuthority() const
 {
-	return bCreatedActiveSession && IsInSession();
+	// FEasySessionHost sets bHosting when this process creates the session, and a joined session keeps the default false.
+	// bHosting is a member of the session object, so the authority ends when the session is destroyed, whatever destroyed it.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	return NamedSession != nullptr && NamedSession->bHosting;
 }
 
 bool UEasySessionSubsystem::IsHost() const
 {
-	// A dedicated server has no local player, so it can never be the hosting player.
-	// NULL sets bHosting when it creates a session (OnlineSessionInterfaceNull.cpp), which would otherwise report a LAN dedicated server as the host.
+	// A dedicated server has the authority but no local player, so it can never be the hosting player.
 	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World != nullptr && World->GetNetMode() == NM_DedicatedServer)
-	{
-		return false;
-	}
-
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid())
-	{
-		return false;
-	}
-
-	const FNamedOnlineSession* NamedSession = Sessions->GetNamedSession(NAME_GameSession);
-	if (NamedSession == nullptr)
-	{
-		return false;
-	}
-
-	// NULL sets bHosting when creating a session, but Steam never writes the flag, so
-	// fall back to comparing the session owner's id with the local player (ids, not
-	// names, for the same reason as the host marker in GetSessionPlayerInfos).
-	if (NamedSession->bHosting)
-	{
-		return true;
-	}
-
-	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
-	const FUniqueNetIdRepl LocalId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-	return NamedSession->OwningUserId.IsValid() && LocalId.GetUniqueNetId().IsValid() && *LocalId.GetUniqueNetId() == *NamedSession->OwningUserId;
+	return IsSessionAuthority() && World != nullptr && World->GetNetMode() != NM_DedicatedServer;
 }
 
 TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
@@ -553,7 +509,7 @@ TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
 
 FString UEasySessionSubsystem::GetSessionPassword() const
 {
-	return ServerGate.IsValid() ? ServerGate->GetSessionPassword() : FString();
+	return Host.IsValid() ? Host->GetGate().GetSessionPassword() : FString();
 }
 
 FString UEasySessionSubsystem::GetSessionDisplayName() const
@@ -741,7 +697,7 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 	// The map changes on the next frame, and the arrival world starts its own beacon listener.
 	// Releasing this one now frees the beacon port before that.
 	// Without this the new listener fails to bind.
-	JoinApproval->StopHost();
+	Host->DestroyWorldActors();
 	BeaconPort->ReleaseForTravel();
 
 	Travel->MarkStarted(TEXT("ServerTravelToMap"));
@@ -872,7 +828,7 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 	if (IsSessionAuthority())
 	{
 		// ServerTravelToMap stopped the beacon for a world that never arrived.
-		JoinApproval->EnsureHost();
+		Host->SpawnWorldActors();
 		return;
 	}
 
@@ -1005,118 +961,6 @@ void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 	Social->ReadFriends(MoveTemp(OnComplete));
 }
 
-void UEasySessionSubsystem::EnsureStateActor()
-{
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr || World->GetNetMode() == NM_Client)
-	{
-		return;
-	}
-
-	if (StateActor.IsValid() && StateActor->GetWorld() == World)
-	{
-		PushHostSessionState();
-		PushReplicatedSessionSettings();
-		return;
-	}
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.ObjectFlags |= RF_Transient;
-	StateActor = World->SpawnActor<AEasySessionStateActor>(SpawnParams);
-	PushHostSessionState();
-	PushReplicatedSessionSettings();
-}
-
-void UEasySessionSubsystem::PushHostSessionState()
-{
-	if (AEasySessionStateActor* Actor = StateActor.Get())
-	{
-		Actor->SetHostSessionState(GetLocalSessionState());
-	}
-}
-
-void UEasySessionSubsystem::PushReplicatedSessionSettings()
-{
-	AEasySessionStateActor* Actor = StateActor.Get();
-	if (Actor == nullptr)
-	{
-		return;
-	}
-
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return;
-	}
-
-	const FOnlineSessionSettings& Settings = NamedSession->SessionSettings;
-
-	FEasySessionReplicatedSettings Payload;
-	Payload.MaxPlayers = Settings.NumPublicConnections;
-	Payload.bShouldAdvertise = Settings.bShouldAdvertise;
-	Payload.bAllowJoinInProgress = Settings.bAllowJoinInProgress;
-	Payload.bAllowInvites = Settings.bAllowInvites;
-	Payload.bValid = true;
-
-	for (const TPair<FName, FOnlineSessionSetting>& Setting : Settings.Settings)
-	{
-		if (Setting.Key == EasySession::SettingKey_DisplayName)
-		{
-			Payload.SessionDisplayName = Setting.Value.Data.ToString();
-		}
-		else if (Setting.Key == EasySession::SettingKey_Hidden)
-		{
-			int32 Hidden = 0;
-			Setting.Value.Data.GetValue(Hidden);
-			Payload.bHidden = Hidden != 0;
-		}
-		else if (Setting.Key == EasySession::SettingKey_PasswordProtected)
-		{
-			int32 Protected = 0;
-			Setting.Value.Data.GetValue(Protected);
-			Payload.bPasswordProtected = Protected != 0;
-		}
-		else if (Setting.Key == EasySession::SettingKey_Region)
-		{
-			int32 RegionValue = 0;
-			Setting.Value.Data.GetValue(RegionValue);
-			Payload.Region = static_cast<EEasySessionRegion>(RegionValue);
-		}
-		else if (Setting.Key == EasySession::SettingKey_JoinCode)
-		{
-			Setting.Value.Data.GetValue(Payload.JoinCode);
-		}
-		else if (!EasySession::IsReservedSettingKey(Setting.Key))
-		{
-			FEasySessionReplicatedSetting Custom;
-			Custom.Key = Setting.Key.ToString();
-			Custom.Value = Setting.Value.Data.ToString();
-			Payload.CustomSettings.Add(MoveTemp(Custom));
-		}
-	}
-
-	Actor->SetReplicatedSessionSettings(Payload);
-}
-
-void UEasySessionSubsystem::HandleWorldInitializedActors(const FActorsInitializedParams& Params)
-{
-	// Every map load (hard or seamless) creates a fresh world, so the host respawns
-	// the replicated state actor there and pushes the current state into it again.
-	if (Params.World == nullptr || Params.World->GetGameInstance() != GetGameInstance())
-	{
-		return;
-	}
-
-	// The net mode is read from the world being initialized, not from IsNetworkServer:
-	// the game instance may still return the previous world when this fires.
-	if (Params.World->GetNetMode() != NM_Client && IsSessionAuthority())
-	{
-		StateActor.Reset();
-		EnsureStateActor();
-	}
-}
-
 void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState HostState)
 {
 	// Record what the host reports; that is all a client does with it. Get Session
@@ -1196,10 +1040,7 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySes
 	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
 
 	// Tell every remote client to leave with the reason before the session is destroyed.
-	if (AEasySessionStateActor* Actor = StateActor.Get())
-	{
-		Actor->MulticastReturnToMenu(Reason);
-	}
+	Host->TellEveryoneToReturnToMenu(Reason);
 
 	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)

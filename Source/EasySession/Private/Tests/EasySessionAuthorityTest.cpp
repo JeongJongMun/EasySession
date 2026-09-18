@@ -37,33 +37,6 @@ namespace EasySessionAuthorityTest
 		return Params;
 	}
 
-	/**
-	 * Reproduce what a dedicated server on Steam looks like from this plugin's side.
-	 *
-	 * Two independent facts make IsHost() false there, and this clears the only one a
-	 * headless test would otherwise still have: NULL sets bHosting when it creates a
-	 * session (OnlineSessionInterfaceNull.cpp, CreateSession) while Steam never writes
-	 * the field at all. The other fact needs no setup. A test game instance has no
-	 * local player either, so the owner-id comparison cannot succeed.
-	 */
-	static bool ClearHostingFlag(UGameInstance* GameInstance)
-	{
-		const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GameInstance->GetWorld());
-		if (!Sessions.IsValid())
-		{
-			return false;
-		}
-
-		FNamedOnlineSession* NamedSession = Sessions->GetNamedSession(NAME_GameSession);
-		if (NamedSession == nullptr)
-		{
-			return false;
-		}
-
-		NamedSession->bHosting = false;
-		return true;
-	}
-
 	static void Finish(FTestState& State)
 	{
 		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
@@ -97,13 +70,10 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-			// Take away the flag the online subsystem would not have set anyway.
-			CurrentTest->TestTrue(TEXT("Hosting flag cleared"), ClearHostingFlag(State->GameInstance.Get()));
-
-			// With no flag and no local player there is no hosting player to find, which
-			// is exactly the state a dedicated server is in. Losing this must not cost
-			// the process its authority over the session it created.
-			CurrentTest->TestFalse(TEXT("No hosting player is reported"), Subsystem->IsHost());
+			// A test game instance has no local player, which is the state a dedicated server is in.
+			// The process still created the session, so it keeps the authority over it.
+			CurrentTest->TestEqual(TEXT("There is no local player"), State->GameInstance->GetNumLocalPlayers(), 0);
+			CurrentTest->TestTrue(TEXT("The process that created the session has the authority"), Subsystem->IsSessionAuthority());
 			CurrentTest->TestTrue(TEXT("Session still exists"), Subsystem->IsInSession());
 
 			Subsystem->DestroyEasySessionForEveryone(FText::FromString(TEXT("Server shutting the match down")));
@@ -125,10 +95,9 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 }
 
 /**
- * Server authority must not depend on there being a hosting player. A dedicated server
- * has no local player, and Steam never sets the session's hosting flag, so the two
- * things IsHost() looks at are both absent there, yet that process is still the
- * server of the session it created.
+ * Server authority must not depend on there being a hosting player.
+ * A dedicated server has no local player, yet that process is still the server of the session it created.
+ * The authority is FNamedOnlineSession's bHosting, which FEasySessionHost sets when the create completes, so no local player is involved.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDedicatedAuthorityTest, "EasySession.Authority.ServerKeepsAuthorityWithoutHostingPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)

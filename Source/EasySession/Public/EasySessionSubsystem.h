@@ -26,13 +26,12 @@ class AController;
 class AGameModeBase;
 class APlayerController;
 class FEasySessionBeaconPort;
-class FEasySessionJoinApproval;
+class FEasySessionHost;
 class FEasySessionRequest;
 class FEasySessionRequestQueue;
-class FEasySessionServerGate;
 class FEasySessionSocial;
 class FEasySessionTravel;
-enum class EEasyJoinApprovalResult : uint8;
+struct FEasyJoinApprovalRequest;
 struct FEasyJoinApprovalResponse;
 
 /** Multicast event fired when a session operation completes. */
@@ -328,12 +327,15 @@ public:
 
 	/**
 	 * @return Whether the local player is hosting the current session.
-	 *         Always false on a dedicated server, which has no local player. Call IsSessionAuthority there instead.
+	 *         The same as IsSessionAuthority, except on a dedicated server.
+	 *         Always false there, because a dedicated server has no local player.
+	 *         Call IsSessionAuthority there instead.
 	 */
 	bool IsHost() const;
 
 	/**
 	 * @return Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
+	 *         Read from FNamedOnlineSession's bHosting, which this plugin sets when the create completes because Steam never does.
 	 *         Is Host is a different question, and false on a dedicated server.
 	 */
 	bool IsSessionAuthority() const;
@@ -414,15 +416,16 @@ public:
 	bool CancelSearch(const UObject* Requester);
 
 	/**
-	 * Host: decide whether a joining player may join the session, as the server gate decides it.
-	 * The join approval beacon asks this before the player travels.
-	 * PreLogin asks the same server gate when the player arrives, so the two decisions cannot differ.
+	 * Host: decide whether the requester may join the session, as the server gate decides it.
+	 * The join approval beacon asks this before the player travels, so a refused player never starts the travel.
+	 * PreLogin enforces the same decision when the player arrives, which also covers a player who never requested join approval.
 	 * The beacon is a world actor, and world actors reach this subsystem through its public API rather than through a collaborator.
 	 * Refuses the join while no server gate exists.
 	 *
-	 * @param OutReason Set to the message shown to the refused player. Untouched when the join is approved.
+	 * @param Request What the joining player sent over the beacon.
+	 * @param Requester The id the joining player presented at beacon login.
 	 */
-	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
+	FEasyJoinApprovalResponse ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const;
 
 	/**
 	 * Matchmaking reads this to tell a session being destroyed from one that stays.
@@ -632,18 +635,6 @@ private:
 	bool IsNetworkServer() const;
 
 	/**
-	 * Server: spawn the replicated state actor if the current world has none, then push the current session state into it.
-	 * Clients never spawn it.
-	 */
-	void EnsureStateActor();
-
-	/** Server: push the current local session state to the replicated state actor. */
-	void PushHostSessionState();
-
-	/** Server: push the member-visible settings of the current session to the replicated state actor. */
-	void PushReplicatedSessionSettings();
-
-	/**
 	 * Re-advertise the session with the in-progress key set, as the second phase of the Start or End request that is running.
 	 * Staying inside that request keeps the queue in order: no other request can start while it is running.
 	 *
@@ -654,9 +645,6 @@ private:
 	/** Finish a Start or End request whose re-advertise phase is over, telling the caller the match state change succeeded either way. */
 	void CompleteMatchStateRequest(bool bAdvertised);
 
-	/** Spawn or refresh the state actor after every map load while hosting. */
-	void HandleWorldInitializedActors(const struct FActorsInitializedParams& Params);
-
 	/** Create the automatic session when running as a dedicated server. */
 	void AutoHostDedicatedServerSession();
 
@@ -664,13 +652,6 @@ private:
 
 	/** The fix appended to every RequiresSessionAuthority message. Is Easy Session Host would be wrong here, because it is false on a dedicated server. */
 	static constexpr const TCHAR* RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
-
-	/**
-	 * Whether the session that exists now was created by this process. Recorded here because the engine offers no reliable value.
-	 * Steam never writes FNamedOnlineSession's bHosting, and comparing the session owner against the local player fails on a dedicated server, which has none.
-	 * Read it through IsSessionAuthority, never directly, so that losing the session by any route also clears the authority.
-	 */
-	bool bCreatedActiveSession = false;
 
 	/** The native search object of the running Find request. */
 	TSharedPtr<FOnlineSessionSearch> ActiveSearch;
@@ -687,9 +668,6 @@ private:
 	FDelegateHandle UpdateCompleteHandle;
 	FDelegateHandle StartCompleteHandle;
 	FDelegateHandle EndCompleteHandle;
-
-	/** Replicated session-wide state actor. Spawned by the host, observed by clients. */
-	TWeakObjectPtr<class AEasySessionStateActor> StateActor;
 
 	/** Latest host session state received through replication (clients only). */
 	EEasySessionState ReplicatedHostSessionState = EEasySessionState::NoSession;
@@ -708,9 +686,6 @@ private:
 
 	/** Latest session settings applied through replication (clients only). Guards against re-applying the same payload. */
 	FEasySessionReplicatedSettings AppliedReplicatedSessionSettings;
-
-	/** Delegate handle for per-map state actor respawns. */
-	FDelegateHandle WorldInitializedActorsHandle;
 
 	/** Ticker that waits for the session interface before binding the invite delegates. */
 	FTSTicker::FDelegateHandle InviteBindTickerHandle;
@@ -738,7 +713,6 @@ private:
 	TUniquePtr<FEasySessionRequestQueue> RequestQueue;
 	TUniquePtr<FEasySessionTravel> Travel;
 	TUniquePtr<FEasySessionSocial> Social;
-	TUniquePtr<FEasySessionServerGate> ServerGate;
 	TUniquePtr<FEasySessionBeaconPort> BeaconPort;
-	TUniquePtr<FEasySessionJoinApproval> JoinApproval;
+	TUniquePtr<FEasySessionHost> Host;
 };

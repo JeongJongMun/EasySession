@@ -10,10 +10,9 @@
 
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasySessionHost.h"
 #include "EasySessionRequest.h"
 #include "EasySessionRequestQueue.h"
-#include "EasySessionServerGate.h"
-#include "EasySessionStateActor.h"
 #include "EasySessionTravel.h"
 #include "EasySessionJoinApproval.h"
 #include "Engine/GameInstance.h"
@@ -180,7 +179,7 @@ void UEasySessionSubsystem::CleanupRequest(const FEasySessionRequest& Request, b
 	// destroys the beacon client, so a late response cannot reach a finished request.
 	if (Request.Type == FEasySessionRequest::EType::Join)
 	{
-		JoinApproval->StopClient();
+		Host->GetJoinApproval().StopClient();
 	}
 
 	// A late create leaves a session that would block the next one.
@@ -330,11 +329,7 @@ void UEasySessionSubsystem::CompleteMatchStateRequest(bool bAdvertised)
 		UE_LOG(LogEasySession, Warning, TEXT("The match state changed but re-advertising it failed - searching players see the old value until the next update."));
 	}
 
-	// The online subsystem only changes this game's own copy of the session, so the new state is replicated for the clients here now and the ones that join later.
-	if (IsSessionAuthority())
-	{
-		PushHostSessionState();
-	}
+	Host->OnMatchStateChanged();
 
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
@@ -468,7 +463,7 @@ void UEasySessionSubsystem::ExecuteJoin()
 void UEasySessionSubsystem::RequestJoinApproval()
 {
 	// Asked before the online subsystem join, so a refusal costs no session slot and no map load.
-	JoinApproval->RequestJoinApproval(GetActiveRequest()->JoinTarget, GetActiveRequest()->JoinPassword,
+	Host->GetJoinApproval().RequestJoinApproval(GetActiveRequest()->JoinTarget, GetActiveRequest()->JoinPassword,
 		FEasyJoinApprovalComplete::CreateUObject(this, &UEasySessionSubsystem::HandleJoinApprovalResponse));
 }
 
@@ -663,12 +658,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 
-	// This process created the session, so it is the session's server, on a dedicated
-	// server just as much as on a listen server.
-	bCreatedActiveSession = true;
-
-	ServerGate->SetSessionCredentials(HostParams.Password.TrimStartAndEnd(), HostParams.bFriendsBypassPassword);
-	EnsureStateActor();
+	Host->OnSessionCreated(HostParams);
 
 	if (HostParams.InitialMapName.IsEmpty())
 	{
@@ -682,7 +672,7 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 		}
 
 		Travel->ListenOnCurrentMap(HostParams);
-		JoinApproval->EnsureHost();
+		Host->SpawnWorldActors();
 	}
 	else
 	{
@@ -840,9 +830,6 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
-	// This process joined the session rather than creating it, so it is not the session's server.
-	bCreatedActiveSession = false;
-
 	// Requested before the completion below, so Is Busy already covers the coming map load. The map itself loads next tick.
 	Travel->TravelToJoinedSession(ConnectString, JoinPassword, JoinTravelOptions);
 
@@ -863,16 +850,9 @@ void UEasySessionSubsystem::HandleDestroySessionComplete(FName SessionName, bool
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
-	bCreatedActiveSession = false;
-	ServerGate->ClearSessionCredentials();
-	JoinApproval->StopHost();
+	Host->OnSessionDestroyed();
 
-	// The session is gone. Destroy the replicated state actor and clear the cached host state.
-	if (AEasySessionStateActor* Actor = StateActor.Get())
-	{
-		Actor->Destroy();
-	}
-	StateActor.Reset();
+	// A client also clears the host state it received through replication.
 	ReplicatedHostSessionState = EEasySessionState::NoSession;
 	bHasReplicatedHostSessionState = false;
 
@@ -907,9 +887,7 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 
 	UE_LOG(LogEasySession, Log, TEXT("Session updated successfully."));
 
-	// Only now, so a refused update leaves the gate matching what is advertised.
 	const FEasySessionSettings& Params = GetActiveRequest()->Settings;
-	ServerGate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
 
 	// The engine's own cap follows the advertised one, so its "Server full" refusal tracks the new Max Players.
 	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
@@ -927,8 +905,8 @@ void UEasySessionSubsystem::HandleUpdateSessionComplete(FName SessionName, bool 
 			FMath::Max(0, NamedSession->SessionSettings.NumPublicConnections - NamedSession->RegisteredPlayers.Num());
 	}
 
-	// Joined players learn about the update through the replicated state actor.
-	PushReplicatedSessionSettings();
+	// Only now, so a refused update leaves the server gate matching what is advertised.
+	Host->OnSettingsUpdated(Params);
 
 	CompleteActiveRequest(EEasySessionResult::Success);
 }

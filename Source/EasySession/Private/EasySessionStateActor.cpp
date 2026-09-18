@@ -41,8 +41,7 @@ void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& R
 		return;
 	}
 
-	UGameInstance* GameInstance = GetGameInstance();
-	if (UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr)
+	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
 		Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostDestroyedSession, Reason);
 	}
@@ -52,38 +51,32 @@ void AEasySessionStateActor::PostNetInit()
 {
 	Super::PostNetInit();
 
-	// Covers the initial replication on players who join late, where the property may
-	// arrive with the actor before any OnRep fires.
-	PushStateToSubsystem();
-	PushSettingsToSubsystem();
+	// A property that arrives with the actor and equals its default fires no OnRep.
+	// Players who join late get both calls here, and the subsystem ignores a value it already has.
+	OnRep_HostSessionState();
+	OnRep_ReplicatedSessionSettings();
 }
 
 void AEasySessionStateActor::OnRep_HostSessionState()
 {
-	PushStateToSubsystem();
-}
-
-void AEasySessionStateActor::OnRep_ReplicatedSessionSettings()
-{
-	PushSettingsToSubsystem();
-}
-
-void AEasySessionStateActor::PushStateToSubsystem()
-{
-	UGameInstance* GameInstance = GetGameInstance();
-	if (UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr)
+	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
 		Subsystem->HandleReplicatedHostSessionState(HostSessionState);
 	}
 }
 
-void AEasySessionStateActor::PushSettingsToSubsystem()
+void AEasySessionStateActor::OnRep_ReplicatedSessionSettings()
 {
-	UGameInstance* GameInstance = GetGameInstance();
-	if (UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr)
+	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
 		Subsystem->HandleReplicatedSessionSettings(ReplicatedSessionSettings);
 	}
+}
+
+UEasySessionSubsystem* AEasySessionStateActor::GetSubsystem() const
+{
+	const UGameInstance* GameInstance = GetGameInstance();
+	return GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
 }
 
 void AEasySessionStateActor::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const

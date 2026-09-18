@@ -76,7 +76,7 @@ void AEasySessionJoinApprovalBeaconClient::ServerRequestJoinApproval_Implementat
 	FEasyJoinApprovalResponse Response;
 	if (const AEasySessionJoinApprovalBeaconHostObject* HostObject = Cast<AEasySessionJoinApprovalBeaconHostObject>(GetBeaconOwner()))
 	{
-		Response.Result = HostObject->ApproveJoin(GetUniqueId(), Request.Credential, Response.ReasonText);
+		Response = HostObject->ApproveJoin(Request, GetUniqueId());
 	}
 	else
 	{
@@ -148,16 +148,9 @@ AEasySessionJoinApprovalBeaconHostObject::AEasySessionJoinApprovalBeaconHostObje
 	BeaconTypeName = ClientBeaconActorClass->GetName();
 }
 
-EEasyJoinApprovalResult AEasySessionJoinApprovalBeaconHostObject::ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& Password, FString& OutReason) const
+FEasyJoinApprovalResponse AEasySessionJoinApprovalBeaconHostObject::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
 {
 	const UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
 	const UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
-	if (Subsystem == nullptr)
-	{
-		const FEasyJoinApprovalResponse Response = FEasyJoinApprovalResponse::NotAnswering();
-		OutReason = Response.ReasonText;
-		return Response.Result;
-	}
-
-	return Subsystem->ApproveJoin(PlayerId, Password, OutReason);
+	return Subsystem != nullptr ? Subsystem->ApproveJoin(Request, Requester) : FEasyJoinApprovalResponse::NotAnswering();
 }

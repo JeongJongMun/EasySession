@@ -8,6 +8,7 @@
 
 #include "EasyMatchmakingPolicy.h"
 #include "EasySessionBeaconPort.h"
+#include "EasySessionHost.h"
 #include "EasySessionJoinApproval.h"
 #include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
@@ -33,12 +34,17 @@ class FEasySessionTestAccess
 public:
 
 	/**
-	 * Pretend this process did or did not create the active session.
-	 * Creating or joining normally sets this, and a headless test has no second process to join.
+	 * Pretend this process did or did not create the active session, by writing the bHosting flag IsSessionAuthority reads.
+	 * Creating normally sets it, and a headless test has no second process to join.
+	 * Does nothing while no session exists.
 	 */
 	static void SetCreatedActiveSession(UEasySessionSubsystem& Subsystem, bool bCreated)
 	{
-		Subsystem.bCreatedActiveSession = bCreated;
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr)
+		{
+			NamedSession->bHosting = bCreated;
+		}
 	}
 
 	/** The subsystem's request queue, so a test can register operations without a real matchmaking or friend search. */
@@ -59,7 +65,7 @@ public:
 	/** The settings payload the state actor would replicate to session members. Default (bValid false) while no actor exists. */
 	static FEasySessionReplicatedSettings GetStateActorReplicatedSettings(const UEasySessionSubsystem& Subsystem)
 	{
-		const AEasySessionStateActor* Actor = Subsystem.StateActor.Get();
+		const AEasySessionStateActor* Actor = Subsystem.Host.IsValid() ? Subsystem.Host->StateActor.Get() : nullptr;
 		return Actor != nullptr ? Actor->GetReplicatedSessionSettings() : FEasySessionReplicatedSettings();
 	}
 
@@ -75,10 +81,26 @@ public:
 		return Subsystem.ActiveSearch.IsValid();
 	}
 
+	/** Whether the host's replicated state actor exists. */
+	static bool HasStateActor(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.Host.IsValid() && Subsystem.Host->StateActor.IsValid();
+	}
+
+	/**
+	 * Destroy the state actor and release the beacon port, which is what a travel does to the host side.
+	 * A headless test cannot load a second map, so this stands in for the world change.
+	 */
+	static void DestroyHostSideActors(UEasySessionSubsystem& Subsystem)
+	{
+		Subsystem.Host->DestroyWorldActors();
+		Subsystem.BeaconPort->ReleaseForTravel();
+	}
+
 	/** The password arriving players are actually checked against. */
 	static FString GetEnforcedSessionPassword(const UEasySessionSubsystem& Subsystem)
 	{
-		return Subsystem.ServerGate.IsValid() ? Subsystem.ServerGate->GetSessionPassword() : FString();
+		return Subsystem.Host.IsValid() ? Subsystem.Host->GetGate().GetSessionPassword() : FString();
 	}
 
 	/**
@@ -224,10 +246,9 @@ public:
 	/** Ask the server gate directly whether a player may join. The approval beacon and PreLogin both call this. */
 	static EEasyJoinApprovalResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& SuppliedPassword)
 	{
-		FString Reason;
-		return Subsystem.ServerGate.IsValid()
-			? Subsystem.ServerGate->ApproveJoin(FUniqueNetIdRepl(), SuppliedPassword, Reason)
-			: EEasyJoinApprovalResult::Refused;
+		FEasyJoinApprovalRequest Request;
+		Request.Credential = SuppliedPassword;
+		return Subsystem.ApproveJoin(Request, FUniqueNetIdRepl()).Result;
 	}
 
 	/**

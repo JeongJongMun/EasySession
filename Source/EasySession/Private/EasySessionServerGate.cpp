@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasySessionJoinApprovalBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -15,6 +16,18 @@
 #include "Interfaces/OnlineFriendsInterface.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
+
+namespace
+{
+	/** A response with this result, and the message a refused player sees. */
+	FEasyJoinApprovalResponse MakeResponse(EEasyJoinApprovalResult Result, const FText& Reason = FText::GetEmpty())
+	{
+		FEasyJoinApprovalResponse Response;
+		Response.Result = Result;
+		Response.ReasonText = Reason.ToString();
+		return Response;
+	}
+}
 
 FEasySessionServerGate::~FEasySessionServerGate()
 {
@@ -55,8 +68,12 @@ bool FEasySessionServerGate::IsOwnWorld(const AGameModeBase* GameMode) const
 	return GameMode != nullptr && OwnWorld != nullptr && GameMode->GetWorld() == OwnWorld;
 }
 
-EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const
+FEasyJoinApprovalResponse FEasySessionServerGate::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
 {
+	// The requester is the id the engine checked at login.
+	// The ids inside the request come from the joining player and are not trusted for this decision.
+	const FUniqueNetIdRepl& PlayerId = Requester;
+	const FString& SuppliedPassword = Request.Credential;
 	UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
 
 	// Searching already hides a started session, but a result fetched before the match
@@ -70,8 +87,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 		if (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress)
 		{
 			UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - the match is in progress and join-in-progress is disabled."), *PlayerId.ToString());
-			OutReason = NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress.").ToString();
-			return EEasyJoinApprovalResult::Refused;
+			return MakeResponse(EEasyJoinApprovalResult::Refused, NSLOCTEXT("EasySession", "MatchInProgress", "The match is already in progress."));
 		}
 	}
 
@@ -80,18 +96,17 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 	if (GameMode != nullptr && GameMode->GameSession != nullptr && GameMode->GameSession->AtCapacity(/*bSpectator=*/ false))
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - the session is full."), *PlayerId.ToString());
-		OutReason = NSLOCTEXT("EasySession", "SessionFull", "The session is full.").ToString();
-		return EEasyJoinApprovalResult::SessionFull;
+		return MakeResponse(EEasyJoinApprovalResult::SessionFull, NSLOCTEXT("EasySession", "SessionFull", "The session is full."));
 	}
 
 	if (SessionPassword.IsEmpty())
 	{
-		return EEasyJoinApprovalResult::Approved;
+		return MakeResponse(EEasyJoinApprovalResult::Approved);
 	}
 
 	if (SuppliedPassword.TrimStartAndEnd().Equals(SessionPassword, ESearchCase::CaseSensitive))
 	{
-		return EEasyJoinApprovalResult::Approved;
+		return MakeResponse(EEasyJoinApprovalResult::Approved);
 	}
 
 	// Invited players arrive without the password, and invites only go to friends,
@@ -103,7 +118,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 		if (Friends.IsValid() && Friends->IsFriend(0, *PlayerId.GetUniqueNetId(), EFriendsLists::ToString(EFriendsLists::Default)))
 		{
 			UE_LOG(LogEasySession, Log, TEXT("ServerGate: '%s' joins without the password - friend of the host."), *PlayerId.ToString());
-			return EEasyJoinApprovalResult::Approved;
+			return MakeResponse(EEasyJoinApprovalResult::Approved);
 		}
 	}
 
@@ -114,8 +129,7 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 		SuppliedPassword.IsEmpty()
 			? TEXT("no session password was supplied")
 			: TEXT("the supplied session password did not match"));
-	OutReason = NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password.").ToString();
-	return EEasyJoinApprovalResult::WrongPassword;
+	return MakeResponse(EEasyJoinApprovalResult::WrongPassword, NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password."));
 }
 
 void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage)
@@ -164,9 +178,13 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 			EasySessionAddress::ParseTravelOption(PendingConnection->RequestURL, EasySession::TravelOption_Password));
 	}
 
-	FString Reason;
-	if (ApproveJoin(NewPlayer, SuppliedPassword, Reason) != EEasyJoinApprovalResult::Approved)
+	FEasyJoinApprovalRequest Request;
+	Request.PartyMembers = { NewPlayer };
+	Request.Credential = SuppliedPassword;
+
+	const FEasyJoinApprovalResponse Response = ApproveJoin(Request, NewPlayer);
+	if (Response.Result != EEasyJoinApprovalResult::Approved)
 	{
-		ErrorMessage = RefusalMark + Reason;
+		ErrorMessage = RefusalMark + Response.ReasonText;
 	}
 }

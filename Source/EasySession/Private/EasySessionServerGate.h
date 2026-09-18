@@ -7,6 +7,8 @@
 
 class AGameModeBase;
 class UEasySessionSubsystem;
+struct FEasyJoinApprovalRequest;
+struct FEasyJoinApprovalResponse;
 struct FUniqueNetIdRepl;
 
 /** Result of a join approval check. Decided by FEasySessionServerGate. */
@@ -33,12 +35,14 @@ enum class EEasyJoinApprovalResult : uint8
  * Decides who may join the session.
  *
  * Runs on the server only, because game modes do not exist on clients.
- * ApproveJoin makes the decision: the approval beacon asks it before a client travels, and PreLogin asks it again when that client arrives.
+ * ApproveJoin makes the decision.
+ * PreLogin enforces it when a player arrives, which is the only point where the host can refuse a connection.
+ * The join approval beacon calls the same function before the player travels, so a refused player is told before the travel starts.
  *
  * This object holds the session credentials because it is the only place the password is ever compared.
- * The subsystem passes them in when a session is created or updated, and clears them when it is destroyed.
+ * FEasySessionHost passes them in when a session is created or updated, and clears them when it is destroyed.
  *
- * Owned by the subsystem and destroyed with it.
+ * Owned by FEasySessionHost and destroyed with it.
  * Delegates are bound raw because this object cannot outlive the owner that unbinds them in Shutdown.
  */
 class FEasySessionServerGate
@@ -77,7 +81,7 @@ public:
 	 *
 	 * @param OutReason Set to the message shown to the refused player. Untouched when the join is approved.
 	 */
-	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
+	FEasyJoinApprovalResponse ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const;
 
 	/**
 	 * Prefix on every refusal message PreLogin writes.
