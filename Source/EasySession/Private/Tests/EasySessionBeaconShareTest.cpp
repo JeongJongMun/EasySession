@@ -12,6 +12,7 @@
 #include "Engine/GameInstance.h"
 #include "EngineUtils.h"
 #include "OnlineBeaconHost.h"
+#include "OnlineBeaconHostObject.h"
 #include "UObject/StrongObjectPtr.h"
 
 namespace EasySessionBeaconShareTest
@@ -155,6 +156,115 @@ bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionBeaconShareStep(State));
+	return true;
+}
+
+namespace EasySessionBeaconPortTest
+{
+	/** A world, the subsystem of its game instance, and two host objects of different beacon types. */
+	struct FFixture
+	{
+		TStrongObjectPtr<UGameInstance> GameInstance;
+		UEasySessionSubsystem* Subsystem = nullptr;
+		UWorld* World = nullptr;
+		AOnlineBeaconHostObject* First = nullptr;
+		AOnlineBeaconHostObject* Second = nullptr;
+
+		bool Init(FAutomationTestBase& Test)
+		{
+			GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+			GameInstance->InitializeStandalone();
+			Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
+			World = GameInstance->GetWorld();
+			if (!Test.TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem) || !Test.TestNotNull(TEXT("Test world is available"), World))
+			{
+				return false;
+			}
+
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.ObjectFlags |= RF_Transient;
+			// The plain engine class has an empty beacon type, which is all the second family needs to differ from the first.
+			First = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>(SpawnParams);
+			Second = World->SpawnActor<AOnlineBeaconHostObject>(SpawnParams);
+			return Test.TestNotNull(TEXT("The first host object spawned"), First) && Test.TestNotNull(TEXT("The second host object spawned"), Second);
+		}
+
+		~FFixture()
+		{
+			EasySessionTest::DestroyGameInstance(GameInstance.Get());
+		}
+	};
+}
+
+/**
+ * The listener is shared by every beacon family, so it has to outlive any one of them.
+ * The party beacon will depend on this: a game session ending unregisters the join approval, and the party's connection must stay up.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconPortSharedTest, "EasySession.Beacon.ListenerOutlivesOneOfTwoHostObjects", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionBeaconPortSharedTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionBeaconPortTest;
+	using EasySessionBeaconShareTest::CountBeaconHosts;
+
+	FFixture Fixture;
+	if (!Fixture.Init(*this))
+	{
+		return false;
+	}
+
+	FEasySessionBeaconPort& BeaconPort = FEasySessionTestAccess::GetBeaconPort(*Fixture.Subsystem);
+	TestNull(TEXT("No listener runs before anything registers"), BeaconPort.GetListener());
+
+	TestTrue(TEXT("The first host object registers"), BeaconPort.Register(*Fixture.First));
+	TestTrue(TEXT("The second host object registers"), BeaconPort.Register(*Fixture.Second));
+	TestEqual(TEXT("Both share one listener"), CountBeaconHosts(Fixture.World), 1);
+
+	BeaconPort.Unregister(*Fixture.First);
+	TestNotNull(TEXT("The listener stays up for the host object still registered"), BeaconPort.GetListener());
+
+	BeaconPort.Unregister(*Fixture.Second);
+	TestNull(TEXT("Unregistering the last host object releases the listener"), BeaconPort.GetListener());
+	TestEqual(TEXT("The plugin's own listener was destroyed"), CountBeaconHosts(Fixture.World), 0);
+	return true;
+}
+
+/**
+ * A listener the project spawned belongs to the project.
+ * The plugin registers on it, and neither the last unregister nor a server travel may destroy it.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconPortProjectTest, "EasySession.Beacon.ProjectListenerIsNeverDestroyed", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionBeaconPortProjectTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionBeaconPortTest;
+	using EasySessionBeaconShareTest::CountBeaconHosts;
+
+	FFixture Fixture;
+	if (!Fixture.Init(*this))
+	{
+		return false;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.ObjectFlags |= RF_Transient;
+	AOnlineBeaconHost* ProjectListener = Fixture.World->SpawnActor<AOnlineBeaconHost>(SpawnParams);
+	if (!TestNotNull(TEXT("The project's listener spawned"), ProjectListener) || !TestTrue(TEXT("The project's listener listens"), ProjectListener->InitHost()))
+	{
+		return false;
+	}
+
+	FEasySessionBeaconPort& BeaconPort = FEasySessionTestAccess::GetBeaconPort(*Fixture.Subsystem);
+	TestTrue(TEXT("The host object registers"), BeaconPort.Register(*Fixture.First));
+	TestTrue(TEXT("On the project's listener"), BeaconPort.GetListener() == ProjectListener);
+
+	BeaconPort.Unregister(*Fixture.First);
+	TestNull(TEXT("No listener is held after the last host object unregistered"), BeaconPort.GetListener());
+	TestEqual(TEXT("The project's listener is still up"), CountBeaconHosts(Fixture.World), 1);
+
+	TestTrue(TEXT("The host object registers again"), BeaconPort.Register(*Fixture.First));
+	BeaconPort.ReleaseForTravel();
+	TestEqual(TEXT("ReleaseForTravel does not destroy the project's listener"), CountBeaconHosts(Fixture.World), 1);
+
+	ProjectListener->DestroyBeacon();
 	return true;
 }
 

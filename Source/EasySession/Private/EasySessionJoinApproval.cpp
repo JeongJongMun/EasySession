@@ -3,14 +3,13 @@
 #include "EasySessionJoinApproval.h"
 
 #include "EasySession.h"
+#include "EasySessionBeaconPort.h"
 #include "EasySessionJoinApprovalBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "GameFramework/GameModeBase.h"
-#include "OnlineBeaconHost.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
@@ -40,6 +39,12 @@ void FEasySessionJoinApproval::Shutdown()
 	StopClient();
 }
 
+bool FEasySessionJoinApproval::IsAdvertisedBy(const FOnlineSessionSettings& Settings)
+{
+	int32 bJoinApproval = 0;
+	return Settings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) && bJoinApproval != 0;
+}
+
 void FEasySessionJoinApproval::EnsureHost()
 {
 	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
@@ -51,13 +56,12 @@ void FEasySessionJoinApproval::EnsureHost()
 	// Run the beacon only when the session advertised it.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	int32 bJoinApproval = 0;
-	if (NamedSession == nullptr || !NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) || bJoinApproval == 0)
+	if (NamedSession == nullptr || !IsAdvertisedBy(NamedSession->SessionSettings))
 	{
 		return;
 	}
 
-	if (BeaconHost.IsValid() && BeaconHost->GetWorld() == World)
+	if (BeaconHostObject.IsValid() && BeaconHostObject->GetWorld() == World)
 	{
 		return;
 	}
@@ -66,105 +70,50 @@ void FEasySessionJoinApproval::EnsureHost()
 
 	FActorSpawnParameters SpawnParams;
 	SpawnParams.ObjectFlags |= RF_Transient;
-
-	// A beacon host is one shared listener per process, so an existing one is reused instead of binding a second port no joining player asks.
-	AOnlineBeaconHost* Host = nullptr;
-	for (TActorIterator<AOnlineBeaconHost> It(World); It; ++It)
-	{
-		Host = *It;
-		break;
-	}
-	bOwnsBeaconHost = Host == nullptr;
-
-	if (Host == nullptr)
-	{
-		Host = World->SpawnActor<AOnlineBeaconHost>(SpawnParams);
-		if (Host == nullptr)
-		{
-			return;
-		}
-
-		// ListenPort is left as the class default so a project can move the beacon from DefaultEngine.ini.
-		if (!Host->InitHost())
-		{
-			UE_LOG(LogEasySession, Error,
-				TEXT("Could not start the join approval beacon - a refused join is now reported after the travel instead of before it."));
-			UE_LOG(LogEasySession, Error,
-				TEXT("Likely causes: no BeaconNetDriver definition (clearing NetDriverDefinitions removes the engine's), or a plain ServerTravel kept the previous beacon's port - change maps with Server Travel Easy Session."));
-			Host->DestroyBeacon();
-			return;
-		}
-	}
-
 	AEasySessionJoinApprovalBeaconHostObject* HostObject = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>(SpawnParams);
 	if (HostObject == nullptr)
 	{
-		if (bOwnsBeaconHost)
-		{
-			Host->DestroyBeacon();
-		}
 		return;
 	}
 
-	Host->RegisterHost(HostObject);
-
-	// The project's own host keeps the pause state the project chose.
-	if (bOwnsBeaconHost)
+	if (!BeaconPort.Register(*HostObject))
 	{
-		Host->PauseBeaconRequests(false);
+		UE_LOG(LogEasySession, Error, TEXT("The join approval beacon is not running. A refused join is now reported after the travel instead of before it."));
+		HostObject->Destroy();
+		return;
 	}
 
-	BeaconHost = Host;
 	BeaconHostObject = HostObject;
-
-	if (bOwnsBeaconHost)
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Join approval beacon listening on port %d."), Host->GetListenPort());
-	}
-	else
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Registered the join approval on the project's beacon host (port %d)."), Host->GetListenPort());
-	}
-
-	// Joining players reach the beacon at the advertised port, so a beacon that bound elsewhere is unreachable.
-	const int32 BoundPort = Host->GetListenPort();
-	int32 AdvertisedPort = 0;
-	NamedSession->SessionSettings.Get(SETTING_BEACONPORT, AdvertisedPort);
-	if (BoundPort != AdvertisedPort)
-	{
-		UE_LOG(LogEasySession, Warning,
-			TEXT("The join approval beacon listens on port %d, but this session advertises %d - another process holds the advertised port, or this project's own beacon uses a different one."),
-			BoundPort, AdvertisedPort);
-		UE_LOG(LogEasySession, Warning,
-			TEXT("Joiners will ask %d and not reach this beacon, so passwords and full-room checks move to after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
-			AdvertisedPort);
-	}
+	WarnIfPortMismatch(NamedSession->SessionSettings);
 }
 
 void FEasySessionJoinApproval::StopHost()
 {
 	if (AEasySessionJoinApprovalBeaconHostObject* HostObject = BeaconHostObject.Get())
 	{
-		HostObject->Unregister();
+		BeaconPort.Unregister(*HostObject);
 		HostObject->Destroy();
 	}
 	BeaconHostObject.Reset();
-
-	if (AOnlineBeaconHost* Host = BeaconHost.Get())
-	{
-		// The project's own host stays up for the project. Only one this plugin spawned is destroyed.
-		if (bOwnsBeaconHost)
-		{
-			Host->DestroyBeacon();
-		}
-	}
-	BeaconHost.Reset();
-	bOwnsBeaconHost = false;
 }
 
-AOnlineBeaconHost* FEasySessionJoinApproval::GetBeaconHost() const
+void FEasySessionJoinApproval::WarnIfPortMismatch(const FOnlineSessionSettings& Settings) const
 {
-	return BeaconHost.Get();
+	// Joining players connect to the advertised port, so a listener that bound another port is unreachable.
+	const int32 BoundPort = BeaconPort.GetListenPort();
+	int32 AdvertisedPort = 0;
+	Settings.Get(SETTING_BEACONPORT, AdvertisedPort);
+	if (BoundPort == AdvertisedPort)
+	{
+		return;
+	}
+
+	UE_LOG(LogEasySession, Warning,
+		TEXT("The join approval beacon listens on port %d, but this session advertises %d. Another process holds the advertised port, or this project's own beacon uses a different one."),
+		BoundPort, AdvertisedPort);
+	UE_LOG(LogEasySession, Warning,
+		TEXT("Joining players connect to port %d and do not reach this beacon, so the password and full session checks happen after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
+		AdvertisedPort);
 }
 
 void FEasySessionJoinApproval::RequestJoinApproval(const FEasySessionSearchResult& Target, const FString& Password, const FEasyJoinApprovalComplete& OnComplete)
@@ -182,10 +131,7 @@ void FEasySessionJoinApproval::RequestJoinApproval(const FEasySessionSearchResul
 
 	if (Client == nullptr)
 	{
-		FEasyJoinApprovalResponse Response;
-		Response.Result = EEasyJoinApprovalResult::Unreachable;
-		Response.ReasonText = TEXT("Could not reach the host to ask about joining.");
-		OnComplete.ExecuteIfBound(Response);
+		OnComplete.ExecuteIfBound(FEasyJoinApprovalResponse::Unreachable());
 		return;
 	}
 

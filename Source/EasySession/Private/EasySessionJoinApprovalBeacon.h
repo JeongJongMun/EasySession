@@ -16,7 +16,12 @@ struct FEasyJoinApprovalRequest
 {
 	GENERATED_BODY()
 
-	/** The players asking to join. One entry today, the local player. An array so a party fits later. */
+	/**
+	 * The players asking to join.
+	 * One entry today, the local player.
+	 * Reserved for the seat reservation of a party.
+	 * Changing this struct after a release breaks the join approval protocol, so the field is here already.
+	 */
 	UPROPERTY()
 	TArray<FUniqueNetIdRepl> PartyMembers;
 
@@ -39,9 +44,18 @@ struct FEasyJoinApprovalResponse
 	UPROPERTY()
 	FString ReasonText;
 
-	/** Unused today. It will identify a reserved player slot once reservations are added. */
+	/**
+	 * Empty today.
+	 * Reserved for the token that identifies held seats, for the same reason as PartyMembers.
+	 */
 	UPROPERTY()
 	FString Token;
+
+	/** The response when the host could not be reached. */
+	static FEasyJoinApprovalResponse Unreachable();
+
+	/** The response of a host that has no server gate to decide the join. */
+	static FEasyJoinApprovalResponse NotAnswering();
 };
 
 /** Fires exactly once per RequestApproval, with Unreachable when the host never responded. */

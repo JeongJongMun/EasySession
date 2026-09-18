@@ -456,8 +456,7 @@ void UEasySessionSubsystem::ExecuteJoin()
 
 	// Sessions without the approval key are joined directly. PreLogin still decides,
 	// just after the travel instead of before it.
-	int32 bJoinApproval = 0;
-	if (GetActiveRequest()->JoinTarget.NativeResult.Session.SessionSettings.Get(EasySession::SettingKey_JoinApproval, bJoinApproval) && bJoinApproval != 0)
+	if (FEasySessionJoinApproval::IsAdvertisedBy(GetActiveRequest()->JoinTarget.NativeResult.Session.SessionSettings))
 	{
 		RequestJoinApproval();
 		return;

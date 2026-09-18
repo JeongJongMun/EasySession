@@ -25,6 +25,7 @@ namespace ETravelFailure
 class AController;
 class AGameModeBase;
 class APlayerController;
+class FEasySessionBeaconPort;
 class FEasySessionJoinApproval;
 class FEasySessionRequest;
 class FEasySessionRequestQueue;
@@ -738,5 +739,6 @@ private:
 	TUniquePtr<FEasySessionTravel> Travel;
 	TUniquePtr<FEasySessionSocial> Social;
 	TUniquePtr<FEasySessionServerGate> ServerGate;
+	TUniquePtr<FEasySessionBeaconPort> BeaconPort;
 	TUniquePtr<FEasySessionJoinApproval> JoinApproval;
 };

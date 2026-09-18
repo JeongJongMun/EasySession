@@ -16,6 +16,22 @@ namespace
 	constexpr float ResponseTimeoutSeconds = 5.0f;
 }
 
+FEasyJoinApprovalResponse FEasyJoinApprovalResponse::Unreachable()
+{
+	FEasyJoinApprovalResponse Response;
+	Response.Result = EEasyJoinApprovalResult::Unreachable;
+	Response.ReasonText = TEXT("Could not reach the host to ask about joining.");
+	return Response;
+}
+
+FEasyJoinApprovalResponse FEasyJoinApprovalResponse::NotAnswering()
+{
+	FEasyJoinApprovalResponse Response;
+	Response.Result = EEasyJoinApprovalResult::Refused;
+	Response.ReasonText = TEXT("The host is not answering join requests.");
+	return Response;
+}
+
 AEasySessionJoinApprovalBeaconClient::AEasySessionJoinApprovalBeaconClient()
 {
 }
@@ -64,8 +80,7 @@ void AEasySessionJoinApprovalBeaconClient::ServerRequestJoinApproval_Implementat
 	}
 	else
 	{
-		Response.Result = EEasyJoinApprovalResult::Refused;
-		Response.ReasonText = TEXT("The host is not answering join requests.");
+		Response = FEasyJoinApprovalResponse::NotAnswering();
 	}
 
 	ClientReceiveJoinApproval(Response);
@@ -124,10 +139,7 @@ void AEasySessionJoinApprovalBeaconClient::SignalUnreachable(const TCHAR* LogWhy
 		UE_LOG(LogEasySession, Warning, TEXT("Join approval request could not reach the host: %s."), LogWhy);
 	}
 
-	FEasyJoinApprovalResponse Response;
-	Response.Result = EEasyJoinApprovalResult::Unreachable;
-	Response.ReasonText = TEXT("Could not reach the host to ask about joining.");
-	Signal(Response);
+	Signal(FEasyJoinApprovalResponse::Unreachable());
 }
 
 AEasySessionJoinApprovalBeaconHostObject::AEasySessionJoinApprovalBeaconHostObject()
@@ -142,8 +154,9 @@ EEasyJoinApprovalResult AEasySessionJoinApprovalBeaconHostObject::ApproveJoin(co
 	const UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
 	if (Subsystem == nullptr)
 	{
-		OutReason = TEXT("The host is not answering join requests.");
-		return EEasyJoinApprovalResult::Refused;
+		const FEasyJoinApprovalResponse Response = FEasyJoinApprovalResponse::NotAnswering();
+		OutReason = Response.ReasonText;
+		return Response.Result;
 	}
 
 	return Subsystem->ApproveJoin(PlayerId, Password, OutReason);

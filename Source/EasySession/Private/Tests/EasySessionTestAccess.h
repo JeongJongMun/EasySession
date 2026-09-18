@@ -7,6 +7,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasyMatchmakingPolicy.h"
+#include "EasySessionBeaconPort.h"
 #include "EasySessionJoinApproval.h"
 #include "EasySessionRequest.h"
 #include "EasySessionServerGate.h"
@@ -179,10 +180,16 @@ public:
 		return Active.IsValid() && Active->bCanceled;
 	}
 
+	/** The shared beacon port, so a test can register host objects the way a beacon family does. */
+	static FEasySessionBeaconPort& GetBeaconPort(UEasySessionSubsystem& Subsystem)
+	{
+		return *Subsystem.BeaconPort;
+	}
+
 	/** The beacon host the join approval registered on, the plugin's own or the project's. Null while none runs. */
 	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
 	{
-		return Subsystem.JoinApproval.IsValid() ? Subsystem.JoinApproval->GetBeaconHost() : nullptr;
+		return Subsystem.BeaconPort.IsValid() ? Subsystem.BeaconPort->GetListener() : nullptr;
 	}
 
 	/**

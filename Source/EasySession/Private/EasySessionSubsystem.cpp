@@ -5,6 +5,7 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasySessionBeaconPort.h"
 #include "EasyFriendSessionOperation.h"
 #include "EasyMatchmakingOperation.h"
 #include "EasySessionOperation.h"
@@ -57,7 +58,8 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Social = MakeUnique<FEasySessionSocial>(*this, *Travel);
 	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
 	ServerGate->Initialize();
-	JoinApproval = MakeUnique<FEasySessionJoinApproval>(*this);
+	BeaconPort = MakeUnique<FEasySessionBeaconPort>();
+	JoinApproval = MakeUnique<FEasySessionJoinApproval>(*this, *BeaconPort);
 	JoinApproval->Initialize();
 
 	if (GEngine != nullptr)
@@ -168,6 +170,7 @@ void UEasySessionSubsystem::Deinitialize()
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
 	JoinApproval.Reset();
+	BeaconPort.Reset();
 	ServerGate.Reset();
 	Social.Reset();
 	Travel.Reset();
@@ -205,8 +208,9 @@ EEasyJoinApprovalResult UEasySessionSubsystem::ApproveJoin(const FUniqueNetIdRep
 {
 	if (!ServerGate.IsValid())
 	{
-		OutReason = TEXT("The host is not answering join requests.");
-		return EEasyJoinApprovalResult::Refused;
+		const FEasyJoinApprovalResponse Response = FEasyJoinApprovalResponse::NotAnswering();
+		OutReason = Response.ReasonText;
+		return Response.Result;
 	}
 
 	return ServerGate->ApproveJoin(PlayerId, SuppliedPassword, OutReason);
@@ -734,9 +738,11 @@ bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 		return false;
 	}
 
-	// The map changes on the next frame, and the arrival world starts its own beacon.
-	// Stopping now frees the beacon port in between. Without this the new beacon fails to bind.
+	// The map changes on the next frame, and the arrival world starts its own beacon listener.
+	// Releasing this one now frees the beacon port before that.
+	// Without this the new listener fails to bind.
 	JoinApproval->StopHost();
+	BeaconPort->ReleaseForTravel();
 
 	Travel->MarkStarted(TEXT("ServerTravelToMap"));
 	return true;

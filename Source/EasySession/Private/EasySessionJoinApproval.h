@@ -8,7 +8,8 @@
 #include "UObject/WeakObjectPtr.h"
 
 class AGameModeBase;
-class AOnlineBeaconHost;
+class FEasySessionBeaconPort;
+class FOnlineSessionSettings;
 class UEasySessionSubsystem;
 struct FEasySessionSearchResult;
 
@@ -17,7 +18,8 @@ struct FEasySessionSearchResult;
  * The host side stays up for the life of the session. The client side sends one request and closes.
  *
  * Beacons are actors, so they are destroyed with their world.
- * This object re-creates the host beacon in every world the session reaches by watching game mode initialization, which the server runs once per map.
+ * This object spawns the host object again in every world the session reaches by watching game mode initialization, which the server runs once per map.
+ * The host object registers on the shared FEasySessionBeaconPort, so this object never spawns a listener of its own.
  * Whether a request is approved is decided by FEasySessionServerGate, not here.
  *
  * Owned by the subsystem and destroyed with it.
@@ -27,8 +29,13 @@ class FEasySessionJoinApproval
 {
 public:
 
-	explicit FEasySessionJoinApproval(UEasySessionSubsystem& InOwner)
+	/**
+	 * The beacon port is where the host object registers.
+	 * Every beacon family of the plugin shares it.
+	 */
+	FEasySessionJoinApproval(UEasySessionSubsystem& InOwner, FEasySessionBeaconPort& InBeaconPort)
 		: Owner(InOwner)
+		, BeaconPort(InBeaconPort)
 	{
 	}
 
@@ -60,15 +67,24 @@ public:
 	/** Joining player: cancel a pending request, so its response never arrives. Safe when none is running. */
 	void StopClient();
 
-	/** @return The beacon host handling approvals, owned by this plugin or registered by the project. Null while none runs. */
-	AOnlineBeaconHost* GetBeaconHost() const;
+	/** @return Whether a session with these settings runs the join approval beacon, so a joining player requests join approval before traveling. */
+	static bool IsAdvertisedBy(const FOnlineSessionSettings& Settings);
 
 private:
 
 	/** Re-creates the beacon after a travel replaced the world. Server only. */
 	void HandleGameModeInitialized(AGameModeBase* GameMode);
 
+	/** Warn when the beacon port bound another port number than the session advertises, because joining players connect to the advertised port. */
+	void WarnIfPortMismatch(const FOnlineSessionSettings& Settings) const;
+
 	UEasySessionSubsystem& Owner;
+
+	/**
+	 * The shared beacon port the host object registers on.
+	 * Owned by the subsystem, like this object, and destroyed after it.
+	 */
+	FEasySessionBeaconPort& BeaconPort;
 
 	/** Handle for the game mode initialization event, which is what re-creates the beacon per world. */
 	FDelegateHandle GameModeInitializedHandle;
@@ -77,11 +93,7 @@ private:
 	FTSTicker::FDelegateHandle DeferredEnsureHostHandle;
 
 	/** Host side of the beacon. Lives exactly as long as the session, per world. */
-	TWeakObjectPtr<AOnlineBeaconHost> BeaconHost;
 	TWeakObjectPtr<AEasySessionJoinApprovalBeaconHostObject> BeaconHostObject;
-
-	/** Whether this plugin spawned BeaconHost and may destroy or unpause it. A host the project spawned is only registered on. */
-	bool bOwnsBeaconHost = false;
 
 	/** Joining player side. Lives for one request, from RequestJoinApproval to its response or StopClient. */
 	TWeakObjectPtr<AEasySessionJoinApprovalBeaconClient> BeaconClient;
