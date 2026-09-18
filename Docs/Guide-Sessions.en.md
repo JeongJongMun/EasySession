@@ -13,18 +13,16 @@ All operations are **queued and executed one at a time** - you can call them in 
 | Field | Default | Notes |
 |---|---|---|
 | Session Display Name | "My Session" | Shown in search results |
-| Initial Map Name | (empty) | Travels there with `?listen` once the session is created. Empty = start listening on the current map. The session does not advertise its map |
-| Host Mode | Listen Server | Or Dedicated Server - code path present, not validated |
+| Initial Map Name | (empty) | Required. The host travels there with `?listen` once the session is created, which makes this game the server. Empty fails the create with `InvalidParams`. The map loads from scratch, so players who were connected before the session existed are disconnected and have to join it. The session does not advertise its map |
 | Max Players | 4 | Public connections. The engine's own login cap ("Server full") follows this value |
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
-| Start Listening | true | Off still advertises the session, but nothing is there to connect to. Turn it off only when you open the listen server yourself |
 | Should Advertise | true | Off does not advertise the session at all |
 | Hidden | false | Advertised, but left out of `Find Easy Sessions` results - reachable through invites only |
 | Password | (empty) | See [password protected sessions](#password-protected-sessions) below |
 | Friends Bypass Password | true | Friends join without the password, same section |
 | Additional Travel Options | (empty) | Option string appended to the host's travel URL as written |
 | Allow Join In Progress | true | Leave on for Steam, which closes the lobby at the first join when this is off ([FAQ](FAQ.en.md)) |
-| Allow Invites / Use Presence | true | These settings are ignored on LAN and dedicated servers |
+| Allow Invites / Use Presence | true | Use Presence is ignored on LAN |
 | Custom Settings | (empty) | Advertised key-value data, see below |
 
 ### Custom session data
@@ -178,10 +176,9 @@ Update:
 | Field | Why |
 |---|---|
 | Initial Map Name | Only read when the session is created. Move maps with `Server Travel Easy Session` instead |
-| Host Mode | Listen or dedicated is how the process was started, not a live setting |
 | Is LAN Match | Whether the session lives on the LAN or on the online service is decided at create time |
 | Use Presence | Steam refuses it on a live session - it logs `Can't change presence settings on existing session` and keeps the old value |
-| Start Listening / Additional Travel Options | Used once for the travel at create time, never read again |
+| Additional Travel Options | Used once for the travel at create time, never read again |
 
 > On LAN (NULL), changing the advertise flag leaves the LAN beacon as it was: the engine's `FOnlineSessionNull::UpdateSession` swaps the settings without recomputing the beacon.
 

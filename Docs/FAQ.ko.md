@@ -20,11 +20,11 @@
 
 ```
 LogEasySession: Warning: Session operation failed: ResolveFailure (The host address 'steam.0:0' is not connectable
-- the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled
-or travels to a map with the ?listen option.)
+- the host is not running as a listen server. The host's travel to its Initial Map Name did not open one.
+Check the map path on the host.)
 ```
 
-**호스트** 쪽에서 고치세요. Host Params의 `Start Listening`을 켠 채로 두거나(기본값), `Initial Map Name`을 지정해 호스트가 `?listen`과 함께 이동하게 하세요. 호스트가 Initial Map Name을 지정했는데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*가 꺼져 있는지 확인하세요.
+**호스트** 쪽에서 고치세요. 호스트는 `Initial Map Name`으로 `?listen`과 함께 이동하고, 그 이동이 서버를 엽니다. 그런데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*가 꺼져 있는지 확인하세요.
 
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 

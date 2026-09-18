@@ -15,14 +15,12 @@
 | Delay Between Passes | 2.0초 | 다음 검색까지 이만큼 쉽니다 |
 | Join Password | (비어 있음) | 비밀번호 방 후보에 참가할 때 보냅니다. 없으면 비밀번호 방은 후보에서 빠집니다 |
 
-### Host > Initial Map Name을 채울지 말지
+### Host > Initial Map Name
 
-Matchmaking는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받습니다. Initial Map Name을
-비워두면 호스트 폴백이 지금 있는 맵에서 리슨 서버를 엽니다. 거부되지 않습니다.
-
-**그래도 대개는 채우는 게 맞습니다.** 메뉴 위젯에서 Matchmaking를 부르는 것이 보통인데, 그때
-Initial Map Name이 비어 있으면 메뉴 맵이 경기장이 됩니다. 참가할 방을 찾던 플레이어가 자기 메뉴에서
-남을 맞이하게 됩니다.
+Matchmaking는 `Create Easy Session`이 받는 호스트 파라미터를 그대로 받고, 호스트 폴백도 같은 이유로
+Initial Map Name이 필요합니다. 그 맵으로 이동하는 것이 리슨 서버를 열기 때문입니다.
+`Allow Host Fallback`을 켰는데 Initial Map Name이 비어 있으면 Matchmaking는 첫 검색 전에
+`InvalidParams`로 실패합니다.
 
 `Allow Host Fallback`은 기본값이 꺼짐이라, 켜지 않으면 Initial Map Name은 볼 일이 없습니다.
 플러그인의 예제도 꺼둔 채로 검색과 참가만 합니다.

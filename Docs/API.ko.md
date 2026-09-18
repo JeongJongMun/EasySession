@@ -41,7 +41,7 @@ EasySession은 자기 작업을 하나씩 실행하므로, 앞 작업이 끝나�
 
 | 노드 | 입력 | 비고 |
 |---|---|---|
-| **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 리슨 서버라면 이어서 Initial Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 되고, Initial Map Name이 비어 있으면 현재 맵에서 리슨을 시작합니다. 데디케이티드 서버는 실행된 맵을 그대로 유지합니다 |
+| **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 이어서 Initial Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 됩니다. Initial Map Name이 비어 있으면 `InvalidParams`로 실패합니다. 접속할 서버 없이 세션만 광고되기 때문입니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 승인을 먼저 물은 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
@@ -196,7 +196,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 이것이라, 여기 있는 필드는 전부 살아있는 세션이 바꿀 수 있습니다.
 
 ### 5.2 FEasySessionHostParams *(FEasySessionSettings에 더해서)*
-`InitialMapName`(String), `HostMode`(`EEasySessionHostMode`), `bIsLANMatch`, `bStartListening`, `bUsePresence`, `AdditionalTravelOptions`(String)
+`InitialMapName`(String, 필수), `bIsLANMatch`, `bUsePresence`, `AdditionalTravelOptions`(String)
 
 호스팅은 위 설정에 서버를 띄우는 방법을 더한 것입니다. 여기 더해진 필드들은 세션을 만들 때
 한 번만 읽히고, 그래서 Update가 바꿀 수 없습니다.
@@ -292,19 +292,15 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnStateChanged`로 알려줍니다. `Canceling`은 취소 시점에 진행 중이던 참가나 생성이 끝날 때까지 이어집니다.
 
-### 6.5 EEasySessionHostMode
-
-`ListenServer`(호스트 플레이어의 게임이 곧 서버) 또는 `DedicatedServer`(코드 경로는 있으나 검증되지 않음).
-
-### 6.6 EEasySessionRegion
+### 6.5 EEasySessionRegion
 
 `Any`에 `NorthAmericaEast`부터 `Oceania`까지 큰 단위의 세계 지역 아홉 개를 더한 열거형입니다. 한 지역 안이면 쾌적한 핑으로 플레이할 수 있도록 나눴습니다. 게임 고유의 분할이 필요하면 `Any`로 두고 `CustomSettings` 키로 필터하세요 ([가이드](Guide-Sessions.ko.md)).
 
-### 6.7 EEasySessionSearchMode
+### 6.6 EEasySessionSearchMode
 
 `Default`는 필터가 묘사하는 세션들을 찾습니다. `ByFriend`는 대신 친구 한 명이 있는 세션을 서비스에 물으며, 어느 친구인지는 `SearchTargetId`에서 읽습니다.
 
-### 6.8 EEasySessionActivity
+### 6.7 EEasySessionActivity
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - 플러그인이 지금 하고 있는 일. `Get Easy Session Activity`로 읽습니다. 누가 시작했든 작업에 이름을 붙이므로, 상태 위젯이 메뉴가 요청한 적 없는 초대 참가나 연결 끊김 복구도 서술할 수 있습니다. `Get Activity Message`가 이를 문장으로 바꿉니다.
 
@@ -325,8 +321,6 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
 | `bAcceptInvitesWhileInSession` | false | 초대를 수락하면 지금 있는 세션을 파괴하고 초대받은 세션에 참가합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로 먼저 물어볼 수 있습니다 |
 | `RequestTimeoutSeconds` | 30 | 요청이 온라인 서비스를 기다리다 `Timeout`으로 실패하기까지의 시간. **0이면 무한히 기다립니다.** 검색은 `Timeout Override Seconds`로 이 값을 대신할 수 있습니다 |
-| `bAutoHostOnDedicatedServer` | true | 데디케이티드 서버가 맵을 띄우면 스스로를 광고합니다 |
-| `DedicatedServerHostParams` | - | 위 자동 호스팅이 쓰는 파라미터. Initial Map Name은 무시되고 서버가 실행된 맵을 유지합니다 |
 
 ## 9. C++ 참고
 
@@ -348,4 +342,4 @@ Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습
 
 ## 10. 콘솔 명령 *(개발 빌드 전용)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`
+`EasySession.Host <Map>`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`

@@ -47,12 +47,11 @@
 
 - 세션을 만들고 광고합니다
 - Initial Map Name으로 `?listen`을 붙여 Travel하며, 이것이 이 게임을 서버로 만듭니다
-- **Initial Map Name**을 비워두면 대신 현재 맵에서 리슨을 시작합니다
+- **Initial Map Name**은 필수입니다. 맵이 없으면 접속할 서버도 없으므로 생성이 `InvalidParams`로 실패합니다
 - 본인을 참가자로 등록하므로 세션의 인원 수가 정확하게 표시됩니다
 
-두 Travel 동작은 기본값인 **Host Mode = Listen Server**를 전제로 합니다. 데디케이티드
-서버는 실행된 맵을 그대로 유지합니다. 데디케이티드 서버는 코드 경로는 있으나 검증되지 않았고,
-검증된 구성은 리슨 서버입니다.
+지원하는 구성은 리슨 서버입니다. 데디케이티드 서버에서 세션을 호스팅하는 것은
+아직 지원하지 않습니다.
 
 ## 4. 다른 인스턴스에서 찾아 참가하기
 
@@ -105,7 +104,7 @@ Matchmaking는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 빌드와 같은 네트워크 경로를 씁니다.
 
 > 팁: UI 없이 콘솔 명령(`~` 키)만으로도 전부 테스트할 수 있습니다.
-> `EasySession.Host`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,
+> `EasySession.Host /Game/Maps/Lobby`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,
 > `EasySession.Destroy`, `EasySession.Status`. 개발 빌드에만 있고 Shipping 빌드에서는
 > 컴파일 단계에서 빠집니다.
 

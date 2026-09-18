@@ -15,15 +15,12 @@
 | Delay Between Passes | 2.0s | How long to rest before the next search |
 | Join Password | (empty) | Sent when joining a password protected candidate. Without one, protected sessions are never candidates |
 
-### Whether to fill in Host > Initial Map Name
+### Host > Initial Map Name
 
-Matchmaking takes the same host params `Create Easy Session` takes. Leaving Initial Map Name empty
-makes the host fallback open a listen server on the map this player is already on. It is
-not refused.
-
-**Fill it in anyway, most of the time.** Matchmaking usually sits on a menu widget, and an
-empty Initial Map Name there turns the menu into the arena: a player who asked to find a game ends
-up receiving strangers in their own menu.
+Matchmaking takes the same host params `Create Easy Session` takes, and the host fallback needs
+Initial Map Name for the same reason: the travel to that map is what opens the listen server.
+With `Allow Host Fallback` on and Initial Map Name empty, matchmaking fails with `InvalidParams`
+before the first search.
 
 `Allow Host Fallback` is off by default, so Initial Map Name does not matter until you turn it on.
 The bundled example leaves it off and only searches and joins.

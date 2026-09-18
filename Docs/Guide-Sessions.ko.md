@@ -13,18 +13,16 @@
 | 필드 | 기본값 | 설명 |
 |---|---|---|
 | Session Display Name | "My Session" | 검색 결과에 보이는 이름 |
-| Initial Map Name | (비어 있음) | 세션을 만든 뒤 `?listen`을 붙여 그 맵으로 이동합니다. 비워두면 현재 맵에서 리슨을 시작합니다. 세션은 자기 맵을 광고하지 않습니다 |
-| Host Mode | Listen Server | 또는 Dedicated Server - 코드 경로는 있으나 검증되지 않음 |
+| Initial Map Name | (비어 있음) | 필수. 세션을 만든 뒤 호스트가 `?listen`을 붙여 그 맵으로 이동하고, 이것이 이 게임을 서버로 만듭니다. 비어 있으면 생성이 `InvalidParams`로 실패합니다. 맵을 새로 로드하므로, 세션이 생기기 전에 접속해 있던 플레이어는 연결이 끊기고 세션에 참가해서 다시 들어와야 합니다. 세션은 자기 맵을 광고하지 않습니다 |
 | Max Players | 4 | 공개 커넥션 수. 엔진의 접속 정원(Server full)도 이 값을 따릅니다 |
 | Is LAN Match | false | NULL 서브시스템에서는 자동으로 켜집니다 |
-| Start Listening | true | 끄면 세션은 광고되지만 접속할 서버가 없습니다. 리슨 서버를 직접 여는 경우에만 끄세요 |
 | Should Advertise | true | 끄면 세션을 아예 광고하지 않습니다 |
 | Hidden | false | 광고는 하되 `Find Easy Sessions` 결과에서 뺍니다. 초대로만 들어올 수 있습니다 |
 | Password | (비어 있음) | 아래 [비밀번호로 잠근 세션](#비밀번호로-잠근-세션) 참고 |
 | Friends Bypass Password | true | 친구는 비밀번호 없이 참가합니다. 같은 절 참고 |
 | Additional Travel Options | (비어 있음) | 호스트의 Travel URL에 그대로 붙는 옵션 문자열 |
 | Allow Join In Progress | true | 스팀에서는 켜 두세요. 꺼두면 첫 참가에 로비가 닫힙니다([FAQ](FAQ.ko.md)) |
-| Allow Invites / Use Presence | true | LAN과 데디케이티드 서버에서는 이 설정이 무시됩니다 |
+| Allow Invites / Use Presence | true | Use Presence는 LAN에서 무시됩니다 |
 | Custom Settings | (비어 있음) | 세션과 함께 광고되는 키-값 데이터, 아래 참고 |
 
 ### 커스텀 세션 데이터
@@ -172,10 +170,9 @@ Event Construct
 | 필드 | 왜 |
 |---|---|
 | Initial Map Name | 세션을 만들 때만 읽습니다. 맵은 `Server Travel Easy Session`으로 옮깁니다 |
-| Host Mode | 리슨이냐 데디케이티드냐는 프로세스를 띄운 방식이라 실행 중에 바뀌지 않습니다 |
 | Is LAN Match | 세션이 LAN에 있는지 온라인 서비스에 있는지는 만들 때 정해집니다 |
 | Use Presence | 살아있는 세션에서는 스팀이 거절합니다. `Can't change presence settings on existing session` 경고만 남고 이전 값이 유지됩니다 |
-| Start Listening / Additional Travel Options | 세션을 만들 때 Travel에 한 번 쓰이는 값이라 이후에는 읽지 않습니다 |
+| Additional Travel Options | 세션을 만들 때 Travel에 한 번 쓰이는 값이라 이후에는 읽지 않습니다 |
 
 > LAN(NULL)에서는 광고 여부를 바꿔도 LAN 비콘이 그대로입니다. 엔진의 `FOnlineSessionNull::UpdateSession`이 설정만 갈아끼우고 비콘을 다시 계산하지 않기 때문입니다.
 

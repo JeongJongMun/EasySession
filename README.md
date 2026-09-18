@@ -34,7 +34,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **Local player 0 only.** Split-screen is not supported.
 - **Map changes during a match must use seamless travel.** The host-side join gate treats a new connection as a new player, so a hard travel mid-match would lock your own players out. The plugin's own travels already do the right thing.
 - **Rolling your own `ClientTravel` into a password session** means appending the password option yourself; the plugin only adds it on the travels it performs.
-- **Dedicated servers** have working code paths but are not validated yet - listen servers are the tested configuration.
+- **Dedicated servers** are not supported yet - sessions are hosted on listen servers.
 
 ## Supported online subsystems
 

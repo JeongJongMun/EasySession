@@ -42,7 +42,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 
 | Node | Inputs | Notes |
 |---|---|---|
-| **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`. On a listen server it then travels to Initial Map Name with `?listen` so this game becomes the server, or starts listening on the current map when Initial Map Name is empty. Dedicated servers keep the map they launched with |
+| **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`, then travels to Initial Map Name with `?listen` so this game becomes the server. Fails with `InvalidParams` while Initial Map Name is empty, because the session would be advertised with no server behind it |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for approval, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
@@ -204,7 +204,7 @@ What a session advertises about itself. `Update Easy Session` takes exactly this
 so every field here is one a live session can change.
 
 ### 5.2 FEasySessionHostParams *(FEasySessionSettings plus)*
-`InitialMapName` (String), `HostMode` (`EEasySessionHostMode`), `bIsLANMatch`, `bStartListening`, `bUsePresence`, `AdditionalTravelOptions` (String)
+`InitialMapName` (String, required), `bIsLANMatch`, `bUsePresence`, `AdditionalTravelOptions` (String)
 
 Hosting is the settings above plus how to bring the server up. These added fields are
 read once, while the session is created, which is why Update cannot change them.
@@ -303,19 +303,15 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 `Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - the phases of one Matchmaking run, reported through `OnStateChanged`. `Canceling` lasts while a join or host that was in flight at the cancel finishes.
 
-### 6.5 EEasySessionHostMode
-
-`ListenServer` (the hosting player's game is the server) or `DedicatedServer` (code path present, not validated).
-
-### 6.6 EEasySessionRegion
+### 6.5 EEasySessionRegion
 
 `Any` plus nine coarse world regions, from `NorthAmericaEast` to `Oceania`, cut so that one region means playable latency. A game that needs its own split leaves this at `Any` and filters with a `CustomSettings` key instead ([guide](Guide-Sessions.en.md#regions)).
 
-### 6.7 EEasySessionSearchMode
+### 6.6 EEasySessionSearchMode
 
 `Default` searches for the sessions the filters describe. `ByFriend` asks the service for the session one friend is in instead, reading `SearchTargetId` for which friend.
 
-### 6.8 EEasySessionActivity
+### 6.7 EEasySessionActivity
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the operation whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
 
@@ -333,8 +329,6 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
 | `bAcceptInvitesWhileInSession` | false | An accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first |
 | `RequestTimeoutSeconds` | 30 | How long a request waits for the online service before failing with `Timeout`. **0 waits forever.** A search may replace this with its own `Timeout Override Seconds` |
-| `bAutoHostOnDedicatedServer` | true | A dedicated server advertises itself once its map is up |
-| `DedicatedServerHostParams` | - | Params used by that auto host. Initial Map Name is ignored - the server keeps its launch map |
 
 ## 9. C++ notes
 
@@ -358,4 +352,4 @@ a static string, prefer `AdditionalTravelOptions`.
 
 ## 10. Console commands *(development builds only)*
 
-`EasySession.Host [Map]`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`
+`EasySession.Host <Map>`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`

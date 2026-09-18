@@ -58,14 +58,13 @@ You almost never touch it directly. The one place you will meet the name is conf
 
 ## Listen server vs dedicated server
 
-- **Listen server** - the hosting player's game *is* the server. No server machines to rent or run; ideal for co-op and small games. This is EasySession's default (`Host Mode = Listen Server`).
-- **Dedicated server** - a server process with no graphics and no local player hosts the game; every player is a client. Requires building a server target (needs a source-built engine). EasySession has a code path for it through `Host Mode = Dedicated Server`, including creating the session when the server boots (Project Settings -> Plugins -> EasySession), but it is not validated.
+- **Listen server** - the hosting player's game *is* the server. No server machines to rent or run; ideal for co-op and small games. This is what EasySession hosts.
+- **Dedicated server** - a server process with no graphics and no local player hosts the game; every player is a client. Requires building a server target (needs a source-built engine). EasySession does not host sessions on dedicated servers yet.
 
 ## Presence, LAN, and why some settings are ignored
 
 - **Presence** means "friends can see what you're playing and join you." It only exists on a platform service such as Steam - on LAN it is meaningless, so EasySession ignores it there. In code and settings it appears as `bUsePresence`.
 - **LAN match** means the session is advertised by local broadcast instead of an online service. When the NULL subsystem is active, EasySession forces LAN mode automatically, so searching finds LAN sessions without any settings.
-- Dedicated server sessions never use presence (there is no "player" hosting them).
 
 ## One session, many matches
 

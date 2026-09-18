@@ -20,11 +20,11 @@ The session is advertised but its host is **not running as a listen server** - a
 
 ```
 LogEasySession: Warning: Session operation failed: ResolveFailure (The host address 'steam.0:0' is not connectable
-- the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled
-or travels to a map with the ?listen option.)
+- the host is not running as a listen server. The host's travel to its Initial Map Name did not open one.
+Check the map path on the host.)
 ```
 
-Fix on the **host** side: keep `Start Listening = true` (default) in Host Params, or provide a `Initial Map Name` so the host travels with `?listen`. If the host set a Initial Map Name and still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
+Fix on the **host** side: the host travels to `Initial Map Name` with `?listen`, and that travel is what opens the server. If the host still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
 
 ## "Steam: only the first player can join, everyone after that fails"
 
