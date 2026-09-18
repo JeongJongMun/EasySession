@@ -82,7 +82,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		// The fixes it prints are for the developer, not the player.
 		// Packaged development builds keep it: that is where an online subsystem that works in
 		// the editor and not in a build gets diagnosed.
-		EasySessionDiagnostics::LogReport(EasySessionDiagnostics::RunDiagnostics(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr));
+		EasySessionDiagnostics::LogReport(EasySessionDiagnostics::RunDiagnostics(GetWorld()));
 #endif
 		InviteBindTickerHandle.Reset();
 		return false;
@@ -291,7 +291,7 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 
 	// Clients report the host's replicated state: the session lifecycle is decided on the
 	// host, and every player should agree on it regardless of when they joined.
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* World = GetWorld();
 	if (LocalState != EEasySessionState::NoSession && bHasReplicatedHostSessionState &&
 		World != nullptr && World->GetNetMode() == NM_Client)
 	{
@@ -397,7 +397,7 @@ EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
 
 bool UEasySessionSubsystem::IsNetworkServer() const
 {
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* World = GetWorld();
 	return World != nullptr && World->GetNetMode() != NM_Client;
 }
 
@@ -413,7 +413,7 @@ bool UEasySessionSubsystem::IsSessionAuthority() const
 bool UEasySessionSubsystem::IsHost() const
 {
 	// A dedicated server has the authority but no local player, so it can never be the hosting player.
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* World = GetWorld();
 	return IsSessionAuthority() && World != nullptr && World->GetNetMode() != NM_DedicatedServer;
 }
 
@@ -421,7 +421,7 @@ TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
 {
 	TArray<FString> PlayerNames;
 
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* World = GetWorld();
 	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
 	if (GameState == nullptr)
 	{
@@ -462,7 +462,7 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 {
 	TArray<FEasySessionPlayerInfo> Infos;
 
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* World = GetWorld();
 	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
 	if (GameState == nullptr)
 	{
@@ -500,7 +500,7 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 
 int32 UEasySessionSubsystem::GetSessionPlayerCount() const
 {
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* World = GetWorld();
 	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
 	return GameState ? GameState->PlayerArray.Num() : 0;
 }
@@ -580,7 +580,7 @@ void UEasySessionSubsystem::RefreshBusyState()
 
 FName UEasySessionSubsystem::GetOnlineSubsystemName() const
 {
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr);
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
 	return OnlineSub ? OnlineSub->GetSubsystemName() : NAME_None;
 }
 
@@ -591,7 +591,7 @@ bool UEasySessionSubsystem::IsOnlineSubsystemAvailable() const
 
 bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 {
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	UWorld* World = GetWorld();
 	if (World == nullptr || MapName.IsEmpty())
 	{
 		return false;
@@ -648,8 +648,7 @@ bool UEasySessionSubsystem::IsSessionBeingDestroyed() const
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 {
-	const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	return Online::GetSessionInterface(World);
+	return Online::GetSessionInterface(GetWorld());
 }
 
 void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
@@ -681,7 +680,7 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 		return;
 	}
 
-	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* OwnWorld = GetWorld();
 	if (World != nullptr)
 	{
 		if (World != OwnWorld)
@@ -737,7 +736,7 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
 {
-	const UWorld* OwnWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	const UWorld* OwnWorld = GetWorld();
 	if (World != OwnWorld)
 	{
 		return;
@@ -961,7 +960,7 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 
 void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
 {
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	UWorld* World = GetWorld();
 	if (World == nullptr || !IsSessionAuthority())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the server that created the session."));
