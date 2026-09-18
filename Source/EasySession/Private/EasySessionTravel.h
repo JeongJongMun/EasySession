@@ -33,7 +33,7 @@ public:
 
 	/**
 	 * Host side, after creating a session that stays on the current map: open a listen server here so clients can connect.
-	 * Does nothing on a dedicated server, which already listens, and when Start Listening is disabled.
+	 * Does nothing when Start Listening is disabled.
 	 */
 	void ListenOnCurrentMap(const FEasySessionHostParams& HostParams);
 

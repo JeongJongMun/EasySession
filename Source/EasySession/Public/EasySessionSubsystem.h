@@ -582,7 +582,7 @@ private:
 	void ExecuteEnd();
 
 	/** Build the settings a new session is created and advertised with. */
-	FOnlineSessionSettings MakeCreateSettings(const FEasySessionHostParams& Params, bool bIsDedicated);
+	FOnlineSessionSettings MakeCreateSettings(const FEasySessionHostParams& Params);
 
 	/** Ask the host's approval beacon whether the local player may join. */
 	void RequestJoinApproval();
@@ -645,9 +645,6 @@ private:
 	/** Finish a Start or End request whose re-advertise phase is over, telling the caller the match state change succeeded either way. */
 	void CompleteMatchStateRequest(bool bAdvertised);
 
-	/** Create the automatic session when running as a dedicated server. */
-	void AutoHostDedicatedServerSession();
-
 private:
 
 	/** The fix appended to every RequiresSessionAuthority message. Is Easy Session Host would be wrong here, because it is false on a dedicated server. */
@@ -701,9 +698,6 @@ private:
 
 	/** Delegate handle for engine-level travel failures. Bound for the subsystem lifetime. */
 	FDelegateHandle TravelFailureHandle;
-
-	/** Ticker waiting for a valid world before auto hosting on a dedicated server. */
-	FTSTicker::FDelegateHandle DedicatedAutoHostTickerHandle;
 
 	/**
 	 * Internal collaborators.

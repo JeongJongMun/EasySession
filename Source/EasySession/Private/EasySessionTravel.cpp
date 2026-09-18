@@ -33,8 +33,7 @@ void FEasySessionTravel::ListenOnCurrentMap(const FEasySessionHostParams& HostPa
 		return;
 	}
 
-	const bool bIsDedicated = HostParams.HostMode == EEasySessionHostMode::DedicatedServer;
-	if (bIsDedicated || !HostParams.bStartListening || World->GetNetMode() != NM_Standalone)
+	if (!HostParams.bStartListening || World->GetNetMode() != NM_Standalone)
 	{
 		return;
 	}
@@ -72,7 +71,7 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 	}
 
 	FString TravelURL = HostParams.InitialMapName;
-	if (HostParams.HostMode == EEasySessionHostMode::ListenServer && HostParams.bStartListening && !EasySessionAddress::HasListenOption(TravelURL))
+	if (HostParams.bStartListening && !EasySessionAddress::HasListenOption(TravelURL))
 	{
 		TravelURL += TEXT("?listen");
 	}

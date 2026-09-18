@@ -212,29 +212,13 @@ void UEasySessionSubsystem::ExecuteCreate()
 		return;
 	}
 
-	const bool bIsDedicated = Params.HostMode == EEasySessionHostMode::DedicatedServer;
-
-	// Dedicated hosting means this process is the server, so asking for it from a
-	// game that is not one leaves no process to open a server: the session would be
-	// advertised with no way in. Refuse here instead of letting every client find
-	// out through a connection timeout. The world's net mode is what decides, not
-	// IsRunningDedicatedServer(), so a dedicated server running under PIE counts.
-	const UWorld* CreateWorld = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (bIsDedicated && CreateWorld != nullptr && CreateWorld->GetNetMode() != NM_DedicatedServer)
-	{
-		CompleteActiveRequest(EEasySessionResult::InvalidParams,
-			TEXT("Host Mode is Dedicated Server, but this game is not running as one, so nothing would host the session. Use Listen Server, or run this build as a dedicated server."));
-		return;
-	}
-
-	const FOnlineSessionSettings Settings = MakeCreateSettings(Params, bIsDedicated);
+	const FOnlineSessionSettings Settings = MakeCreateSettings(Params);
 
 	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateUObject(this, &UEasySessionSubsystem::HandleCreateSessionComplete));
 
-	UE_LOG(LogEasySession, Log, TEXT("Creating session '%s' (%s, MaxPlayers=%d, LAN=%d)"),
+	UE_LOG(LogEasySession, Log, TEXT("Creating session '%s' (MaxPlayers=%d, LAN=%d)"),
 		*Params.SessionDisplayName,
-		bIsDedicated ? TEXT("dedicated") : TEXT("listen"),
 		Params.MaxPlayers,
 		Settings.bIsLANMatch ? 1 : 0);
 
@@ -244,16 +228,15 @@ void UEasySessionSubsystem::ExecuteCreate()
 	}
 }
 
-FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySessionHostParams& Params, bool bIsDedicated)
+FOnlineSessionSettings UEasySessionSubsystem::MakeCreateSettings(const FEasySessionHostParams& Params)
 {
 	FOnlineSessionSettings Settings;
 	Settings.NumPublicConnections = Params.MaxPlayers;
-	Settings.bIsDedicated = bIsDedicated;
 	Settings.bIsLANMatch = Params.bIsLANMatch || ShouldForceLAN();
 	Settings.bShouldAdvertise = Params.bShouldAdvertise;
 	Settings.bAllowJoinInProgress = Params.bAllowJoinInProgress;
-	Settings.bAllowInvites = !bIsDedicated && Params.bAllowInvites;
-	Settings.bUsesPresence = !bIsDedicated && !Settings.bIsLANMatch && Params.bUsePresence;
+	Settings.bAllowInvites = Params.bAllowInvites;
+	Settings.bUsesPresence = !Settings.bIsLANMatch && Params.bUsePresence;
 	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
@@ -582,7 +565,7 @@ void UEasySessionSubsystem::ExecuteUpdate()
 	UpdatedSettings.NumPublicConnections = Params.MaxPlayers;
 	UpdatedSettings.bShouldAdvertise = Params.bShouldAdvertise;
 	UpdatedSettings.bAllowJoinInProgress = Params.bAllowJoinInProgress;
-	UpdatedSettings.bAllowInvites = !NamedSession->SessionSettings.bIsDedicated && Params.bAllowInvites;
+	UpdatedSettings.bAllowInvites = Params.bAllowInvites;
 	UpdatedSettings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	UpdatedSettings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 

@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DeveloperSettings.h"
-#include "EasySessionTypes.h"
 #include "EasySessionConfig.generated.h"
 
 /**
@@ -53,18 +52,4 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Advanced", meta = (ClampMin = 0.0, UIMin = 0.0))
 	float RequestTimeoutSeconds = 30.0f;
-
-	/**
-	 * Automatically create and advertise a session when running as a dedicated server.
-	 * The session is created with the Dedicated Server Host Params below.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Dedicated Server")
-	bool bAutoHostOnDedicatedServer = true;
-
-	/**
-	 * Host params used when a dedicated server automatically creates its session.
-	 * Initial Map Name is ignored. The server keeps the map it was launched with.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Dedicated Server")
-	FEasySessionHostParams DedicatedServerHostParams;
 };

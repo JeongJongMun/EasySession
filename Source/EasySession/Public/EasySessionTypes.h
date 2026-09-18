@@ -24,19 +24,6 @@ enum class EEasySessionSearchMode : uint8
 };
 
 /**
- * How the session host runs the game.
- */
-UENUM(BlueprintType)
-enum class EEasySessionHostMode : uint8
-{
-	/** The hosting player's game is the server. No separate server process is needed. */
-	ListenServer,
-
-	/** A standalone server process without local players. Requires a server build. */
-	DedicatedServer
-};
-
-/**
  * Result of an EasySession operation.
  * Always check against Success. The other values describe why an operation failed.
  */
@@ -334,7 +321,7 @@ struct EASYSESSION_API FEasySessionSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowJoinInProgress = true;
 
-	/** Whether players can invite friends to the session. Ignored on dedicated servers. */
+	/** Whether players can invite friends to the session. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowInvites = true;
 
@@ -377,10 +364,6 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FString InitialMapName;
 
-	/** Whether the hosting player's game acts as the server, or a dedicated server hosts the session. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	EEasySessionHostMode HostMode = EEasySessionHostMode::ListenServer;
-
 	/**
 	 * Host on the local network instead of through the online subsystem.
 	 * Forced on when the online subsystem is NULL, which only does LAN.
@@ -401,7 +384,7 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 
 	/**
 	 * Whether the session uses platform presence (friends can see and join it).
-	 * Ignored on dedicated servers and LAN matches.
+	 * Ignored on LAN matches.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bUsePresence = true;

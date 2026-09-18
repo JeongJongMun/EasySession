@@ -89,22 +89,6 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		RefreshBusyState();
 		return true;
 	}));
-
-	if (IsRunningDedicatedServer() && GetDefault<UEasySessionConfig>()->bAutoHostOnDedicatedServer)
-	{
-		DedicatedAutoHostTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float DeltaTime)
-		{
-			const UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-			if (World == nullptr || !World->HasBegunPlay())
-			{
-				return true;
-			}
-
-			AutoHostDedicatedServerSession();
-			DedicatedAutoHostTickerHandle.Reset();
-			return false;
-		}), 0.5f);
-	}
 }
 
 void UEasySessionSubsystem::Deinitialize()
@@ -119,12 +103,6 @@ void UEasySessionSubsystem::Deinitialize()
 	{
 		GEngine->OnTravelFailure().Remove(TravelFailureHandle);
 		TravelFailureHandle.Reset();
-	}
-
-	if (DedicatedAutoHostTickerHandle.IsValid())
-	{
-		FTSTicker::GetCoreTicker().RemoveTicker(DedicatedAutoHostTickerHandle);
-		DedicatedAutoHostTickerHandle.Reset();
 	}
 
 	if (InviteBindTickerHandle.IsValid())
@@ -1047,21 +1025,5 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySes
 		{
 			Travel->ReturnToMenu();
 			OnComplete.ExecuteIfBound(Result, ErrorMessage);
-		}));
-}
-
-void UEasySessionSubsystem::AutoHostDedicatedServerSession()
-{
-	FEasySessionHostParams HostParams = GetDefault<UEasySessionConfig>()->DedicatedServerHostParams;
-	HostParams.HostMode = EEasySessionHostMode::DedicatedServer;
-	HostParams.InitialMapName.Empty();
-
-	UE_LOG(LogEasySession, Log, TEXT("Dedicated server detected. Auto hosting session '%s'."), *HostParams.SessionDisplayName);
-
-	CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this](EEasySessionResult Result, const FString& /*ErrorMessage*/)
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Dedicated server auto host finished: %s (IsHost=%d, IsSessionAuthority=%d)"),
-				*EasySession::ResultToString(Result), IsHost() ? 1 : 0, IsSessionAuthority() ? 1 : 0);
 		}));
 }
