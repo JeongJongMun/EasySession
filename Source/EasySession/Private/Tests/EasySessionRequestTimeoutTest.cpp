@@ -132,7 +132,7 @@ bool FEasySessionWaitForAbandonedCreate::Update()
 			FEasySessionHostParams Params;
 			Params.SessionDisplayName = TEXT("EasySession Abandoned Create Retry");
 			Params.bIsLANMatch = true;
-			Params.bStartListening = false;
+			Params.InitialMapName = EasySessionTest::SessionMapName;
 			Subsystem->CreateEasySession(Params, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
@@ -186,7 +186,7 @@ bool FEasySessionAbandonedCreateTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -198,7 +198,7 @@ bool FEasySessionAbandonedCreateTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams Params;
 	Params.SessionDisplayName = TEXT("EasySession Abandoned Create Test");
 	Params.bIsLANMatch = true;
-	Params.bStartListening = false;
+	Params.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateEasySession(Params);
 
 	State->StartTime = FPlatformTime::Seconds();

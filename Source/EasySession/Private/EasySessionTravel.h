@@ -20,6 +20,9 @@ class UWorld;
  */
 class FEasySessionTravel
 {
+	//~ FEasySessionTestAccess sets bSkipHostTravel for the tests.
+	friend class FEasySessionTestAccess;
+
 public:
 
 	/** Starts watching map loads, which are what end a travel. */
@@ -28,14 +31,12 @@ public:
 	/** Stops watching map loads. */
 	~FEasySessionTravel();
 
-	/** Host side, after creating a session that has its own map: travel there, adding ?listen when the mode needs it. */
-	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
-
 	/**
-	 * Host side, after creating a session that stays on the current map: open a listen server here so clients can connect.
-	 * Does nothing when Start Listening is disabled.
+	 * Travel the host to Initial Map Name after the session is created.
+	 * The ?listen option is added unless the map name already has it.
+	 * The current world is destroyed, so players who were connected before the session existed are disconnected.
 	 */
-	void ListenOnCurrentMap(const FEasySessionHostParams& HostParams);
+	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
 
 	/** Client side, after joining: travel to the host address in the connect string. */
 	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
@@ -73,4 +74,10 @@ private:
 
 	/** Whether a travel this plugin started is still waiting for its map to load. */
 	bool bTravelInFlight = false;
+
+	/**
+	 * Whether TravelToOwnSession returns without starting the travel.
+	 * Only the automation tests set it, because their world has no player controller to travel with.
+	 */
+	bool bSkipHostTravel = false;
 };

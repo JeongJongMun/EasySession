@@ -14,6 +14,7 @@
 #include "EasySessionServerGate.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTravel.h"
 #include "GameFramework/OnlineReplStructs.h"
 #include "EasySessionTypes.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -45,6 +46,24 @@ public:
 		{
 			NamedSession->bHosting = bCreated;
 		}
+	}
+
+	/**
+	 * Make the host's travel to Initial Map Name do nothing.
+	 * A headless test world has no player controller to travel with.
+	 */
+	static void SkipHostTravel(UEasySessionSubsystem& Subsystem)
+	{
+		Subsystem.Travel->bSkipHostTravel = true;
+	}
+
+	/**
+	 * Spawn the state actor and the join approval host object, as the host does when it initializes the game mode of the session's map.
+	 * Tests call it after the create, because SkipHostTravel keeps them in the world they started in.
+	 */
+	static void ArriveInSessionMap(UEasySessionSubsystem& Subsystem)
+	{
+		Subsystem.Host->SpawnWorldActors();
 	}
 
 	/** The subsystem's request queue, so a test can register operations without a real matchmaking or friend search. */

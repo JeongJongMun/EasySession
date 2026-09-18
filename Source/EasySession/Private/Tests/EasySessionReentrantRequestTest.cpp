@@ -42,7 +42,7 @@ namespace EasySessionReentrantRequestTest
 		FEasySessionHostParams Params;
 		Params.SessionDisplayName = TEXT("EasySession Reentrant Request");
 		Params.bIsLANMatch = true;
-		Params.bStartListening = false;
+		Params.InitialMapName = EasySessionTest::SessionMapName;
 		return Params;
 	}
 }
@@ -170,7 +170,7 @@ bool FEasySessionReentrantRequestTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))

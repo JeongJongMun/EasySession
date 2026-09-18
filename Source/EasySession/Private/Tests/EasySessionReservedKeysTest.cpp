@@ -39,7 +39,7 @@ namespace EasySessionReservedKeysTest
 		FEasySessionHostParams Params;
 		Params.SessionDisplayName = TEXT("EasySession Reserved Keys Test");
 		Params.bIsLANMatch = true;
-		Params.bStartListening = false;
+		Params.InitialMapName = EasySessionTest::SessionMapName;
 		Params.CustomSettings.Add(TEXT("GameMode"), TEXT("CTF"));
 		Params.CustomSettings.Add(TEXT("Mods"), TEXT("ModA"));
 		return Params;
@@ -170,7 +170,7 @@ bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))

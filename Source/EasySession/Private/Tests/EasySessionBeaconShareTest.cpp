@@ -69,6 +69,9 @@ bool FEasySessionBeaconShareStep::Update()
 				return false;
 			}
 
+			// The join approval host object is registered when the host initializes the game mode of the session's map.
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
+
 			AOnlineBeaconHost* ProjectHost = State->ProjectHost.Get();
 			CurrentTest->TestEqual(TEXT("No second beacon host was spawned"), CountBeaconHosts(World), 1);
 			CurrentTest->TestTrue(TEXT("The approval registered on the project's host"),
@@ -126,7 +129,7 @@ bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	UWorld* World = State->GameInstance->GetWorld();
@@ -151,7 +154,7 @@ bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Beacon Share Test");
 	HostParams.bIsLANMatch = true;
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateEasySession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
@@ -173,7 +176,7 @@ namespace EasySessionBeaconPortTest
 		bool Init(FAutomationTestBase& Test)
 		{
 			GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-			GameInstance->InitializeStandalone();
+			EasySessionTest::InitializeGameInstance(GameInstance);
 			Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 			World = GameInstance->GetWorld();
 			if (!Test.TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem) || !Test.TestNotNull(TEXT("Test world is available"), World))

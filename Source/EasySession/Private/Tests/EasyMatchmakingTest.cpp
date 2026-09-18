@@ -143,7 +143,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -156,10 +156,8 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	Params.Search.bLANQuery = true;
 	Params.Host.SessionDisplayName = TEXT("EasySession Matchmaking Test");
 	Params.bAllowHostFallback = true;
-	// The travel to this map aborts harmlessly. A headless test has no player controller to travel with.
-	Params.Host.InitialMapName = TEXT("ES_MatchmakingTestMap");
 	Params.Host.bIsLANMatch = true;
-	Params.Host.bStartListening = false;
+	Params.Host.InitialMapName = EasySessionTest::SessionMapName;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
 
@@ -177,48 +175,53 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 }
 
 /**
- * Host fallback without a map: matchmaking accepts every parameter set Create accepts.
+ * Matchmaking refuses a host fallback without Initial Map Name before the first search pass.
  *
- * An empty Initial Map Name means "host where this player already is", which Create supports by
- * listening on the current map. Matchmaking used to refuse it before the first search, so a graph
- * that placed the node without filling the params always failed.
+ * Create Easy Session refuses host params without Initial Map Name, so the fallback could never host.
+ * The refusal is delivered inside the StartMatchmaking call, not after every search pass has run.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackWithoutMapTest, "EasySession.Matchmaking.HostFallbackWithoutAMap", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackWithoutMapTest, "EasySession.Matchmaking.HostFallbackWithoutAMapIsRefused", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Parameters)
 {
-	using namespace EasyMatchmakingTest;
+	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	EasySessionTest::InitializeGameInstance(GameInstance);
 
-	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
-
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{
-		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		EasySessionTest::DestroyGameInstance(GameInstance.Get());
 		return false;
 	}
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Host.SessionDisplayName = TEXT("EasySession Matchmaking No Map Test");
 	Params.bAllowHostFallback = true;
-	Params.Host.bIsLANMatch = true;
-	Params.Host.bStartListening = false;
-	Params.MaxSearchPasses = 1;
-	Params.DelayBetweenPassesSeconds = 0.0f;
 	// Initial Map Name is left empty on purpose. That is what a graph gets from the default struct.
 
+	TOptional<EEasySessionResult> MatchmakingResult;
+	FString MatchmakingError;
 	Subsystem->StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
-		[State](EEasySessionResult Result, const FString& ErrorMessage)
+		[&MatchmakingResult, &MatchmakingError](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			State->MatchmakingResult = Result;
+			MatchmakingResult = Result;
+			MatchmakingError = ErrorMessage;
 		}));
 
-	TestTrue(TEXT("Matchmaking is running"), Subsystem->IsMatchmakingRunning());
+	TestTrue(TEXT("The refusal is delivered inside the call"), MatchmakingResult.IsSet());
+	if (MatchmakingResult.IsSet())
+	{
+		TestEqual(TEXT("Matchmaking result"), MatchmakingResult.GetValue(), EEasySessionResult::InvalidParams);
+	}
+	TestTrue(TEXT("The message names Initial Map Name"), MatchmakingError.Contains(TEXT("Initial Map Name")));
+	TestFalse(TEXT("Matchmaking never started"), Subsystem->IsMatchmakingRunning());
 
-	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitHostFallback(State));
+	// Without the host fallback the same params only search, so they are accepted.
+	Params.bAllowHostFallback = false;
+	Subsystem->StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate());
+	TestTrue(TEXT("Matchmaking without the host fallback needs no map"), Subsystem->IsMatchmakingRunning());
+	Subsystem->CancelMatchmaking();
+
+	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;
 }
 
@@ -289,7 +292,7 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -313,7 +316,7 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 	Params.Host.Password = TEXT("1234");
 	Params.Host.bHidden = true;
 	Params.Host.bShouldAdvertise = false;
-	Params.Host.bStartListening = false;
+	Params.Host.InitialMapName = EasySessionTest::SessionMapName;
 	Params.bAllowHostFallback = true;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
@@ -380,7 +383,7 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -464,7 +467,7 @@ bool FEasyMatchmakingCancelUndoTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -481,7 +484,7 @@ bool FEasyMatchmakingCancelUndoTest::RunTest(const FString& Parameters)
 	Params.Host.SessionDisplayName = TEXT("EasySession Cancel Undo Test");
 	Params.bAllowHostFallback = true;
 	Params.Host.bIsLANMatch = true;
-	Params.Host.bStartListening = false;
+	Params.Host.InitialMapName = EasySessionTest::SessionMapName;
 	Params.MaxSearchPasses = 1;
 	Params.DelayBetweenPassesSeconds = 0.0f;
 
@@ -575,7 +578,7 @@ bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -587,7 +590,7 @@ bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession AlreadyInSession Test");
 	HostParams.bIsLANMatch = true;
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 	// Empty Initial Map Name: the session simply exists here, no travel follows.
 	Subsystem->CreateEasySession(HostParams);
 
@@ -796,7 +799,7 @@ bool FEasySessionCandidateTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -811,7 +814,7 @@ bool FEasySessionCandidateTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams SeedParams;
 	SeedParams.SessionDisplayName = TEXT("EasySession Candidate Seed");
 	SeedParams.bIsLANMatch = true;
-	SeedParams.bStartListening = false;
+	SeedParams.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateEasySession(SeedParams);
 
 	State->StartTime = FPlatformTime::Seconds();
@@ -880,7 +883,7 @@ bool FEasyMatchmakingWaitEvents::Update()
 			FEasySessionHostParams SeedParams;
 			SeedParams.SessionDisplayName = TEXT("EasySession Events Seed");
 			SeedParams.bIsLANMatch = true;
-			SeedParams.bStartListening = false;
+			SeedParams.InitialMapName = EasySessionTest::SessionMapName;
 			Subsystem->CreateEasySession(SeedParams);
 
 			State->Phase = 1;
@@ -944,7 +947,7 @@ bool FEasyMatchmakingEventsTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -1144,7 +1147,7 @@ bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -1159,7 +1162,7 @@ bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Targeted Room");
 	HostParams.bIsLANMatch = true;
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 	HostParams.bHidden = true;
 	HostParams.bUseJoinCode = true;
 	HostParams.Password = TEXT("secret");
@@ -1219,7 +1222,7 @@ bool FEasyMatchmakingCancelSearchTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))

@@ -78,7 +78,7 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -90,7 +90,7 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Lifecycle Test");
 	HostParams.bIsLANMatch = true;
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 
 	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString&)

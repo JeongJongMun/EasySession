@@ -49,7 +49,8 @@ public:
 
 	/**
 	 * This process created the session.
-	 * FNamedOnlineSession's bHosting is set, the server gate gets the credentials and the state actor is spawned.
+	 * FNamedOnlineSession's bHosting is set and the server gate gets the credentials.
+	 * The world actors are spawned later, in the map the host travels to.
 	 */
 	void OnSessionCreated(const FEasySessionHostParams& Params);
 
@@ -77,7 +78,7 @@ public:
 	/**
 	 * Spawn the state actor and the join approval host object in the current world.
 	 * An actor that already exists in this world is kept.
-	 * Called when hosting starts without a travel, in every world the session travels to, and after a failed server travel.
+	 * Called in every world the session travels to, and after a failed server travel.
 	 */
 	void SpawnWorldActors();
 

@@ -6,12 +6,35 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionTestAccess.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 
 namespace EasySessionTest
 {
+	/**
+	 * The Initial Map Name the tests host with.
+	 * Create Easy Session refuses host params without one, and no test travels there, so the map does not have to exist.
+	 */
+	inline const TCHAR* const SessionMapName = TEXT("/Game/EasySessionTestMap");
+
+	/**
+	 * Initialize a test game instance and disable the host's travel in its subsystem.
+	 * A headless world has no player controller, so the travel to Initial Map Name would always fail.
+	 * A test that needs the state actor or the join approval beacon calls FEasySessionTestAccess::ArriveInSessionMap after the create.
+	 */
+	template <typename GameInstancePtrType>
+	void InitializeGameInstance(const GameInstancePtrType& GameInstance)
+	{
+		GameInstance->InitializeStandalone();
+
+		if (UEasySessionSubsystem* Subsystem = GameInstance->template GetSubsystem<UEasySessionSubsystem>())
+		{
+			FEasySessionTestAccess::SkipHostTravel(*Subsystem);
+		}
+	}
+
 	/**
 	 * Shut a test game instance down and destroy the world it brought with it.
 	 *

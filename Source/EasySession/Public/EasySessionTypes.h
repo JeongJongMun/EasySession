@@ -348,7 +348,8 @@ struct EASYSESSION_API FEasySessionSettings
 
 /**
  * Parameters for hosting a session: the settings above, plus how to open the server that runs it.
- * Every value has a default. An empty FEasySessionHostParams hosts a public 4 player listen server session.
+ * Every value has a default except Initial Map Name.
+ * With a map name alone, FEasySessionHostParams hosts a public 4 player listen server session.
  * The fields added here are read once, while the session is created.
  * Update Easy Session takes FEasySessionSettings alone, because these fields cannot change on a live session.
  */
@@ -358,8 +359,9 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	GENERATED_BODY()
 
 	/**
-	 * Map to travel to once the session is created (e.g. /Game/Maps/Lobby). Used only then: the session does not advertise its map.
-	 * Leave empty to stay on the current map. Additional travel options can be appended with '?'.
+	 * Map the host travels to with the ?listen option once the session is created (e.g. /Game/Maps/Lobby).
+	 * Create Easy Session fails with Invalid Params while this is empty, because that travel is what opens the listen server.
+	 * The session does not advertise the map.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	FString InitialMapName;
@@ -374,15 +376,6 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	//~ Folded behind the Make node's advanced arrow, for the reason described in FEasySessionSettings.
 
 	/**
-	 * Open a listen server as part of hosting, so clients can connect.
-	 * Travels to Initial Map Name with the ?listen option, or starts listening on the current map when Initial Map Name is empty.
-	 *
-	 * Turning this off still advertises the session, but there is no server for players to connect to until you open one yourself.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	bool bStartListening = true;
-
-	/**
 	 * Whether the session uses platform presence (friends can see and join it).
 	 * Ignored on LAN matches.
 	 */
@@ -395,6 +388,9 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString AdditionalTravelOptions;
+
+	/** @return Whether a session can be hosted with these params. The settings must be valid and Initial Map Name must be set. */
+	bool IsValid() const;
 };
 
 /**

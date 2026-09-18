@@ -93,7 +93,7 @@ bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -105,7 +105,7 @@ bool FEasySessionNodesTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Nodes Test");
 	HostParams.bIsLANMatch = true;
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 
 	UEasyCreateSessionNode* CreateNode = UEasyCreateSessionNode::CreateEasySession(State->GameInstance.Get(), HostParams);
 	if (!TestNotNull(TEXT("Create node was constructed"), CreateNode))

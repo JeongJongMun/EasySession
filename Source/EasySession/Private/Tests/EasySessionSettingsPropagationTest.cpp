@@ -42,7 +42,7 @@ namespace EasySessionSettingsPropagationTest
 		Params.MaxPlayers = 4;
 		Params.bUseJoinCode = true;
 		Params.bIsLANMatch = true;
-		Params.bStartListening = false;
+		Params.InitialMapName = EasySessionTest::SessionMapName;
 		return Params;
 	}
 
@@ -86,8 +86,9 @@ bool FEasySessionWaitForSettingsPush::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			// Creation spawns the state actor and pushes a first payload, so a
-			// player who joins before any update still receives the settings.
+			// Arriving in the session's map spawns the state actor with a first payload.
+			// A player who joins before any update still receives the settings.
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
 			const FEasySessionReplicatedSettings AfterCreate = FEasySessionTestAccess::GetStateActorReplicatedSettings(*Subsystem);
 			CurrentTest->TestTrue(TEXT("Create wrote a payload into the state actor"), AfterCreate.bValid);
 			CurrentTest->TestEqual(TEXT("Payload carries the created display name"), AfterCreate.SessionDisplayName, TEXT("Settings Push Before"));
@@ -166,7 +167,7 @@ bool FEasySessionSettingsPushTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -292,7 +293,7 @@ bool FEasySessionSettingsApplyTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))

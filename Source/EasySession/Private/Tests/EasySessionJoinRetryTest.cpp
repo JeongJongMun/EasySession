@@ -148,7 +148,7 @@ bool FEasySessionJoinRetryTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -161,7 +161,7 @@ bool FEasySessionJoinRetryTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession Join Retry Test");
 	HostParams.bIsLANMatch = true;
 	// No map and no listening: the session advertises this process's address with port 0, the form of an unreachable host.
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateEasySession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();

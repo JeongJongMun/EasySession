@@ -89,7 +89,7 @@ bool FEasySessionQueueTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -102,7 +102,7 @@ bool FEasySessionQueueTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession Queue Test");
 	HostParams.MaxPlayers = 4;
 	HostParams.bIsLANMatch = true;
-	HostParams.bStartListening = false;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 
 	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString& ErrorMessage)

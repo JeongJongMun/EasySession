@@ -41,9 +41,7 @@ FEasySessionHost::~FEasySessionHost()
 
 void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
 {
-	// This process created the session, so it is the session's server, on a dedicated server just as much as on a listen server.
-	// bHosting is a member of the session object, so it cannot outlive the session.
-	// NULL already sets it in CreateSession, and Steam never sets it.
+	// This process created the session, so it is the host. NULL already sets bHosting in CreateSession, but Steam never does.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
 	if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr)
 	{
@@ -51,7 +49,6 @@ void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
 	}
 
 	Gate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
-	EnsureStateActor();
 }
 
 void FEasySessionHost::OnSettingsUpdated(const FEasySessionSettings& Settings)

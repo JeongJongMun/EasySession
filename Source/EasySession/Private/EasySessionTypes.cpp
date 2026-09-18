@@ -99,6 +99,11 @@ bool FEasySessionSettings::IsValid() const
 	return MaxPlayers > 0;
 }
 
+bool FEasySessionHostParams::IsValid() const
+{
+	return FEasySessionSettings::IsValid() && !InitialMapName.TrimStartAndEnd().IsEmpty();
+}
+
 bool FEasySessionSearchParams::IsValid() const
 {
 	// The mode and the target id must be set together: one without the other asks about no one or ignores the id.

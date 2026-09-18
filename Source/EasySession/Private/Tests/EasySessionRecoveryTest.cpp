@@ -23,7 +23,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDisconnectInfoTest, "EasySession.Re
 bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 {
 	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
-	GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(GameInstance);
 
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -81,7 +81,7 @@ namespace EasySessionSecondDisconnectTest
 		FEasySessionHostParams Params;
 		Params.SessionDisplayName = DisplayName;
 		Params.bIsLANMatch = true;
-		Params.bStartListening = false;
+		Params.InitialMapName = EasySessionTest::SessionMapName;
 		return Params;
 	}
 
@@ -179,7 +179,7 @@ bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -295,7 +295,7 @@ bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<EasySessionCleanupOnceTest::FTestState> State = MakeShared<EasySessionCleanupOnceTest::FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -373,6 +373,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 			{
 				return false;
 			}
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
 			CurrentTest->TestNotNull(TEXT("The approval beacon is up before the travel"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
 
 			// The engine accepts a travel to a map that does not exist. Only the next
@@ -429,7 +430,7 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -585,9 +586,9 @@ bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 	State->ForeignGameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->ForeignGameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->ForeignGameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))

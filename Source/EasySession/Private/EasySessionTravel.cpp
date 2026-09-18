@@ -8,8 +8,6 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
-#include "GameFramework/GameModeBase.h"
-#include "GameFramework/GameSession.h"
 #include "GameFramework/PlayerController.h"
 #include "UObject/UObjectGlobals.h"
 
@@ -25,53 +23,15 @@ FEasySessionTravel::~FEasySessionTravel()
 	PostLoadMapHandle.Reset();
 }
 
-void FEasySessionTravel::ListenOnCurrentMap(const FEasySessionHostParams& HostParams)
-{
-	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
-	{
-		return;
-	}
-
-	if (!HostParams.bStartListening || World->GetNetMode() != NM_Standalone)
-	{
-		return;
-	}
-
-	FURL ListenURL;
-	if (World->Listen(ListenURL))
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Started listening on the current map (port %d)."), ListenURL.Port);
-
-		// No travel URL here, so the engine never reads ?MaxPlayers=. The cap its "Server full" refusal compares against is set here instead.
-		AGameModeBase* GameMode = World->GetAuthGameMode();
-		if (GameMode && GameMode->GameSession)
-		{
-			GameMode->GameSession->MaxPlayers = HostParams.MaxPlayers;
-		}
-	}
-	else
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("Failed to start a listen server on the current map. Clients will not be able to connect."));
-		Owner.OnSessionFailure.Broadcast(TEXT("Failed to start a listen server on the current map."));
-	}
-}
-
 void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostParams)
 {
-	if (HostParams.InitialMapName.IsEmpty())
+	if (bSkipHostTravel)
 	{
 		return;
 	}
 
-	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
-	{
-		return;
-	}
-
-	FString TravelURL = HostParams.InitialMapName;
-	if (HostParams.bStartListening && !EasySessionAddress::HasListenOption(TravelURL))
+	FString TravelURL = HostParams.InitialMapName.TrimStartAndEnd();
+	if (!EasySessionAddress::HasListenOption(TravelURL))
 	{
 		TravelURL += TEXT("?listen");
 	}
@@ -82,27 +42,16 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 
 	UE_LOG(LogEasySession, Log, TEXT("Traveling to session map '%s'"), *TravelURL);
 
-	// Not yet a server (hosting from the main menu). A client travel hard loads, so ?listen opens the listen server. A seamless ServerTravel would skip it.
-	if (World->GetNetMode() == NM_Standalone)
+	// A client travel loads the map in a new world, so ?listen opens the listen server and players connected before the session are disconnected.
+	APlayerController* PlayerController = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
+	if (PlayerController == nullptr)
 	{
-		APlayerController* PlayerController = Owner.GetGameInstance()->GetFirstLocalPlayerController();
-		if (PlayerController == nullptr)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("No local player controller to travel with. Travel to '%s' aborted."), *TravelURL);
-			Owner.OnSessionFailure.Broadcast(FString::Printf(TEXT("Travel to '%s' failed."), *TravelURL));
-			return;
-		}
-
-		PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
-	}
-	// Already a server: no local player controller on a dedicated server, and a server travel brings connected players along.
-	else if (!World->ServerTravel(TravelURL))
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("ServerTravel to '%s' failed. Check that the map path is valid (e.g. /Game/Maps/Lobby)."), *TravelURL);
-		Owner.OnSessionFailure.Broadcast(FString::Printf(TEXT("ServerTravel to '%s' failed."), *TravelURL));
+		UE_LOG(LogEasySession, Warning, TEXT("No local player controller to travel with. Travel to '%s' aborted."), *TravelURL);
+		Owner.OnSessionFailure.Broadcast(FString::Printf(TEXT("Travel to '%s' failed."), *TravelURL));
 		return;
 	}
 
+	PlayerController->ClientTravel(TravelURL, TRAVEL_Absolute);
 	MarkStarted(TEXT("host travel to own session"));
 }
 

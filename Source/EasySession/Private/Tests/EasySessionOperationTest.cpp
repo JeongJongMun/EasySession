@@ -94,7 +94,7 @@ bool FEasySessionOperationTest::RunTest(const FString& Parameters)
 
 	// The subsystem reads Is Busy and Get Activity from the same list.
 	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
-	GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(GameInstance);
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
 	{

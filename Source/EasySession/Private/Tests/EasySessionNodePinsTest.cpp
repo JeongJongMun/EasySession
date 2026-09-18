@@ -72,7 +72,7 @@ namespace EasySessionNodePinsTest
 		FEasySessionHostParams HostParams;
 		HostParams.SessionDisplayName = TEXT("EasySession Node Pins Test");
 		HostParams.bIsLANMatch = true;
-		HostParams.bStartListening = false;
+		HostParams.InitialMapName = EasySessionTest::SessionMapName;
 		return HostParams;
 	}
 }
@@ -162,7 +162,7 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 	State->Listener = TStrongObjectPtr<UEasySessionTestNodePinListener>(NewObject<UEasySessionTestNodePinListener>());
 
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), State->GameInstance->GetSubsystem<UEasySessionSubsystem>()))
@@ -270,7 +270,7 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 	State->Listener = TStrongObjectPtr<UEasySessionTestNodePinListener>(NewObject<UEasySessionTestNodePinListener>());
 
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), State->GameInstance->GetSubsystem<UEasySessionSubsystem>()))
@@ -424,7 +424,7 @@ bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -438,7 +438,7 @@ bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams Params;
 	Params.SessionDisplayName = TEXT("EasySession Leave Node Test");
 	Params.bIsLANMatch = true;
-	Params.bStartListening = false;
+	Params.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateEasySession(Params);
 
 	State->StartTime = FPlatformTime::Seconds();

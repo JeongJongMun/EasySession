@@ -77,7 +77,12 @@ bool FEasySessionHostStep::Update()
 			}
 
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
-			TestHostSide(*CurrentTest, *Subsystem, true, TEXT("After the create"));
+
+			// The create sets the authority and the credentials.
+			// The world actors are spawned in the session's map.
+			CurrentTest->TestFalse(TEXT("The create alone spawns no state actor"), FEasySessionTestAccess::HasStateActor(*Subsystem));
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
+			TestHostSide(*CurrentTest, *Subsystem, true, TEXT("After arriving in the session's map"));
 
 			if (State->bChangeWorld)
 			{
@@ -141,7 +146,7 @@ namespace EasySessionHostTest
 		TSharedPtr<FTestState> State = MakeShared<FTestState>();
 		State->bChangeWorld = bChangeWorld;
 		State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-		State->GameInstance->InitializeStandalone();
+		EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 		UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 		if (!Test.TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -154,7 +159,7 @@ namespace EasySessionHostTest
 		HostParams.SessionDisplayName = TEXT("EasySession Host Test");
 		HostParams.Password = TestPassword;
 		HostParams.bIsLANMatch = true;
-		HostParams.bStartListening = false;
+		HostParams.InitialMapName = EasySessionTest::SessionMapName;
 		Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 			[State](EEasySessionResult Result, const FString&)
 			{

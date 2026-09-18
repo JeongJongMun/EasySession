@@ -40,7 +40,7 @@ namespace EasySessionPasswordUpdateTest
 		Params.SessionDisplayName = TEXT("EasySession Password Update");
 		Params.MaxPlayers = 6;
 		Params.bIsLANMatch = true;
-		Params.bStartListening = false;
+		Params.InitialMapName = EasySessionTest::SessionMapName;
 		Params.bAllowJoinInProgress = false;
 
 		// Whitespace only, so the session starts open. What it advertises is decided
@@ -188,7 +188,7 @@ bool FEasySessionPasswordUpdateTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -270,7 +270,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 			FEasySessionHostParams Params;
 			Params.SessionDisplayName = TEXT("EasySession Approval Table Locked");
 			Params.bIsLANMatch = true;
-			Params.bStartListening = false;
+			Params.InitialMapName = EasySessionTest::SessionMapName;
 			Params.Password = TEXT("hunter2");
 			Params.bAllowJoinInProgress = false;
 			Subsystem->CreateEasySession(Params);
@@ -344,7 +344,7 @@ bool FEasySessionApprovalTableTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	State->GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
@@ -356,7 +356,7 @@ bool FEasySessionApprovalTableTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams OpenParams;
 	OpenParams.SessionDisplayName = TEXT("EasySession Approval Table Open");
 	OpenParams.bIsLANMatch = true;
-	OpenParams.bStartListening = false;
+	OpenParams.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateEasySession(OpenParams);
 
 	State->StartTime = FPlatformTime::Seconds();

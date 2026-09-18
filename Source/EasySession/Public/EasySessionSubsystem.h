@@ -650,6 +650,9 @@ private:
 	/** The fix appended to every RequiresSessionAuthority message. Is Easy Session Host would be wrong here, because it is false on a dedicated server. */
 	static constexpr const TCHAR* RequiresSessionAuthorityFix = TEXT("Show this button only when Is Easy Session Authority is true, so clients do not see it.");
 
+	/** The message of every InvalidParams result that refuses host params. */
+	static constexpr const TCHAR* InvalidHostParamsMessage = TEXT("Host params are invalid: Max Players must be above 0, and Initial Map Name must name the map the session is played on.");
+
 	/** The native search object of the running Find request. */
 	TSharedPtr<FOnlineSessionSearch> ActiveSearch;
 

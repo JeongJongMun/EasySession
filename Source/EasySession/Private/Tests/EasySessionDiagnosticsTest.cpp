@@ -37,7 +37,7 @@ bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
 
 	// Real (standalone) world: must run all checks to completion.
 	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
-	GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(GameInstance);
 	const EasySessionDiagnostics::FReport Report = EasySessionDiagnostics::RunDiagnostics(GameInstance->GetWorld());
 	TestTrue(TEXT("The summary names the services"), Report.Summary.Contains(TEXT("configured:")));
 	EasySessionDiagnostics::LogReport(Report);
@@ -59,7 +59,7 @@ bool FEasySessionDiagnosticsFindingsTest::RunTest(const FString& Parameters)
 	using namespace EasySessionDiagnosticsTest;
 
 	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
-	GameInstance->InitializeStandalone();
+	EasySessionTest::InitializeGameInstance(GameInstance);
 	UWorld* World = GameInstance->GetWorld();
 
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(World);

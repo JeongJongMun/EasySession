@@ -16,7 +16,6 @@
 #include "EasySessionTravel.h"
 #include "EasySessionJoinApproval.h"
 #include "Engine/GameInstance.h"
-#include "Engine/LocalPlayer.h"
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameSession.h"
@@ -195,7 +194,7 @@ void UEasySessionSubsystem::ExecuteCreate()
 	const FEasySessionHostParams& Params = GetActiveRequest()->HostParams;
 	if (!Params.IsValid())
 	{
-		CompleteActiveRequest(EEasySessionResult::InvalidParams, TEXT("Host params are invalid."));
+		CompleteActiveRequest(EEasySessionResult::InvalidParams, InvalidHostParamsMessage);
 		return;
 	}
 
@@ -643,25 +642,8 @@ void UEasySessionSubsystem::HandleCreateSessionComplete(FName SessionName, bool 
 
 	Host->OnSessionCreated(HostParams);
 
-	if (HostParams.InitialMapName.IsEmpty())
-	{
-		// The host stays on this map, where they logged in before the session existed, so no login has registered them.
-		const IOnlineSessionPtr Sessions = GetSessionInterface();
-		const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
-		const FUniqueNetIdRepl HostId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
-		if (Sessions.IsValid() && HostId.IsValid() && Sessions->RegisterPlayers(GetActiveRequest()->SessionName, { HostId.GetUniqueNetId().ToSharedRef() }))
-		{
-			UE_LOG(LogEasySession, Log, TEXT("Registered the hosting player in the session."));
-		}
-
-		Travel->ListenOnCurrentMap(HostParams);
-		Host->SpawnWorldActors();
-	}
-	else
-	{
-		// Requested before the completion below, so Is Busy already covers the coming map load. The map itself loads next tick.
-		Travel->TravelToOwnSession(HostParams);
-	}
+	// Requested before the request completes, so Is Busy is already true for the travel when the completion delegate fires.
+	Travel->TravelToOwnSession(HostParams);
 
 	CompleteActiveRequest(EEasySessionResult::Success);
 }
@@ -806,7 +788,7 @@ void UEasySessionSubsystem::HandleJoinSessionComplete(FName SessionName, EOnJoin
 		DestroyEasySession();
 
 		CompleteActiveRequest(EEasySessionResult::ResolveFailure, FString::Printf(
-			TEXT("The host address '%s' is not connectable - the host is not running as a listen server. Make sure the host creates its session with Start Listening enabled or travels to a map with the ?listen option."),
+			TEXT("The host address '%s' is not connectable - the host is not running as a listen server. The host's travel to its Initial Map Name did not open one. Check the map path on the host."),
 			*ConnectString));
 		return;
 	}

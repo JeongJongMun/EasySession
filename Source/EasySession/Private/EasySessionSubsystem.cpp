@@ -262,6 +262,13 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 		return;
 	}
 
+	// The host fallback could only fail after the last search pass, so the params are refused before the first one.
+	if (MatchmakingParams.bAllowHostFallback && !MatchmakingParams.Host.IsValid())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, InvalidHostParamsMessage);
+		return;
+	}
+
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
 	const TSharedRef<FEasyMatchmakingOperation> Operation = MakeShared<FEasyMatchmakingOperation>(*Policy);
 	RequestQueue->BeginOperation(Operation);

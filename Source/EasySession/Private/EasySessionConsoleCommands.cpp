@@ -74,7 +74,7 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GHostCommand(
 		TEXT("EasySession.Host"),
-		TEXT("Create a session. Optional arg: map to travel to, e.g. EasySession.Host /Game/Maps/Lobby"),
+		TEXT("Create a session and travel to its map, e.g. EasySession.Host /Game/Maps/Lobby"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
@@ -86,7 +86,7 @@ namespace EasySessionConsole
 					HostParams.InitialMapName = Args[0];
 				}
 
-				Print(FString::Printf(TEXT("Hosting session%s..."), HostParams.InitialMapName.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" (map: %s)"), *HostParams.InitialMapName)));
+				Print(FString::Printf(TEXT("Hosting session (map: %s)..."), *HostParams.InitialMapName));
 				Subsystem->CreateEasySession(HostParams, MakePrintDelegate(TEXT("Host")));
 			}
 		}));
@@ -148,13 +148,14 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GMatchmakingCommand(
 		TEXT("EasySession.Matchmaking"),
-		TEXT("Search, join the best session, or host one. Optional arg: map for the fallback host session."),
+		TEXT("Search and join the best session. Optional arg: map to host a session on when none is found."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				FEasyMatchmakingParams Params;
 				Params.Host.SessionDisplayName = FString::Printf(TEXT("%s's Session"), FPlatformProcess::UserName());
+				Params.bAllowHostFallback = Args.Num() > 0;
 				if (Args.Num() > 0)
 				{
 					Params.Host.InitialMapName = Args[0];
