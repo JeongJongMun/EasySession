@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "EasySessionTypes.h"
 
+class FEasySessionTravel;
 class UEasySessionSubsystem;
 
 /**
@@ -26,8 +27,10 @@ class FEasySessionSocial
 {
 public:
 
-	explicit FEasySessionSocial(UEasySessionSubsystem& InOwner)
+	/** Travel starts the travel back to the menu when an invited join fails. */
+	FEasySessionSocial(UEasySessionSubsystem& InOwner, FEasySessionTravel& InTravel)
 		: Owner(InOwner)
+		, Travel(InTravel)
 	{
 	}
 
@@ -89,6 +92,9 @@ private:
 	UWorld* GetWorld() const;
 
 	UEasySessionSubsystem& Owner;
+
+	/** Starts the travel back to the menu when an invited join fails. Owned by the subsystem, like this object. */
+	FEasySessionTravel& Travel;
 
 	/** Handle for the accepted-invite delegate. Valid once BindInviteDelegates has run. */
 	FDelegateHandle InviteAcceptedHandle;

@@ -40,6 +40,9 @@ public:
 	/** Client side, after joining: travel to the host address in the connect string. */
 	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
 
+	/** Travel to the project's Game Default Map, the engine's main menu. A second call while that travel runs does nothing. */
+	void ReturnToMenu();
+
 	/** Remember that this plugin started a travel. */
 	void MarkStarted(const TCHAR* Reason);
 

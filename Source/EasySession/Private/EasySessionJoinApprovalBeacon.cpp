@@ -140,11 +140,11 @@ EEasyJoinApprovalResult AEasySessionJoinApprovalBeaconHostObject::ApproveJoin(co
 {
 	const UGameInstance* GameInstance = GetWorld() ? GetWorld()->GetGameInstance() : nullptr;
 	const UEasySessionSubsystem* Subsystem = GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
-	if (Subsystem == nullptr || !Subsystem->ServerGate.IsValid())
+	if (Subsystem == nullptr)
 	{
 		OutReason = TEXT("The host is not answering join requests.");
 		return EEasyJoinApprovalResult::Refused;
 	}
 
-	return Subsystem->ServerGate->ApproveJoin(PlayerId, Password, OutReason);
+	return Subsystem->ApproveJoin(PlayerId, Password, OutReason);
 }

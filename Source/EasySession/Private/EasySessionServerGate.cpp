@@ -65,7 +65,8 @@ EEasyJoinApprovalResult FEasySessionServerGate::ApproveJoin(const FUniqueNetIdRe
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	if (NamedSession != nullptr && !NamedSession->SessionSettings.bAllowJoinInProgress)
 	{
-		const EEasySessionState LocalState = Owner.GetLocalSessionState();
+		// The server gate runs on the host, where GetSessionState returns the local state rather than a replicated one.
+		const EEasySessionState LocalState = Owner.GetSessionState();
 		if (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress)
 		{
 			UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - the match is in progress and join-in-progress is disabled."), *PlayerId.ToString());

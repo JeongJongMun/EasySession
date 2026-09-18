@@ -127,7 +127,8 @@ public:
 	AEasySessionJoinApprovalBeaconHostObject();
 
 	/**
-	 * Ask FEasySessionServerGate whether this player may join.
+	 * Ask the subsystem whether this player may join.
+	 * A world actor reaches the subsystem through the game instance and its public API, like any other actor.
 	 * Refuses when there is no subsystem to ask.
 	 *
 	 * @param OutReason Set to the message shown to the refused player.

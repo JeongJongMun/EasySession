@@ -31,6 +31,7 @@ class FEasySessionRequestQueue;
 class FEasySessionServerGate;
 class FEasySessionSocial;
 class FEasySessionTravel;
+enum class EEasyJoinApprovalResult : uint8;
 struct FEasyJoinApprovalResponse;
 
 /** Multicast event fired when a session operation completes. */
@@ -72,13 +73,9 @@ class EASYSESSION_API UEasySessionSubsystem : public UGameInstanceSubsystem
 {
 	GENERATED_BODY()
 
-	//~ Internal helpers, not separate systems.
-	//~ They read this subsystem's private queries, which keeps those off the public API.
-	//~ On the public API users would have to tell them apart from the queries meant for them.
-	friend class FEasySessionSocial;
-	friend class FEasySessionServerGate;
-	friend class FEasySessionJoinApproval;
-	friend class AEasySessionJoinApprovalBeaconHostObject;
+	//~ FEasySessionTestAccess is the only friend, the attorney of the attorney-client idiom.
+	//~ It reads private state for the tests, so no test API ships on the subsystem.
+	//~ The internal collaborators are not friends. They call this subsystem's public API only, so the header shows everything they can touch.
 	friend class FEasySessionTestAccess;
 
 public:
@@ -416,6 +413,17 @@ public:
 	bool CancelSearch(const UObject* Requester);
 
 	/**
+	 * Host: decide whether a joining player may join the session, as the server gate decides it.
+	 * The join approval beacon asks this before the player travels.
+	 * PreLogin asks the same server gate when the player arrives, so the two decisions cannot differ.
+	 * The beacon is a world actor, and world actors reach this subsystem through its public API rather than through a collaborator.
+	 * Refuses the join while no server gate exists.
+	 *
+	 * @param OutReason Set to the message shown to the refused player. Untouched when the join is approved.
+	 */
+	EEasyJoinApprovalResult ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const;
+
+	/**
 	 * Matchmaking reads this to tell a session being destroyed from one that stays.
 	 *
 	 * @return Whether a destroy for the current session is already running or waiting.
@@ -612,9 +620,6 @@ private:
 	/** Relay the active policy's update to OnMatchmakingUpdated. */
 	UFUNCTION()
 	void RelayMatchmakingUpdated(EEasyMatchmakingState MatchmakingState, int32 ElapsedSeconds);
-
-	/** Browse to the project's Game Default Map, the engine's main menu. */
-	void ReturnToMenu();
 
 	/** Session state as derived from the local online subsystem session copy. */
 	EEasySessionState GetLocalSessionState() const;

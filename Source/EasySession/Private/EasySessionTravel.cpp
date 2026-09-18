@@ -131,6 +131,22 @@ void FEasySessionTravel::TravelToJoinedSession(const FString& ConnectString, con
 	MarkStarted(TEXT("client travel to joined session"));
 }
 
+void FEasySessionTravel::ReturnToMenu()
+{
+	UGameInstance* GameInstance = Owner.GetGameInstance();
+	if (GameInstance == nullptr || GameInstance->GetWorld() == nullptr)
+	{
+		return;
+	}
+
+	// ReturnToMainMenu also clears what an OpenLevel would leave behind: the pending net game, the ?listen and ?LAN options, and the net driver.
+	// The engine already owns the Game Default Map setting.
+	// A second call does nothing once the engine is already browsing to the default map.
+	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
+	GameInstance->ReturnToMainMenu();
+	MarkStarted(TEXT("return to menu"));
+}
+
 void FEasySessionTravel::MarkStarted(const TCHAR* Reason)
 {
 	if (!bTravelInFlight)

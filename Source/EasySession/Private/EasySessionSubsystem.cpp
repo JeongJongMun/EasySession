@@ -54,7 +54,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		[this]() { ExecuteActiveRequest(); },
 		[this]() { HandleRequestDeadline(); });
 	Travel = MakeUnique<FEasySessionTravel>(*this);
-	Social = MakeUnique<FEasySessionSocial>(*this);
+	Social = MakeUnique<FEasySessionSocial>(*this, *Travel);
 	ServerGate = MakeUnique<FEasySessionServerGate>(*this);
 	ServerGate->Initialize();
 	JoinApproval = MakeUnique<FEasySessionJoinApproval>(*this);
@@ -166,11 +166,12 @@ void UEasySessionSubsystem::Deinitialize()
 	RequestQueue->CancelOperations();
 
 	// Destroying these unbinds everything they registered, tickers included.
-	RequestQueue.Reset();
-	Travel.Reset();
-	Social.Reset();
-	ServerGate.Reset();
+	// Reverse creation order, so a collaborator is destroyed before the one it references.
 	JoinApproval.Reset();
+	ServerGate.Reset();
+	Social.Reset();
+	Travel.Reset();
+	RequestQueue.Reset();
 
 	ActiveSearch.Reset();
 
@@ -198,6 +199,17 @@ void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& Sea
 	}
 
 	EnqueueRequest(Request);
+}
+
+EEasyJoinApprovalResult UEasySessionSubsystem::ApproveJoin(const FUniqueNetIdRepl& PlayerId, const FString& SuppliedPassword, FString& OutReason) const
+{
+	if (!ServerGate.IsValid())
+	{
+		OutReason = TEXT("The host is not answering join requests.");
+		return EEasyJoinApprovalResult::Refused;
+	}
+
+	return ServerGate->ApproveJoin(PlayerId, SuppliedPassword, OutReason);
 }
 
 bool UEasySessionSubsystem::CancelSearch(const UObject* Requester)
@@ -267,7 +279,7 @@ void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComp
 		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			// Requested before the completion below, the same order every travel in this plugin uses.
-			ReturnToMenu();
+			Travel->ReturnToMenu();
 			OnComplete.ExecuteIfBound(Result, ErrorMessage);
 		}));
 }
@@ -890,13 +902,13 @@ void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason 
 			{
 				if (bReturnToMenu)
 				{
-					ReturnToMenu();
+					Travel->ReturnToMenu();
 				}
 			}));
 	}
 	else if (bReturnToMenu)
 	{
-		ReturnToMenu();
+		Travel->ReturnToMenu();
 	}
 }
 
@@ -906,22 +918,6 @@ FEasyDisconnectInfo UEasySessionSubsystem::ConsumeLastDisconnectInfo()
 	LastDisconnectInfo = FEasyDisconnectInfo();
 	bHasPendingDisconnectInfo = false;
 	return Info;
-}
-
-void UEasySessionSubsystem::ReturnToMenu()
-{
-	UGameInstance* GameInstance = GetGameInstance();
-	if (GameInstance == nullptr || GameInstance->GetWorld() == nullptr)
-	{
-		return;
-	}
-
-	// ReturnToMainMenu does the cleanup an OpenLevel would skip: the pending net game, the ?listen and ?LAN options, and the net driver.
-	// The engine also already owns the Game Default Map setting.
-	// Repeated calls are harmless: the engine does nothing once it is already browsing to the default map.
-	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
-	GameInstance->ReturnToMainMenu();
-	Travel->MarkStarted(TEXT("return to menu"));
 }
 
 // Invites, friends and the platform overlays are handled by FEasySessionSocial.
@@ -1202,7 +1198,7 @@ void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySes
 	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			ReturnToMenu();
+			Travel->ReturnToMenu();
 			OnComplete.ExecuteIfBound(Result, ErrorMessage);
 		}));
 }

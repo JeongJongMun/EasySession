@@ -5,6 +5,7 @@
 #include "EasySession.h"
 #include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTravel.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "Interfaces/OnlineExternalUIInterface.h"
@@ -144,7 +145,7 @@ void FEasySessionSocial::JoinInvitedSessionAfterLeaving(EEasySessionResult Leave
 			{
 				if (JoinResult != EEasySessionResult::Success)
 				{
-					Owner.ReturnToMenu();
+					Travel.ReturnToMenu();
 				}
 			}));
 }

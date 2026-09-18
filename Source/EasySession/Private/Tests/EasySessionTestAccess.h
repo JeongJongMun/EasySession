@@ -24,6 +24,8 @@
  *
  * Tests need to read things no game should, such as which of two sources a value came from, or a flag the join path would normally set on its own.
  * Keeping those reads here rather than on the subsystem means the plugin a user installs carries no test API in any build configuration.
+ * This is the attorney-client idiom.
+ * The subsystem befriends this one class, and this class chooses which private members the tests can read.
  */
 class FEasySessionTestAccess
 {
