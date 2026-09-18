@@ -59,11 +59,6 @@ void FEasySessionBeaconPort::Unregister(AOnlineBeaconHostObject& HostObject)
 	}
 }
 
-void FEasySessionBeaconPort::ReleaseForTravel()
-{
-	ReleaseListener();
-}
-
 int32 FEasySessionBeaconPort::GetListenPort() const
 {
 	// GetListenPort is not const on the engine class, so the pointer cannot be either.

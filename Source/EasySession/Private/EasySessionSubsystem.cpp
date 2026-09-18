@@ -591,48 +591,27 @@ bool UEasySessionSubsystem::IsOnlineSubsystemAvailable() const
 
 bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
 {
-	UWorld* World = GetWorld();
-	if (World == nullptr || MapName.IsEmpty())
+	if (MapName.IsEmpty())
 	{
 		return false;
 	}
 
-	// UWorld::ServerTravel does not refuse a client. With no game mode it still sets
-	// NextURL and returns true, so this entry check is the only guard.
+	// UWorld::ServerTravel does not refuse a client.
+	// With no game mode it still sets NextURL and returns true, so this entry check is the only guard.
 	if (!IsSessionAuthority())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session. %s"), EasySession::RequiresSessionAuthorityFix);
 		return false;
 	}
 
-	FString TravelURL = MapName;
-	if (World->GetNetMode() != NM_DedicatedServer && !EasySessionAddress::HasListenOption(TravelURL))
-	{
-		TravelURL += TEXT("?listen");
-	}
-
-	// Every travel carries the current capacity: a host that listened on its first map has no
-	// earlier URL for the engine to inherit it from, and an update may have changed it since.
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession != nullptr)
-	{
-		EasySessionAddress::AppendMaxPlayersOption(TravelURL, NamedSession->SessionSettings.NumPublicConnections);
-	}
-
-	UE_LOG(LogEasySession, Log, TEXT("ServerTravel to '%s'"), *TravelURL);
-	if (!World->ServerTravel(TravelURL))
+	if (!Travel->ServerTravelToMap(MapName))
 	{
 		return false;
 	}
 
-	// The map changes on the next frame, and the arrival world starts its own beacon listener.
-	// Releasing this one now frees the beacon port before that.
-	// Without this the new listener fails to bind.
+	// The next world starts its own beacon listener, which can only bind the beacon port after this one released it.
 	Host->DestroyWorldActors();
-	BeaconPort->ReleaseForTravel();
-
-	Travel->MarkStarted(TEXT("ServerTravelToMap"));
+	BeaconPort->ReleaseListener();
 	return true;
 }
 

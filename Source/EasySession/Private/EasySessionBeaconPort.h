@@ -44,11 +44,10 @@ public:
 	void Unregister(AOnlineBeaconHostObject& HostObject);
 
 	/**
-	 * Destroy the listener this object spawned, whatever is still registered on it.
-	 * Called before a server travel, because the map changes on the next frame.
-	 * The listener of the next world can only bind the port after this one released it.
+	 * Destroy the listener this object spawned, whatever is still registered on it, but never a listener the project spawned.
+	 * Called before a server travel, because the listener of the next world can only bind the port after this one released it.
 	 */
-	void ReleaseForTravel();
+	void ReleaseListener();
 
 	/** @return The port the listener bound, or 0 while no host object is registered. */
 	int32 GetListenPort() const;
@@ -60,9 +59,6 @@ private:
 
 	/** @return The listener of this world: one that already exists, or a new one that started listening. Null when it could not start. */
 	AOnlineBeaconHost* FindOrSpawnListener(UWorld& World);
-
-	/** Reset the listener pointer and the count, after destroying the listener when this object spawned it. */
-	void ReleaseListener();
 
 	/**
 	 * The listener the host objects are registered on.

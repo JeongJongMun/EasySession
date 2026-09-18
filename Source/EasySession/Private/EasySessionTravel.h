@@ -31,6 +31,8 @@ public:
 	/** Stops watching map loads. */
 	~FEasySessionTravel();
 
+public:
+
 	/**
 	 * Travel the host to Initial Map Name after the session is created.
 	 * The ?listen option is added unless the map name already has it.
@@ -41,14 +43,21 @@ public:
 	/** Client side, after joining: travel to the host address in the connect string. */
 	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
 
+	/**
+	 * Travel the session to another map with a server travel, so the connected players travel with the host.
+	 * The URL gets the current Max Players of the session, because an update may have changed it since the last travel.
+	 *
+	 * @return Whether the engine accepted the travel.
+	 */
+	bool ServerTravelToMap(const FString& MapName);
+
 	/** Travel to the project's Game Default Map, the engine's main menu. A second call while that travel runs does nothing. */
 	void ReturnToMenu();
 
-	/** Remember that this plugin started a travel. */
-	void MarkStarted(const TCHAR* Reason);
+public:
 
-	/** The travel is over even though no map was loaded. */
-	void NotifyTravelFailed();
+	/** @return Whether a travel this plugin started has not loaded its map yet. */
+	bool IsTraveling() const { return bTravelInFlight; }
 
 	/**
 	 * Cancel a travel that was requested but has not started loading its map.
@@ -56,16 +65,30 @@ public:
 	 */
 	void CancelPendingTravel();
 
-	/** @return Whether a travel this plugin started has not loaded its map yet. */
-	bool IsTraveling() const { return bTravelInFlight; }
+	/** The travel is over even though no map was loaded. */
+	void NotifyTravelFailed();
+
+public:
 
 	/** Append a travel option string ("A=1?B=2") to a URL, normalizing the '?' separators. */
 	static void AppendTravelOptions(FString& InOutURL, const FString& Options);
 
 private:
 
+	/**
+	 * Build the URL for TravelToOwnSession and ServerTravelToMap.
+	 * Adds the ?listen option unless the map name has it or this game is a dedicated server, then the additional travel options and Max Players.
+	 * OnModifyServerTravelURL is broadcast last, so a bound delegate receives the complete URL.
+	 */
+	FString MakeServerTravelURL(const FString& MapName, const FString& AdditionalTravelOptions, int32 MaxPlayers) const;
+
+	/** Remember that this plugin started a travel. */
+	void MarkStarted(const TCHAR* Reason);
+
 	/** A map load ended the travel. Loads of other game instances' worlds (PIE) are ignored. */
 	void HandlePostLoadMap(UWorld* LoadedWorld);
+
+private:
 
 	UEasySessionSubsystem& Owner;
 

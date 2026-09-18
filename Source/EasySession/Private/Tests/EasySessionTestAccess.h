@@ -122,7 +122,7 @@ public:
 	static void DestroyHostSideActors(UEasySessionSubsystem& Subsystem)
 	{
 		Subsystem.Host->DestroyWorldActors();
-		Subsystem.BeaconPort->ReleaseForTravel();
+		Subsystem.BeaconPort->ReleaseListener();
 	}
 
 	/** The password arriving players are actually checked against. */

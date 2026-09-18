@@ -264,8 +264,8 @@ bool FEasySessionBeaconPortProjectTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("The project's listener is still up"), CountBeaconHosts(Fixture.World), 1);
 
 	TestTrue(TEXT("The host object registers again"), BeaconPort.Register(*Fixture.First));
-	BeaconPort.ReleaseForTravel();
-	TestEqual(TEXT("ReleaseForTravel does not destroy the project's listener"), CountBeaconHosts(Fixture.World), 1);
+	BeaconPort.ReleaseListener();
+	TestEqual(TEXT("ReleaseListener does not destroy the project's listener"), CountBeaconHosts(Fixture.World), 1);
 
 	ProjectListener->DestroyBeacon();
 	return true;

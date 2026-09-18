@@ -337,6 +337,9 @@ namespace EasySessionTravelFailureTest
 		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
+		/** The URL OnModifyServerTravelURL last received. */
+		FString ModifiedServerTravelURL;
+
 		int32 Phase = 0;
 		double StartTime = 0.0;
 		bool bAutoReturnWasEnabled = true;
@@ -380,6 +383,8 @@ bool FEasySessionWaitForTravelFailure::Update()
 			// tick's load fails. The failure broadcast below stands in for that tick.
 			CurrentTest->TestTrue(TEXT("ServerTravelToMap accepted the bad map"), Subsystem->ServerTravelToMap(TEXT("/Game/EasySessionTests/ES_NoSuchMap")));
 			CurrentTest->TestNull(TEXT("The travel stopped the beacon"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+			CurrentTest->TestTrue(TEXT("OnModifyServerTravelURL received the server travel URL"),
+				State->ModifiedServerTravelURL.Contains(TEXT("ES_NoSuchMap")) && State->ModifiedServerTravelURL.Contains(TEXT("?listen")));
 			CurrentTest->TestTrue(TEXT("The travel reports busy"), Subsystem->IsBusy());
 
 			GEngine->BroadcastTravelFailure(World, ETravelFailure::ServerTravelFailure, TEXT("No such map"));
@@ -448,6 +453,16 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
 	Subsystem->OnSessionFailure.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionFailure);
 	Subsystem->OnSessionDestroyed.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleDestroyed);
+
+	// A Create request starts no travel in a test, so the only URL this delegate receives is the server travel URL.
+	// The state is captured weakly, because the subsystem that holds this delegate is kept alive by the state.
+	Subsystem->OnModifyServerTravelURL.AddLambda([WeakState = TWeakPtr<FTestState>(State)](FString& TravelURL)
+	{
+		if (const TSharedPtr<FTestState> Pinned = WeakState.Pin())
+		{
+			Pinned->ModifiedServerTravelURL = TravelURL;
+		}
+	});
 
 	Subsystem->CreateEasySession(MakeParams(TEXT("EasySession Travel Failure Test")));
 
