@@ -12,7 +12,7 @@
 
 namespace EasySessionSubsystemTest
 {
-	/** Maximum time to wait for the queued operations before failing the test. */
+	/** Maximum time to wait for the queued requests before failing the test. */
 	static constexpr double TimeoutSeconds = 15.0;
 
 	/** State shared between the test body and its latent commands. */
@@ -40,7 +40,7 @@ bool FEasySessionWaitForQueue::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for the queued session operations to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for the queued session requests to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -79,8 +79,7 @@ bool FEasySessionWaitForQueue::Update()
 }
 
 /**
- * Queue test: create, update and destroy are enqueued in a single frame and must
- * execute strictly in order, each completing successfully.
+ * Queue test: create, update and destroy are enqueued in a single frame and must execute strictly in order, each completing successfully.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionQueueTest, "EasySession.Subsystem.QueuedCreateUpdateDestroy", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionQueueTest::RunTest(const FString& Parameters)
@@ -104,7 +103,7 @@ bool FEasySessionQueueTest::RunTest(const FString& Parameters)
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 
-	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			State->CreateResult = Result;
@@ -117,14 +116,14 @@ bool FEasySessionQueueTest::RunTest(const FString& Parameters)
 	UpdateParams.SessionDisplayName = TEXT("EasySession Queue Test (Updated)");
 	UpdateParams.MaxPlayers = 8;
 
-	Subsystem->UpdateEasySession(UpdateParams, FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->UpdateSession(UpdateParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			State->UpdateResult = Result;
 			State->CompletionOrder.Add(TEXT("Update"));
 		}));
 
-	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			State->DestroyResult = Result;

@@ -39,9 +39,9 @@ namespace
 
 	void DiagnoseSteam(UWorld* World, const IOnlineSubsystem& OnlineSub, FReport& Report)
 	{
-		// [OnlineSubsystemSteam] keys that beginners forget most often. bEnabled is not
-		// checked here: a missing key counts as enabled, and Steam being active, the
-		// only way into this function, already proves the key did not stop it.
+		// [OnlineSubsystemSteam] keys that beginners forget most often.
+		// bEnabled is not checked here, because a missing key counts as enabled.
+		// Steam being active is the only way into this function, which already proves the key did not stop it.
 		int32 AppId = 0;
 		GConfig->GetInt(TEXT("OnlineSubsystemSteam"), TEXT("SteamDevAppId"), AppId, GEngineIni);
 		if (AppId <= 0)
@@ -58,11 +58,10 @@ namespace
 				{ TEXT("[OnlineSubsystemSteam]"), TEXT("bInitServerOnClient=true") });
 		}
 
-		// The game net driver must be a Steam one, or joins resolve steam.<id> hosts as
-		// DNS names and fail. Mirror the engine's lookup exactly: it takes the FIRST
-		// definition named GameNetDriver, then silently falls back to the IP driver
-		// when that class fails to load (e.g. the legacy SteamNetDriver, which no
-		// longer exists in newer engine versions).
+		// The game net driver must be a Steam one, or joins resolve steam.<id> hosts as DNS names and fail.
+		// Mirror the engine's lookup exactly: it takes the FIRST definition named GameNetDriver.
+		// It then silently falls back to the IP driver when that class fails to load.
+		// The legacy SteamNetDriver is one such class, because it no longer exists in newer engine versions.
 		if (GEngine != nullptr)
 		{
 			const FNetDriverDefinition* GameDriver = GEngine->NetDriverDefinitions.FindByPredicate(
@@ -161,9 +160,8 @@ EasySessionDiagnostics::FReport EasySessionDiagnostics::RunDiagnostics(UWorld* W
 		AddInfo(Report, EFindingKind::Note, TEXT("NULL (LAN) subsystem active - sessions work on the local network only, and invites/friends/presence are unsupported. This is the expected mode for local testing."));
 	}
 
-	// The join approval beacon needs a BeaconNetDriver definition. The engine ships one
-	// in BaseEngine.ini, but a project that clears NetDriverDefinitions (the Steam
-	// setup does) removes it along with the rest.
+	// The join approval beacon needs a BeaconNetDriver definition.
+	// The engine ships one in BaseEngine.ini, but a project that clears NetDriverDefinitions (the Steam setup does) removes it along with the rest.
 	if (GEngine != nullptr && !GEngine->NetDriverDefinitions.ContainsByPredicate(
 		[](const FNetDriverDefinition& Definition) { return Definition.DefName == FName(TEXT("BeaconNetDriver")); }))
 	{

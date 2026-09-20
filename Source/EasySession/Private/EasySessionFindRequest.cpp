@@ -3,8 +3,9 @@
 #include "EasySessionFindRequest.h"
 
 #include "EasySession.h"
+#include "EasySessionMessages.h"
+#include "EasySessionReadFriendsRequest.h"
 #include "EasySessionSubsystem.h"
-#include "Interfaces/OnlineFriendsInterface.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
@@ -16,75 +17,96 @@ FEasySessionFindRequest::FEasySessionFindRequest(const FEasySessionSearchParams&
 	, OnFindComplete(MoveTemp(InOnFindComplete))
 {
 	// A targeted query names one session, hidden or not.
-	// Notify does not broadcast or store the results of a search that included hidden sessions.
 	if (SearchParams.IsSpecificSessionQuery())
 	{
 		SearchParams.bIncludeHiddenSessions = true;
 	}
 }
 
-TSharedPtr<FEasySessionFindRequest> FEasySessionFindRequest::Cast(const TSharedPtr<FEasySessionRequest>& Request)
-{
-	return Request.IsValid() && Request->Type == EType::Find ? StaticCastSharedPtr<FEasySessionFindRequest>(Request) : nullptr;
-}
-
-bool FEasySessionFindRequest::Cancel(const UObject* Requester)
-{
-	if (!IsActive() || !OnFindComplete.IsBoundToObject(Requester))
-	{
-		return false;
-	}
-
-	// A LAN search can be stopped, so the request is abandoned here and Cleanup tells the online subsystem.
-	if (Search.IsValid() && Search->bIsLanQuery)
-	{
-		Complete(EEasySessionResult::Canceled, TEXT("The search was canceled."), /*bAbandoned*/ true);
-		return true;
-	}
-
-	// The online subsystem cannot stop an internet search, so the request keeps the active slot and only the requester's delegate is unbound.
-	bCanceled = true;
-	FEasySessionFindCompleteDelegate CanceledDelegate = MoveTemp(OnFindComplete);
-	OnFindComplete.Unbind();
-	CanceledDelegate.ExecuteIfBound(EEasySessionResult::Canceled, TEXT("The search was canceled."), TArray<FEasySessionSearchResult>());
-	return true;
-}
-
 void FEasySessionFindRequest::Execute()
 {
-	// A new search invalidates the last search results.
-	// They are emptied here rather than when the search completes, so nothing can list sessions from the previous search while this one runs.
-	GetContext().Subsystem.SetLastSearchResults(TArray<FEasySessionSearchResult>());
-
 	if (!SearchParams.IsValid())
 	{
-		Complete(EEasySessionResult::InvalidParams, TEXT("Search params are invalid: Max Results must be above 0, Timeout Override Seconds must not be negative, and Search Mode and Search Target Id must be set together."));
+		Complete(EEasySessionResult::InvalidParams, TEXT("Search params are invalid: Max Results must be above 0, and Search Mode and Search Target Id must be set together."));
 		return;
 	}
 
 	if (SearchParams.SearchMode == EEasySessionSearchMode::ByFriend)
 	{
-		StartFriendSessionSearch();
+		FindFriendSession();
 		return;
 	}
 
-	StartSessionSearch();
+	FindSessions();
 }
 
-void FEasySessionFindRequest::StartFriendSessionSearch()
+void FEasySessionFindRequest::Cleanup()
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Search.Reset();
+		return;
+	}
+
+	// Unbind first: a running search is canceled below, and the online subsystem fires the completion delegate while it cancels.
+	Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle);
+	Sessions->ClearOnFindFriendSessionCompleteDelegate_Handle(0, FindFriendCompleteHandle);
+
+	if (!Search.IsValid())
+	{
+		return;
+	}
+
+	// A search still InProgress was canceled, and the online subsystem refuses new searches until it ends.
+	// A search that completed is already marked Done, so InProgress means the one it still holds is ours.
+	if (Search->SearchState == EOnlineAsyncTaskState::InProgress)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Cancelling the unfinished search so later searches are not refused."));
+		Sessions->CancelFindSessions();
+	}
+	// A search that failed inside the call is still held too.
+	// CancelFindSessions only releases a search marked InProgress, so ours is marked InProgress again first.
+	else if (Search->SearchState == EOnlineAsyncTaskState::Failed)
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Releasing the failed search so later searches are not refused."));
+		Search->SearchState = EOnlineAsyncTaskState::InProgress;
+		Sessions->CancelFindSessions();
+	}
+
+	Search.Reset();
+}
+
+void FEasySessionFindRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	OnFindComplete.ExecuteIfBound(Result, ErrorMessage, Results);
+}
+
+void FEasySessionFindRequest::HandleCancel()
+{
+	// A LAN search can be stopped, so the request completes now and Cleanup tells the online subsystem.
+	if (Search.IsValid() && Search->bIsLanQuery)
+	{
+		Complete(EEasySessionResult::Canceled, TEXT("The search was canceled."));
+		return;
+	}
+
+	FEasySessionRequest::HandleCancel();
+}
+
+void FEasySessionFindRequest::FindFriendSession()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
 		return;
 	}
 
 	// NULL completes every friend query with "no session" without searching, so that result would look like a real one.
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetContext().GetWorld());
-	if (OnlineSub == nullptr || !OnlineSub->GetFriendsInterface().IsValid())
+	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
 	{
-		Complete(EEasySessionResult::NotSupportedByService, TEXT("This online subsystem has no friends to look up (e.g. NULL/LAN)."));
+		Complete(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage);
 		return;
 	}
 
@@ -94,25 +116,36 @@ void FEasySessionFindRequest::StartFriendSessionSearch()
 	UE_LOG(LogEasySession, Log, TEXT("Searching for a friend's session."));
 
 	// A refused call can complete the request inside it, before it returns.
-	// Only a false return while the request is still active is a failure.
-	if (!Sessions->FindFriendSession(0, *SearchParams.SearchTargetId.GetUniqueNetId()) && IsActive())
+	// Only a false return while the request is still running is a failure.
+	if (!Sessions->FindFriendSession(0, *SearchParams.SearchTargetId.GetUniqueNetId()) && IsRunning())
 	{
 		Complete(EEasySessionResult::SearchFailure, TEXT("FindFriendSession request was rejected by the online subsystem."));
 	}
 }
 
-void FEasySessionFindRequest::StartSessionSearch()
+void FEasySessionFindRequest::HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults)
+{
+	if (!IsRunning())
+	{
+		return;
+	}
+
+	// False means the friend is not in a joinable session right now, which is a result and not a failure.
+	CompleteWithResults(bWasSuccessful ? FriendResults : TArray<FOnlineSessionSearchResult>());
+}
+
+void FEasySessionFindRequest::FindSessions()
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
 		return;
 	}
 
 	Search = MakeShared<FOnlineSessionSearch>();
 	Search->MaxSearchResults = SearchParams.MaxResults;
-	Search->bIsLanQuery = SearchParams.bLANQuery || GetContext().ShouldForceLAN();
+	Search->bIsLanQuery = SearchParams.bLANQuery || ShouldForceLAN();
 
 	if (!Search->bIsLanQuery)
 	{
@@ -134,7 +167,7 @@ void FEasySessionFindRequest::StartSessionSearch()
 
 	// The online subsystem drops a search it cannot start and still returns true, so no completion delegate fires.
 	// It marks the search it accepted as InProgress, so an unchanged state means it dropped ours.
-	if (IsActive() && Search.IsValid() && Search->SearchState != EOnlineAsyncTaskState::InProgress)
+	if (IsRunning() && Search.IsValid() && Search->SearchState != EOnlineAsyncTaskState::InProgress)
 	{
 		Complete(EEasySessionResult::SearchFailure,
 			TEXT("Another session search is already running, so this one was dropped by the online subsystem."));
@@ -143,7 +176,7 @@ void FEasySessionFindRequest::StartSessionSearch()
 
 void FEasySessionFindRequest::HandleFindSessionsComplete(bool bWasSuccessful)
 {
-	if (!IsActive())
+	if (!IsRunning())
 	{
 		return;
 	}
@@ -166,21 +199,10 @@ void FEasySessionFindRequest::HandleFindSessionsComplete(bool bWasSuccessful)
 	const TArray<FOnlineSessionSearchResult> NativeResults = MoveTemp(Search->SearchResults);
 	Search.Reset();
 
-	FinishSearch(NativeResults);
+	CompleteWithResults(NativeResults);
 }
 
-void FEasySessionFindRequest::HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults)
-{
-	if (!IsActive())
-	{
-		return;
-	}
-
-	// False means the friend is not in a joinable session right now, which is a result and not a failure.
-	FinishSearch(bWasSuccessful ? FriendResults : TArray<FOnlineSessionSearchResult>());
-}
-
-void FEasySessionFindRequest::FinishSearch(const TArray<FOnlineSessionSearchResult>& NativeResults)
+void FEasySessionFindRequest::CompleteWithResults(const TArray<FOnlineSessionSearchResult>& NativeResults)
 {
 	for (const FOnlineSessionSearchResult& NativeResult : NativeResults)
 	{
@@ -198,58 +220,4 @@ void FEasySessionFindRequest::FinishSearch(const TArray<FOnlineSessionSearchResu
 
 	UE_LOG(LogEasySession, Log, TEXT("Search complete. %d session(s) found after filtering."), Results.Num());
 	Complete(EEasySessionResult::Success);
-}
-
-void FEasySessionFindRequest::Cleanup(bool bAbandoned)
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid())
-	{
-		Search.Reset();
-		return;
-	}
-
-	// Unbind first: an abandoned search is canceled below, and the online subsystem fires the completion delegate while it cancels.
-	Sessions->ClearOnFindSessionsCompleteDelegate_Handle(FindCompleteHandle);
-	Sessions->ClearOnFindFriendSessionCompleteDelegate_Handle(0, FindFriendCompleteHandle);
-
-	if (!Search.IsValid())
-	{
-		return;
-	}
-
-	// An abandoned search keeps running in the online subsystem, which refuses new ones until it ends.
-	// InProgress means the one it still holds is ours.
-	if (bAbandoned && Search->SearchState == EOnlineAsyncTaskState::InProgress)
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("Cancelling the abandoned search so later searches are not refused."));
-		Sessions->CancelFindSessions();
-	}
-	// A search that failed inside the call is still held too.
-	// CancelFindSessions only releases a search marked InProgress, so ours is marked InProgress again first.
-	else if (Search->SearchState == EOnlineAsyncTaskState::Failed)
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Releasing the failed search so later searches are not refused."));
-		Search->SearchState = EOnlineAsyncTaskState::InProgress;
-		Sessions->CancelFindSessions();
-	}
-
-	Search.Reset();
-}
-
-void FEasySessionFindRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
-{
-	// Stored before the requester's delegate fires, so Get Last Easy Search Results already returns them inside that delegate.
-	GetContext().Subsystem.SetLastSearchResults(Results);
-	OnFindComplete.ExecuteIfBound(Result, ErrorMessage, Results);
-
-	// A search that included hidden sessions is not broadcast and not kept as the last search results.
-	// Neither is a canceled one, whose results the requester no longer wants.
-	if (SearchParams.bIncludeHiddenSessions || bCanceled)
-	{
-		GetContext().Subsystem.SetLastSearchResults(TArray<FEasySessionSearchResult>());
-		return;
-	}
-
-	GetContext().Subsystem.OnSessionsFound.Broadcast(Result, ErrorMessage, Results);
 }

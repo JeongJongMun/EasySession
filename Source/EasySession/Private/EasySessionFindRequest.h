@@ -9,13 +9,17 @@ class FOnlineSessionSearch;
 class FOnlineSessionSearchResult;
 
 /**
- * Searches for sessions and filters what the online subsystem returns.
+ * FEasySessionFindRequest searches for sessions and filters what the online subsystem returns.
  * Search Mode By Friend asks for the one session a friend is in, which the online subsystem completes through its own delegate.
+ *
+ * The subsystem creates it for Find Easy Sessions.
+ * Matchmaking runs it as a sub-request for each search pass, and the friend session search runs it for each friend.
  *
  * The request owns the native search object while it runs.
  * The online subsystem holds that object too and refuses every later search until it is released, so Cleanup releases it on every path.
  *
- * The requester can cancel the search, see Cancel.
+ * A LAN search stops when the request is canceled.
+ * The online subsystem cannot stop an internet search, so a canceled one keeps running until it ends, see FEasySessionRequest::HandleCancel.
  */
 class FEasySessionFindRequest final : public FEasySessionRequest
 {
@@ -26,60 +30,47 @@ public:
 
 	FEasySessionFindRequest(const FEasySessionSearchParams& InSearchParams, FEasySessionFindCompleteDelegate InOnFindComplete);
 
-	/** @return The request as a Find request when its type says it is one. Null otherwise. */
-	static TSharedPtr<FEasySessionFindRequest> Cast(const TSharedPtr<FEasySessionRequest>& Request);
-
-	/**
-	 * Cancel the search for the object that requested it.
-	 * A LAN search can be stopped, so the request completes with Canceled inside this call.
-	 * The online subsystem cannot stop an internet search.
-	 * The request then keeps the active slot, Canceled is delivered to the requester inside this call and the late completion is dropped.
-	 *
-	 * @return Whether the requester's delegate belongs to this request.
-	 */
-	bool Cancel(const UObject* Requester);
-
 protected:
 
 	//~ Begin FEasySessionRequest interface
 	virtual void Execute() override;
-	virtual void Cleanup(bool bAbandoned) override;
+	virtual void Cleanup() override;
 	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) override;
-	virtual float GetTimeoutOverrideSeconds() const override { return SearchParams.TimeoutOverrideSeconds; }
+	virtual void HandleCancel() override;
 	//~ End FEasySessionRequest interface
 
 private:
 
 	/** Ask for the session a friend is in. It runs without a search object and completes through its own delegate. */
-	void StartFriendSessionSearch();
+	void FindFriendSession();
 
-	/** Start a discovery search, completing the request on the failures the online subsystem reports inside the call. */
-	void StartSessionSearch();
-
-	/** The online subsystem finished a discovery search. Every search in the process fires this delegate, so searches of other requesters are ignored. */
-	void HandleFindSessionsComplete(bool bWasSuccessful);
-
-	/** The online subsystem finished a friend query. */
+	/** The online subsystem finished a friend session query. */
 	void HandleFindFriendSessionComplete(int32 LocalUserNum, bool bWasSuccessful, const TArray<FOnlineSessionSearchResult>& FriendResults);
 
-	/** Filter what the search returned and complete with Success. */
-	void FinishSearch(const TArray<FOnlineSessionSearchResult>& NativeResults);
+	/** Start a search for sessions, completing the request on the failures the online subsystem reports inside the call. */
+	void FindSessions();
+
+	/** The online subsystem finished a search for sessions. Every search in the process fires this delegate, so searches of other requesters are ignored. */
+	void HandleFindSessionsComplete(bool bWasSuccessful);
+
+	/** Filter what the online subsystem returned and complete with Success. */
+	void CompleteWithResults(const TArray<FOnlineSessionSearchResult>& NativeResults);
 
 	/** The filters to search with, including the targeted-query ids. */
 	FEasySessionSearchParams SearchParams;
 
-	/** The requester's delegate. Unbound when the requester cancels. */
+	/** The requester's delegate. */
 	FEasySessionFindCompleteDelegate OnFindComplete;
 
-	/** The native search object of a discovery search. Only valid while that search runs. */
+	/** The native search object of a search for sessions. Only valid while that search runs. */
 	TSharedPtr<FOnlineSessionSearch> Search;
 
-	/** The filtered results, delivered to the requester and stored as the last search results. */
+	/** The filtered results, passed to the requester. */
 	TArray<FEasySessionSearchResult> Results;
 
-	/** Handle for the discovery search completion, bound while the request runs. */
+	/** Handle for the completion of a search for sessions, bound while the request runs. */
 	FDelegateHandle FindCompleteHandle;
 
-	/** Handle for the friend query completion, bound while the request runs. */
+	/** Handle for the completion of a friend session query, bound while the request runs. */
 	FDelegateHandle FindFriendCompleteHandle;
 };

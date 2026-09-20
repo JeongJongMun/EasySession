@@ -5,6 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -12,13 +13,14 @@
 
 namespace EasySessionLifecycleTest
 {
-	/** Maximum time to wait for the queued operations before failing the test. */
+	/** Maximum time to wait for the queued requests before failing the test. */
 	static constexpr double TimeoutSeconds = 15.0;
 
 	/** State shared between the test body and its latent commands. */
 	struct FTestState
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 		TOptional<EEasySessionResult> CreateResult;
 		TOptional<EEasySessionResult> StartResult;
 		TOptional<EEasySessionResult> EndResult;
@@ -41,7 +43,7 @@ bool FEasySessionWaitForLifecycle::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for the session lifecycle operations to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for the session lifecycle requests to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -63,13 +65,25 @@ bool FEasySessionWaitForLifecycle::Update()
 		CurrentTest->TestEqual(TEXT("NoSession after destroy"), Subsystem->GetSessionState(), EEasySessionState::NoSession);
 	}
 
+	// A UI binds to the event instead of reading the state every tick, so every state it needs must arrive there.
+	// The request may pass through a transitional state (Starting, Ending, Destroying) on the way, which is why this looks for a subsequence.
+	const TArray<EEasySessionState> Expected = { EEasySessionState::Pending, EEasySessionState::InProgress, EEasySessionState::Ended, EEasySessionState::NoSession };
+	int32 ExpectedIndex = 0;
+	for (const EEasySessionState Seen : State->Listener->SessionStates)
+	{
+		if (ExpectedIndex < Expected.Num() && Seen == Expected[ExpectedIndex])
+		{
+			++ExpectedIndex;
+		}
+	}
+	CurrentTest->TestEqual(TEXT("On Session State Changed reported every state of the lifecycle, in order"), ExpectedIndex, Expected.Num());
+
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
 /**
- * Lifecycle test: create, start, end and destroy are enqueued in a single frame and
- * the session state must transition Pending -> InProgress -> Ended -> NoSession.
+ * Lifecycle test: create, start, end and destroy are enqueued in a single frame and the session state must transition Pending -> InProgress -> Ended -> NoSession.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLifecycleTest, "EasySession.Subsystem.StartEndLifecycle", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
@@ -87,33 +101,36 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
+	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionStateChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionStateChanged);
+
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Lifecycle Test");
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 
-	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString&)
 		{
 			State->CreateResult = Result;
 			State->StateAfterCreate = Subsystem->GetSessionState();
 		}));
 
-	Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString&)
 		{
 			State->StartResult = Result;
 			State->StateAfterStart = Subsystem->GetSessionState();
 		}));
 
-	Subsystem->EndEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->EndSession(FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString&)
 		{
 			State->EndResult = Result;
 			State->StateAfterEnd = Subsystem->GetSessionState();
 		}));
 
-	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->DestroyResult = Result;

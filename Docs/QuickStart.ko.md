@@ -1,4 +1,4 @@
-# Quick Start - 5분 만에 방 만들고 참가하기
+# Quick Start - 5분 만에 세션 만들고 참가하기
 
 *[English](QuickStart.en.md)*
 
@@ -23,14 +23,14 @@
    게임에서도 같은 원리입니다 - 메뉴 맵이 이 자리에 들어갑니다.
 3. `/EasySession/Examples/Maps/L_Example_MainMenu`을 엽니다.
 4. [6단계](#6-pie로-테스트하기)대로 플레이어를 2명으로 맞추고 Play를 누릅니다.
-5. 한쪽 창에서 방을 만들고, 다른 창에서 Find와 Join을 합니다.
+5. 한쪽 창에서 세션을 만들고, 다른 창에서 Find와 Join을 합니다.
 
 이 예제를 구성하는 위젯은 `/EasySession/Examples/UI/`에 있습니다. `WBP_MainMenu`를 먼저
 보세요. 아래 단계에 나오는 노드를 전부 씁니다. 화면 아래 상태 줄은
 `Modules/WBP_SessionStatus`입니다. 플러그인 이벤트를 한 번 바인딩해 두고, 누가 시작했든
-지금 도는 작업을 서술하는 위젯이라 세션 진행을 보여줄 화면 어디에나 올려놓으면 됩니다.
+지금 도는 요청을 서술하는 위젯이라 세션 진행을 보여줄 화면 어디에나 올려놓으면 됩니다.
 
-## 3. 방 만들기
+## 3. 세션 만들기
 
 아무 블루프린트에서나 됩니다(메뉴 위젯의 버튼이든, 빠르게 확인하려면 레벨 블루프린트든).
 
@@ -81,11 +81,11 @@
 [Button Clicked] -> [Start Easy Matchmaking]
                       MatchmakingParams:
                         Host -> Initial Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
-                      OnSuccess -> (가장 좋은 방에 참가했거나, 직접 호스트가 됨)
+                      OnSuccess -> (가장 좋은 세션에 참가했거나, 직접 호스트가 됨)
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Matchmaking는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)에 참가하고, 없으면 직접 방을
+Matchmaking는 검색하고, 가장 좋은 세션(핑이 좋고 더 찬 세션 우선)에 참가하고, 없으면 직접 세션을
 만듭니다. 어느 쪽이 됐는지는 `Is Easy Session Host`로 확인합니다.
 
 **Host > Initial Map Name을 비워두면** 직접 호스트가 될 때 지금 있는 맵에서 리슨 서버를 엽니다.
@@ -97,7 +97,7 @@ Matchmaking는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 1. **Edit -> Editor Preferences -> Level Editor -> Play**에서 **Number of Players = 2**,
    **Net Mode = Play Standalone**으로 설정합니다.
 2. Play를 누르면 창이 두 개 뜹니다.
-3. 1번 창에서 방을 만들고, 2번 창에서 찾아 참가합니다.
+3. 1번 창에서 세션을 만들고, 2번 창에서 찾아 참가합니다.
 
 같은 설정에서 **Run Under One Process**를 끄세요. 켜면 두 창이 한 프로세스와 하나의 LAN 비콘
 포트를 공유해서, 서로를 찾을 때도 있고 못 찾을 때도 있습니다. 프로세스를 분리하면 패키징된
@@ -114,6 +114,6 @@ Matchmaking는 검색하고, 가장 좋은 방(핑이 좋고 더 찬 방 우선)
 - [LAN 설정](Setup-LAN.ko.md) - 로컬 검색이 깨지는 원인과 한 대에서 테스트하는 법
 - [Steam 설정](Setup-Steam.ko.md) - 인터넷 플레이에 필요한 플러그인 두 개와 ini 설정
 - [세션 가이드](Guide-Sessions.ko.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
-- [Matchmaking 가이드](Guide-Matchmaking.ko.md) - 방을 고르는 기준과 커스텀 점수 계산
+- [Matchmaking 가이드](Guide-Matchmaking.ko.md) - 세션을 고르는 기준과 커스텀 점수 계산
 - [API 레퍼런스](API.ko.md) - 모든 노드, 조회, 구조체, 설정
 - [FAQ](FAQ.ko.md) - 자주 겪는 문제

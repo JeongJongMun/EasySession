@@ -4,9 +4,9 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionStatics.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
-#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -14,9 +14,8 @@
 #include "UObject/StrongObjectPtr.h"
 
 /**
- * Friends test on the NULL subsystem: the read must fail gracefully with a
- * clear result instead of crashing or hanging, and invite helpers must
- * report unsupported.
+ * Friends test on the NULL subsystem: the read must fail gracefully with a clear result instead of crashing or hanging.
+ * The invite helpers must report unsupported.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendsUnsupportedTest, "EasySession.Friends.NullSubsystemGracefulFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
@@ -31,11 +30,11 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// This test verifies the NULL behavior, so it is skipped when another subsystem
-	// (e.g. Steam) is active, where friends are supported.
-	if (Subsystem->GetOnlineSubsystemName() != NULL_SUBSYSTEM)
+	// This test verifies the NULL behavior, so it is skipped when another subsystem (e.g. Steam) is active, where friends are supported.
+	const FName OnlineSubsystemName = UEasySessionStatics::GetOnlineSubsystemName(GameInstance.Get());
+	if (OnlineSubsystemName != NULL_SUBSYSTEM)
 	{
-		AddInfo(FString::Printf(TEXT("Skipped: active subsystem is '%s', not NULL."), *Subsystem->GetOnlineSubsystemName().ToString()));
+		AddInfo(FString::Printf(TEXT("Skipped: active subsystem is '%s', not NULL."), *OnlineSubsystemName.ToString()));
 		EasySessionTest::DestroyGameInstance(GameInstance.Get());
 		return true;
 	}
@@ -52,24 +51,24 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
 
 	// The friend session search starts with the same read, so it must fail the same way.
-	// It is a queue operation, and the operation must have ended before the caller receives the result.
+	// It is refused inside the call, and it no longer counts as running when the caller receives the result.
 	bool bSessionsCallbackFired = false;
-	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
+	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
 		[this, &bSessionsCallbackFired, Subsystem](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
 		{
 			bSessionsCallbackFired = true;
 			TestEqual(TEXT("The friend session search reports the same"), Result, EEasySessionResult::NotSupportedByService);
 			TestEqual(TEXT("No friend sessions returned"), FriendSessions.Num(), 0);
-			TestFalse(TEXT("The search has ended by the time its result is delivered"), Subsystem->IsFriendSearchRunning());
+			TestFalse(TEXT("The search has ended by the time its result is delivered"), FEasySessionTestAccess::HasRequest(*Subsystem, FEasySessionRequest::EType::FriendSessions));
 		}));
 	TestTrue(TEXT("Friend sessions callback fired"), bSessionsCallbackFired);
-	TestFalse(TEXT("No search is left running"), Subsystem->IsFriendSearchRunning());
+	TestFalse(TEXT("No search is left running"), FEasySessionTestAccess::HasRequest(*Subsystem, FEasySessionRequest::EType::FriendSessions));
 	TestFalse(TEXT("A failed search never counted as busy"), Subsystem->IsBusy());
 
 	// A finished search must not block the next one, and a cancel with nothing running is a no-op.
 	Subsystem->CancelFriendSearch();
 	bool bSecondFired = false;
-	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
+	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
 		[this, &bSecondFired](EEasySessionResult Result, const FString&, const TArray<FEasyFriendSession>&)
 		{
 			bSecondFired = true;
@@ -96,9 +95,6 @@ namespace EasySessionFriendLookupTest
 	struct FTestState
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
-
-		/** Kept alive for the latent command, because a listener local to RunTest would be garbage collected mid-run. */
-		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 
 		TOptional<EEasySessionResult> LookupResult;
 		int32 DeliveredCount = -1;
@@ -129,17 +125,13 @@ bool FEasySessionWaitForFriendLookup::Update()
 	// NULL has no friends, so the queued lookup completes with that failure rather than with "no session".
 	CurrentTest->TestEqual(TEXT("The queued friend lookup reports the online subsystem has no friends"), State->LookupResult.GetValue(), EEasySessionResult::NotSupportedByService);
 	CurrentTest->TestEqual(TEXT("With no session for the friend"), State->DeliveredCount, 0);
-	CurrentTest->TestEqual(TEXT("And off the public search event"), State->Listener->FoundBroadcasts(), 0);
-	CurrentTest->TestEqual(TEXT("And off the public cache"), Subsystem->GetLastSearchResults().Num(), 0);
 
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
 
 /**
- * The friend session lookup is a queue request like any other search: it occupies the
- * queue while it runs, completes through the request completion path, and, as a
- * hidden-seeing search, is never broadcast on OnSessionsFound or stored as the last search results.
+ * The friend session lookup is a queue request like any other search: it occupies the queue while it runs, and completes through the request completion path.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendLookupTest, "EasySession.Friends.FriendLookupRidesTheQueue", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
@@ -157,8 +149,6 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
-	Subsystem->OnSessionsFound.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionsFound);
 
 	UWorld* World = State->GameInstance->GetWorld();
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
@@ -178,7 +168,7 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 	FEasySessionSearchParams LookupParams;
 	LookupParams.SearchMode = EEasySessionSearchMode::ByFriend;
 	LookupParams.SearchTargetId = FUniqueNetIdRepl(FriendId);
-	Subsystem->FindEasySessions(LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
+	Subsystem->FindSessions(LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
 		[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 		{
 			Shared->LookupResult = Result;

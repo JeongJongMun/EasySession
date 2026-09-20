@@ -26,9 +26,11 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * End the match. The session moves to Ended, so a new match can be started.
+	 * End the match.
+	 * The session moves to Ended, so a new match can be started.
 	 *
-	 * Only the game that created the session can end the match. Other games get a Requires Session Authority failure.
+	 * Only the game that created the session can end the match.
+	 * Other games get a Requires Session Authority failure.
 	 * Show the button only when Is Easy Session Authority is true.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "End Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
@@ -40,6 +42,6 @@ public:
 
 private:
 
-	/** Called when the subsystem finishes the end operation. */
+	/** Called when the subsystem finishes the end request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 };

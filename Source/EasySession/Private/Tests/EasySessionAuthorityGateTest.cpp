@@ -65,15 +65,14 @@ bool FEasySessionWaitForAuthorityGates::Update()
 	switch (State->Phase)
 	{
 		case 0:
-			// Baseline first: while this process holds the session it created, match
-			// control must keep working exactly as before.
+			// Baseline first: while this process holds the session it created, match control must keep working exactly as before.
 			if (!State->CreateResult.IsSet())
 			{
 				return false;
 			}
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-			Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
 				{
 					State->StartResult = Result;
@@ -88,7 +87,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Authority can start the match"), State->StartResult.GetValue(), EEasySessionResult::Success);
 
-			Subsystem->EndEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->EndSession(FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
 				{
 					State->EndResult = Result;
@@ -103,11 +102,10 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Authority can end the match"), State->EndResult.GetValue(), EEasySessionResult::Success);
 
-			// Now the same calls from a game that holds a session it did not create,
-			// which is what a joined client looks like.
+			// Now the same calls from a game that holds a session it did not create, which is what a joined client looks like.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
-			Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
 				{
 					State->StartWithoutAuthorityResult = Result;
@@ -121,12 +119,11 @@ bool FEasySessionWaitForAuthorityGates::Update()
 				return false;
 			}
 
-			// The point of the test: this used to complete with Success while only
-			// flipping the local session copy, starting nothing.
+			// The point of the test: this used to complete with Success while only flipping the local session copy, starting nothing.
 			CurrentTest->TestEqual(TEXT("Start without authority is refused"),
 				State->StartWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
 
-			Subsystem->UpdateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->UpdateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
 				{
 					State->UpdateWithoutAuthorityResult = Result;
@@ -142,14 +139,13 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			CurrentTest->TestEqual(TEXT("Update without authority is refused"),
 				State->UpdateWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
 
-			// The synchronous path has to refuse too. Nothing outside the function
-			// stops a client from reaching it.
-			CurrentTest->TestFalse(TEXT("ServerTravelToMap without authority is refused"),
-				Subsystem->ServerTravelToMap(TEXT("ES13_NoSuchMap")));
+			// The synchronous path has to refuse too.
+			// Nothing outside the function stops a client from reaching it.
+			CurrentTest->TestFalse(TEXT("ServerTravel without authority is refused"),
+				Subsystem->ServerTravel(TEXT("ES13_NoSuchMap")));
 
-			// Leaving a session another process created must stay allowed, because that is how a
-			// client leaves, so this call itself is also an assertion.
-			Subsystem->DestroyEasySession();
+			// Leaving a session another process created must stay allowed, because that is how a client leaves, so this call itself is also an assertion.
+			Subsystem->DestroySession();
 			State->Phase = 5;
 			return false;
 
@@ -164,10 +160,10 @@ bool FEasySessionWaitForAuthorityGates::Update()
 }
 
 /**
- * Match control needs session authority, not a hosting player. A game that did not
- * create the session (a joined client) must get a clear refusal instead of a Success
- * that only changed its local session copy, and the refusal must name the reason,
- * because StateChangeFailure would read as the online subsystem refusing.
+ * Match control needs session authority, not a hosting player.
+ * A game that did not create the session is a joined client, and it must get a clear refusal.
+ * What it used to get was a Success that only changed its local session copy.
+ * The refusal must name the reason, because StateChangeFailure would read as the online subsystem refusing.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAuthorityGateTest, "EasySession.Authority.MatchControlNeedsSessionAuthority", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
@@ -185,13 +181,12 @@ bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// A refused travel must not browse anywhere, and a headless world has no menu to
-	// return to either way.
+	// A refused travel must not browse anywhere, and a headless world has no menu to return to either way.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 
-	Subsystem->CreateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->CreateResult = Result;

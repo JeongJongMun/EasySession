@@ -39,6 +39,6 @@ public:
 
 private:
 
-	/** Called when the subsystem finishes the leave operation. */
+	/** Called when the subsystem finishes the leave request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 };

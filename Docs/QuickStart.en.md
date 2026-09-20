@@ -85,7 +85,7 @@ first. See [password protected sessions](Guide-Sessions.en.md#password-protected
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Matchmaking searches, joins the best session (good ping, fuller rooms first), and hosts a
+Matchmaking searches, joins the best session (good ping, fuller sessions first), and hosts a
 new session if nothing is found. Use `Is Easy Session Host` to check which outcome you got.
 
 **Leaving Host > Initial Map Name empty** makes the fallback open a listen server on the map this

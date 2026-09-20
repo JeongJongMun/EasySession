@@ -13,7 +13,7 @@
 
 namespace EasySessionOpenSlotsUpdateTest
 {
-	/** Maximum time to wait for each queued operation before failing the test. */
+	/** Maximum time to wait for each queued request before failing the test. */
 	static constexpr double TimeoutSeconds = 20.0;
 
 	/** Which step of the create/raise/lower sequence the latent command is waiting on. */
@@ -44,7 +44,7 @@ namespace EasySessionOpenSlotsUpdateTest
 		return Params;
 	}
 
-	/** Take the result the last step produced, leaving the slot empty for the next one. */
+	/** Take the result the last step produced, leaving it empty for the next one. */
 	static EEasySessionResult ConsumeResult(FTestState& State)
 	{
 		const EEasySessionResult Result = State.PendingResult.GetValue();
@@ -70,7 +70,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for a session operation to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for a session request to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -83,19 +83,17 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			// The occupancy this whole test reasons about: however many players creation
-			// registered, that many slots must be missing from the cap.
+			// The occupancy this whole test reasons about: however many players creation registered, that many slots must be missing from the cap.
 			const int32 Registered = FEasySessionTestAccess::GetRegisteredPlayerCount(*Subsystem);
 			CurrentTest->TestEqual(TEXT("Open slots match the roster after create"),
 				FEasySessionTestAccess::GetOpenPublicConnections(*Subsystem), 4 - Registered);
 
-			// Raise the cap. The engine's UpdateSession does not touch the open slot
-			// count, so without the plugin's recompute this would show a player that
-			// never joined.
+			// Raise the cap.
+			// The engine's UpdateSession does not touch the open slot count, so without the plugin's recompute this would show a player that never joined.
 			FEasySessionSettings Raised = Subsystem->GetSessionSettings();
 			Raised.MaxPlayers = 6;
 			State->Step = EStep::AwaitingRaise;
-			Subsystem->UpdateEasySession(Raised, FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->UpdateSession(Raised, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -118,7 +116,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 			{
 				// Nothing was registered, so there is no occupancy to lower. Skip to the cleanup.
 				State->Step = EStep::AwaitingDestroy;
-				Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateLambda(
+				Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&)
 					{
 						Shared->PendingResult = Result;
@@ -126,7 +124,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 				return false;
 			}
 			State->Step = EStep::AwaitingLower;
-			Subsystem->UpdateEasySession(Lowered, FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->UpdateSession(Lowered, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -142,7 +140,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 				FEasySessionTestAccess::GetOpenPublicConnections(*Subsystem), 0);
 
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -181,7 +179,7 @@ bool FEasySessionOpenSlotsFollowTheCapTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	Subsystem->CreateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->PendingResult = Result;

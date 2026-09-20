@@ -7,9 +7,9 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 
-UEasySessionSubsystem* UEasySessionNodeBase::GetEasySessionSubsystem() const
+UEasySessionSubsystem* UEasySessionNodeBase::GetSubsystem() const
 {
-	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(NodeWorldContext, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContext, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
 	const UGameInstance* GameInstance = World ? World->GetGameInstance() : nullptr;
 	return GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
 }

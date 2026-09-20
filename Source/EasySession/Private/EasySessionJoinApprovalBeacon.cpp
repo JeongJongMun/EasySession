@@ -12,8 +12,11 @@
 
 namespace
 {
-	/** How long a connected host gets to respond before the request completes as Unreachable. */
-	constexpr float ResponseTimeoutSeconds = 5.0f;
+	/**
+	 * How long the whole approval gets before the request completes as Unreachable: reaching the host's beacon and its answer.
+	 * A host that advertises a beacon port nothing listens on never refuses the connection, so the joining player would wait for the engine's own retries.
+	 */
+	constexpr float ApprovalTimeoutSeconds = 5.0f;
 }
 
 FEasyJoinApprovalResponse FEasyJoinApprovalResponse::Unreachable()
@@ -59,20 +62,21 @@ bool AEasySessionJoinApprovalBeaconClient::RequestApproval(const FEasySessionSea
 		return false;
 	}
 
+	// Started here rather than on connect, because reaching the beacon at all is the part that can hang.
+	GetWorldTimerManager().SetTimer(ApprovalTimeoutHandle, this, &AEasySessionJoinApprovalBeaconClient::HandleApprovalTimeout, ApprovalTimeoutSeconds, false);
 	return true;
 }
 
 void AEasySessionJoinApprovalBeaconClient::OnConnected()
 {
-	GetWorldTimerManager().SetTimer(ResponseTimeoutHandle, this, &AEasySessionJoinApprovalBeaconClient::HandleResponseTimeout, ResponseTimeoutSeconds, false);
-
 	ServerRequestJoinApproval(PendingRequest);
 }
 
 void AEasySessionJoinApprovalBeaconClient::ServerRequestJoinApproval_Implementation(const FEasyJoinApprovalRequest& Request)
 {
 	// Runs on the host, on the copy of this actor that AOnlineBeaconHostObject::SpawnBeaconActor created for this connection.
-	// GetUniqueId is the id the joining player presented at beacon login. The engine already refused the connection if it was invalid.
+	// GetUniqueId is the id the joining player presented at beacon login.
+	// The engine already refused the connection if it was invalid.
 	FEasyJoinApprovalResponse Response;
 	if (const AEasySessionJoinApprovalBeaconHostObject* HostObject = Cast<AEasySessionJoinApprovalBeaconHostObject>(GetBeaconOwner()))
 	{
@@ -88,7 +92,7 @@ void AEasySessionJoinApprovalBeaconClient::ServerRequestJoinApproval_Implementat
 
 void AEasySessionJoinApprovalBeaconClient::ClientReceiveJoinApproval_Implementation(const FEasyJoinApprovalResponse& Response)
 {
-	GetWorldTimerManager().ClearTimer(ResponseTimeoutHandle);
+	GetWorldTimerManager().ClearTimer(ApprovalTimeoutHandle);
 	Signal(Response);
 }
 
@@ -99,7 +103,7 @@ void AEasySessionJoinApprovalBeaconClient::OnFailure()
 	// Signal keeps a late failure from reporting twice.
 	Super::OnFailure();
 
-	GetWorldTimerManager().ClearTimer(ResponseTimeoutHandle);
+	GetWorldTimerManager().ClearTimer(ApprovalTimeoutHandle);
 	SignalUnreachable(TEXT("the beacon connection failed"));
 }
 
@@ -107,14 +111,14 @@ void AEasySessionJoinApprovalBeaconClient::DestroyBeacon()
 {
 	// A destroyed request must not respond. Dropping the delegate here means that destroying the beacon cancels the request.
 	CompleteDelegate.Unbind();
-	GetWorldTimerManager().ClearTimer(ResponseTimeoutHandle);
+	GetWorldTimerManager().ClearTimer(ApprovalTimeoutHandle);
 
 	Super::DestroyBeacon();
 }
 
-void AEasySessionJoinApprovalBeaconClient::HandleResponseTimeout()
+void AEasySessionJoinApprovalBeaconClient::HandleApprovalTimeout()
 {
-	SignalUnreachable(TEXT("the host did not answer in time"));
+	SignalUnreachable(TEXT("the host's beacon did not answer in time"));
 }
 
 void AEasySessionJoinApprovalBeaconClient::Signal(const FEasyJoinApprovalResponse& Response)

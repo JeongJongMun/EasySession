@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionHost.h"
+#include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 
 FEasySessionDestroyRequest::FEasySessionDestroyRequest(FEasySessionCompleteDelegate InOnComplete)
@@ -17,7 +18,7 @@ void FEasySessionDestroyRequest::Execute()
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
 		return;
 	}
 
@@ -40,7 +41,7 @@ void FEasySessionDestroyRequest::Execute()
 
 void FEasySessionDestroyRequest::HandleDestroySessionComplete(FName InSessionName, bool bWasSuccessful)
 {
-	if (!IsActive() || InSessionName != SessionName)
+	if (!IsRunning() || InSessionName != SessionName)
 	{
 		return;
 	}
@@ -56,12 +57,12 @@ void FEasySessionDestroyRequest::HandleDestroySessionComplete(FName InSessionNam
 	GetContext().Host.OnSessionDestroyed();
 
 	// A client also clears the host state it received through replication.
-	GetContext().Subsystem.ClearReplicatedHostSessionState();
+	GetContext().Subsystem.ClearReplicatedSessionState();
 
 	Complete(EEasySessionResult::Success);
 }
 
-void FEasySessionDestroyRequest::Cleanup(bool bAbandoned)
+void FEasySessionDestroyRequest::Cleanup()
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (Sessions.IsValid())
@@ -73,5 +74,4 @@ void FEasySessionDestroyRequest::Cleanup(bool bAbandoned)
 void FEasySessionDestroyRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
 {
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
-	GetContext().Subsystem.OnSessionDestroyed.Broadcast(Result, ErrorMessage);
 }

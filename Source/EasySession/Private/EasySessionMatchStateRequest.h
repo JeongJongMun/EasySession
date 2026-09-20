@@ -6,8 +6,10 @@
 #include "EasySessionRequest.h"
 
 /**
- * Starts or ends the match of the session this game hosts.
+ * FEasySessionMatchStateRequest starts or ends the match of the session this game hosts.
  * Start and End differ only in the online subsystem call, the advertised value and the event, so one class runs both.
+ *
+ * The subsystem creates it for Start Easy Session and End Easy Session.
  *
  * The request has two phases.
  * The first changes the session state with StartSession or EndSession.
@@ -25,7 +27,7 @@ protected:
 
 	//~ Begin FEasySessionRequest interface
 	virtual void Execute() override;
-	virtual void Cleanup(bool bAbandoned) override;
+	virtual void Cleanup() override;
 	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) override;
 	//~ End FEasySessionRequest interface
 
@@ -48,7 +50,7 @@ private:
 	void HandleAdvertiseComplete(FName InSessionName, bool bWasSuccessful);
 
 	/** Replicate the new session state to the clients and complete with Success. */
-	void Finish(bool bAdvertised);
+	void CompleteStateChange(bool bAdvertised);
 
 	/** The requester's delegate. */
 	FEasySessionCompleteDelegate OnComplete;

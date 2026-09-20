@@ -5,13 +5,14 @@
 #include "CoreMinimal.h"
 #include "EasySessionTypes.h"
 
-class FEasySessionTravel;
 class UEasySessionSubsystem;
 
 /**
- * Accepted invites, the friends list and the platform overlays.
+ * FEasySessionSocial is responsible for the platform's social features that need no request: accepted invites, sent invites and the overlays.
+ * Reading the friends list and the friend session search are requests, see FEasySessionReadFriendsRequest.
+ * An accepted invite is joined with Join Easy Session, the same request a game uses.
  *
- * These use the identity, friends and external UI interfaces rather than the session interface, and no part of the session lifecycle depends on them.
+ * These use the identity and external UI interfaces, and no part of the session lifecycle depends on them.
  * A game with no social features never calls into this object at all.
  *
  * There is deliberately no list of received invites.
@@ -20,17 +21,14 @@ class UEasySessionSubsystem;
  * Only EOS reports pending invites, and EOS is not a supported subsystem.
  *
  * Owned by the subsystem and destroyed with it, in Deinitialize.
- * Delegates with handles are bound raw, because Shutdown unbinds them before this object is destroyed.
- * One-shot completion delegates cannot be unbound, so they guard on the subsystem and must not capture this object, which is destroyed first.
+ * The accepted-invite delegate is bound raw, because Shutdown unbinds it before this object is destroyed.
  */
 class FEasySessionSocial
 {
 public:
 
-	/** Travel starts the travel back to the menu when an invited join fails. */
-	FEasySessionSocial(UEasySessionSubsystem& InOwner, FEasySessionTravel& InTravel)
+	explicit FEasySessionSocial(UEasySessionSubsystem& InOwner)
 		: Owner(InOwner)
-		, Travel(InTravel)
 	{
 	}
 
@@ -63,38 +61,19 @@ public:
 	 */
 	EEasySessionResult ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
 
-	/** Read the platform friends list, in display order. The friend session search built on it is FEasyFriendSessionOperation. */
-	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete);
-
-	/** Order friends for display: playing this game first, then online, then offline, each group by name. */
-	static void SortFriends(TArray<FEasySessionFriend>& Friends);
-
-	/** Order friend sessions for display: friends in a joinable session first, then the order SortFriends gives. */
-	static void SortFriendSessions(TArray<FEasyFriendSession>& FriendSessions);
-
 private:
 
-	/** Fires when the player accepts an invite from the platform overlay. */
-	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
-
-	/** Leave the current session if needed, then join the invited one. */
-	void JoinInvitedSession(const FEasySessionSearchResult& Session);
-
 	/**
-	 * Second half of JoinInvitedSession, run once leaving the previous session has completed.
-	 * A player who did leave travels to the menu when the join fails, because the session they left is destroyed.
-	 *
-	 * @param LeaveResult Result of destroying the session this player was in. Anything but Success cancels the join.
+	 * Fires when the player accepts an invite from the platform overlay.
+	 * Joins the session when Auto Join Accepted Invites is on.
+	 * A player in another session joins only when Accept Invites While In Session is on.
 	 */
-	void JoinInvitedSessionAfterLeaving(EEasySessionResult LeaveResult, const FEasySessionSearchResult& Session);
+	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
 	/** The world this subsystem runs in, or null before one exists. */
 	UWorld* GetWorld() const;
 
 	UEasySessionSubsystem& Owner;
-
-	/** Starts the travel back to the menu when an invited join fails. Owned by the subsystem, like this object. */
-	FEasySessionTravel& Travel;
 
 	/** Handle for the accepted-invite delegate. Valid once BindInviteDelegates has run. */
 	FDelegateHandle InviteAcceptedHandle;

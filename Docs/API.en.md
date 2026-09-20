@@ -36,7 +36,7 @@ why none of them return a value directly: each one finishes through its `OnSucce
 `ErrorMessage` (String). A request rejected before it ever reaches the service - no
 online subsystem, a parameter that cannot work - fails on `OnFailure` immediately.
 
-EasySession runs its own operations one at a time, so a call made while another is still
+EasySession runs its own requests one at a time, so a call made while another is still
 running waits its turn instead of failing. The queue covers what goes through EasySession; the engine's
 own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 
@@ -49,10 +49,10 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewSettings` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` from a `FEasySessionSettings` and re-advertises. The struct holds exactly the fields a live session can change, so there is nothing here that gets ignored. Session authority only |
 | **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
-| **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the room for everyone with "The host has left the game." |
+| **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the session for everyone with "The host has left the game." |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
-| **Find Easy Friend Sessions** | - | Reads the friends list, then calls `FindFriendSession` for each friend playing this game. `OnSuccess` carries a `FEasyFriendSession` array - every friend listed, the ones in a joinable session carrying it and sorted to the top. A lookup the service never answers ends the search with `Timeout`. Fails with `NotSupportedByService` on NULL/LAN |
+| **Find Easy Friend Sessions** | - | Reads the friends list, then calls `FindFriendSession` for each friend playing this game. `OnSuccess` carries a `FEasyFriendSession` array - every friend listed, the ones in a joinable session carrying it and sorted to the top. Fails with `NotSupportedByService` on NULL/LAN |
 
 > **Session authority only** means the game that created the session: the host player's
 > game on a listen server, or the server itself on a dedicated server. Anyone else gets
@@ -83,25 +83,21 @@ node name without spaces.
 | Is Easy Session Host | `IsHost` | Is the local player the one hosting. False on a dedicated server, which has no local player |
 | Is Easy Session Authority | `IsSessionAuthority` | Did this game create the session it is in, so it may Start, End, Update, travel or destroy it. True on a dedicated server too, unlike Is Easy Session Host |
 | Get Easy Session State | `GetSessionState` | Where the session is in its lifecycle. Clients read the host's replicated value, so every player sees the same thing |
-| Get Easy Session State Label | - | The same state ready to display, e.g. "In Match (InProgress)" |
-| Is Easy Session Busy | `IsBusy` | An operation or the level load after it is running. Bind a button's Is Enabled to this |
-| Get Easy Session Activity | `GetActivity` | Which operation is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking or Traveling. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
+| Is Easy Session Busy | `IsBusy` | A request or the level load after it is running. Bind a button's Is Enabled to this |
+| Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking or Traveling. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
 | Get Easy Session Display Name | `GetSessionDisplayName` | The name the session is advertised under |
-| Get Easy Session Password | `GetSessionPassword` | The password this game is hosting with, to show the host. **Empty on clients** - it never leaves the host |
-| Get Easy Session Player Names | `GetSessionPlayerNames` | Everyone in the session, names only. Works on the host and on clients |
+| Get Easy Session Password | `GetSessionSettings().Password` | The password this game is hosting with, to show the host. **Empty on clients** - it never leaves the host |
 | Get Easy Session Player Infos | `GetSessionPlayerInfos` | The same list with host and local-player flags, for a player list UI |
 | Get Easy Session Player Count | `GetSessionPlayerCount` | How many players are in the session right now |
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | How many it holds. 0 when there is no session |
-| Get Last Easy Search Results | `GetLastSearchResults` | The last search's results, readable anywhere. Empty while a new search runs |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Is a Matchmaking run in progress |
-| Is Easy Friend Search Running | `IsFriendSearchRunning` | Is Find Easy Friend Sessions in progress. Not part of Is Easy Session Busy: it only reads |
-| Get Easy Matchmaking State | `GetMatchmakingState` | Which step it is on: Searching, Joining, Hosting, Canceling, Complete |
+| Get Easy Matchmaking State | `GetMatchmakingState` | Which state it is in: Searching, Joining, Hosting, Canceling, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
-| Get Online Subsystem Name (EasySession) | `GetOnlineSubsystemName` | Which service is active: `NULL` for LAN, `STEAM`, ... |
-| Is Online Subsystem Available (EasySession) | `IsOnlineSubsystemAvailable` | Is a subsystem loaded with a valid session interface |
-| Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports. Running operations are appended, e.g. `Idle; Matchmaking (Searching, 12s)` |
+| Get Online Subsystem Name (EasySession) | - | Which service is active: `NULL` for LAN, `STEAM`, ... |
+| Is Online Subsystem Available (EasySession) | - | Is a subsystem loaded with a valid session interface |
+| Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports. Running requests are appended, e.g. `Idle; Matchmaking (Searching, 12s)` |
 | Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Works for every member; the password is only filled on the host |
-| Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the room can read and share it |
+| Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the session can read and share it |
 
 ### 2.2 On the subsystem (`UEasySessionSubsystem`)
 
@@ -110,7 +106,7 @@ there is no C++ column.
 
 | Node | Answers |
 |---|---|
-| Get Active Matchmaking Policy | The running policy object. Progress is also relayed on the subsystem's own events, which need no policy in hand |
+| Get Active Easy Matchmaking Policy | The scoring policy of the running matchmaking. Progress is broadcast on the subsystem's On Matchmaking events, not on the policy |
 
 > **Which session are these about?** The game session - the one players find,
 > join and play in. There is exactly one per process (see Limitations in the README),
@@ -120,7 +116,7 @@ there is no C++ column.
 > answering about the game session for as long as it exists.
 >
 > Some queries here are not about a session at all: `Is Easy Session Busy` and `Get Easy
-> Session Queue Status` describe the operation queue, and `Is Easy Matchmaking Running`,
+> Session Queue Status` describe the request queue, and `Is Easy Matchmaking Running`,
 > `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)` and
 > `Is Online Subsystem Available (EasySession)` describe the process. Those keep their meaning whatever sessions exist.
 
@@ -131,6 +127,7 @@ Pure functions for the text a session UI shows. None of them touch session state
 | Node | C++ | Returns |
 |---|---|---|
 | Get Result Message | `GetResultMessage` | A player facing sentence for a result, e.g. "The session is full". Success reads "Done" |
+| Get Session State Message | `GetSessionStateMessage` | A session state as a player facing name, e.g. "In Match". Pending and Ended both read "Waiting" |
 | Get Activity Message | `GetActivityMessage` | "Creating the session..." style line for a Get Easy Session Activity value. None gives empty text, so a status line clears itself with it |
 | Format Matchmaking Status | `FormatMatchmakingStatus` | "Searching... 12s" style line from a matchmaking state and elapsed seconds. Idle reads "Ready" |
 | Format Session Slots | `FormatSessionSlots` | "1/4   ping 32ms" for a search result |
@@ -152,17 +149,17 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 
 | Node | C++ | Does |
 |---|---|---|
-| Consume Last Easy Disconnect Info | `ConsumeLastDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
+| Consume Pending Easy Disconnect Info | `ConsumePendingDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`. A search stops at once; a join or host in flight finishes first and is undone |
-| Cancel Easy Friend Search | `CancelFriendSearch` | Ends Find Easy Friend Sessions with `Canceled`. The lookup in flight is ignored |
+| Cancel Easy Friend Search | `CancelFriendSearch` | Ends Find Easy Friend Sessions with `Canceled`. The running search for a friend's session is ignored |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite, returns a result |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay, returns a result |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend, returns a result |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session, returns a result |
 
 > All four return an `EEasySessionResult`. On a service without the feature, such as NULL/LAN, that is `NotSupportedByService`.
-| Server Travel Easy Session | `ServerTravelToMap` | Moves the whole session to a new map. Session authority only |
-| Destroy Easy Session For Everyone | `DestroyEasySessionForEveryone` | Ends the session and sends every client back to the menu with a reason. Session authority only |
+| Server Travel Easy Session | `ServerTravel` | Moves the whole session to a new map. Session authority only |
+| Destroy Easy Session For Everyone | `DestroySessionForEveryone` | Ends the session and sends every client back to the menu with a reason. Session authority only |
 
 The invite and profile nodes need a platform service. They return false on NULL/LAN.
 
@@ -172,26 +169,21 @@ nothing and gets a warning in the log, so show the button only when
 
 ## 4. Events
 
-Assignable on the subsystem. They fire regardless of who started the operation, so UI
-bound to them stays correct even when something else in your game drives the session.
+Assignable on the subsystem. They report states and matchmaking runs, not single requests:
+the result of Create, Find, Join, Update, Start, End or Destroy goes to the node's output pins
+(or the C++ completion delegate) and nowhere else.
 
 | Event | Payload | Fires when |
 |---|---|---|
-| `OnSessionCreated` | `Result`, `ErrorMessage` | Create Easy Session finished |
-| `OnSessionsFound` | `Result`, `ErrorMessage`, `Results` | Find Easy Sessions finished. The only one that carries the search results |
-| `OnSessionJoined` | `Result`, `ErrorMessage` | Join Easy Session finished |
-| `OnSessionStarted` | `Result`, `ErrorMessage` | Start Easy Session finished - the match is running |
-| `OnSessionEnded` | `Result`, `ErrorMessage` | End Easy Session finished - the match is over, the session is not |
-| `OnSessionUpdated` | `Result`, `ErrorMessage` | Update Easy Session finished |
-| `OnSessionSettingsChanged` | - | Fired on a client when the host's updated settings arrive. The regular getters already return the new values - refresh the UI from them |
-| `OnSessionDestroyed` | `Result`, `ErrorMessage` | Destroy Easy Session finished, both on the host and on a client that left |
+| `OnSessionSettingsChanged` | - | The advertised settings changed: on the host when it updates them, on a client when the host's values arrive. The regular getters already return the new values - refresh the UI from them |
+| `OnSessionStateChanged` | `OldState`, `NewState` (`EEasySessionState`) | The session's lifecycle state changed, on the host and on every client. Creating a session and leaving one count, from and to `NoSession`. A client sees the host starting or ending the match here |
 | `OnMatchmakingStarted` | - | A Matchmaking run was accepted and its policy registered. Always the first event of a run |
 | `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Canceling`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
-| `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, or a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name). Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Last Easy Disconnect Info` has the reason to show the player |
-| `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which operation began |
-| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
+| `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed. Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player |
+| `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which activity began |
+| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own and cancels a running Matchmaking - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession` |
 
 `Result` and `ErrorMessage` are the same values the node's own pins would have given you.
 
@@ -220,9 +212,9 @@ with `Parse Option`. `Region` and `bUseJoinCode` are covered in the guide's
 sections.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults` (int), `bLANQuery`, `TimeoutOverrideSeconds` (float), `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `SearchMode` (`EEasySessionSearchMode`), `SearchTargetId` (Unique Net Id), `OwnerId` (Unique Net Id)
+`MaxResults` (int), `bLANQuery`, `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `SearchMode` (`EEasySessionSearchMode`), `SearchTargetId` (Unique Net Id), `OwnerId` (Unique Net Id)
 
-Four of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `SearchMode` picks a different call to the service - By Friend - and `SearchTargetId` says which friend; Max Results and LAN Query are then ignored while the filters and `TimeoutOverrideSeconds` still apply. By Friend needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones, and its results stay off `On Sessions Found` and `Get Last Easy Search Results`.
+Four of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `SearchMode` picks a different call to the service - By Friend - and `SearchTargetId` says which friend; Max Results and LAN Query are then ignored while the filters still apply. By Friend needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones.
 
 ### 5.4 FEasySessionSearchResult *(read-only)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
@@ -263,16 +255,15 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | Value | Means |
 |---|---|
 | `Success` | It worked |
-| **`SessionAlreadyExists`** | You are already in a session. `Destroy Easy Session` first |
+| **`SessionAlreadyExists`** | Create: you are already in a session, so `Destroy Easy Session` first. Join: you are already in the session you asked to join |
 | **`NoSessionExists`** | There is no session to act on |
 | **`NoSessionsFound`** | The search ran fine and found nothing. Not an error - offer to host |
-| **`JoinSessionFull`** | The room is full - refused by the host before the travel, or by the online service after it |
-| **`JoinSessionDoesNotExist`** | The room was gone by the time you joined. Search again |
+| **`JoinSessionFull`** | The session is full - refused by the host before the travel, or by the online service after it |
+| **`JoinSessionDoesNotExist`** | The session was gone by the time you joined. Search again |
 | **`WrongPassword`** | The host refused the join: the password did not match. Let the player retype it |
 | **`JoinRefused`** | The host refused the join for another reason, e.g. the match no longer takes players. `ErrorMessage` is the host's own sentence, safe to show |
 | **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.en.md)) |
 | **`RequiresSessionAuthority`** | Only the game that created the session may do this. Show the button only when `Is Easy Session Authority` is true |
-| **`Timeout`** | The online service never answered. The outcome is unknown, so anything it left behind is cleaned up. See `RequestTimeoutSeconds` |
 | **`Canceled`** | `Cancel Easy Matchmaking` stopped a Matchmaking run |
 | **`NotSupportedByService`** | The online service in use does not offer that feature. Friends and invites need Steam; NULL/LAN has none. Not a configuration problem - hide the button on such a service |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
@@ -285,11 +276,11 @@ Every node's `Result` pin. The ones worth branching on are marked.
 
 `NoSession`, `Creating`, `Pending`, `Starting`, `InProgress`, `Ending`, `Ended`, `Destroying`
 
-`Pending` is a session waiting to start; `Ended` is a finished match that `Start Easy Session` can play again. The `-ing` values are the moments an operation is still running.
+`Pending` is a session waiting to start; `Ended` is a finished match that `Start Easy Session` can play again. The `-ing` values are the moments a request is still running.
 
 ### 6.3 EEasyDisconnectReason
 
-Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonText`.
+Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `ReasonText`.
 
 | Value | Means |
 |---|---|
@@ -301,7 +292,7 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 ### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - the phases of one Matchmaking run, reported through `OnStateChanged`. `Canceling` lasts while a join or host that was in flight at the cancel finishes.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - the phases of one Matchmaking run, reported through `OnMatchmakingStateChanged`. `Canceling` lasts while a join or host that was in flight at the cancel finishes.
 
 ### 6.5 EEasySessionRegion
 
@@ -313,40 +304,38 @@ Read with `Consume Last Easy Disconnect Info`. Branch on `Reason`, show `ReasonT
 
 ### 6.7 EEasySessionActivity
 
-`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the operation whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
+`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
 
 ## 7. UEasyMatchmakingPolicy
 
-The object behind `Start Easy Matchmaking`: it searches, joins the best result it finds, and hosts when it finds none.
+Decides which session a Matchmaking run joins first. The run itself - search passes, joins, the host fallback - belongs to the subsystem.
 
-Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> float`** (higher = joined first) for custom pick-a-session criteria. Editable defaults: `PingBucketsMs` (default `[50, 100, 150]`), `TopCandidateRandomization` (default 3). Query with `GetState` and `GetElapsedSeconds`, or bind `OnStateChanged` / `OnUpdated`.
+Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> float`** (higher = joined first) for custom pick-a-session criteria. Editable defaults: `PingBucketsMs` (default `[50, 100, 150]`), `TopCandidatesToShuffle` (default 3). The subsystem creates one policy object for each run from the class you pass. Progress is on the subsystem: `Get Easy Matchmaking State` and the On Matchmaking events.
 
 ## 8. UEasySessionConfig (Project Settings -> Plugins -> EasySession)
 
 | Setting | Default | Effect |
 |---|---|---|
-| `bAutoReturnToMenuOnDisconnect` | true | On disconnect or a failed travel, clean up the session and browse to the project's **Game Default Map**, keeping the reason for that map to read. Off leaves the player where they are |
+| `bAutoReturnToMenuOnDisconnect` | true | On disconnect or a failed travel, browse to the project's **Game Default Map**, keeping the reason for that map to read. The lost session is destroyed either way; off only leaves the player in the map they are in |
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
-| `bAcceptInvitesWhileInSession` | false | An accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first |
-| `RequestTimeoutSeconds` | 30 | How long a request waits for the online service before failing with `Timeout`. **0 waits forever.** A search may replace this with its own `Timeout Override Seconds` |
+| `bAcceptInvitesWhileInSession` | false | An automatically accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first and call `Join Easy Session` yourself, which always leaves the current session |
 
 ## 9. C++ notes
 
-Operations are callable natively with delegate callbacks: `CreateEasySession`,
-`FindEasySessions`, `JoinEasySession`, `DestroyEasySession`, `UpdateEasySession`,
+The same requests are callable natively with delegate callbacks: `CreateSession`,
+`FindSessions`, `JoinSession`, `DestroySession`, `UpdateSession`,
 `StartMatchmaking`. Blueprint and C++ take the same code path.
 
 Every session call is one request on a queue that runs them one at a time. Matchmaking
-and `FindEasyFriendSessions` are made of several requests, so the queue also keeps a list
-of these operations: it refuses a second of the same kind, cancels them on shutdown, and
-folds them into `IsBusy`, `GetActivity` and `GetQueueStatus`. Matchmaking counts as busy;
-the friend search only reads, so it does not. Each operation submits its own requests
-through the same public functions a game uses, so a request from the game slips in between
-two of its steps instead of waiting for the whole operation.
+and `FindFriendSessions` run their searches, joins and host as sub-requests inside
+their own request, so a request from the game waits until the whole run ends instead of
+slipping in between two of its sub-requests. `ReadFriends` is a request as well, so
+reading the friends list turns `IsBusy` on while it runs. Every running or waiting
+request counts toward `IsBusy`, `GetActivity` and `GetQueueStatus`.
 
 `OnModifyServerTravelURL` and `OnModifyClientTravelURL` are C++ only delegates on the
 subsystem. They give you the travel URL just before travel so you can append your own
-options. Bind once at startup: the hook fires before that operation's completion callback,
+options. Bind once at startup: the hook fires before that request's completion callback,
 so a handler bound inside the callback misses its own travel. For anything expressible as
 a static string, prefer `AdditionalTravelOptions`.
 

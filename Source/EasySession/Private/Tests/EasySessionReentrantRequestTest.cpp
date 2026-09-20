@@ -60,7 +60,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > MaxWaitSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for a session operation."));
+			CurrentTest->AddError(TEXT("Timed out waiting for a session request."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -78,7 +78,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 			CurrentTest->TestEqual(TEXT("Session created"), Result, EEasySessionResult::Success);
 
 			State->Step = EStep::AwaitingFirstStart;
-			Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult InResult, const FString&) { Shared->PendingResult = InResult; }));
 			return false;
 		}
@@ -87,21 +87,19 @@ bool FEasySessionWaitForReentrantRequest::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Match started"), Result, EEasySessionResult::Success);
 
-			// Starting an already started match is refused, reported by a callback
-			// first and a false return after, so the plugin is still inside its own
-			// StartSession call when the callback below runs.
+			// Starting an already started match is refused, reported by a callback first and a false return after.
+			// The plugin is still inside its own StartSession call when the callback below runs.
 			State->Step = EStep::AwaitingReentrantPair;
-			Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared, Subsystem](EEasySessionResult InResult, const FString&)
 				{
 					Shared->PendingResult = InResult;
 
 					// The shape every Blueprint uses: start something from On Failure.
-					// A search because NULL does not finish that one inside the call, so it
-					// is still active when the rejected start reports itself.
+					// A search because NULL does not finish that one inside the call, so it is still active when the rejected start reports itself.
 					FEasySessionSearchParams SearchParams;
 					SearchParams.bLANQuery = true;
-					Subsystem->FindEasySessions(SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
+					Subsystem->FindSessions(SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
 						[Shared](EEasySessionResult FindResult, const FString& FindError, const TArray<FEasySessionSearchResult>&)
 						{
 							Shared->ReentrantResult = FindResult;
@@ -129,15 +127,15 @@ bool FEasySessionWaitForReentrantRequest::Update()
 				return false;
 			}
 
-			// The whole point. The refused start must not complete the request that
-			// began inside its failure callback.
+			// The whole point.
+			// The refused start must not complete the request that began inside its failure callback.
 			CurrentTest->TestFalse(
 				FString::Printf(TEXT("The search does not carry the start's error (got '%s')"), *State->ReentrantError),
 				State->ReentrantError.Contains(TEXT("StartSession")));
 			CurrentTest->TestEqual(TEXT("The search runs on its own terms"), State->ReentrantResult.GetValue(), EEasySessionResult::Success);
 
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult InResult, const FString&) { Shared->PendingResult = InResult; }));
 			return false;
 		}
@@ -155,13 +153,11 @@ bool FEasySessionWaitForReentrantRequest::Update()
 
 /**
  * Starting a request from a failure callback is the first thing a Blueprint does.
- * The online subsystem reports a refused call by calling back and only then
- * returning false, so the plugin is still inside its own online subsystem call when
- * the new request arrives, and the refusal it is about to report belongs to a request
- * that already finished.
+ * The online subsystem reports a refused call by calling back and only then returning false.
+ * The plugin is still inside its own online subsystem call when the new request arrives.
+ * The refusal it is about to report belongs to a request that already finished.
  *
- * The request that starts from the callback must therefore never be the one that
- * receives it.
+ * The request that starts from the callback must therefore never be the one that receives it.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReentrantRequestTest, "EasySession.Subsystem.RequestStartedFromAFailureCallback", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReentrantRequestTest::RunTest(const FString& Parameters)
@@ -179,7 +175,7 @@ bool FEasySessionReentrantRequestTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	Subsystem->CreateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->PendingResult = Result;

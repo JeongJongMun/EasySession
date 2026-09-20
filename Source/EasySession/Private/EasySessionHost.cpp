@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionJoinApproval.h"
+#include "EasySessionBeaconPort.h"
 #include "EasySessionJoinApprovalBeacon.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionStateActor.h"
@@ -12,11 +13,13 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameSession.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
 
 FEasySessionHost::FEasySessionHost(UEasySessionSubsystem& InOwner, FEasySessionBeaconPort& InBeaconPort)
 	: Owner(InOwner)
+	, BeaconPort(InBeaconPort)
 	, Gate(MakeUnique<FEasySessionServerGate>(InOwner))
 	, JoinApproval(MakeUnique<FEasySessionJoinApproval>(InOwner, InBeaconPort))
 {
@@ -53,25 +56,55 @@ void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
 
 void FEasySessionHost::OnSettingsUpdated(const FEasySessionSettings& Settings)
 {
+	// The engine's player cap follows the advertised one, so its "Server full" refusal uses the new Max Players.
+	UWorld* World = GetWorld();
+	AGameModeBase* GameMode = World ? World->GetAuthGameMode() : nullptr;
+	if (GameMode && GameMode->GameSession)
+	{
+		GameMode->GameSession->MaxPlayers = Settings.MaxPlayers;
+	}
+
+	// UpdateSession never recomputes the open slot count, so it is recomputed from the registered players.
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
+	if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr)
+	{
+		NamedSession->NumOpenPublicConnections =
+			FMath::Max(0, NamedSession->SessionSettings.NumPublicConnections - NamedSession->RegisteredPlayers.Num());
+	}
+
 	Gate->SetSessionCredentials(Settings.Password.TrimStartAndEnd(), Settings.bFriendsBypassPassword);
 
 	// Joined players learn about the update through the replicated state actor.
 	UpdateStateActor();
+
+	// A client broadcasts this when the replicated settings arrive, so the host broadcasts it for its own UI here.
+	Owner.OnSessionSettingsChanged.Broadcast();
 }
 
 void FEasySessionHost::OnMatchStateChanged()
 {
-	// The online subsystem only changes this game's own copy of the session, so the new state is replicated for the clients here now and the ones that join later.
-	if (Owner.IsSessionAuthority())
-	{
-		UpdateStateActor();
-	}
+	// The online subsystem only changes this game's own copy of the session.
+	// The new state is replicated here, for the clients in the session now and the ones that join later.
+	UpdateStateActor();
 }
 
 void FEasySessionHost::OnSessionDestroyed()
 {
 	Gate->ClearSessionCredentials();
 	DestroyWorldActors();
+}
+
+void FEasySessionHost::OnServerTravelStarted()
+{
+	// The next world starts its own beacon listener, which can only bind the beacon port after this one released it.
+	DestroyWorldActors();
+	BeaconPort.ReleaseListener();
+}
+
+void FEasySessionHost::OnServerTravelFailed()
+{
+	// The travel never left this world, and OnServerTravelStarted already took its actors down.
+	SpawnWorldActors();
 }
 
 void FEasySessionHost::SpawnWorldActors()

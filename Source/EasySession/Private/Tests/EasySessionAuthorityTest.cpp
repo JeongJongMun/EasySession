@@ -76,13 +76,12 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 			CurrentTest->TestTrue(TEXT("The process that created the session has the authority"), Subsystem->IsSessionAuthority());
 			CurrentTest->TestTrue(TEXT("Session still exists"), Subsystem->IsInSession());
 
-			Subsystem->DestroyEasySessionForEveryone(FText::FromString(TEXT("Server shutting the match down")));
+			Subsystem->DestroySessionForEveryone(FText::FromString(TEXT("Server shutting the match down")));
 			State->Phase = 1;
 			return false;
 
 		default:
-			// The point of the test: this used to be refused with a warning, because the
-			// authority check asked whether a local player owned the session.
+			// The point of the test: this used to be refused with a warning, because the authority check asked whether a local player owned the session.
 			if (Subsystem->IsInSession())
 			{
 				return false;
@@ -115,13 +114,13 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// Destroying the session ends with a travel to the menu, which a headless test
-	// world has no use for. Turning it off leaves the session cleanup, which is what this test checks.
+	// Destroying the session ends with a travel to the menu, which a headless test world has no use for.
+	// Turning it off leaves the session cleanup, which is what this test checks.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 
-	Subsystem->CreateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->CreateResult = Result;

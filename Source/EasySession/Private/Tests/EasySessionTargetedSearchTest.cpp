@@ -85,7 +85,7 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 				Params.OwnerId = FUniqueNetIdRepl(State->CaseIndex == 0
 					? State->BaseResult.Session.OwningUserId
 					: (Identity.IsValid() ? Identity->CreateUniquePlayerId(TEXT("EasySessionSomeoneElse")) : nullptr));
-				Subsystem->FindEasySessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+				Subsystem->FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 					{
 						Shared->DeliveredCount = Result == EEasySessionResult::Success ? Results.Num() : -1;
@@ -117,7 +117,7 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 				return false;
 			}
 
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Phase = 2;
 			return false;
 		}
@@ -136,9 +136,8 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 }
 
 /**
- * The owner filter narrows a discovery search to one host's sessions: the matching
- * owner id lists the session, any other excludes it. The results are injected because
- * one process cannot find its own LAN session.
+ * The owner filter narrows a search to one host's sessions: the matching owner id lists the session, any other excludes it.
+ * The results are injected because one process cannot find its own LAN session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionOwnerFilterTest, "EasySession.Search.FiltersByOwner", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionOwnerFilterTest::RunTest(const FString& Parameters)
@@ -160,7 +159,7 @@ bool FEasySessionOwnerFilterTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession Owner Host");
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
-	Subsystem->CreateEasySession(HostParams);
+	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForOwnerFilterRun(State));

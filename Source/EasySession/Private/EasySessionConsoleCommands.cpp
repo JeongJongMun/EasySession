@@ -5,7 +5,7 @@
 //
 //   EasySession.Host [Map]      Create a session, optionally traveling to the map.
 //   EasySession.Find            Search for sessions and list the results.
-//   EasySession.Join [Index] [Password]  Join a result of the last search (default index 0).
+//   EasySession.Join [Index] [Password]  Join a result of the last EasySession.Find (default index 0).
 //   EasySession.Matchmaking [Map] Search, join the best session, or host one.
 //   EasySession.Travel <Map>    ServerTravel the current session to a new map.
 //   EasySession.Destroy         Destroy the current session (host closes it, client leaves).
@@ -17,17 +17,16 @@
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.Diagnose        Run the online configuration diagnostics.
 
-// UE_BUILD_SHIPPING only exists after Misc/Build.h fills in the configuration
-// macros UBT did not pass. Testing it before any include works in a unity build,
-// where some earlier file's includes land first, but compiles this file against
-// an undefined macro when it is built standalone, which the packaging build
-// treats as an error (C4668).
+// UE_BUILD_SHIPPING only exists after Misc/Build.h fills in the configuration macros UBT did not pass.
+// Testing it before any include works in a unity build, where some earlier file's includes land first.
+// Built standalone, the same test compiles this file against an undefined macro, which the packaging build treats as an error (C4668).
 #include "Misc/Build.h"
 
 #if !UE_BUILD_SHIPPING
 
 #include "EasySession.h"
 #include "EasySessionDiagnostics.h"
+#include "EasySessionStatics.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/Engine.h"
@@ -56,6 +55,9 @@ namespace EasySessionConsole
 		}
 		return Subsystem;
 	}
+
+	/** The results of the last EasySession.Find, which EasySession.Join picks from by index. */
+	static TArray<FEasySessionSearchResult> LastFoundSessions;
 
 	static FEasySessionCompleteDelegate MakePrintDelegate(const FString& Operation)
 	{
@@ -87,7 +89,7 @@ namespace EasySessionConsole
 				}
 
 				Print(FString::Printf(TEXT("Hosting session (map: %s)..."), *HostParams.InitialMapName));
-				Subsystem->CreateEasySession(HostParams, MakePrintDelegate(TEXT("Host")));
+				Subsystem->CreateSession(HostParams, MakePrintDelegate(TEXT("Host")));
 			}
 		}));
 
@@ -99,9 +101,11 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				Print(TEXT("Searching for sessions..."));
-				Subsystem->FindEasySessions(FEasySessionSearchParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+				LastFoundSessions.Reset();
+				Subsystem->FindSessions(FEasySessionSearchParams(), FEasySessionFindCompleteDelegate::CreateLambda(
 					[](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
 					{
+						LastFoundSessions = Results;
 						if (Result != EEasySessionResult::Success)
 						{
 							Print(FString::Printf(TEXT("Find: %s (%s)"), *EasySession::ResultToString(Result), *ErrorMessage));
@@ -133,7 +137,7 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				const int32 Index = Args.Num() > 0 ? FCString::Atoi(*Args[0]) : 0;
-				const TArray<FEasySessionSearchResult>& Results = Subsystem->GetLastSearchResults();
+				const TArray<FEasySessionSearchResult>& Results = LastFoundSessions;
 				if (!Results.IsValidIndex(Index))
 				{
 					Print(FString::Printf(TEXT("Join: no search result at index %d. Run EasySession.Find first."), Index));
@@ -142,7 +146,7 @@ namespace EasySessionConsole
 
 				const FString Password = Args.Num() > 1 ? Args[1] : FString();
 				Print(FString::Printf(TEXT("Joining '%s'..."), *Results[Index].SessionDisplayName));
-				Subsystem->JoinEasySession(Results[Index], Password, FString(), MakePrintDelegate(TEXT("Join")));
+				Subsystem->JoinSession(Results[Index], Password, FString(), MakePrintDelegate(TEXT("Join")));
 			}
 		}));
 
@@ -179,7 +183,7 @@ namespace EasySessionConsole
 					return;
 				}
 
-				const bool bStarted = Subsystem->ServerTravelToMap(Args[0]);
+				const bool bStarted = Subsystem->ServerTravel(Args[0]);
 				Print(FString::Printf(TEXT("Travel to '%s': %s"), *Args[0], bStarted ? TEXT("started") : TEXT("failed (host only)")));
 			}
 		}));
@@ -192,7 +196,7 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				Print(TEXT("Destroying session..."));
-				Subsystem->DestroyEasySession(MakePrintDelegate(TEXT("Destroy")));
+				Subsystem->DestroySession(MakePrintDelegate(TEXT("Destroy")));
 			}
 		}));
 
@@ -204,7 +208,7 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				Print(TEXT("Starting session..."));
-				Subsystem->StartEasySession(MakePrintDelegate(TEXT("Start")));
+				Subsystem->StartSession(MakePrintDelegate(TEXT("Start")));
 			}
 		}));
 
@@ -216,7 +220,7 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				Print(TEXT("Ending session..."));
-				Subsystem->EndEasySession(MakePrintDelegate(TEXT("End")));
+				Subsystem->EndSession(MakePrintDelegate(TEXT("End")));
 			}
 		}));
 
@@ -239,13 +243,12 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Print(FString::Printf(TEXT("OSS=%s | InSession=%d | Host=%d | Busy=%d | Matchmaking=%d | LastResults=%d"),
-					*Subsystem->GetOnlineSubsystemName().ToString(),
+				Print(FString::Printf(TEXT("OSS=%s | InSession=%d | Host=%d | Busy=%d | Matchmaking=%d"),
+					*UEasySessionStatics::GetOnlineSubsystemName(World).ToString(),
 					Subsystem->IsInSession() ? 1 : 0,
 					Subsystem->IsHost() ? 1 : 0,
 					Subsystem->IsBusy() ? 1 : 0,
-					Subsystem->IsMatchmakingRunning() ? 1 : 0,
-					Subsystem->GetLastSearchResults().Num()));
+					Subsystem->IsMatchmakingRunning() ? 1 : 0));
 				Print(FString::Printf(TEXT("Queue: %s"), *Subsystem->GetQueueStatus()));
 			}
 		}));
@@ -292,8 +295,8 @@ namespace EasySessionConsole
 		TEXT("Run the online configuration diagnostics and log the results."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
-			// The findings go to the log. The headline goes on screen too, so the
-			// command says whether the online subsystem loaded without a log window.
+			// The findings go to the log.
+			// The headline goes on screen too, so the command says whether the online subsystem loaded without a log window.
 			const EasySessionDiagnostics::FReport Report = EasySessionDiagnostics::RunDiagnostics(World);
 			EasySessionDiagnostics::LogReport(Report);
 			Print(FString::Printf(TEXT("Diagnose: %s (details in the log)"), *Report.Summary));

@@ -24,13 +24,14 @@ enum class EEasySessionSearchMode : uint8
 };
 
 /**
- * Result of an EasySession operation.
- * Always check against Success. The other values describe why an operation failed.
+ * Result of an EasySession request.
+ * Always check against Success.
+ * The other values describe why a request failed.
  */
 UENUM(BlueprintType)
 enum class EEasySessionResult : uint8
 {
-	/** The operation completed successfully. */
+	/** The request completed successfully. */
 	Success,
 
 	/** No online subsystem is available. Check DefaultEngine.ini configuration. */
@@ -84,14 +85,11 @@ enum class EEasySessionResult : uint8
 	/** The online subsystem failed to start or end the session. */
 	StateChangeFailure,
 
-	/** The operation was canceled. */
+	/** The request was canceled. */
 	Canceled,
 
-	/** The operation failed for an unknown reason. */
+	/** The request failed for an unknown reason. */
 	UnknownFailure,
-
-	/** The online subsystem never called back and the request passed its deadline. See Request Timeout Seconds. */
-	Timeout,
 
 	/** Only the game that created the session can do this. Show the button only when Is Easy Session Authority is true. */
 	RequiresSessionAuthority,
@@ -135,9 +133,9 @@ enum class EEasySessionState : uint8
 };
 
 /**
- * Which operation the plugin is running right now, including operations the game did not start itself.
+ * What keeps Is Easy Session Busy true, including requests the game did not start itself.
  * Is Easy Session Busy only says whether something runs.
- * This says which operation, so a status line can name a join from an invite or a cleanup the game did not ask for.
+ * This says what runs, so a status line can name a join from an invite or a cleanup the game did not ask for.
  */
 UENUM(BlueprintType)
 enum class EEasySessionActivity : uint8
@@ -207,8 +205,9 @@ namespace EasySession
 	EASYSESSION_API extern const FName SettingKey_JoinApproval;
 
 	/**
-	 * The port a join approval beacon listens on, read from the AOnlineBeaconHost config so a project can move it in DefaultEngine.ini.
+	 * The port a join approval beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
+	 * A listener that ends up on another port is reported rather than corrected, and joining players fall back to the server gate.
 	 */
 	EASYSESSION_API int32 GetJoinApprovalBeaconPort();
 
@@ -297,8 +296,10 @@ struct EASYSESSION_API FEasySessionSettings
 	bool bHidden = false;
 
 	/**
-	 * Password required to join the session. Leave empty for no password.
-	 * Only a password protected flag is advertised. The password itself never leaves the host.
+	 * Password required to join the session.
+	 * Leave empty for no password.
+	 * Only a password protected flag is advertised.
+	 * The password itself never leaves the host.
 	 * Joining players pass the password to Join Easy Session, and a wrong one is refused before the map loads.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -308,14 +309,16 @@ struct EASYSESSION_API FEasySessionSettings
 	 * Lets platform friends of the host join a password protected session without the password.
 	 * Invites can only be sent to friends, so an accepted invite always comes from a friend and is allowed in.
 	 * Without this, invited players would be refused because the invite flow never asks for a password.
-	 * The host checks the platform friends list. No effect on NULL (LAN), which has no friends.
+	 * The host checks the platform friends list.
+	 * No effect on NULL (LAN), which has no friends.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bFriendsBypassPassword = true;
 
 	/**
 	 * Whether players can join while the match is already in progress.
-	 * Leave this on for Steam. Steam closes the lobby as soon as the first player joins and never reopens it.
+	 * Leave this on for Steam.
+	 * Steam closes the lobby as soon as the first player joins and never reopens it.
 	 * With this off, every later player is refused even before the match starts.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -331,9 +334,11 @@ struct EASYSESSION_API FEasySessionSettings
 
 	/**
 	 * Advertise a generated six character join code with the session, readable with Get Easy Session Join Code.
-	 * Players reach it with the code in a search's Join Code filter. Find Easy Sessions previews the session and matchmaking joins it, hidden sessions included.
+	 * Players reach it with the code in a search's Join Code filter.
+	 * Find Easy Sessions previews the session and matchmaking joins it, hidden sessions included.
 	 * Hidden plus a code makes a session only players with the code can find.
-	 * The code identifies the session but does not protect it. Password protects it, and the two can be combined.
+	 * The code identifies the session but does not protect it.
+	 * Password protects it, and the two can be combined.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bUseJoinCode = false;
@@ -344,6 +349,19 @@ struct EASYSESSION_API FEasySessionSettings
 
 	/** @return Whether these settings can be advertised as they stand. */
 	bool IsValid() const;
+
+	/**
+	 * Apply these settings to the online subsystem's settings.
+	 * Create applies them to empty settings, and Update applies them over the advertised ones.
+	 * A join code is kept once generated, and a custom setting left out of CustomSettings is removed.
+	 */
+	void ApplyTo(FOnlineSessionSettings& OutSettings) const;
+
+	/**
+	 * Read these settings from the online subsystem's settings, the other direction of ApplyTo.
+	 * Password and Friends Bypass Password are not advertised, so they stay untouched and the host fills them from its server gate.
+	 */
+	void ReadFrom(const FOnlineSessionSettings& Settings);
 };
 
 /**
@@ -383,8 +401,7 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	bool bUsePresence = true;
 
 	/**
-	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
-	 * Read them on the server with Parse Option.
+	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1"). Read them on the server with Parse Option.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString AdditionalTravelOptions;
@@ -395,7 +412,8 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 
 /**
  * Parameters for searching sessions.
- * Every value has a default. An empty FEasySessionSearchParams finds every public session.
+ * Every value has a default.
+ * An empty FEasySessionSearchParams finds every public session.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasySessionSearchParams
@@ -414,13 +432,6 @@ struct EASYSESSION_API FEasySessionSearchParams
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bLANQuery = false;
-
-	/**
-	 * Deadline for this search alone, in seconds. 0 uses Request Timeout Seconds from the project settings.
-	 * A search still running when the deadline passes completes with Timeout. A LAN search always completes within five seconds.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 0.0))
-	float TimeoutOverrideSeconds = 0.0f;
 
 	/** Only return sessions with at least this many open player slots. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 0))
@@ -446,14 +457,16 @@ struct EASYSESSION_API FEasySessionSearchParams
 	bool bIncludeInProgressSessions = true;
 
 	/**
-	 * Include hidden sessions in the results. C++ only. Set automatically for every targeted query below, because those name one session, hidden or not.
-	 * The results of such a search are not broadcast on OnSessionsFound and not stored as the last search results.
+	 * Include hidden sessions in the results.
+	 * C++ only.
+	 * Set automatically for every targeted query below, because those name one session, hidden or not.
 	 */
 	bool bIncludeHiddenSessions = false;
 
 	/**
-	 * Which call the search makes. By Friend asks for the session the friend in Search Target Id is in, and needs an online subsystem with friends, such as Steam.
-	 * Max Results and LAN Query are then ignored; the filters above and Timeout Override Seconds still apply.
+	 * Which call the search makes.
+	 * By Friend asks for the session the friend in Search Target Id is in, and needs an online subsystem with friends, such as Steam.
+	 * Max Results and LAN Query are then ignored, and the filters above still apply.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	EEasySessionSearchMode SearchMode = EEasySessionSearchMode::Default;
@@ -484,7 +497,8 @@ struct EASYSESSION_API FEasySessionSearchParams
 };
 
 /**
- * A single session found by a search. Pass this to Join Easy Session to join it.
+ * A single session found by a search.
+ * Pass this to Join Easy Session to join it.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasySessionSearchResult
@@ -531,7 +545,8 @@ struct EASYSESSION_API FEasySessionSearchResult
 	bool bMatchInProgress = false;
 
 	/**
-	 * The session's join code. C++ only.
+	 * The session's join code.
+	 * C++ only.
 	 * The Join Code filter compares it, and keeping it off Blueprint means a session browser cannot list other sessions' codes.
 	 */
 	FString JoinCode;
@@ -589,7 +604,8 @@ struct EASYSESSION_API FEasyMatchmakingParams
 	FEasySessionSearchParams Search;
 
 	/**
-	 * Session to host when no session is found. Ignored while Allow Host Fallback is off.
+	 * Session to host when no session is found.
+	 * Ignored while Allow Host Fallback is off.
 	 * The fallback inherits the search's filters.
 	 * It hosts on the searched network (LAN Query) and advertises every Required Custom Settings pair, overwriting the same key in Custom Settings.
 	 */
@@ -668,7 +684,8 @@ struct EASYSESSION_API FEasyFriendSession
 };
 
 /**
- * One advertised custom setting, as replicated. A TMap cannot replicate, so Custom Settings replicate as an array of these.
+ * One advertised custom setting, as replicated.
+ * A TMap cannot replicate, so Custom Settings replicate as an array of these.
  */
 USTRUCT()
 struct EASYSESSION_API FEasySessionReplicatedSetting
@@ -689,8 +706,10 @@ struct EASYSESSION_API FEasySessionReplicatedSetting
 
 /**
  * The settings a session member is allowed to see, replicated to every client after an update.
- * That includes the join code, so any session member can share it. Only the password and its friends exception stay on the host.
- * Not exposed to Blueprint. Clients read the values through the regular session getters.
+ * That includes the join code, so any session member can share it.
+ * Only the password and its friends exception stay on the host.
+ * Not exposed to Blueprint.
+ * Clients read the values through the regular session getters.
  */
 USTRUCT()
 struct EASYSESSION_API FEasySessionReplicatedSettings
@@ -812,7 +831,7 @@ struct EASYSESSION_API FEasyDisconnectInfo
 	FText ReasonText;
 };
 
-/** Delegate fired when a session operation completes. */
+/** Delegate fired when a session request completes. */
 DECLARE_DELEGATE_TwoParams(FEasySessionCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/);
 
 /** Delegate fired when a session search completes. */

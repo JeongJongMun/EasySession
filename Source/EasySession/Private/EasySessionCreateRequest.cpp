@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionHost.h"
+#include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
 #include "Online/OnlineSessionNames.h"
@@ -27,7 +28,7 @@ void FEasySessionCreateRequest::Execute()
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
 		return;
 	}
 
@@ -37,7 +38,7 @@ void FEasySessionCreateRequest::Execute()
 		return;
 	}
 
-	const FOnlineSessionSettings Settings = MakeSessionSettings(HostParams, GetContext().ShouldForceLAN());
+	const FOnlineSessionSettings Settings = MakeSessionSettings(HostParams, ShouldForceLAN());
 
 	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateSP(this, &FEasySessionCreateRequest::HandleCreateSessionComplete));
@@ -53,9 +54,52 @@ void FEasySessionCreateRequest::Execute()
 	}
 }
 
+void FEasySessionCreateRequest::Cleanup()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (Sessions.IsValid())
+	{
+		Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle);
+	}
+}
+
+void FEasySessionCreateRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	OnComplete.ExecuteIfBound(Result, ErrorMessage);
+}
+
+FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN)
+{
+	FOnlineSessionSettings Settings;
+	Params.ApplyTo(Settings);
+
+	Settings.bIsLANMatch = Params.bIsLANMatch || bForceLAN;
+	Settings.bUsesPresence = !Settings.bIsLANMatch && Params.bUsePresence;
+	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
+	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
+
+	// Whether the match is running.
+	// The session state never leaves the host, so searches read this key instead.
+	// Start and End update it.
+	Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The port joining players reach the join approval beacon on.
+	// Read from config rather than from a running beacon, because none exists yet.
+	// One is created per world, after each travel.
+	// GetResolvedConnectString reads this key to build the beacon address.
+	Settings.Set(SETTING_BEACONPORT, EasySession::GetJoinApprovalBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// Whether this host runs a join approval beacon.
+	// Joining players that find the key request join approval before traveling.
+	// The host reads the key back after each travel to decide whether the new world needs a beacon.
+	Settings.Set(EasySession::SettingKey_JoinApproval, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	return Settings;
+}
+
 void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName, bool bWasSuccessful)
 {
-	if (!IsActive() || InSessionName != SessionName)
+	if (!IsRunning() || InSessionName != SessionName)
 	{
 		return;
 	}
@@ -74,90 +118,4 @@ void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName,
 	GetContext().Travel.TravelToOwnSession(HostParams);
 
 	Complete(EEasySessionResult::Success);
-}
-
-void FEasySessionCreateRequest::Cleanup(bool bAbandoned)
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (Sessions.IsValid())
-	{
-		Sessions->ClearOnCreateSessionCompleteDelegate_Handle(CreateCompleteHandle);
-	}
-
-	if (bAbandoned)
-	{
-		DestroySessionLeftBehind();
-	}
-}
-
-void FEasySessionCreateRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
-{
-	OnComplete.ExecuteIfBound(Result, ErrorMessage);
-	GetContext().Subsystem.OnSessionCreated.Broadcast(Result, ErrorMessage);
-}
-
-FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN)
-{
-	FOnlineSessionSettings Settings;
-	Settings.NumPublicConnections = Params.MaxPlayers;
-	Settings.bIsLANMatch = Params.bIsLANMatch || bForceLAN;
-	Settings.bShouldAdvertise = Params.bShouldAdvertise;
-	Settings.bAllowJoinInProgress = Params.bAllowJoinInProgress;
-	Settings.bAllowInvites = Params.bAllowInvites;
-	Settings.bUsesPresence = !Settings.bIsLANMatch && Params.bUsePresence;
-	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
-	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
-
-	// The title a session browser lists. The online subsystem's own name field is the host account.
-	Settings.Set(EasySession::SettingKey_DisplayName, Params.SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// Whether Find skips this session.
-	// Written even when false, because an advertised key cannot be deleted later.
-	Settings.Set(EasySession::SettingKey_Hidden, Params.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// Whether joining needs a password.
-	// The joining game reads it back as FEasySessionSearchResult::bPasswordProtected and asks the player for one before joining.
-	// Trimmed like the server gate's copy, because a whitespace-only password enforces nothing.
-	Settings.Set(EasySession::SettingKey_PasswordProtected, Params.Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// Whether the match is running.
-	// The session state never leaves the host, so searches read this key instead.
-	// Start and End update it.
-	Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// The advertised region.
-	// Written even at Any, because an advertised key cannot be deleted later.
-	Settings.Set(EasySession::SettingKey_Region, static_cast<int32>(Params.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// The session's join code.
-	// Generated rather than chosen, because a join code has to be short and unambiguous.
-	if (Params.bUseJoinCode)
-	{
-		Settings.Set(EasySession::SettingKey_JoinCode, EasySession::GenerateJoinCode(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	}
-
-	// The port joining players reach the join approval beacon on.
-	// Read from config rather than from a running beacon, because none exists yet.
-	// One is created per world, after each travel.
-	// GetResolvedConnectString reads this key to build the beacon address.
-	Settings.Set(SETTING_BEACONPORT, EasySession::GetJoinApprovalBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// Whether this host runs a join approval beacon.
-	// Joining players that find the key request join approval before traveling.
-	// The host reads the key back after each travel to decide whether the new world needs a beacon.
-	Settings.Set(EasySession::SettingKey_JoinApproval, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	for (const TPair<FString, FString>& Custom : Params.CustomSettings)
-	{
-		const FName Key(*Custom.Key);
-		if (EasySession::IsReservedSettingKey(Key))
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("Custom Setting '%s' is a key this plugin uses for itself. It was not written."), *Custom.Key);
-			continue;
-		}
-
-		Settings.Set(Key, Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	}
-
-	return Settings;
 }

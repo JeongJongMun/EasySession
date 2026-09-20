@@ -8,16 +8,14 @@
 namespace
 {
 	/**
-	 * Index of the colon that separates the port, or INDEX_NONE when no colon
-	 * is certainly a port separator.
+	 * Index of the colon that separates the port, or INDEX_NONE when no colon is certainly a port separator.
 	 */
 	int32 FindPortSeparator(const FString& Address)
 	{
 		int32 BracketIndex = INDEX_NONE;
 		if (Address.FindLastChar(TEXT(']'), BracketIndex))
 		{
-			// "[ipv6]:port": the address is bracketed so the port colon
-			// can be told apart from the ones inside the address.
+			// "[ipv6]:port": the address is bracketed so the port colon can be told apart from the ones inside the address.
 			return Address.Find(TEXT(":"), ESearchCase::CaseSensitive, ESearchDir::FromStart, BracketIndex);
 		}
 
@@ -26,8 +24,8 @@ namespace
 		const bool bHasFirst = Address.FindChar(TEXT(':'), FirstColon);
 		const bool bHasLast = Address.FindLastChar(TEXT(':'), LastColon);
 
-		// One colon means "host:port". Several without brackets means a bare IPv6
-		// address, where the trailing group is part of the address, not a port.
+		// One colon means "host:port".
+		// Several without brackets means a bare IPv6 address, where the trailing group is part of the address, not a port.
 		return (bHasFirst && bHasLast && FirstColon == LastColon) ? FirstColon : INDEX_NONE;
 	}
 }
@@ -68,8 +66,7 @@ void EasySessionAddress::AppendMaxPlayersOption(FString& TravelURL, int32 MaxPla
 
 FString EasySessionAddress::ParseTravelOption(const FString& RequestURL, const TCHAR* Key)
 {
-	// ParseOption only reads from the first '?' onwards, and what arrives at
-	// PreLogin has the map path in front (e.g. "/Game/Maps/Menu?Pw=x").
+	// ParseOption only reads from the first '?' onwards, and what arrives at PreLogin has the map path in front (e.g. "/Game/Maps/Menu?Pw=x").
 	const int32 OptionsStart = RequestURL.Find(TEXT("?"), ESearchCase::CaseSensitive);
 	if (OptionsStart == INDEX_NONE)
 	{
@@ -81,8 +78,7 @@ FString EasySessionAddress::ParseTravelOption(const FString& RequestURL, const T
 
 FString EasySessionAddress::EncodeTravelOptionValue(const FString& Value)
 {
-	// '%' first: it is the escape character, so escaping it after the others would
-	// also mangle the escapes they just wrote.
+	// '%' first: it is the escape character, so escaping it after the others would also mangle the escapes they just wrote.
 	return Value
 		.Replace(TEXT("%"), TEXT("%25"), ESearchCase::CaseSensitive)
 		.Replace(TEXT("?"), TEXT("%3F"), ESearchCase::CaseSensitive)
@@ -91,8 +87,7 @@ FString EasySessionAddress::EncodeTravelOptionValue(const FString& Value)
 
 FString EasySessionAddress::DecodeTravelOptionValue(const FString& Value)
 {
-	// '%' last, mirroring the order above: a value that really contained "%3F"
-	// was written as "%253F", and unescaping '%' first would turn it into a '?'.
+	// '%' last, mirroring the order above: a value that really contained "%3F" was written as "%253F", and unescaping '%' first would turn it into a '?'.
 	return Value
 		.Replace(TEXT("%3F"), TEXT("?"), ESearchCase::CaseSensitive)
 		.Replace(TEXT("%23"), TEXT("#"), ESearchCase::CaseSensitive)

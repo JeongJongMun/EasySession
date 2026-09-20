@@ -53,8 +53,8 @@ public:
 
 private:
 
-	/** Warn when the beacon port bound another port number than the session advertises, because joining players connect to the advertised port. */
-	void WarnIfPortMismatch(const FOnlineSessionSettings& Settings) const;
+	/** Check the port the session advertises against the one the listener bound, and warn when joining players would reach no beacon. */
+	void CheckAdvertisedPort(const FOnlineSessionSettings& Settings) const;
 
 	UEasySessionSubsystem& Owner;
 

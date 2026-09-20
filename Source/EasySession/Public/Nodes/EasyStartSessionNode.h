@@ -26,10 +26,13 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Start the match. The session moves to InProgress.
-	 * When Allow Join In Progress is off, new players are refused from here until the match ends. Steam refused them from the first join onwards already.
+	 * Start the match.
+	 * The session moves to InProgress.
+	 * When Allow Join In Progress is off, new players are refused from here until the match ends.
+	 * Steam refused them from the first join onwards already.
 	 *
-	 * Only the game that created the session can start the match. Other games get a Requires Session Authority failure.
+	 * Only the game that created the session can start the match.
+	 * Other games get a Requires Session Authority failure.
 	 * Show the button only when Is Easy Session Authority is true.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Start Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
@@ -41,6 +44,6 @@ public:
 
 private:
 
-	/** Called when the subsystem finishes the start operation. */
+	/** Called when the subsystem finishes the start request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 };

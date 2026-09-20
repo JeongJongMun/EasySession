@@ -4,7 +4,7 @@
 
 세션을 만들고, 찾고, 참가하고, 매치를 시작하고, 나가는 것에 관한 전부입니다. 여기 나오는 비동기 노드는 전부 같은 모양입니다. 왼쪽에 입력이 있고, `OnSuccess` / `OnFailure` 실행 핀에 `Result` 열거형과 `ErrorMessage` 문자열이 따라 나옵니다.
 
-모든 작업은 **큐에 들어가 하나씩 실행됩니다.** 어떤 순서로 불러도, 심지어 같은 프레임에 불러도 온라인 서비스가 망가지지 않습니다.
+모든 요청은 **큐에 들어가 하나씩 실행됩니다.** 어떤 순서로 불러도, 심지어 같은 프레임에 불러도 온라인 서비스가 망가지지 않습니다.
 
 ## Create Session
 
@@ -45,7 +45,6 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 |---|---|---|
 | Max Results | 50 | 결과를 최대 몇 개까지 받을지 |
 | LAN Query | false | NULL에서는 자동으로 켜집니다 |
-| Timeout Override Seconds | 0 | 이 검색만의 대기 시간. 0이면 프로젝트 설정의 `RequestTimeoutSeconds`(30초)를 씁니다. 시간이 지나도 검색이 끝나지 않으면 `Timeout`으로 실패합니다. LAN 검색은 항상 5초 안에 끝납니다 |
 | Min Open Slots | 0 | 빈 자리가 이만큼 이상인 세션만 |
 | Max Ping Ms | 0 | 0이면 제한 없음 |
 | Required Custom Settings | (비어 있음) | 광고된 커스텀 데이터와 정확히 일치하는 것만 통과 |
@@ -57,10 +56,10 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 쓸 수 있는 순서로 옵니다: 참가 가능한 세션에 있는 친구가 맨 위, 나머지는 접속 상태(이 게임
 플레이 중, 온라인, 오프라인)와 이름순입니다. 친구의 세션은 다른 검색 결과처럼 그대로 참가에
 씁니다. 더 필요 없어진 친구 세션 검색은 `Cancel Easy Friend Search`로 멈추고, 새로고침 버튼은
-`Is Easy Friend Search Running`으로 기다립니다. 친구 목록과 마찬가지로 NULL/LAN에서는
+다른 세션 호출과 마찬가지로 `Is Easy Session Busy`로 기다립니다. 친구 목록과 마찬가지로 NULL/LAN에서는
 지원되지 않습니다.
 
-결과는 `OnSuccess`로 오고 캐시에도 남습니다. `Get Last Easy Search Results`가 언제 어디서든 그 결과를 돌려주므로 서버 목록 UI를 만들 때 편합니다.
+결과는 `OnSuccess`로 옵니다.
 
 각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 지역, 매치 진행 중 여부, 커스텀 세팅 맵을 담고 있습니다.
 
@@ -93,7 +92,7 @@ Create Easy Session
 ### 결과 읽기
 
 다른 일이 벌어지기 전에 호스트에게 먼저 승인을 묻습니다. 비밀번호가 틀리면 노드가
-`WrongPassword`로, 방이 꽉 찼으면 `JoinSessionFull`로, 매치가 더 이상 플레이어를 받지
+`WrongPassword`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 매치가 더 이상 플레이어를 받지
 않으면 `JoinRefused`로 실패합니다.
 두 경우 모두 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며,
 플레이어는 곧바로 다시 시도할 수 있습니다.
@@ -115,13 +114,20 @@ Join Easy Session
 되살리는 방법은 [Steam 설정](Setup-Steam.ko.md)에 있고 `EasySession.Diagnose`도 검사합니다)
 참가가 그대로 진행되고, 대신 호스트가 도착한 연결을 거절합니다.
 
+비콘은 엔진의 포트를 씁니다. 기본값은 15000이고, `DefaultEngine.ini`의
+`[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`나 커맨드라인 `-BeaconPort=`로
+옮길 수 있습니다. 그 포트를 잡는 쪽은 호스트뿐이고 참가자는 운영체제가 주는 임의 포트에서
+접속하므로, 한 PC의 두 인스턴스는 둘 다 호스트일 때만 충돌합니다. 그때는 호스트마다
+`-BeaconPort=`를 다르게 주세요. 포트가 이미 사용 중이면 엔진이 다음 빈 포트에 바인딩하는데
+세션은 설정된 포트를 계속 광고하므로, 호스트가 두 포트를 모두 적은 경고를 남깁니다.
+
 이렇게 늦게 오는 거절은 디스커넥트이므로 플레이어는 메뉴 레벨로 돌아갑니다
 (`bAutoReturnToMenuOnDisconnect`, 기본값 켜짐). 사유는 거기서 읽으세요.
 
 ```
 Event Construct
   Has Pending Easy Disconnect Info ?
-    Consume Last Easy Disconnect Info  ->  Break Easy Disconnect Info
+    Consume Pending Easy Disconnect Info  ->  Break Easy Disconnect Info
                                              Reason      == Rejected
                                              Reason Text == "Wrong session password."
 ```
@@ -179,16 +185,19 @@ Event Construct
 참가 중인 플레이어는 업데이트를 자동으로 전달받습니다. 플러그인이 멤버에게 보여도 되는
 설정(표시 이름, 최대 인원, 플래그들, 리전, 참가 코드, 커스텀 설정)을 모든 클라이언트에
 복제하고, 로컬 세션 사본을 고쳐서 일반 게터가 새 값을 돌려주게 만든 뒤
-`OnSessionSettingsChanged`를 발화합니다. UI는 이 이벤트에서 게터로 갱신하면 됩니다.
-비밀번호와 친구 예외만 호스트에 남습니다.
+`OnSessionSettingsChanged`를 발화합니다. 호스트도 자기 UI를 위해 같은 이벤트를 발화합니다.
+UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친구 예외만 호스트에 남습니다.
+
+나머지 절반은 `OnSessionStateChanged`가 맡습니다. 세션 상태가 바뀔 때 호스트와 모든
+클라이언트에서 발생하므로, 클라이언트는 폴링 없이 호스트의 매치 시작과 종료를 알 수 있습니다.
 
 ## Destroy Session
 
 `Destroy Easy Session`은 이 게임의 네임드 세션만 지웁니다. 플레이어는 지금 맵에 그대로
-남는데, 매치 사이의 호스트에게는 그게 맞습니다. 방을 나가려는 클라이언트가 원하는 것은
+남는데, 매치 사이의 호스트에게는 그게 맞습니다. 세션을 나가려는 클라이언트가 원하는 것은
 `Leave Easy Session`입니다. 네임드 세션을 지운 뒤 메뉴 맵으로 돌아갑니다. 호스트가 Leave를
-누르면 방이 모두에게 닫히고, 클라이언트들은 "The host has left the game."을 사유로
-읽습니다. 어느 쪽이든 직후에 곧바로 다시 방을 만들거나 참가할 수 있습니다.
+누르면 세션이 모두에게 닫히고, 클라이언트들은 "The host has left the game."을 사유로
+읽습니다. 어느 쪽이든 직후에 곧바로 다시 세션을 만들거나 참가할 수 있습니다.
 
 호스트가 이 노드를 부르면 클라이언트들은 연결이 끊긴 것으로 보고 `ConnectionLost`로 메뉴에 돌아갑니다. 왜 끝났는지 알려주고 싶다면 `Destroy Easy Session For Everyone`에 사유를 넘기세요. 세션을 내리기 전에 모두에게 그 문구를 먼저 보내고, 받는 쪽은 `HostDestroyedSession`으로 읽습니다.
 
@@ -198,37 +207,38 @@ Event Construct
 
 맵 전환은 항상 이 노드로 하세요. 이 노드는 맵이 바뀌기 전에 참가 승인 비콘을 멈춥니다. 그냥 `ServerTravel`을 하면 포트가 계속 잡혀 있어서 새 맵이 자기 비콘을 띄우지 못합니다.
 
-맵 로드가 실패해도(오타, 쿠킹에서 빠진 맵) 방과 접속자는 그대로입니다. 실패는 `On Session Failure`로 알려지니, 올바른 맵 이름으로 다시 부르면 됩니다.
+맵 로드가 실패해도(오타, 쿠킹에서 빠진 맵) 세션과 접속자는 그대로입니다. 실패는 `OnSessionFailure`로 알려지니, 올바른 맵 이름으로 다시 부르면 됩니다.
 
 ## 지역
 
 호스팅은 `Region`을 광고하고(기본값 `Any`) 검색은 그걸로 거릅니다. 양쪽에 같은 지역을
-넣으면 플레이어는 쾌적하게 플레이할 수 있는 방만 보게 됩니다. 검색의 `Any`는 모든 지역을
+넣으면 플레이어는 쾌적하게 플레이할 수 있는 세션만 보게 됩니다. 검색의 `Any`는 모든 지역을
 나열하고, 호스트의 `Any`는 지역 필터가 없는 검색에만 걸립니다. 지역은 일부러 큰 단위입니다.
 한 지역 안이면 플레이할 만한 핑이라는 뜻이 되도록요. 게임 고유의 분할(국가 서버, 단일 지역)이
 필요하면 `Any`로 두고 `Required Custom Settings`로 거르는 `Custom Settings` 키를 쓰세요.
 
 ## 참가 코드
 
-호스팅할 때 `Use Join Code`를 켜면 생성된 6자리 코드가 세션에 광고되고, 방에 있는 누구나
+호스팅할 때 `Use Join Code`를 켜면 생성된 6자리 코드가 세션에 광고되고, 세션에 있는 누구나
 `Get Easy Session Join Code`로 읽을 수 있습니다. 참가는 검색 한 번 거리입니다.
-`Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 방이라도 그 방 하나가 결과로 오니, 보여준
+`Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도 그 세션 하나가 결과로 오니, 보여준
 뒤 `Join Easy Session`에 넘기면 됩니다. 같은 `Join Code`로 매치메이킹을 돌리면 찾기와
-참가를 한 번에, 방이 생길 때까지 재시도까지 해줍니다. `Hidden`에 코드를 더하면 친구 전용
-방이 됩니다. 어떤 브라우저에도 안 보이지만 코드를 아는 사람은 들어옵니다.
+참가를 한 번에, 세션이 생길 때까지 재시도까지 해줍니다. `Hidden`에 코드를 더하면 친구 전용
+세션이 됩니다. 어떤 브라우저에도 안 보이지만 코드를 아는 사람은 들어옵니다.
 
-코드는 방을 가리키는 이름이지 지키는 장치가 아닙니다. 지키는 것은 `Password`이고 둘은
-조합됩니다. 코드가 방을 찾고, 비밀번호가 여전히 문을 지킵니다.
+코드는 세션을 가리키는 이름이지 지키는 장치가 아닙니다. 지키는 것은 `Password`이고 둘은
+조합됩니다. 코드가 세션을 찾고, 비밀번호가 여전히 문을 지킵니다.
 
-코드는 검색 필터로도 동작합니다. `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 방이라도
-그 방 하나가 결과로 오므로, 참가하기 전에 방 정보를 보여주는 UI를 만들 수 있습니다.
+코드는 검색 필터로도 동작합니다. `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도
+그 세션 하나가 결과로 오므로, 참가하기 전에 세션 정보를 보여주는 UI를 만들 수 있습니다.
 
 ## 이벤트와 상태 조회
 
-UI를 갱신하려면 서브시스템(`Get Easy Session Subsystem`)에서 아래 이벤트를 바인딩하세요.
+요청 하나의 결과는 그 노드의 출력 핀으로 옵니다. 세션 전체를 지켜보는 UI라면 서브시스템(`Get Easy Session Subsystem`)에서
+아래 이벤트를 바인딩하세요.
 
-- `OnSessionCreated`, `OnSessionsFound`, `OnSessionJoined`, `OnSessionUpdated`, `OnSessionStarted`, `OnSessionEnded`, `OnSessionDestroyed` - 각 작업이 끝날 때 발생합니다. 누가 시작했든 상관없습니다
-- `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패한 경우입니다(예: 잘못된 Initial Map Name). 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Last Easy Disconnect Info`에 있습니다
+- `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 무엇인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
+- `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패한 경우입니다. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
 
 어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.

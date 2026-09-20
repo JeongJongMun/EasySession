@@ -37,7 +37,7 @@ namespace EasySessionInProgressTest
 		FEasySessionSearchParams Params;
 		Params.bLANQuery = true;
 		Params.bIncludeInProgressSessions = bIncludeInProgress;
-		Subsystem.FindEasySessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+		Subsystem.FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
 			[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 			{
 				State->Delivered = Result == EEasySessionResult::Success ? Results : TArray<FEasySessionSearchResult>();
@@ -72,7 +72,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 			CurrentTest->TestEqual(TEXT("A fresh session advertises no running match"),
 				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_MatchInProgress), 0);
 
-			Subsystem->StartEasySession();
+			Subsystem->StartSession();
 			State->Phase = 1;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -125,7 +125,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 
 			CurrentTest->TestEqual(TEXT("Excluding in-progress sessions drops it"), State->Delivered->Num(), 0);
 
-			Subsystem->EndEasySession();
+			Subsystem->EndSession();
 			State->Phase = 4;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -158,7 +158,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 
 			CurrentTest->TestEqual(TEXT("The ended session is listed again without the filter tripping"), State->Delivered->Num(), 1);
 
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Phase = 6;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -178,10 +178,9 @@ bool FEasySessionWaitForInProgressRun::Update()
 }
 
 /**
- * The session state is never replicated by the online subsystem, so the advertised in-progress
- * key stands in for it: Create writes it as off, Start sets it, End clears it, and the search
- * filter plus the result flag read it. The results are injected because one process cannot
- * find its own LAN session.
+ * The session state is never replicated by the online subsystem, so the advertised in-progress key stands in for it.
+ * Create writes it as off, Start sets it, End clears it, and the search filter plus the result flag read it.
+ * The results are injected because one process cannot find its own LAN session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionInProgressFilterTest, "EasySession.Search.FiltersInProgressSessions", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionInProgressFilterTest::RunTest(const FString& Parameters)
@@ -203,7 +202,7 @@ bool FEasySessionInProgressFilterTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession In Progress Host");
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
-	Subsystem->CreateEasySession(HostParams);
+	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForInProgressRun(State));

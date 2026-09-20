@@ -19,8 +19,8 @@ Checked in order of likelihood:
 The session is advertised but its host is **not running as a listen server** - an advertised address with port 0. EasySession fails this immediately with `ResolveFailure` instead of waiting for a connection timeout, and the joining player's log carries the reason:
 
 ```
-LogEasySession: Warning: Session operation failed: ResolveFailure (The host address 'steam.0:0' is not connectable
-- the host is not running as a listen server. The host's travel to its Initial Map Name did not open one.
+LogEasySession: Warning: Session request failed: ResolveFailure (The host address 'steam.0:0' is not connectable.
+The host is not running as a listen server, because its travel to Initial Map Name did not open one.
 Check the map path on the host.)
 ```
 
@@ -35,7 +35,7 @@ The log can look like this:
 ```
 LogEasySession: Joining session 'My Session' hosted by 'HostPlayer'
 LogOnline: Warning: OSS: Async task 'FOnlineAsyncTaskSteamJoinLobby bWasSuccessful: 0 Session: GameSession LobbyId: Lobby[0x18600003DDB1FE9] Result: '3' k_EChatRoomEnterResponseNotAllowed (General Denied - You don't have the permissions needed to join the chat)' failed in 0.228409 seconds
-LogEasySession: Warning: Session operation failed: JoinFailure (The online subsystem failed to join the session.)
+LogEasySession: Warning: Session request failed: JoinFailure (The online subsystem failed to join the session.)
 ```
 
 Steam sessions are lobbies, and the engine recomputes whether the lobby accepts players every time someone joins or leaves it. That check multiplies the free-slot test by `bAllowJoinInProgress`, without looking at whether the match has started:
@@ -49,7 +49,7 @@ So with the setting off, the first join closes the lobby and nothing reopens it 
 
 EasySession does not work around this: it passes the setting to the online service as given, and refuses join-in-progress itself through the approval beacon and `PreLogin`, which do check the match state. If you need "no joining once the match starts" on Steam, leave Allow Join In Progress on and let those checks do it.
 
-A player whose join fails this way is sent back to the main menu when the invite made them leave a session first, so they do not end up in a map with no session.
+A player whose join fails this way is sent back to the main menu when joining made them leave a session first, so they do not end up in a map with no session.
 
 ## "I accepted an invite and nothing happened"
 
@@ -61,7 +61,7 @@ LogEasySession: Warning: Not joining the invited session: this player is already
 
 Accepting an invite is one click in the platform overlay, and joining would destroy the session this player is in - disconnecting everyone else when they were hosting it. So the default is to do nothing and let the game decide.
 
-`On Session Invite Accepted` still fires, so bind it and ask the player first, then call `Join Easy Session` yourself. To go back to joining immediately, turn on **Accept Invites While In Session** in Project Settings -> Plugins -> EasySession.
+`OnSessionInviteAccepted` still fires, so bind it and ask the player first, then call `Join Easy Session` yourself. To go back to joining immediately, turn on **Accept Invites While In Session** in Project Settings -> Plugins -> EasySession.
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
@@ -73,13 +73,13 @@ Not a session problem - your pawn has no client->server movement replication. Th
 
 ## "How is this different from the engine's built-in Create Session / Find Sessions nodes?"
 
-The engine ships minimal session nodes (`Create Session`, `Find Sessions`, ...). They work for quick prototypes, but they call the online service directly with almost no options and **no failure reasons** (their OnFailure pin carries nothing). EasySession's nodes route through its subsystem, which adds: operation queueing (EasySession's own calls can never overlap and corrupt the service), automatic listen-server setup, correct player/slot accounting, instant rich errors instead of timeouts, custom session data & filters, and Matchmaking.
+The engine ships minimal session nodes (`Create Session`, `Find Sessions`, ...). They work for quick prototypes, but they call the online service directly with almost no options and **no failure reasons** (their OnFailure pin carries nothing). EasySession's nodes route through its subsystem, which adds: request queueing (EasySession's own calls can never overlap and corrupt the service), automatic listen-server setup, correct player/slot accounting, instant rich errors instead of timeouts, custom session data & filters, and Matchmaking.
 
 Pick one set and stay with it. The queueing only covers calls that go through EasySession, so an engine node running at the same time still reaches the service on its own - see the entry below.
 
 ## "Another session search is already running, so this one was dropped"
 
-Something outside EasySession has a search running, and the online service only handles one at a time. It drops the second request and reports success, so nothing would ever call back - EasySession notices and fails immediately instead of leaving the node hanging until the timeout.
+Something outside EasySession has a search running, and the online service only handles one at a time. It drops the second request and reports success, so nothing would ever call back - EasySession notices and fails immediately instead of leaving the node hanging.
 
 Usually the other search is the engine's built-in `Find Sessions` node still wired up in an old widget, another session plugin, or session code left over from before you added EasySession. Search your project for direct `FindSessions` callers and route them through `Find Easy Sessions`, or make sure the two never run at once.
 
@@ -91,4 +91,4 @@ You are - probably a leftover from a previous failed flow. Call `Destroy Easy Se
 
 ## "Can I cancel a Matchmaking in progress?"
 
-Yes: `Cancel Easy Matchmaking`. The Matchmaking node fires `OnFailure` with `Canceled`. In-flight online operations finish first (they cannot be aborted mid-call), so cancellation may take a moment.
+Yes: `Cancel Easy Matchmaking`. The Matchmaking node fires `OnFailure` with `Canceled`. A request already at the online subsystem finishes first (it cannot be canceled mid-call), so cancellation may take a moment.

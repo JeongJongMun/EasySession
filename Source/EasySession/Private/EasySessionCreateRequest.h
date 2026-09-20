@@ -8,8 +8,11 @@
 class FOnlineSessionSettings;
 
 /**
- * Creates the session and travels the host to Initial Map Name.
+ * FEasySessionCreateRequest creates the session and travels the host to Initial Map Name.
  * On success the host side of the session gets the params before the travel is requested.
+ *
+ * The subsystem creates it for Create Easy Session.
+ * Matchmaking runs it as a sub-request to host a session when no session could be joined.
  */
 class FEasySessionCreateRequest final : public FEasySessionRequest
 {
@@ -17,18 +20,18 @@ public:
 
 	FEasySessionCreateRequest(const FEasySessionHostParams& InHostParams, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Build the settings a new session is created and advertised with. */
-	static FOnlineSessionSettings MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN);
-
 protected:
 
 	//~ Begin FEasySessionRequest interface
 	virtual void Execute() override;
-	virtual void Cleanup(bool bAbandoned) override;
+	virtual void Cleanup() override;
 	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) override;
 	//~ End FEasySessionRequest interface
 
 private:
+
+	/** Build the settings a new session is created and advertised with: the host params, plus what only a new session sets. */
+	static FOnlineSessionSettings MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN);
 
 	/** The online subsystem finished creating a session. Sessions with another name are ignored. */
 	void HandleCreateSessionComplete(FName InSessionName, bool bWasSuccessful);

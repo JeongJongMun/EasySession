@@ -24,53 +24,6 @@ class UEasySessionTestEventListener : public UObject
 
 public:
 
-	/** Results seen on OnSessionStarted, in order. */
-	UPROPERTY()
-	TArray<EEasySessionResult> StartedResults;
-
-	/** Results seen on OnSessionEnded, in order. */
-	UPROPERTY()
-	TArray<EEasySessionResult> EndedResults;
-
-	/** Bind to OnSessionStarted. */
-	UFUNCTION()
-	void HandleStarted(EEasySessionResult Result, const FString& ErrorMessage)
-	{
-		StartedResults.Add(Result);
-	}
-
-	/** Bind to OnSessionEnded. */
-	UFUNCTION()
-	void HandleEnded(EEasySessionResult Result, const FString& ErrorMessage)
-	{
-		EndedResults.Add(Result);
-	}
-
-	/** Results seen on OnSessionDestroyed, in order. */
-	UPROPERTY()
-	TArray<EEasySessionResult> DestroyedResults;
-
-	/** Bind to OnSessionDestroyed. */
-	UFUNCTION()
-	void HandleDestroyed(EEasySessionResult Result, const FString& ErrorMessage)
-	{
-		DestroyedResults.Add(Result);
-	}
-
-	/** How many times OnSessionsFound fired, so a test can prove an internal search stayed off the public event. */
-	UPROPERTY()
-	int32 SessionsFoundBroadcasts = 0;
-
-	/** Bind to OnSessionsFound. */
-	UFUNCTION()
-	void HandleSessionsFound(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
-	{
-		++SessionsFoundBroadcasts;
-	}
-
-	/** @return How many times OnSessionsFound fired. */
-	int32 FoundBroadcasts() const { return SessionsFoundBroadcasts; }
-
 	/** How many times OnSessionSettingsChanged fired, so a test can prove the dedup guard holds. */
 	UPROPERTY()
 	int32 SettingsChangedBroadcasts = 0;
@@ -80,6 +33,17 @@ public:
 	void HandleSettingsChanged()
 	{
 		++SettingsChangedBroadcasts;
+	}
+
+	/** The states seen on OnSessionStateChanged, in order. */
+	UPROPERTY()
+	TArray<EEasySessionState> SessionStates;
+
+	/** Bind to OnSessionStateChanged. */
+	UFUNCTION()
+	void HandleSessionStateChanged(EEasySessionState OldState, EEasySessionState NewState)
+	{
+		SessionStates.Add(NewState);
 	}
 
 	/** Reasons seen on OnSessionFailure, in order. */
@@ -97,7 +61,7 @@ public:
 	UPROPERTY()
 	TObjectPtr<UEasySessionSubsystem> CancelMatchmakingOnHosting;
 
-	/** Bind to a matchmaking policy's OnStateChanged. */
+	/** Bind to the subsystem's OnMatchmakingStateChanged. */
 	UFUNCTION()
 	void HandleMatchmakingState(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState)
 	{
@@ -107,7 +71,7 @@ public:
 		}
 	}
 
-	/** Everything seen from the subsystem's matchmaking events, in arrival order. Heartbeat ticks are kept out. They go to MatchmakingElapsedSeen. */
+	/** Everything seen from the subsystem's matchmaking events, in arrival order. The once-a-second updates are kept out. They go to MatchmakingElapsedSeen. */
 	UPROPERTY()
 	TArray<FString> MatchmakingJournal;
 
@@ -158,24 +122,6 @@ public:
 			}
 		}
 		return Count;
-	}
-
-	/** @return How many events arrived in total, so a test can assert that none were duplicated. */
-	int32 TotalEvents() const { return StartedResults.Num() + EndedResults.Num(); }
-
-	/** Every result seen, for a failure message that names what actually arrived. */
-	FString Describe() const
-	{
-		FString Out;
-		for (const EEasySessionResult Result : StartedResults)
-		{
-			Out += FString::Printf(TEXT("Started=%s "), *EasySession::ResultToString(Result));
-		}
-		for (const EEasySessionResult Result : EndedResults)
-		{
-			Out += FString::Printf(TEXT("Ended=%s "), *EasySession::ResultToString(Result));
-		}
-		return Out.IsEmpty() ? TEXT("none") : Out;
 	}
 };
 

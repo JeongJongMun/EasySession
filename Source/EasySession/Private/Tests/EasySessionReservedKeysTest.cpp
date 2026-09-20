@@ -14,7 +14,7 @@
 
 namespace EasySessionReservedKeysTest
 {
-	/** Maximum time to wait for each queued operation before failing the test. */
+	/** Maximum time to wait for each queued request before failing the test. */
 	static constexpr double TimeoutSeconds = 20.0;
 
 	/** Which step of the create/update/destroy sequence the latent command is waiting on. */
@@ -61,7 +61,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for a session operation to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for a session request to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -86,8 +86,8 @@ bool FEasySessionRunReservedKeySteps::Update()
 		CurrentTest->TestEqual(TEXT("Beacon port is advertised as a number"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
-		// What a Blueprint gets from Get Easy Session Settings. The plugin's own keys
-		// must not be in there, or passing this struct back to Update rewrites them.
+		// What a Blueprint gets from Get Easy Session Settings.
+		// The plugin's own keys must not be in there, or passing this struct back to Update rewrites them.
 		const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 		CurrentTest->TestFalse(TEXT("Join approval is not exposed as a custom setting"),
 			ReadBack.CustomSettings.Contains(EasySession::SettingKey_JoinApproval.ToString()));
@@ -105,7 +105,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 		State->Step = EStep::AwaitingUpdate;
 		State->StartTime = FPlatformTime::Seconds();
 		TSharedPtr<FTestState> UpdateState = State;
-		Subsystem->UpdateEasySession(Updated, FEasySessionCompleteDelegate::CreateLambda(
+		Subsystem->UpdateSession(Updated, FEasySessionCompleteDelegate::CreateLambda(
 			[UpdateState](EEasySessionResult UpdateResult, const FString& /*ErrorMessage*/)
 			{
 				UpdateState->PendingResult = UpdateResult;
@@ -122,8 +122,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 		CurrentTest->TestEqual(TEXT("Beacon port is still a number after the round trip"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
-		// The values matter as much as the types: a string rewrite leaves the key in place
-		// and every reader sees zero, so the host stops starting its approval beacon.
+		// The values matter as much as the types: a string rewrite leaves the key in place and every reader sees zero, so the host stops starting its approval beacon.
 		CurrentTest->TestEqual(TEXT("Join approval still reads as enabled"),
 			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_JoinApproval), 1);
 		CurrentTest->TestEqual(TEXT("Beacon port still reads as the configured port"),
@@ -140,7 +139,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 		State->Step = EStep::AwaitingDestroy;
 		State->StartTime = FPlatformTime::Seconds();
 		TSharedPtr<FTestState> DestroyState = State;
-		Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+		Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 			[DestroyState](EEasySessionResult DestroyResult, const FString& /*ErrorMessage*/)
 			{
 				DestroyState->PendingResult = DestroyResult;
@@ -159,9 +158,8 @@ bool FEasySessionRunReservedKeySteps::Update()
 /**
  * Reading the host params and passing them back to Update leaves the plugin's own keys alone.
  *
- * The keys are advertised as numbers and Custom Settings is a string map, so a key that leaks
- * into that map comes back as a string. The key stays present, so every reader gets zero
- * instead of a missing key, and the host quietly stops running join approval.
+ * The keys are advertised as numbers and Custom Settings is a string map, so a key that leaks into that map comes back as a string.
+ * The key stays present, so every reader gets zero instead of a missing key, and the host quietly stops running join approval.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.SettingsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)
@@ -180,7 +178,7 @@ bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)
 	}
 
 	State->StartTime = FPlatformTime::Seconds();
-	Subsystem->CreateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& /*ErrorMessage*/)
 		{
 			State->PendingResult = Result;

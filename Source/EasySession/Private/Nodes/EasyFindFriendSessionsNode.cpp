@@ -2,24 +2,26 @@
 
 #include "Nodes/EasyFindFriendSessionsNode.h"
 
+#include "EasySessionMessages.h"
+
 UEasyFindFriendSessionsNode* UEasyFindFriendSessionsNode::FindEasyFriendSessions(UObject* WorldContextObject)
 {
 	UEasyFindFriendSessionsNode* Node = NewObject<UEasyFindFriendSessionsNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
 
 void UEasyFindFriendSessionsNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."), {});
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage, {});
 		return;
 	}
 
-	Subsystem->FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateUObject(this, &UEasyFindFriendSessionsNode::HandleComplete));
+	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateUObject(this, &UEasyFindFriendSessionsNode::HandleComplete));
 }
 
 void UEasyFindFriendSessionsNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)

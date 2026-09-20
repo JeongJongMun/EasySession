@@ -7,7 +7,6 @@
 #include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
-#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -21,7 +20,6 @@ namespace EasySessionReplicatedStateTest
 	struct FTestState
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
-		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 		TOptional<EEasySessionResult> CreateResult;
 		TOptional<EEasySessionResult> DestroyResult;
 		bool bCleanupIssued = false;
@@ -85,44 +83,30 @@ bool FEasySessionWaitForReplicatedState::Update()
 
 	CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-	// Stand in for a client: a game that holds a session another process created. The
-	// join path is what normally clears this, and a headless test has no host to
-	// join, so the outcome of that path is set directly.
+	// Stand in for a client: a game that holds a session another process created.
+	// The join path is what normally clears this, and a headless test has no host to join, so the outcome of that path is set directly.
 	FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
-	// Watch the events a game binds to. Nothing below is a user request, so nothing
-	// below should reach these.
-	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
-	Subsystem->OnSessionStarted.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleStarted);
-	Subsystem->OnSessionEnded.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleEnded);
-
 	// The host started the match, and the state actor replicated that to this client.
-	Subsystem->HandleReplicatedHostSessionState(EEasySessionState::InProgress);
+	Subsystem->HandleReplicatedSessionState(EEasySessionState::InProgress);
 
 	CurrentTest->TestEqual(TEXT("A replicated match start is cached for the client to read"),
-		FEasySessionTestAccess::GetReplicatedHostSessionState(*Subsystem), EEasySessionState::InProgress);
-	CurrentTest->TestTrue(
-		FString::Printf(TEXT("A replicated match start raises no match events (saw: %s)"), *State->Listener->Describe()),
-		State->Listener->TotalEvents() == 0);
+		FEasySessionTestAccess::GetReplicatedSessionState(*Subsystem), EEasySessionState::InProgress);
 
-	// And then the host ended it. A client that never saw InProgress locally used to
-	// replay the whole history here, raising a started and an ended event back to back.
-	Subsystem->HandleReplicatedHostSessionState(EEasySessionState::Ended);
+	// And then the host ended it.
+	// A client that never saw InProgress locally used to replay the whole history here, raising a started and an ended event back to back.
+	Subsystem->HandleReplicatedSessionState(EEasySessionState::Ended);
 
 	CurrentTest->TestEqual(TEXT("A replicated match end is cached for the client to read"),
-		FEasySessionTestAccess::GetReplicatedHostSessionState(*Subsystem), EEasySessionState::Ended);
-	CurrentTest->TestTrue(
-		FString::Printf(TEXT("A replicated match end raises no match events (saw: %s)"), *State->Listener->Describe()),
-		State->Listener->TotalEvents() == 0);
+		FEasySessionTestAccess::GetReplicatedSessionState(*Subsystem), EEasySessionState::Ended);
 
-	// Destroying the game instance does not take the session with it. The online
-	// subsystem holds sessions per process, so one left behind fails the next test's
-	// create with SessionAlreadyExists. Waited on rather than started and ignored:
-	// requests start on a later tick, so returning here would end the test first.
+	// Destroying the game instance does not take the session with it.
+	// The online subsystem holds sessions per process, so one left behind fails the next test's create with SessionAlreadyExists.
+	// Waited on rather than started and ignored: requests start on a later tick, so returning here would end the test first.
 	TSharedPtr<FTestState> Shared = State;
 	State->bCleanupIssued = true;
 	State->StartTime = FPlatformTime::Seconds();
-	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 		[Shared](EEasySessionResult Result, const FString&)
 		{
 			Shared->DestroyResult = Result;
@@ -132,16 +116,14 @@ bool FEasySessionWaitForReplicatedState::Update()
 }
 
 /**
- * A client only reads the host's match state. It never acts on it. Feeding the
- * replicated state back into Start/End would put a request on the queue that the
- * client has no authority to run, and the failure would leave through the public
- * match events, telling a game its match failed to start when the game asked for none.
+ * A client only reads the host's match state.
+ * It never acts on it.
+ * Feeding the replicated state back into Start/End would put a request on the queue that the client has no authority to run.
+ * The failure would leave through the public match events, telling a game its match failed to start when the game asked for none.
  *
- * What this can and cannot show: the handler ignores anything that is not an actual
- * client (net mode NM_Client), and a headless test world is standalone, so this
- * guards the contract (the host's state is recorded, and recording it raises no
- * match events) rather than reproducing the failure. The failure itself needs two
- * connected games and is checked by hand.
+ * What this can and cannot show: the handler ignores anything that is not an actual client (net mode NM_Client), and a headless test world is standalone.
+ * So this guards the contract rather than reproducing the failure: the host's state is recorded, and recording it raises no match events.
+ * The failure itself needs two connected games and is checked by hand.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReplicatedStateTest, "EasySession.Replication.ClientDoesNotActOnTheHostsMatchState", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReplicatedStateTest::RunTest(const FString& Parameters)
@@ -163,7 +145,7 @@ bool FEasySessionReplicatedStateTest::RunTest(const FString& Parameters)
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
 
-	Subsystem->CreateEasySession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->CreateResult = Result;

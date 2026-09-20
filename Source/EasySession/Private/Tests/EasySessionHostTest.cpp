@@ -102,7 +102,7 @@ bool FEasySessionHostStep::Update()
 				return false;
 			}
 
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Step = EStep::AwaitingDestroy;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -117,7 +117,7 @@ bool FEasySessionHostStep::Update()
 			}
 
 			TestHostSide(*CurrentTest, *Subsystem, true, TEXT("In the next world"));
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Step = EStep::AwaitingDestroy;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -160,7 +160,7 @@ namespace EasySessionHostTest
 		HostParams.Password = TestPassword;
 		HostParams.bIsLANMatch = true;
 		HostParams.InitialMapName = EasySessionTest::SessionMapName;
-		Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
+		Subsystem->CreateSession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 			[State](EEasySessionResult Result, const FString&)
 			{
 				State->CreateResult = Result;
@@ -173,7 +173,8 @@ namespace EasySessionHostTest
 }
 
 /**
- * Creating a session does four things on the host: it sets the authority and the server gate's credentials, and spawns the state actor and the join approval beacon.
+ * Creating a session does four things on the host.
+ * It sets the authority and the server gate's credentials, and spawns the state actor and the join approval beacon.
  * Destroying the session has to undo all four, because a later session would otherwise start with the previous one's password or actors.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostDestroyTest, "EasySession.Host.DestroyUndoesWhatCreateDid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

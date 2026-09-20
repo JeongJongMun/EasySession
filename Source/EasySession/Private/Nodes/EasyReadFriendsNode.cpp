@@ -2,20 +2,22 @@
 
 #include "Nodes/EasyReadFriendsNode.h"
 
+#include "EasySessionMessages.h"
+
 UEasyReadFriendsNode* UEasyReadFriendsNode::ReadEasyFriends(UObject* WorldContextObject)
 {
 	UEasyReadFriendsNode* Node = NewObject<UEasyReadFriendsNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
 
 void UEasyReadFriendsNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."), TArray<FEasySessionFriend>());
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage, {});
 		return;
 	}
 

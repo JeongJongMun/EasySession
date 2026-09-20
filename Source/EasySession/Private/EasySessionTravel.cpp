@@ -183,7 +183,7 @@ void FEasySessionTravel::MarkStarted(const TCHAR* Reason)
 {
 	if (!bTravelInFlight)
 	{
-		UE_LOG(LogEasySession, Verbose, TEXT("Travel started (%s). Session operations report busy until the map is loaded."), Reason);
+		UE_LOG(LogEasySession, Verbose, TEXT("Travel started (%s). Session requests report busy until the map is loaded."), Reason);
 	}
 	bTravelInFlight = true;
 }

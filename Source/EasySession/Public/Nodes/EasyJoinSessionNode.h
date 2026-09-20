@@ -27,6 +27,8 @@ public:
 
 	/**
 	 * Join the given session and travel to the host.
+	 * A player in another session leaves it first, once the host approved the join.
+	 * A join that fails after leaving travels the player to the menu.
 	 *
 	 * @param SearchResult A search result returned by Find Easy Sessions.
 	 * @param Password Password for password protected sessions (see Password Protected on the search result).
@@ -41,7 +43,7 @@ public:
 
 private:
 
-	/** Called when the subsystem finishes the join operation. */
+	/** Called when the subsystem finishes the join request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** The session to join. */

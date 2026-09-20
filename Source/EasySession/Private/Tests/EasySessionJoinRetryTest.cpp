@@ -63,7 +63,7 @@ bool FEasySessionJoinRetryStep::Update()
 				return true;
 			}
 
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Step = FTestState::EStep::AwaitingSetupDestroy;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -84,13 +84,13 @@ bool FEasySessionJoinRetryStep::Update()
 
 			TSharedPtr<FTestState> Shared = State;
 			UEasySessionSubsystem* SubsystemForRetry = Subsystem;
-			Subsystem->JoinEasySession(State->FakeResult, FString(), FString(), FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->JoinSession(State->FakeResult, FString(), FString(), FEasySessionCompleteDelegate::CreateLambda(
 				[Shared, SubsystemForRetry](EEasySessionResult Result, const FString& /*ErrorMessage*/)
 				{
 					Shared->FirstResult = Result;
 
 					// The retry the guide promises: started inside the failure callback, before this callstack unwinds.
-					SubsystemForRetry->JoinEasySession(Shared->FakeResult, FString(), FString(), FEasySessionCompleteDelegate::CreateLambda(
+					SubsystemForRetry->JoinSession(Shared->FakeResult, FString(), FString(), FEasySessionCompleteDelegate::CreateLambda(
 						[Shared](EEasySessionResult RetryResultValue, const FString& /*ErrorMessage*/)
 						{
 							Shared->RetryResult = RetryResultValue;
@@ -133,13 +133,12 @@ bool FEasySessionJoinRetryStep::Update()
 
 /**
  * A join that fails on address resolve leaves a half-joined session for one queued cleanup.
- * That cleanup has to enter the queue before the failure callback runs, or a retry the
- * callback starts runs in front of it and fails with SessionAlreadyExists, against the
- * guide's promise that the player can retry right away.
+ * That cleanup has to enter the queue before the failure callback runs.
+ * Otherwise a retry the callback starts runs in front of it and fails with SessionAlreadyExists, against the guide's promise that the player can retry.
  *
- * The unreachable session is real: created without listening, it advertises this process's
- * address with port 0, and its live session info is copied into a search result before
- * the setup session is destroyed.
+ * The unreachable session is real.
+ * Created without listening, it advertises this process's address with port 0.
+ * Its live session info is copied into a search result before the setup session is destroyed.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinRetryTest, "EasySession.Join.RetryAfterResolveFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinRetryTest::RunTest(const FString& Parameters)
@@ -162,7 +161,7 @@ bool FEasySessionJoinRetryTest::RunTest(const FString& Parameters)
 	HostParams.bIsLANMatch = true;
 	// No map and no listening: the session advertises this process's address with port 0, the form of an unreachable host.
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
-	Subsystem->CreateEasySession(HostParams);
+	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionJoinRetryStep(State));

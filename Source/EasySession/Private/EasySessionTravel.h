@@ -12,7 +12,7 @@ class UWorld;
  * Travels players to the map the session is played on: the host to its own map, clients to the host's address.
  * Both travel URLs pass through the modify delegates first.
  *
- * Also tracks whether a travel this plugin started is still running, so session operations report busy while the map loads.
+ * Also tracks whether a travel this plugin started is still running, so session requests report busy while the map loads.
  *
  * Owned by the subsystem and destroyed with it.
  * The map load delegate is bound raw because this object cannot outlive the owner that destroys it.

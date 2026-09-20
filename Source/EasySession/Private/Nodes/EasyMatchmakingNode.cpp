@@ -3,11 +3,12 @@
 #include "Nodes/EasyMatchmakingNode.h"
 
 #include "EasyMatchmakingPolicy.h"
+#include "EasySessionMessages.h"
 
 UEasyMatchmakingNode* UEasyMatchmakingNode::StartEasyMatchmaking(UObject* WorldContextObject, const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass)
 {
 	UEasyMatchmakingNode* Node = NewObject<UEasyMatchmakingNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->MatchmakingParams = MatchmakingParams;
 	Node->PolicyClass = PolicyClass;
 	Node->RegisterWithGameInstance(WorldContextObject);
@@ -16,10 +17,10 @@ UEasyMatchmakingNode* UEasyMatchmakingNode::StartEasyMatchmaking(UObject* WorldC
 
 void UEasyMatchmakingNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."));
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage);
 		return;
 	}
 

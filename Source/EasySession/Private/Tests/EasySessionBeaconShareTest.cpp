@@ -79,7 +79,7 @@ bool FEasySessionBeaconShareStep::Update()
 			CurrentTest->TestNotNull(TEXT("The project's host answers for the approval type"),
 				ProjectHost != nullptr ? ProjectHost->GetHost(ApprovalType) : nullptr);
 
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Step = FTestState::EStep::AwaitingDestroy;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -114,15 +114,14 @@ bool FEasySessionBeaconShareStep::Update()
 }
 
 /**
- * A beacon host is one shared listener per process, so a project that already runs one
- * keeps it: the join approval must register its host object there instead of spawning a
- * second host, and must take only its own type off again when the session ends.
+ * A beacon host is one shared listener per process, so a project that already runs one keeps it.
+ * The join approval must register its host object there instead of spawning a second host.
+ * It must also take only its own type off again when the session ends.
  *
- * Before this behavior, the second host bound a different port than the session advertised
- * and every approval request ended Unreachable. Join approval was silently off for the whole
- * session, whichever side spawned first.
+ * Before this behavior, the second host bound a different port than the session advertised and every approval request ended Unreachable.
+ * Join approval was silently off for the whole session, whichever side spawned first.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconShareTest, "EasySession.JoinApproval.SharesAnExistingBeaconHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconShareTest, "EasySession.Beacon.SharesAnExistingHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionBeaconShareTest;
@@ -155,7 +154,7 @@ bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession Beacon Share Test");
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
-	Subsystem->CreateEasySession(HostParams);
+	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionBeaconShareStep(State));

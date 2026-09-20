@@ -2,14 +2,8 @@
 
 #include "EasySessionRequestQueue.h"
 
-#include "EasySession.h"
-#include "EasySessionConfig.h"
-#include "HAL/PlatformTime.h"
-
 FEasySessionRequestQueue::~FEasySessionRequestQueue()
 {
-	StopWatchdog();
-
 	if (NextRequestHandle.IsValid())
 	{
 		FTSTicker::GetCoreTicker().RemoveTicker(NextRequestHandle);
@@ -23,120 +17,90 @@ void FEasySessionRequestQueue::Enqueue(TSharedRef<FEasySessionRequest> Request)
 	ScheduleNext();
 }
 
-TOptional<FEasySessionRequest::EType> FEasySessionRequestQueue::GetCurrentType() const
+void FEasySessionRequestQueue::Remove(const FEasySessionRequest& Request)
 {
-	if (Active.IsValid())
+	Pending.RemoveAll([&Request](const TSharedRef<FEasySessionRequest>& Waiting)
 	{
-		return Active->Type;
-	}
-	if (!Pending.IsEmpty())
+		return &Waiting.Get() == &Request;
+	});
+}
+
+void FEasySessionRequestQueue::ClearActive()
+{
+	if (!ActiveRequest.IsValid())
 	{
-		return Pending[0]->Type;
+		return;
 	}
-	return TOptional<FEasySessionRequest::EType>();
+
+	ActiveRequest.Reset();
+	ScheduleNext();
 }
 
 bool FEasySessionRequestQueue::IsBusy() const
 {
-	return (Active.IsValid() && !Active->bCanceled) || !Pending.IsEmpty() || FindBusyOperation().IsValid();
+	return GetBusyRequest().IsValid();
 }
 
-bool FEasySessionRequestQueue::BeginOperation(TSharedRef<IEasySessionOperation> Operation)
+TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::GetBusyRequest() const
 {
-	if (FindOperation(Operation->GetType()).IsValid())
+	if (ActiveRequest.IsValid() && ActiveRequest->CountsAsBusy())
 	{
-		return false;
-	}
-
-	UE_LOG(LogEasySession, Verbose, TEXT("Operation started: %s"), EasySession::OperationTypeToString(Operation->GetType()));
-	Operations.Add(MoveTemp(Operation));
-	return true;
-}
-
-void FEasySessionRequestQueue::EndOperation(const IEasySessionOperation& Operation)
-{
-	const int32 Removed = Operations.RemoveAll([&Operation](const TSharedRef<IEasySessionOperation>& Entry)
-	{
-		return &Entry.Get() == &Operation;
-	});
-
-	if (Removed > 0)
-	{
-		UE_LOG(LogEasySession, Verbose, TEXT("Operation ended: %s"), EasySession::OperationTypeToString(Operation.GetType()));
-	}
-}
-
-TSharedPtr<IEasySessionOperation> FEasySessionRequestQueue::FindOperation(EEasySessionOperationType Type) const
-{
-	for (const TSharedRef<IEasySessionOperation>& Operation : Operations)
-	{
-		if (Operation->GetType() == Type)
-		{
-			return Operation;
-		}
-	}
-
-	return nullptr;
-}
-
-TSharedPtr<IEasySessionOperation> FEasySessionRequestQueue::FindBusyOperation() const
-{
-	for (const TSharedRef<IEasySessionOperation>& Operation : Operations)
-	{
-		if (Operation->CountsAsBusy())
-		{
-			return Operation;
-		}
-	}
-
-	return nullptr;
-}
-
-void FEasySessionRequestQueue::CancelOperations()
-{
-	// Each cancel calls EndOperation, which edits the list this loop reads.
-	const TArray<TSharedRef<IEasySessionOperation>> Snapshot = Operations;
-	for (const TSharedRef<IEasySessionOperation>& Operation : Snapshot)
-	{
-		Operation->Cancel();
-	}
-}
-
-bool FEasySessionRequestQueue::Contains(FEasySessionRequest::EType Type) const
-{
-	if (Active.IsValid() && Active->Type == Type)
-	{
-		return true;
+		return ActiveRequest;
 	}
 
 	for (const TSharedRef<FEasySessionRequest>& Request : Pending)
 	{
-		if (Request->Type == Type)
+		if (Request->CountsAsBusy())
 		{
-			return true;
+			return Request;
 		}
 	}
 
-	return false;
+	return nullptr;
 }
 
-TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::PopActive()
+TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::Find(FEasySessionRequest::EType Type) const
 {
-	TSharedPtr<FEasySessionRequest> Popped = Active;
-	Active.Reset();
-
-	if (Popped.IsValid())
+	if (ActiveRequest.IsValid() && ActiveRequest->Type == Type && !ActiveRequest->HasNotified())
 	{
-		ScheduleNext();
+		return ActiveRequest;
 	}
 
-	return Popped;
+	for (const TSharedRef<FEasySessionRequest>& Request : Pending)
+	{
+		if (Request->Type == Type && !Request->HasNotified())
+		{
+			return Request;
+		}
+	}
+
+	return nullptr;
+}
+
+FString FEasySessionRequestQueue::GetStatusText(bool bTraveling) const
+{
+	// A travel keeps Is Busy true while no request runs, so the status line names it instead of reporting only Idle.
+	FString Status = ActiveRequest.IsValid() ? ActiveRequest->GetStatusText() : FString(bTraveling ? TEXT("Idle, traveling") : TEXT("Idle"));
+
+	if (!Pending.IsEmpty())
+	{
+		TArray<FString> QueuedNames;
+		QueuedNames.Reserve(Pending.Num());
+		for (const TSharedRef<FEasySessionRequest>& Queued : Pending)
+		{
+			QueuedNames.Add(Queued->GetTypeName());
+		}
+		Status += FString::Printf(TEXT(", queued: %s"), *FString::Join(QueuedNames, TEXT(", ")));
+	}
+
+	return Status;
 }
 
 void FEasySessionRequestQueue::ScheduleNext()
 {
-	// Never start inside the caller's callstack. A completion callback can enqueue just as the slot empties,
-	// and the online subsystem call still returning would then run against the request that took the slot.
+	// Never start inside the caller's callstack.
+	// A completion callback can enqueue just as the active request stops running.
+	// The online subsystem call still returning would then run against the new active request.
 	// One pending call is enough for any number of requests.
 	if (NextRequestHandle.IsValid())
 	{
@@ -146,111 +110,20 @@ void FEasySessionRequestQueue::ScheduleNext()
 	NextRequestHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float DeltaTime)
 	{
 		NextRequestHandle.Reset();
-		ProcessNext();
+		StartNext();
 		return false;
 	}));
 }
 
-FString FEasySessionRequestQueue::DescribeStatus(bool bIdleButTraveling) const
+void FEasySessionRequestQueue::StartNext()
 {
-	FString Status;
-	if (!Active.IsValid())
-	{
-		if (Pending.Num() > 0)
-		{
-			Status = FString::Printf(TEXT("Idle, %d queued"), Pending.Num());
-		}
-		else
-		{
-			// Say so rather than reporting "Idle" while Is Busy is true.
-			Status = bIdleButTraveling ? TEXT("Idle, traveling") : TEXT("Idle");
-		}
-	}
-	else
-	{
-		const double Elapsed = Active->GetElapsedSeconds(FPlatformTime::Seconds());
-		const FString Name = Active->bCanceled ? FString::Printf(TEXT("%s (canceled)"), Active->GetTypeName()) : FString(Active->GetTypeName());
-		Status = Active->TimeoutSeconds > 0.0
-			? FString::Printf(TEXT("%s (running %.1fs of %.0fs)"), *Name, Elapsed, Active->TimeoutSeconds)
-			: FString::Printf(TEXT("%s (running %.1fs, no timeout)"), *Name, Elapsed);
-
-		if (Pending.Num() > 0)
-		{
-			TArray<FString> QueuedNames;
-			QueuedNames.Reserve(Pending.Num());
-			for (const TSharedRef<FEasySessionRequest>& Queued : Pending)
-			{
-				QueuedNames.Add(Queued->GetTypeName());
-			}
-			Status += FString::Printf(TEXT(", queued: %s"), *FString::Join(QueuedNames, TEXT(", ")));
-		}
-	}
-
-	for (const TSharedRef<IEasySessionOperation>& Operation : Operations)
-	{
-		Status += TEXT("; ") + Operation->DescribeProgress();
-	}
-
-	return Status;
-}
-
-void FEasySessionRequestQueue::ProcessNext()
-{
-	if (Active.IsValid())
+	if (ActiveRequest.IsValid() || Pending.IsEmpty())
 	{
 		return;
 	}
 
-	if (Pending.IsEmpty())
-	{
-		StopWatchdog();
-		return;
-	}
-
-	Active = Pending[0];
+	ActiveRequest = Pending[0];
 	Pending.RemoveAt(0);
-	Active->MarkStarted(FPlatformTime::Seconds(), GetDefault<UEasySessionConfig>()->RequestTimeoutSeconds);
-	StartWatchdog();
 
-	Active->Start();
-}
-
-void FEasySessionRequestQueue::StartWatchdog()
-{
-	if (!WatchdogHandle.IsValid())
-	{
-		WatchdogHandle = FTSTicker::GetCoreTicker().AddTicker(
-			FTickerDelegate::CreateRaw(this, &FEasySessionRequestQueue::TickWatchdog), 1.0f);
-	}
-}
-
-void FEasySessionRequestQueue::StopWatchdog()
-{
-	if (WatchdogHandle.IsValid())
-	{
-		FTSTicker::GetCoreTicker().RemoveTicker(WatchdogHandle);
-		WatchdogHandle.Reset();
-	}
-}
-
-bool FEasySessionRequestQueue::TickWatchdog(float DeltaTime)
-{
-	if (!Active.IsValid())
-	{
-		WatchdogHandle.Reset();
-		return false;
-	}
-
-	if (Active->HasTimedOut(FPlatformTime::Seconds()))
-	{
-		// The call may still complete later, so the request is abandoned and its Cleanup destroys a session the call still creates.
-		UE_LOG(LogEasySession, Warning, TEXT("%s request timed out after %.0f seconds without a response from the online subsystem. Continuing with the next request."),
-			Active->GetTypeName(), Active->GetElapsedSeconds(FPlatformTime::Seconds()));
-
-		// Complete takes the request out of the active slot, so a reference is kept until the call returns.
-		const TSharedRef<FEasySessionRequest> TimedOut = Active.ToSharedRef();
-		TimedOut->Complete(EEasySessionResult::Timeout, TEXT("The online subsystem did not respond in time."), /*bAbandoned*/ true);
-	}
-
-	return true;
+	ActiveRequest->Start();
 }

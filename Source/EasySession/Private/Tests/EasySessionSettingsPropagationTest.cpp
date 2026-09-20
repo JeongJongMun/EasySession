@@ -14,7 +14,7 @@
 
 namespace EasySessionSettingsPropagationTest
 {
-	/** Maximum time to wait for each queued operation before failing the test. */
+	/** Maximum time to wait for each queued request before failing the test. */
 	static constexpr double TimeoutSeconds = 20.0;
 
 	/** Which step of the create/update/leave sequence the latent command is waiting on. */
@@ -46,7 +46,7 @@ namespace EasySessionSettingsPropagationTest
 		return Params;
 	}
 
-	/** Take the result the last step produced, leaving the slot empty for the next one. */
+	/** Take the result the last step produced, leaving it empty for the next one. */
 	static EEasySessionResult ConsumeResult(FTestState& State)
 	{
 		const EEasySessionResult Result = State.PendingResult.GetValue();
@@ -73,7 +73,7 @@ bool FEasySessionWaitForSettingsPush::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for a session operation to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for a session request to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -104,7 +104,7 @@ bool FEasySessionWaitForSettingsPush::Update()
 			Updated.Region = EEasySessionRegion::SouthAmerica;
 			Updated.CustomSettings.Add(TEXT("GameMode"), TEXT("Conquest"));
 			State->Step = EStep::AwaitingUpdate;
-			Subsystem->UpdateEasySession(Updated, FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->UpdateSession(Updated, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -130,14 +130,14 @@ bool FEasySessionWaitForSettingsPush::Update()
 				CurrentTest->TestEqual(TEXT("Custom setting value survived"), Custom->Value, TEXT("Conquest"));
 			}
 
-			// The plugin's own keys stay out of the custom list. They are either
-			// dedicated payload fields or internal, like the join approval flag.
+			// The plugin's own keys stay out of the custom list.
+			// They are either dedicated payload fields or internal, like the join approval flag.
 			const bool bLeakedReservedKey = Payload.CustomSettings.ContainsByPredicate(
 				[](const FEasySessionReplicatedSetting& Setting) { return EasySession::IsReservedSettingKey(FName(*Setting.Key)); });
 			CurrentTest->TestFalse(TEXT("No reserved key leaked into the custom list"), bLeakedReservedKey);
 
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -176,7 +176,7 @@ bool FEasySessionSettingsPushTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	Subsystem->CreateEasySession(MakeParams(TEXT("Settings Push Before")), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(TEXT("Settings Push Before")), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->PendingResult = Result;
@@ -204,7 +204,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(TEXT("Timed out waiting for a session operation to complete."));
+			CurrentTest->AddError(TEXT("Timed out waiting for a session request to complete."));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -217,8 +217,8 @@ bool FEasySessionWaitForSettingsApply::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			// A joined client holds a local session copy but no authority. That state
-			// is set directly here, because a headless test has no second process.
+			// A joined client holds a local session copy but no authority.
+			// That state is set directly here, because a headless test has no second process.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 			FEasySessionReplicatedSettings Payload;
@@ -263,7 +263,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 			// Give authority back so the cleanup runs the host's destroy path.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true);
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -305,7 +305,7 @@ bool FEasySessionSettingsApplyTest::RunTest(const FString& Parameters)
 	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>(State->GameInstance.Get()));
 	Subsystem->OnSessionSettingsChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSettingsChanged);
 
-	Subsystem->CreateEasySession(MakeParams(TEXT("Settings Apply Before")), FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(MakeParams(TEXT("Settings Apply Before")), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->PendingResult = Result;

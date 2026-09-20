@@ -85,8 +85,8 @@ Leaving a session, losing the host, or being refused all end the same way: the
 engine loads the **Game Default Map** (Project Settings -> Maps & Modes). That
 map is your "after the session" screen, so point it at your menu map. EasySession
 preserves why the player came back - read it there with
-`Consume Last Easy Disconnect Info` and show the reason.
+`Consume Pending Easy Disconnect Info` and show the reason.
 
 ## The one rule that prevents most bugs
 
-**One session at a time.** You must leave your current session before creating or joining another one. EasySession enforces this with a clear `SessionAlreadyExists` error instead of strange failures later, and its operation queue makes sure two requests never overlap inside the online service.
+**One session at a time.** You must leave your current session before creating another one, and EasySession enforces this with a clear `SessionAlreadyExists` error instead of strange failures later. Joining another session leaves the current one for you once the host approved the join, and a join that fails after that returns the player to the menu. A host that leaves this way tells its players why first. Its request queue makes sure two requests never overlap inside the online service.

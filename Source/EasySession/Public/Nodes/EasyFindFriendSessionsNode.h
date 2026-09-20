@@ -27,7 +27,8 @@ public:
 
 	/**
 	 * Read the friends list and find the session each friend playing this game is in.
-	 * Every friend is listed. The ones in a joinable session carry it, ready for Join Easy Session.
+	 * Every friend is listed.
+	 * The ones in a joinable session carry it, ready for Join Easy Session.
 	 * Not supported on the NULL (LAN) subsystem.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Find Easy Friend Sessions", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))

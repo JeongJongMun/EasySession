@@ -4,8 +4,11 @@
 
 #include "EasySession.h"
 #include "EasySessionAddress.h"
+#include "EasySessionDestroyRequest.h"
+#include "EasySessionHost.h"
 #include "EasySessionJoinApproval.h"
 #include "EasySessionJoinApprovalBeacon.h"
+#include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
 #include "Engine/World.h"
@@ -21,7 +24,7 @@ FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult&
 
 FEasySessionJoinRequest::~FEasySessionJoinRequest()
 {
-	StopApprovalClient();
+	DestroyApprovalClient();
 }
 
 void FEasySessionJoinRequest::Execute()
@@ -35,13 +38,15 @@ void FEasySessionJoinRequest::Execute()
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
 		return;
 	}
 
-	if (Sessions->GetNamedSession(SessionName) != nullptr)
+	// Leaving the session to join it again would only disconnect this player.
+	const FNamedOnlineSession* CurrentSession = Sessions->GetNamedSession(SessionName);
+	if (CurrentSession != nullptr && CurrentSession->SessionInfo.IsValid() && CurrentSession->SessionInfo->GetSessionId().ToString() == Target.NativeResult.GetSessionIdStr())
 	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Destroy it before joining another one."));
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player is already in this session."));
 		return;
 	}
 
@@ -56,12 +61,36 @@ void FEasySessionJoinRequest::Execute()
 	JoinOnlineSession();
 }
 
+void FEasySessionJoinRequest::Cleanup()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (Sessions.IsValid())
+	{
+		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
+	}
+
+	// The approval request may still be waiting for a response.
+	DestroyApprovalClient();
+}
+
+void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	// The session this player left is destroyed, so a failed join would leave them in its map with no session.
+	// Requested before the completion below, the same order every travel in this plugin uses.
+	if (Result != EEasySessionResult::Success && bLeftSession)
+	{
+		GetContext().Travel.ReturnToMenu();
+	}
+
+	OnComplete.ExecuteIfBound(Result, ErrorMessage);
+}
+
 void FEasySessionJoinRequest::RequestJoinApproval()
 {
 	const FEasyJoinApprovalComplete OnResponse = FEasyJoinApprovalComplete::CreateSP(this, &FEasySessionJoinRequest::HandleJoinApprovalResponse);
 
 	AEasySessionJoinApprovalBeaconClient* Client = nullptr;
-	if (UWorld* World = GetContext().GetWorld())
+	if (UWorld* World = GetWorld())
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.ObjectFlags |= RF_Transient;
@@ -79,14 +108,14 @@ void FEasySessionJoinRequest::RequestJoinApproval()
 	{
 		// The delegate already fired with Unreachable.
 		// Only the actor is left to destroy.
-		StopApprovalClient();
+		DestroyApprovalClient();
 	}
 }
 
 void FEasySessionJoinRequest::HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response)
 {
-	// The request may have passed its deadline while the beacon was waiting.
-	if (!IsActive())
+	// The request may have been canceled while the beacon was waiting.
+	if (!IsRunning())
 	{
 		return;
 	}
@@ -100,7 +129,7 @@ void FEasySessionJoinRequest::HandleJoinApprovalResponse(const FEasyJoinApproval
 		case EEasyJoinApprovalResult::Unreachable:
 			// The join continues without the approval, because the server gate runs the same ApproveJoin when the joining player arrives.
 			// An unreachable beacon can only delay a refusal, never skip one.
-			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the join approval beacon - joining directly. A refusal will now arrive after the travel instead of before it."));
+			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the join approval beacon, so the join continues without it. A refusal will now arrive after the travel instead of before it."));
 			JoinOnlineSession();
 			break;
 
@@ -118,7 +147,7 @@ void FEasySessionJoinRequest::HandleJoinApprovalResponse(const FEasyJoinApproval
 	}
 }
 
-void FEasySessionJoinRequest::StopApprovalClient()
+void FEasySessionJoinRequest::DestroyApprovalClient()
 {
 	if (AEasySessionJoinApprovalBeaconClient* Client = ApprovalClient.Get())
 	{
@@ -132,7 +161,21 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
+		return;
+	}
+
+	// Joining refuses while a session exists, so this player leaves theirs first.
+	if (Sessions->GetNamedSession(SessionName) != nullptr)
+	{
+		// A leaving host takes the session with it, so its clients are told why before their connection closes.
+		if (GetContext().Subsystem.IsSessionAuthority())
+		{
+			GetContext().Host.TellEveryoneToReturnToMenu(EasySession::GetHostLeftSessionReason());
+		}
+
+		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(
+			FEasySessionCompleteDelegate::CreateSP(this, &FEasySessionJoinRequest::HandleDestroyComplete)));
 		return;
 	}
 
@@ -147,9 +190,22 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 	}
 }
 
+void FEasySessionJoinRequest::HandleDestroyComplete(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	// The session is still there, so this player stays in it and no travel starts.
+	if (Result != EEasySessionResult::Success)
+	{
+		Complete(Result, TEXT("This player could not leave the session they were in."));
+		return;
+	}
+
+	bLeftSession = true;
+	JoinOnlineSession();
+}
+
 void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOnJoinSessionCompleteResult::Type JoinResult)
 {
-	if (!IsActive() || InSessionName != SessionName)
+	if (!IsRunning() || InSessionName != SessionName)
 	{
 		return;
 	}
@@ -189,13 +245,16 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 
 	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
 	{
-		// Queued before the request completes, so a retry started in the completion delegate runs after this destroy.
-		// Without it the retry would fail, because the session this join created still exists.
-		GetContext().Subsystem.DestroyEasySession();
+		const FString Message = FString::Printf(
+			TEXT("The host address '%s' is not connectable. The host is not running as a listen server, because its travel to Initial Map Name did not open one. Check the map path on the host."),
+			*ConnectString);
 
-		Complete(EEasySessionResult::ResolveFailure, FString::Printf(
-			TEXT("The host address '%s' is not connectable - the host is not running as a listen server. The host's travel to its Initial Map Name did not open one. Check the map path on the host."),
-			*ConnectString));
+		// The joined session stays until it is destroyed, and a retry or the next matchmaking candidate would fail against it.
+		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,
+			[this, Message](EEasySessionResult /*DestroyResult*/, const FString& /*DestroyError*/)
+			{
+				Complete(EEasySessionResult::ResolveFailure, Message);
+			})));
 		return;
 	}
 
@@ -205,27 +264,4 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 	GetContext().Travel.TravelToJoinedSession(ConnectString, Password, TravelOptions);
 
 	Complete(EEasySessionResult::Success);
-}
-
-void FEasySessionJoinRequest::Cleanup(bool bAbandoned)
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (Sessions.IsValid())
-	{
-		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
-	}
-
-	// The approval request may still be waiting for a response.
-	StopApprovalClient();
-
-	if (bAbandoned)
-	{
-		DestroySessionLeftBehind();
-	}
-}
-
-void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
-{
-	OnComplete.ExecuteIfBound(Result, ErrorMessage);
-	GetContext().Subsystem.OnSessionJoined.Broadcast(Result, ErrorMessage);
 }

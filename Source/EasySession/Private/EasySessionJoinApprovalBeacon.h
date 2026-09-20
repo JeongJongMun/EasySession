@@ -104,8 +104,8 @@ public:
 
 private:
 
-	/** The engine's timeout covers connecting. This one covers a host that never responds. */
-	void HandleResponseTimeout();
+	/** The request ends as Unreachable, whether the beacon connection never opened or the host never answered. */
+	void HandleApprovalTimeout();
 
 	/** Deliver the response once. A later failure after the response is ignored. */
 	void Signal(const FEasyJoinApprovalResponse& Response);
@@ -119,8 +119,8 @@ private:
 	/** The caller's callback. Cleared as it is executed, so it can only run once. */
 	FEasyJoinApprovalComplete CompleteDelegate;
 
-	/** Timer for a host that connected but never responded. */
-	FTimerHandle ResponseTimeoutHandle;
+	/** Timer for the whole approval: the connection to the host's beacon and its answer. */
+	FTimerHandle ApprovalTimeoutHandle;
 
 	/** Whether a response has already been delivered. Later failures are then ignored. */
 	bool bCompleted = false;
@@ -128,7 +128,8 @@ private:
 
 /**
  * Host side of the approval request.
- * This actor only carries the request over the beacon. The decision belongs to FEasySessionServerGate.
+ * This actor only carries the request over the beacon.
+ * The decision belongs to FEasySessionServerGate.
  * PreLogin asks that same object, so the beacon's response and the one a joining client gets on arrival can never disagree.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)

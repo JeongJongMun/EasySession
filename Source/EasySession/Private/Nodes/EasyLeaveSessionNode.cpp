@@ -2,24 +2,26 @@
 
 #include "Nodes/EasyLeaveSessionNode.h"
 
+#include "EasySessionMessages.h"
+
 UEasyLeaveSessionNode* UEasyLeaveSessionNode::LeaveEasySession(UObject* WorldContextObject)
 {
 	UEasyLeaveSessionNode* Node = NewObject<UEasyLeaveSessionNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
 
 void UEasyLeaveSessionNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."));
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage);
 		return;
 	}
 
-	Subsystem->LeaveEasySession(FEasySessionCompleteDelegate::CreateUObject(this, &UEasyLeaveSessionNode::HandleComplete));
+	Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateUObject(this, &UEasyLeaveSessionNode::HandleComplete));
 }
 
 void UEasyLeaveSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

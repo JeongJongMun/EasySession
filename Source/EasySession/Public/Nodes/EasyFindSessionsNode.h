@@ -27,7 +27,6 @@ public:
 
 	/**
 	 * Search for sessions matching the given filters.
-	 * The results can also be read later with Get Last Easy Search Results.
 	 *
 	 * @param SearchParams Parameters describing what to search for.
 	 */

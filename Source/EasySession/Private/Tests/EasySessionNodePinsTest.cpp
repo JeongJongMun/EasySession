@@ -80,8 +80,8 @@ namespace EasySessionNodePinsTest
 /**
  * Runs the case list one node at a time: activate, wait for a pin, assert, move on.
  *
- * One command for the whole list rather than one per node, because the queue can finish a
- * request in the same call or several ticks later, and a test should not have to know which.
+ * One command for the whole list rather than one per node.
+ * The queue can finish a request in the same call or several ticks later, and a test should not have to know which.
  */
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionRunPinCases, TSharedPtr<EasySessionNodePinsTest::FTestState>, State);
 bool FEasySessionRunPinCases::Update()
@@ -152,8 +152,8 @@ bool FEasySessionRunPinCases::Update()
 /**
  * Every async node routes a failure to its On Failure pin.
  *
- * Nothing is hosted, so each node hits its own guard clause. That is the cheapest way to
- * reach the failure pin of six nodes without a second machine or a real online subsystem.
+ * Nothing is hosted, so each node hits its own guard clause.
+ * That is the cheapest way to reach the failure pin of six nodes without a second machine or a real online subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeFailurePinsTest, "EasySession.Nodes.FailurePinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
@@ -218,7 +218,8 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 		}, EExpectedPin::Failure, EEasySessionResult::InvalidParams });
 
 	// Host fallback off and nothing on the LAN to join, so the run ends with nothing found.
-	// This case must not leave a session behind. The success test that follows creates its own.
+	// This case must not leave a session behind.
+	// The success test that follows creates its own.
 	State->Cases.Add({ TEXT("Start Easy Matchmaking"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
@@ -260,8 +261,8 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 /**
  * Every async node routes a success to its On Success pin.
  *
- * The cases run in order and each one needs the session the previous one left behind, so
- * this is the session lifecycle a game walks: create, start the match, change it, end it, leave.
+ * The cases run in order and each one needs the session the previous one left behind.
+ * This is the session lifecycle a game walks: create, start the match, change it, end it, leave.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeSuccessPinsTest, "EasySession.Nodes.SuccessPinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
@@ -413,9 +414,8 @@ bool FEasySessionWaitForLeaveNode::Update()
 }
 
 /**
- * Leave Easy Session is the whole exit: the named session is destroyed and the menu
- * map load is requested, in one node. Destroy Easy Session covers only the named
- * session, which left a client's leave button leaving the player on the host's map.
+ * Leave Easy Session is the whole exit: the named session is destroyed and the menu map load is requested, in one node.
+ * Destroy Easy Session covers only the named session, which left a client's leave button leaving the player on the host's map.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLeaveNodeTest, "EasySession.Nodes.LeaveReturnsToTheMenu", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)
@@ -439,7 +439,7 @@ bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)
 	Params.SessionDisplayName = TEXT("EasySession Leave Node Test");
 	Params.bIsLANMatch = true;
 	Params.InitialMapName = EasySessionTest::SessionMapName;
-	Subsystem->CreateEasySession(Params);
+	Subsystem->CreateSession(Params);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForLeaveNode(State));

@@ -2,10 +2,12 @@
 
 #include "Nodes/EasyFindSessionsNode.h"
 
+#include "EasySessionMessages.h"
+
 UEasyFindSessionsNode* UEasyFindSessionsNode::FindEasySessions(UObject* WorldContextObject, const FEasySessionSearchParams& SearchParams)
 {
 	UEasyFindSessionsNode* Node = NewObject<UEasyFindSessionsNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->SearchParams = SearchParams;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
@@ -13,14 +15,14 @@ UEasyFindSessionsNode* UEasyFindSessionsNode::FindEasySessions(UObject* WorldCon
 
 void UEasyFindSessionsNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."), TArray<FEasySessionSearchResult>());
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage, {});
 		return;
 	}
 
-	Subsystem->FindEasySessions(SearchParams, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyFindSessionsNode::HandleComplete));
+	Subsystem->FindSessions(SearchParams, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyFindSessionsNode::HandleComplete));
 }
 
 void UEasyFindSessionsNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)

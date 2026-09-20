@@ -63,7 +63,7 @@ void FEasySessionJoinApproval::EnsureHost()
 	}
 
 	BeaconHostObject = HostObject;
-	WarnIfPortMismatch(NamedSession->SessionSettings);
+	CheckAdvertisedPort(NamedSession->SessionSettings);
 }
 
 void FEasySessionJoinApproval::StopHost()
@@ -76,7 +76,7 @@ void FEasySessionJoinApproval::StopHost()
 	BeaconHostObject.Reset();
 }
 
-void FEasySessionJoinApproval::WarnIfPortMismatch(const FOnlineSessionSettings& Settings) const
+void FEasySessionJoinApproval::CheckAdvertisedPort(const FOnlineSessionSettings& Settings) const
 {
 	// Joining players connect to the advertised port, so a listener that bound another port is unreachable.
 	const int32 BoundPort = BeaconPort.GetListenPort();
@@ -88,9 +88,6 @@ void FEasySessionJoinApproval::WarnIfPortMismatch(const FOnlineSessionSettings& 
 	}
 
 	UE_LOG(LogEasySession, Warning,
-		TEXT("The join approval beacon listens on port %d, but this session advertises %d. Another process holds the advertised port, or this project's own beacon uses a different one."),
-		BoundPort, AdvertisedPort);
-	UE_LOG(LogEasySession, Warning,
-		TEXT("Joining players connect to port %d and do not reach this beacon, so the password and full session checks happen after the travel. Give each instance its own port with -BeaconPort=, or set ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
-		AdvertisedPort);
+		TEXT("The join approval beacon listens on port %d but this session advertises %d, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port %d, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
+		BoundPort, AdvertisedPort, AdvertisedPort);
 }

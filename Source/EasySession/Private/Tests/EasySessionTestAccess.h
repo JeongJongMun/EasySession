@@ -10,9 +10,10 @@
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
 #include "EasySessionJoinApproval.h"
-#include "EasySessionCreateRequest.h"
 #include "EasySessionFindRequest.h"
+#include "EasySessionMatchmakingRequest.h"
 #include "EasySessionRequest.h"
+#include "EasySessionRequestQueue.h"
 #include "EasySessionServerGate.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
@@ -68,19 +69,13 @@ public:
 		Subsystem.Host->SpawnWorldActors();
 	}
 
-	/** The subsystem's request queue, so a test can register operations without a real matchmaking or friend search. */
-	static FEasySessionRequestQueue& GetRequestQueue(UEasySessionSubsystem& Subsystem)
-	{
-		return *Subsystem.RequestQueue;
-	}
-
 	/**
 	 * The host state AEasySessionStateActor last replicated in.
 	 * GetSessionState only returns this on a real client, which a headless test world is not.
 	 */
-	static EEasySessionState GetReplicatedHostSessionState(const UEasySessionSubsystem& Subsystem)
+	static EEasySessionState GetReplicatedSessionState(const UEasySessionSubsystem& Subsystem)
 	{
-		return Subsystem.ReplicatedHostSessionState;
+		return Subsystem.ReplicatedSessionState.Get(EEasySessionState::NoSession);
 	}
 
 	/** The settings payload the state actor would replicate to session members. Default (bValid false) while no actor exists. */
@@ -96,10 +91,23 @@ public:
 		Subsystem.HandleReplicatedSessionSettings(Settings);
 	}
 
-	/** The native search object of the active Find request. Null while no discovery search runs. */
+	/** The Find request running now, on its own or as a sub-request of matchmaking or the friend session search. Null when none runs. */
+	static TSharedPtr<FEasySessionFindRequest> GetRunningFind(const UEasySessionSubsystem& Subsystem)
+	{
+		for (TSharedPtr<FEasySessionRequest> Request = Subsystem.RequestQueue->GetActiveRequest(); Request.IsValid(); Request = Request->GetRunningSubRequest())
+		{
+			if (Request->Type == FEasySessionRequest::EType::Find)
+			{
+				return StaticCastSharedPtr<FEasySessionFindRequest>(Request);
+			}
+		}
+		return nullptr;
+	}
+
+	/** The native search object of the running Find request, a sub-request of matchmaking included. Null while no search for sessions runs. */
 	static TSharedPtr<FOnlineSessionSearch> GetActiveSearch(const UEasySessionSubsystem& Subsystem)
 	{
-		const TSharedPtr<FEasySessionFindRequest> FindRequest = FEasySessionFindRequest::Cast(Subsystem.GetActiveRequest());
+		const TSharedPtr<FEasySessionFindRequest> FindRequest = GetRunningFind(Subsystem);
 		return FindRequest.IsValid() ? FindRequest->Search : nullptr;
 	}
 
@@ -116,13 +124,12 @@ public:
 	}
 
 	/**
-	 * Destroy the state actor and release the beacon port, which is what a travel does to the host side.
+	 * Take the host side down the way a server travel does, which destroys the state actor and releases the beacon port.
 	 * A headless test cannot load a second map, so this stands in for the world change.
 	 */
 	static void DestroyHostSideActors(UEasySessionSubsystem& Subsystem)
 	{
-		Subsystem.Host->DestroyWorldActors();
-		Subsystem.BeaconPort->ReleaseListener();
+		Subsystem.Host->OnServerTravelStarted();
 	}
 
 	/** The password arriving players are actually checked against. */
@@ -200,9 +207,11 @@ public:
 	static bool FailActiveSearch(UEasySessionSubsystem& Subsystem)
 	{
 		const TSharedPtr<FOnlineSessionSearch> Search = GetActiveSearch(Subsystem);
-		if (Search.IsValid() && Search->SearchState == EOnlineAsyncTaskState::InProgress)
+		const IOnlineSessionPtr Sessions = Online::GetSessionInterface(Subsystem.GetWorld());
+		if (Search.IsValid() && Search->SearchState == EOnlineAsyncTaskState::InProgress && Sessions.IsValid())
 		{
 			Search->SearchState = EOnlineAsyncTaskState::Failed;
+			Sessions->TriggerOnFindSessionsCompleteDelegates(false);
 			return true;
 		}
 		return false;
@@ -225,11 +234,11 @@ public:
 		return true;
 	}
 
-	/** Whether the request running now was canceled: it keeps the active slot with no requester waiting for it. */
+	/** Whether the request running now was canceled: it is still the active request with no requester waiting for it. */
 	static bool IsActiveRequestCanceled(const UEasySessionSubsystem& Subsystem)
 	{
-		const TSharedPtr<FEasySessionRequest>& Active = Subsystem.GetActiveRequest();
-		return Active.IsValid() && Active->bCanceled;
+		const TSharedPtr<FEasySessionRequest>& Active = Subsystem.RequestQueue->GetActiveRequest();
+		return Active.IsValid() && Active->HasNotified();
 	}
 
 	/** The shared beacon port, so a test can register host objects the way a beacon family does. */
@@ -242,6 +251,14 @@ public:
 	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
 	{
 		return Subsystem.BeaconPort.IsValid() ? Subsystem.BeaconPort->GetListener() : nullptr;
+	}
+
+	/** @return The id of the session this subsystem holds, or empty when it holds none. The join refuses a result carrying this id. */
+	static FString GetCurrentSessionIdString(const UEasySessionSubsystem& Subsystem)
+	{
+		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		return NamedSession != nullptr && NamedSession->SessionInfo.IsValid() ? NamedSession->SessionInfo->GetSessionId().ToString() : FString();
 	}
 
 	/**
@@ -282,17 +299,6 @@ public:
 	}
 
 	/**
-	 * Run the Cleanup of an abandoned Create request, standing in for the watchdog.
-	 * NULL completes creates synchronously, so a create abandoned while running cannot be produced headless.
-	 */
-	static void CleanupAbandonedCreate(UEasySessionSubsystem& Subsystem)
-	{
-		const TSharedRef<FEasySessionRequest> Request = MakeShared<FEasySessionCreateRequest>(FEasySessionHostParams(), FEasySessionCompleteDelegate());
-		Request->Bind(*Subsystem.RequestContext, NAME_GameSession);
-		Request->Cleanup(/*bAbandoned*/ true);
-	}
-
-	/**
 	 * Complete the running search with these crafted results, standing in for the online subsystem completing it.
 	 * One process cannot find its own LAN session, so filter tests inject what a search would have returned.
 	 *
@@ -300,7 +306,7 @@ public:
 	 */
 	static bool DriveFindCompletion(UEasySessionSubsystem& Subsystem, const TArray<FOnlineSessionSearchResult>& Results)
 	{
-		const TSharedPtr<FEasySessionFindRequest> FindRequest = FEasySessionFindRequest::Cast(Subsystem.GetActiveRequest());
+		const TSharedPtr<FEasySessionFindRequest> FindRequest = GetRunningFind(Subsystem);
 		const TSharedPtr<FOnlineSessionSearch> Search = FindRequest.IsValid() ? FindRequest->Search : nullptr;
 		if (!Search.IsValid() || Search->SearchState != EOnlineAsyncTaskState::InProgress)
 		{
@@ -320,28 +326,75 @@ public:
 		return true;
 	}
 
-	/** Feed a finished search into the matchmaking policy, standing in for a search pass completing with these results. */
-	static void DriveMatchmakingSearch(UEasyMatchmakingPolicy& Policy, const TArray<FEasySessionSearchResult>& Results)
+	/** Whether a request of this type waits or runs and has not notified its requester yet, the check the subsystem itself makes. */
+	static bool HasRequest(const UEasySessionSubsystem& Subsystem, FEasySessionRequest::EType Type)
 	{
-		Policy.HandleSearchComplete(EEasySessionResult::Success, FString(), Results);
+		return Subsystem.RequestQueue->Find(Type).IsValid();
 	}
 
-	/** The host params the matchmaking fallback would create its session with. */
-	static FEasySessionHostParams MakeMatchmakingFallbackHostParams(const UEasyMatchmakingPolicy& Policy)
+	/** How many requests of this type are waiting or running as the active request. */
+	static int32 CountRequests(const UEasySessionSubsystem& Subsystem, FEasySessionRequest::EType Type)
 	{
-		return Policy.MakeFallbackHostParams();
+		const FEasySessionRequestQueue& Queue = *Subsystem.RequestQueue;
+		int32 Count = Queue.ActiveRequest.IsValid() && Queue.ActiveRequest->Type == Type ? 1 : 0;
+		for (const TSharedRef<FEasySessionRequest>& Request : Queue.Pending)
+		{
+			Count += Request->Type == Type ? 1 : 0;
+		}
+		return Count;
 	}
 
-	/** The candidates the matchmaking run will try, in try order. */
-	static TArray<FEasySessionSearchResult> GetMatchmakingCandidates(const UEasyMatchmakingPolicy& Policy)
+	/** The running matchmaking request. Null while no matchmaking runs. */
+	static TSharedPtr<FEasySessionMatchmakingRequest> GetMatchmakingRequest(const UEasySessionSubsystem& Subsystem)
 	{
-		return Policy.Candidates;
+		return FEasySessionMatchmakingRequest::Cast(Subsystem.RequestQueue->Find(FEasySessionRequest::EType::Matchmaking));
 	}
 
-	/** The sessions the matchmaking run refuses to retry. */
-	static TSet<FString> GetMatchmakingFailedSessionKeys(const UEasyMatchmakingPolicy& Policy)
+	/**
+	 * Feed a finished search into the running matchmaking, standing in for a search pass completing with these results.
+	 * Call it while the run waits for its next pass.
+	 * The wait is removed, because the pass it waits for is the one fed here.
+	 */
+	static void DriveMatchmakingSearch(UEasySessionSubsystem& Subsystem, const TArray<FEasySessionSearchResult>& Results)
 	{
-		return Policy.FailedSessionKeys;
+		const TSharedPtr<FEasySessionMatchmakingRequest> Matchmaking = GetMatchmakingRequest(Subsystem);
+		if (!Matchmaking.IsValid())
+		{
+			return;
+		}
+
+		if (Matchmaking->PassDelayTickerHandle.IsValid())
+		{
+			FTSTicker::GetCoreTicker().RemoveTicker(Matchmaking->PassDelayTickerHandle);
+			Matchmaking->PassDelayTickerHandle.Reset();
+		}
+		Matchmaking->HandleSearchComplete(EEasySessionResult::Success, FString(), Results);
+	}
+
+	/** The host params the matchmaking fallback would create its session with. Default params while no matchmaking runs. */
+	static FEasySessionHostParams MakeMatchmakingFallbackHostParams(const UEasySessionSubsystem& Subsystem)
+	{
+		const TSharedPtr<FEasySessionMatchmakingRequest> Matchmaking = GetMatchmakingRequest(Subsystem);
+		return Matchmaking.IsValid() ? Matchmaking->MakeFallbackHostParams() : FEasySessionHostParams();
+	}
+
+	/** The candidates the running matchmaking tries, in try order. */
+	static TArray<FEasySessionSearchResult> GetMatchmakingCandidates(const UEasySessionSubsystem& Subsystem)
+	{
+		const TSharedPtr<FEasySessionMatchmakingRequest> Matchmaking = GetMatchmakingRequest(Subsystem);
+		return Matchmaking.IsValid() ? Matchmaking->Candidates : TArray<FEasySessionSearchResult>();
+	}
+
+	/** The sessions a run refuses to retry. A test holds the run, so it can read the list after the run completed. */
+	static TSet<FString> GetFailedSessionKeys(const FEasySessionMatchmakingRequest& Run)
+	{
+		return Run.FailedSessionKeys;
+	}
+
+	/** How many candidates of the run's last search pass were joined and failed. */
+	static int32 GetFailedJoinCount(const FEasySessionMatchmakingRequest& Run)
+	{
+		return Run.NextCandidateIndex;
 	}
 };
 

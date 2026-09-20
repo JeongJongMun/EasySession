@@ -2,10 +2,12 @@
 
 #include "Nodes/EasyUpdateSessionNode.h"
 
+#include "EasySessionMessages.h"
+
 UEasyUpdateSessionNode* UEasyUpdateSessionNode::UpdateEasySession(UObject* WorldContextObject, const FEasySessionSettings& NewSettings)
 {
 	UEasyUpdateSessionNode* Node = NewObject<UEasyUpdateSessionNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->NewSettings = NewSettings;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
@@ -13,14 +15,14 @@ UEasyUpdateSessionNode* UEasyUpdateSessionNode::UpdateEasySession(UObject* World
 
 void UEasyUpdateSessionNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."));
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage);
 		return;
 	}
 
-	Subsystem->UpdateEasySession(NewSettings, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyUpdateSessionNode::HandleComplete));
+	Subsystem->UpdateSession(NewSettings, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyUpdateSessionNode::HandleComplete));
 }
 
 void UEasyUpdateSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

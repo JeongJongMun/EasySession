@@ -13,7 +13,7 @@
 
 namespace EasySessionBusyWindowTest
 {
-	/** Maximum time to wait for each queued operation before failing the test. */
+	/** Maximum time to wait for each queued request before failing the test. */
 	static constexpr double TimeoutSeconds = 20.0;
 
 	struct FTestState
@@ -55,15 +55,14 @@ bool FEasySessionCheckBusyWindow::Update()
 	{
 		CurrentTest->TestEqual(TEXT("Create succeeded"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-		// This world has no player controller, so the travel was aborted before the
-		// completion callback ran. No map load follows, and the callback has to see
-		// that: Is Busy false, with the failure already reported.
+		// This world has no player controller, so the travel was aborted before the completion callback ran.
+		// No map load follows, and the callback has to see that: Is Busy false, with the failure already reported.
 		CurrentTest->TestFalse(TEXT("Is Busy is false in the callback when the travel was aborted"), State->bBusyInsideCallback);
 		CurrentTest->TestTrue(TEXT("The travel failure was reported before the callback"), State->bFailureBeforeCallback);
 		CurrentTest->TestFalse(TEXT("Is Busy is not stuck afterwards"), Subsystem->IsBusy());
 
 		TSharedPtr<FTestState> CleanupState = State;
-		Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+		Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 			[CleanupState](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
 			{
 			}));
@@ -91,13 +90,11 @@ bool FEasySessionCheckBusyWindow::Update()
 /**
  * The completion callback sees the true state of the travel that follows.
  *
- * The travel is requested before the request completes, so a graph reading Is Busy on the
- * success pin sees true while a map load is coming. This world has no player controller,
- * which is the other side of that contract: the travel aborts first, the failure is
- * reported first, and the callback correctly reads Is Busy false with nothing coming.
+ * The travel is requested before the request completes, so a graph reading Is Busy on the success pin sees true while a map load is coming.
+ * This world has no player controller, which is the other side of that contract.
+ * The travel aborts first, the failure is reported first, and the callback correctly reads Is Busy false with nothing coming.
  *
- * The success path, Is Busy true through the callback while a travel is pending, needs a
- * player controller, so it stays on the on-device checklist.
+ * The success path, Is Busy true through the callback while a travel is pending, needs a player controller, so it stays on the on-device checklist.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBusyWindowTest, "EasySession.Subsystem.BusyThroughTheCompletionCallback", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionBusyWindowTest::RunTest(const FString& Parameters)
@@ -126,7 +123,7 @@ bool FEasySessionBusyWindowTest::RunTest(const FString& Parameters)
 	HostParams.InitialMapName = TEXT("ES_BusyWindowTestMap");
 
 	State->StartTime = FPlatformTime::Seconds();
-	Subsystem->CreateEasySession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->CreateSession(HostParams, FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem, Listener](EEasySessionResult Result, const FString& /*ErrorMessage*/)
 		{
 			State->bBusyInsideCallback = Subsystem->IsBusy();

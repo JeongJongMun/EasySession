@@ -13,7 +13,7 @@ namespace EasySessionSmokeTest
 	/** Session name used by the smoke test. Must not collide with real game sessions. */
 	static const FName TestSessionName = TEXT("EasySessionSmokeTestSession");
 
-	/** Maximum time to wait for an async session operation before failing the test. */
+	/** Maximum time to wait for an async session request before failing the test. */
 	static constexpr double TimeoutSeconds = 10.0;
 
 	/** State shared between the test body and its latent commands. */

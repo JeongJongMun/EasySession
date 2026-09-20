@@ -4,18 +4,14 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
 
-namespace EasySessionQueueTimeoutTest
+namespace EasySessionQueueDrainTest
 {
-	/** Request timeout used for the test, short enough to keep the test quick. */
-	static constexpr float TestTimeoutSeconds = 1.0f;
-
 	/** Hard limit on how long the test waits before failing. */
 	static constexpr double MaxWaitSeconds = 15.0;
 
@@ -24,23 +20,18 @@ namespace EasySessionQueueTimeoutTest
 		TStrongObjectPtr<UGameInstance> GameInstance;
 		TOptional<EEasySessionResult> StartResult;
 		TOptional<EEasySessionResult> DestroyResult;
-		float OriginalTimeout = 30.0f;
 		double WaitStartTime = 0.0;
 	};
 }
 
 /**
- * A failing request must not block the queue. The next request still runs.
- *
- * This covers the queue moving on only. The watchdog's own timeout rules are
- * verified separately in EasySessionRequestTimeoutTest, because the NULL
- * subsystem completes every operation synchronously and therefore cannot
- * simulate an online subsystem that never calls back.
+ * A failing request must not block the queue.
+ * The next request still runs.
  */
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForQueueDrain, TSharedPtr<EasySessionQueueTimeoutTest::FTestState>, State);
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForQueueDrain, TSharedPtr<EasySessionQueueDrainTest::FTestState>, State);
 bool FEasySessionWaitForQueueDrain::Update()
 {
-	using namespace EasySessionQueueTimeoutTest;
+	using namespace EasySessionQueueDrainTest;
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 
@@ -54,8 +45,7 @@ bool FEasySessionWaitForQueueDrain::Update()
 
 	if (CurrentTest != nullptr)
 	{
-		// Moving on is not enough on its own. The failed request must still have completed
-		// to its caller, or a node would hang exactly when the watchdog was meant to save it.
+		// Moving on is not enough on its own. The failed request must still have completed to its caller, or its node would hang.
 		CurrentTest->TestTrue(TEXT("The failed request answered its caller"), State->StartResult.IsSet());
 		if (State->StartResult.IsSet())
 		{
@@ -70,12 +60,6 @@ bool FEasySessionWaitForQueueDrain::Update()
 		}
 	}
 
-	// Restore the project setting the test overrode.
-	if (UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>())
-	{
-		Settings->RequestTimeoutSeconds = State->OriginalTimeout;
-	}
-
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }
@@ -83,7 +67,7 @@ bool FEasySessionWaitForQueueDrain::Update()
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionQueueDrainTest, "EasySession.Subsystem.QueueDrainsAfterFailedRequest", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionQueueDrainTest::RunTest(const FString& Parameters)
 {
-	using namespace EasySessionQueueTimeoutTest;
+	using namespace EasySessionQueueDrainTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
@@ -97,20 +81,15 @@ bool FEasySessionQueueDrainTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// Shorten the watchdog so a stalled request fails quickly.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->OriginalTimeout = Settings->RequestTimeoutSeconds;
-	Settings->RequestTimeoutSeconds = TestTimeoutSeconds;
-
-	// Queue a request that fails immediately (no session to start) followed by a
-	// destroy: whatever happens to the first one, the queue must reach the second.
-	Subsystem->StartEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	// Queue a request that fails inside the call (no session to start) followed by a destroy.
+	// Whatever happens to the first one, the queue must reach the second.
+	Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& /*ErrorMessage*/)
 		{
 			State->StartResult = Result;
 		}));
 
-	Subsystem->DestroyEasySession(FEasySessionCompleteDelegate::CreateLambda(
+	Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& /*ErrorMessage*/)
 		{
 			State->DestroyResult = Result;

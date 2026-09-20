@@ -2,10 +2,13 @@
 
 #include "EasySessionStatics.h"
 
+#include "EasyMatchmakingPolicy.h"
 #include "EasySessionSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "OnlineSubsystem.h"
+#include "OnlineSubsystemUtils.h"
 
 UEasySessionSubsystem* UEasySessionStatics::GetEasySessionSubsystem(const UObject* WorldContextObject)
 {
@@ -41,7 +44,7 @@ EEasySessionState UEasySessionStatics::GetEasySessionState(const UObject* WorldC
 FString UEasySessionStatics::GetEasySessionPassword(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionPassword() : FString();
+	return Subsystem != nullptr ? Subsystem->GetSessionSettings().Password : FString();
 }
 
 bool UEasySessionStatics::IsEasyMatchmakingRunning(const UObject* WorldContextObject)
@@ -50,32 +53,16 @@ bool UEasySessionStatics::IsEasyMatchmakingRunning(const UObject* WorldContextOb
 	return Subsystem != nullptr && Subsystem->IsMatchmakingRunning();
 }
 
-bool UEasySessionStatics::IsEasyFriendSearchRunning(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsFriendSearchRunning();
-}
-
 EEasyMatchmakingState UEasySessionStatics::GetEasyMatchmakingState(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->GetMatchmakingState() : EEasyMatchmakingState::Idle;
 }
 
-FString UEasySessionStatics::GetEasySessionStateLabel(const UObject* WorldContextObject)
+UEasyMatchmakingPolicy* UEasySessionStatics::GetActiveEasyMatchmakingPolicy(const UObject* WorldContextObject)
 {
-	switch (GetEasySessionState(WorldContextObject))
-	{
-	case EEasySessionState::NoSession:  return TEXT("No Session");
-	case EEasySessionState::Creating:   return TEXT("Creating");
-	case EEasySessionState::Pending:    return TEXT("Waiting (Pending)");
-	case EEasySessionState::Starting:   return TEXT("Starting");
-	case EEasySessionState::InProgress: return TEXT("In Match (InProgress)");
-	case EEasySessionState::Ending:     return TEXT("Ending");
-	case EEasySessionState::Ended:      return TEXT("Waiting (Ended)");
-	case EEasySessionState::Destroying: return TEXT("Destroying");
-	}
-	return TEXT("Unknown");
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetActiveMatchmakingPolicy() : nullptr;
 }
 
 bool UEasySessionStatics::IsEasySessionBusy(const UObject* WorldContextObject)
@@ -88,18 +75,6 @@ EEasySessionActivity UEasySessionStatics::GetEasySessionActivity(const UObject* 
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->GetActivity() : EEasySessionActivity::None;
-}
-
-TArray<FEasySessionSearchResult> UEasySessionStatics::GetLastEasySearchResults(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetLastSearchResults() : TArray<FEasySessionSearchResult>();
-}
-
-TArray<FString> UEasySessionStatics::GetEasySessionPlayerNames(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionPlayerNames() : TArray<FString>();
 }
 
 FString UEasySessionStatics::GetEasySessionDisplayName(const UObject* WorldContextObject)
@@ -132,16 +107,16 @@ bool UEasySessionStatics::HasPendingEasyDisconnectInfo(const UObject* WorldConte
 	return Subsystem != nullptr && Subsystem->HasPendingDisconnectInfo();
 }
 
-FEasyDisconnectInfo UEasySessionStatics::ConsumeLastEasyDisconnectInfo(const UObject* WorldContextObject)
+FEasyDisconnectInfo UEasySessionStatics::ConsumePendingEasyDisconnectInfo(const UObject* WorldContextObject)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->ConsumeLastDisconnectInfo() : FEasyDisconnectInfo();
+	return Subsystem != nullptr ? Subsystem->ConsumePendingDisconnectInfo() : FEasyDisconnectInfo();
 }
 
 bool UEasySessionStatics::IsOnlineSubsystemAvailable(const UObject* WorldContextObject)
 {
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsOnlineSubsystemAvailable();
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+	return Online::GetSessionInterface(World).IsValid();
 }
 
 FString UEasySessionStatics::GetEasySessionQueueStatus(const UObject* WorldContextObject)
@@ -180,21 +155,22 @@ void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObjec
 
 FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObject)
 {
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetOnlineSubsystemName() : NAME_None;
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::LogAndReturnNull) : nullptr;
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(World);
+	return OnlineSub ? OnlineSub->GetSubsystemName() : NAME_None;
 }
 
 bool UEasySessionStatics::ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->ServerTravelToMap(MapName);
+	return Subsystem != nullptr && Subsystem->ServerTravel(MapName);
 }
 
 void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason)
 {
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
 	{
-		Subsystem->DestroyEasySessionForEveryone(MoveTemp(Reason));
+		Subsystem->DestroySessionForEveryone(MoveTemp(Reason));
 	}
 }
 

@@ -4,12 +4,13 @@
 
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
+#include "EasySessionMessages.h"
 #include "EasySessionAddress.h"
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
-#include "EasyFriendSessionOperation.h"
-#include "EasyMatchmakingOperation.h"
-#include "EasySessionOperation.h"
+#include "EasySessionFriendSessionsRequest.h"
+#include "EasySessionReadFriendsRequest.h"
+#include "EasySessionMatchmakingRequest.h"
 #include "EasySessionCreateRequest.h"
 #include "EasySessionDestroyRequest.h"
 #include "EasySessionFindRequest.h"
@@ -58,7 +59,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	RequestQueue = MakeUnique<FEasySessionRequestQueue>();
 	Travel = MakeUnique<FEasySessionTravel>(*this);
-	Social = MakeUnique<FEasySessionSocial>(*this, *Travel);
+	Social = MakeUnique<FEasySessionSocial>(*this);
 	BeaconPort = MakeUnique<FEasySessionBeaconPort>();
 	Host = MakeUnique<FEasySessionHost>(*this, *BeaconPort);
 	RequestContext = MakeUnique<FEasySessionRequestContext>(FEasySessionRequestContext{ *this, *RequestQueue, *Travel, *Host });
@@ -80,8 +81,7 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		Social->BindInviteDelegates();
 #if !UE_BUILD_SHIPPING
 		// The fixes it prints are for the developer, not the player.
-		// Packaged development builds keep it: that is where an online subsystem that works in
-		// the editor and not in a build gets diagnosed.
+		// Packaged development builds keep it, because that is where an online subsystem that works in the editor and not in a build gets diagnosed.
 		EasySessionDiagnostics::LogReport(EasySessionDiagnostics::RunDiagnostics(GetWorld()));
 #endif
 		InviteBindTickerHandle.Reset();
@@ -122,9 +122,6 @@ void UEasySessionSubsystem::Deinitialize()
 		BusyTickerHandle.Reset();
 	}
 
-	// Operations end themselves when canceled, and they may still hold a step's delegate, so cancel before the queue is destroyed.
-	RequestQueue->CancelOperations();
-
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
 	RequestContext.Reset();
@@ -137,57 +134,46 @@ void UEasySessionSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-void UEasySessionSubsystem::CreateEasySession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::CreateSession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(HostParams, MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::FindEasySessions(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
+void UEasySessionSubsystem::FindSessions(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete)));
 }
 
-FEasyJoinApprovalResponse UEasySessionSubsystem::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
-{
-	return Host.IsValid() ? Host->ApproveJoin(Request, Requester) : FEasyJoinApprovalResponse::NotAnswering();
-}
-
-bool UEasySessionSubsystem::CancelSearch(const UObject* Requester)
-{
-	const TSharedPtr<FEasySessionFindRequest> FindRequest = FEasySessionFindRequest::Cast(GetActiveRequest());
-	return FindRequest.IsValid() && FindRequest->Cancel(Requester);
-}
-
-void UEasySessionSubsystem::JoinEasySession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::JoinSession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionJoinRequest>(SearchResult, Password, AdditionalTravelOptions, MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::StartEasySession(FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::StartSession(FEasySessionCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionMatchStateRequest>(FEasySessionRequest::EType::Start, MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::EndEasySession(FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::EndSession(FEasySessionCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionMatchStateRequest>(FEasySessionRequest::EType::End, MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::DestroyEasySession(FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::DestroySession(FEasySessionCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionDestroyRequest>(MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::LeaveSession(FEasySessionCompleteDelegate OnComplete)
 {
 	// A leaving host takes the session with it. Destroying it for everyone tells each client why before the connection closes.
 	if (IsSessionAuthority())
 	{
-		DestroyEasySessionForEveryone(NSLOCTEXT("EasySession", "HostLeftSession", "The host has left the game."), MoveTemp(OnComplete));
+		DestroySessionForEveryone(EasySession::GetHostLeftSessionReason(), MoveTemp(OnComplete));
 		return;
 	}
-	
-	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+
+	DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			// Requested before the completion below, the same order every travel in this plugin uses.
@@ -196,9 +182,56 @@ void UEasySessionSubsystem::LeaveEasySession(FEasySessionCompleteDelegate OnComp
 		}));
 }
 
-void UEasySessionSubsystem::UpdateEasySession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || !IsSessionAuthority())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresSessionAuthorityMessage);
+		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority, EasySession::RequiresSessionAuthorityMessage);
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
+
+	// Tell every remote client to leave with the reason before the session is destroyed.
+	Host->TellEveryoneToReturnToMenu(Reason);
+
+	DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			Travel->ReturnToMenu();
+			OnComplete.ExecuteIfBound(Result, ErrorMessage);
+		}));
+}
+
+void UEasySessionSubsystem::UpdateSession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete)
 {
 	EnqueueRequest(MakeShared<FEasySessionUpdateRequest>(NewSettings, MoveTemp(OnComplete)));
+}
+
+bool UEasySessionSubsystem::ServerTravel(const FString& MapName)
+{
+	if (MapName.IsEmpty())
+	{
+		return false;
+	}
+
+	// UWorld::ServerTravel does not refuse a client.
+	// With no game mode it still sets NextURL and returns true, so this entry check is the only guard.
+	if (!IsSessionAuthority())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresSessionAuthorityMessage);
+		return false;
+	}
+
+	if (!Travel->ServerTravelToMap(MapName))
+	{
+		return false;
+	}
+
+	Host->OnServerTravelStarted();
+	return true;
 }
 
 void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
@@ -217,66 +250,36 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	}
 
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
-	const TSharedRef<FEasyMatchmakingOperation> Operation = MakeShared<FEasyMatchmakingOperation>(*Policy);
-	RequestQueue->BeginOperation(Operation);
-	Policy->OnStateChanged.AddDynamic(this, &UEasySessionSubsystem::RelayMatchmakingStateChanged);
-	Policy->OnUpdated.AddDynamic(this, &UEasySessionSubsystem::RelayMatchmakingUpdated);
+	EnqueueRequest(MakeShared<FEasySessionMatchmakingRequest>(MatchmakingParams, *Policy, MoveTemp(OnComplete)));
+
+	// Broadcast after the request is queued, so Get Active Easy Matchmaking Policy already returns the run's policy here.
+	// The run broadcasts every later event itself.
 	OnMatchmakingStarted.Broadcast();
-
-	Policy->Start(*this, MatchmakingParams, FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this, WeakOperation = TWeakPtr<FEasyMatchmakingOperation>(Operation), UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage)
-		{
-			// Ended before the events fire, so a listener calling Is Matchmaking Running gets the value that matches the event.
-			const TSharedPtr<FEasyMatchmakingOperation> Ended = WeakOperation.Pin();
-			if (Ended.IsValid() && RequestQueue.IsValid())
-			{
-				RequestQueue->EndOperation(*Ended);
-			}
-
-			// Observers first: the requester's delegate often destroys the very UI that is listening.
-			OnMatchmakingComplete.Broadcast(Result, ErrorMessage);
-			UserDelegate.ExecuteIfBound(Result, ErrorMessage);
-		}));
-}
-
-void UEasySessionSubsystem::RelayMatchmakingStateChanged(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState)
-{
-	OnMatchmakingStateChanged.Broadcast(OldState, NewState);
-}
-
-void UEasySessionSubsystem::RelayMatchmakingUpdated(EEasyMatchmakingState MatchmakingState, int32 ElapsedSeconds)
-{
-	OnMatchmakingUpdated.Broadcast(MatchmakingState, ElapsedSeconds);
 }
 
 void UEasySessionSubsystem::CancelMatchmaking()
 {
-	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindOperation(EEasySessionOperationType::Matchmaking))
+	if (const TSharedPtr<FEasySessionRequest> Matchmaking = RequestQueue->Find(FEasySessionRequest::EType::Matchmaking))
 	{
-		Operation->Cancel();
+		Matchmaking->Cancel();
 	}
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const
 {
-	return RequestQueue.IsValid() && RequestQueue->FindOperation(EEasySessionOperationType::Matchmaking).IsValid();
+	return RequestQueue->Find(FEasySessionRequest::EType::Matchmaking).IsValid();
 }
 
 EEasyMatchmakingState UEasySessionSubsystem::GetMatchmakingState() const
 {
-	const UEasyMatchmakingPolicy* Policy = GetActiveMatchmakingPolicy();
-	return Policy != nullptr ? Policy->GetState() : EEasyMatchmakingState::Idle;
+	const TSharedPtr<FEasySessionMatchmakingRequest> Matchmaking = FEasySessionMatchmakingRequest::Cast(RequestQueue->Find(FEasySessionRequest::EType::Matchmaking));
+	return Matchmaking.IsValid() ? Matchmaking->GetState() : EEasyMatchmakingState::Idle;
 }
 
 UEasyMatchmakingPolicy* UEasySessionSubsystem::GetActiveMatchmakingPolicy() const
 {
-	if (!RequestQueue.IsValid())
-	{
-		return nullptr;
-	}
-
-	const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindOperation(EEasySessionOperationType::Matchmaking);
-	return Operation.IsValid() ? StaticCastSharedPtr<FEasyMatchmakingOperation>(Operation)->GetPolicy() : nullptr;
+	const TSharedPtr<FEasySessionMatchmakingRequest> Matchmaking = FEasySessionMatchmakingRequest::Cast(RequestQueue->Find(FEasySessionRequest::EType::Matchmaking));
+	return Matchmaking.IsValid() ? Matchmaking->GetPolicy() : nullptr;
 }
 
 bool UEasySessionSubsystem::IsInSession() const
@@ -289,13 +292,13 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 {
 	const EEasySessionState LocalState = GetLocalSessionState();
 
-	// Clients report the host's replicated state: the session lifecycle is decided on the
-	// host, and every player should agree on it regardless of when they joined.
+	// Clients report the host's replicated state, because the host decides the session lifecycle.
+	// Every player then agrees on it, whenever they joined.
 	const UWorld* World = GetWorld();
-	if (LocalState != EEasySessionState::NoSession && bHasReplicatedHostSessionState &&
+	if (LocalState != EEasySessionState::NoSession && ReplicatedSessionState.IsSet() &&
 		World != nullptr && World->GetNetMode() == NM_Client)
 	{
-		return ReplicatedHostSessionState;
+		return ReplicatedSessionState.GetValue();
 	}
 
 	return LocalState;
@@ -312,49 +315,12 @@ FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
 		return Params;
 	}
 
-	const FOnlineSessionSettings& Settings = NamedSession->SessionSettings;
-	Params.MaxPlayers = Settings.NumPublicConnections;
-	Params.bShouldAdvertise = Settings.bShouldAdvertise;
-	Params.bAllowJoinInProgress = Settings.bAllowJoinInProgress;
-	Params.bAllowInvites = Settings.bAllowInvites;
+	Params.ReadFrom(NamedSession->SessionSettings);
 
-	for (const TPair<FName, FOnlineSessionSetting>& Setting : Settings.Settings)
-	{
-		if (Setting.Key == EasySession::SettingKey_DisplayName)
-		{
-			Params.SessionDisplayName = Setting.Value.Data.ToString();
-		}
-		else if (Setting.Key == EasySession::SettingKey_Hidden)
-		{
-			int32 Hidden = 0;
-			Setting.Value.Data.GetValue(Hidden);
-			Params.bHidden = Hidden != 0;
-		}
-		else if (Setting.Key == EasySession::SettingKey_Region)
-		{
-			int32 RegionValue = 0;
-			Setting.Value.Data.GetValue(RegionValue);
-			Params.Region = static_cast<EEasySessionRegion>(RegionValue);
-		}
-		else if (Setting.Key == EasySession::SettingKey_JoinCode)
-		{
-			FString JoinCode;
-			Setting.Value.Data.GetValue(JoinCode);
-			Params.bUseJoinCode = !JoinCode.IsEmpty();
-		}
-		else if (!EasySession::IsReservedSettingKey(Setting.Key))
-		{
-			Params.CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
-		}
-	}
-
-	// Plain text on purpose: this game already holds the password to check players
-	// against, and blanking it here would leave no way to remove one through Update.
-	if (Host.IsValid())
-	{
-		Params.Password = Host->GetGate().GetSessionPassword();
-		Params.bFriendsBypassPassword = Host->GetGate().GetFriendsBypassPassword();
-	}
+	// Plain text on purpose, because this game already holds the password to check players against.
+	// Blanking it here would leave no way to remove one through Update.
+	Params.Password = Host->GetGate().GetSessionPassword();
+	Params.bFriendsBypassPassword = Host->GetGate().GetFriendsBypassPassword();
 
 	return Params;
 }
@@ -373,32 +339,11 @@ FString UEasySessionSubsystem::GetSessionJoinCode() const
 	return JoinCode;
 }
 
-EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
+bool UEasySessionSubsystem::IsHost() const
 {
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return EEasySessionState::NoSession;
-	}
-
-	switch (NamedSession->SessionState)
-	{
-		case EOnlineSessionState::Creating:		return EEasySessionState::Creating;
-		case EOnlineSessionState::Pending:		return EEasySessionState::Pending;
-		case EOnlineSessionState::Starting:		return EEasySessionState::Starting;
-		case EOnlineSessionState::InProgress:	return EEasySessionState::InProgress;
-		case EOnlineSessionState::Ending:		return EEasySessionState::Ending;
-		case EOnlineSessionState::Ended:		return EEasySessionState::Ended;
-		case EOnlineSessionState::Destroying:	return EEasySessionState::Destroying;
-		default:								return EEasySessionState::NoSession;
-	}
-}
-
-bool UEasySessionSubsystem::IsNetworkServer() const
-{
+	// A dedicated server has the authority but no local player, so it can never be the hosting player.
 	const UWorld* World = GetWorld();
-	return World != nullptr && World->GetNetMode() != NM_Client;
+	return IsSessionAuthority() && World != nullptr && World->GetNetMode() != NM_DedicatedServer;
 }
 
 bool UEasySessionSubsystem::IsSessionAuthority() const
@@ -408,40 +353,6 @@ bool UEasySessionSubsystem::IsSessionAuthority() const
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	return NamedSession != nullptr && NamedSession->bHosting;
-}
-
-bool UEasySessionSubsystem::IsHost() const
-{
-	// A dedicated server has the authority but no local player, so it can never be the hosting player.
-	const UWorld* World = GetWorld();
-	return IsSessionAuthority() && World != nullptr && World->GetNetMode() != NM_DedicatedServer;
-}
-
-TArray<FString> UEasySessionSubsystem::GetSessionPlayerNames() const
-{
-	TArray<FString> PlayerNames;
-
-	const UWorld* World = GetWorld();
-	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
-	if (GameState == nullptr)
-	{
-		return PlayerNames;
-	}
-
-	for (const APlayerState* PlayerState : GameState->PlayerArray)
-	{
-		if (PlayerState != nullptr)
-		{
-			PlayerNames.Add(PlayerState->GetPlayerName());
-		}
-	}
-
-	return PlayerNames;
-}
-
-FString UEasySessionSubsystem::GetSessionPassword() const
-{
-	return Host.IsValid() ? Host->GetGate().GetSessionPassword() : FString();
 }
 
 FString UEasySessionSubsystem::GetSessionDisplayName() const
@@ -472,8 +383,8 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 	const APlayerController* LocalController = GetGameInstance()->GetFirstLocalPlayerController();
 	const APlayerState* LocalPlayerState = LocalController ? LocalController->PlayerState : nullptr;
 
-	// The session owner's id identifies the host player. Ids are compared instead of
-	// names because the engine truncates player names on login (InitNewPlayer).
+	// The session owner's id identifies the host player.
+	// Ids are compared instead of names, because the engine truncates player names on login (InitNewPlayer).
 	// Unset on dedicated servers, where no player row gets the host marker.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
@@ -514,48 +425,15 @@ int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
 
 bool UEasySessionSubsystem::IsBusy() const
 {
-	// The queue counts its busy operations, Matchmaking among them, so an empty queue between steps still reads busy.
-	// Travel counts because the level load is the end of the operation.
+	// Travel counts because the level load is the end of the request.
 	return RequestQueue->IsBusy() || Travel->IsTraveling();
-}
-
-namespace
-{
-	/** The activity a busy operation shows as. Only operations that count as busy reach here. */
-	EEasySessionActivity OperationActivity(EEasySessionOperationType Type)
-	{
-		switch (Type)
-		{
-			case EEasySessionOperationType::Matchmaking: return EEasySessionActivity::Matchmaking;
-			case EEasySessionOperationType::FriendSearch:
-			default:
-				return EEasySessionActivity::None;
-		}
-	}
 }
 
 EEasySessionActivity UEasySessionSubsystem::GetActivity() const
 {
-	// A busy operation wins over its own steps. Each matchmaking step is a queued request,
-	// and naming the steps would flicker between Searching and Joining during one run.
-	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindBusyOperation())
+	if (const TSharedPtr<FEasySessionRequest> BusyRequest = RequestQueue->GetBusyRequest())
 	{
-		return OperationActivity(Operation->GetType());
-	}
-
-	const TOptional<FEasySessionRequest::EType> Type = RequestQueue->GetCurrentType();
-	if (Type.IsSet())
-	{
-		switch (Type.GetValue())
-		{
-			case FEasySessionRequest::EType::Create: return EEasySessionActivity::Creating;
-			case FEasySessionRequest::EType::Find: return EEasySessionActivity::Searching;
-			case FEasySessionRequest::EType::Join: return EEasySessionActivity::Joining;
-			case FEasySessionRequest::EType::Destroy: return EEasySessionActivity::Leaving;
-			case FEasySessionRequest::EType::Update: return EEasySessionActivity::Updating;
-			case FEasySessionRequest::EType::Start: return EEasySessionActivity::Starting;
-			case FEasySessionRequest::EType::End: return EEasySessionActivity::Ending;
-		}
+		return BusyRequest->GetActivity();
 	}
 
 	return Travel->IsTraveling() ? EEasySessionActivity::Traveling : EEasySessionActivity::None;
@@ -563,194 +441,91 @@ EEasySessionActivity UEasySessionSubsystem::GetActivity() const
 
 FString UEasySessionSubsystem::GetQueueStatus() const
 {
-	return RequestQueue->DescribeStatus(Travel->IsTraveling());
+	return RequestQueue->GetStatusText(Travel->IsTraveling());
 }
 
-void UEasySessionSubsystem::RefreshBusyState()
+EEasySessionResult UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
 {
-	const bool bBusy = IsBusy();
-	if (bBusy == bLastReportedBusy)
+	return Social->SendInviteToFriend(Friend);
+}
+
+EEasySessionResult UEasySessionSubsystem::ShowInviteUI()
+{
+	return Social->ShowInviteUI();
+}
+
+EEasySessionResult UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
+{
+	return Social->ShowProfileUI(Friend.NativeId.GetUniqueNetId());
+}
+
+EEasySessionResult UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
+{
+	return Social->ShowProfileUI(Player.PlayerId.GetUniqueNetId());
+}
+
+void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
+{
+	// NULL has no friends list, and the failure is reported inside this call.
+	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
+		return;
+	}
+
+	EnqueueRequest(MakeShared<FEasySessionReadFriendsRequest>(MoveTemp(OnComplete)));
+}
+
+void UEasySessionSubsystem::FindFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete)
+{
+	if (RequestQueue->Find(FEasySessionRequest::EType::FriendSessions).IsValid())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, TEXT("A friend session search is already running."), {});
+		return;
+	}
+
+	// NULL has no friends list, and the failure is reported inside this call.
+	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
+		return;
+	}
+
+	EnqueueRequest(MakeShared<FEasySessionFriendSessionsRequest>(MoveTemp(OnComplete)));
+}
+
+void UEasySessionSubsystem::CancelFriendSearch()
+{
+	if (const TSharedPtr<FEasySessionRequest> FriendSessions = RequestQueue->Find(FEasySessionRequest::EType::FriendSessions))
+	{
+		FriendSessions->Cancel();
+	}
+}
+
+FEasyDisconnectInfo UEasySessionSubsystem::ConsumePendingDisconnectInfo()
+{
+	const FEasyDisconnectInfo Info = PendingDisconnectInfo.Get(FEasyDisconnectInfo());
+	PendingDisconnectInfo.Reset();
+	return Info;
+}
+
+void UEasySessionSubsystem::HandleDisconnect(EEasyDisconnectReason Reason, const FText& ReasonText)
+{
+	// The state actor calls in, and it may outlive Deinitialize while its world is destroyed.
+	if (!RequestQueue.IsValid())
 	{
 		return;
 	}
 
-	bLastReportedBusy = bBusy;
-	OnBusyChanged.Broadcast(bBusy);
-}
-
-FName UEasySessionSubsystem::GetOnlineSubsystemName() const
-{
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
-	return OnlineSub ? OnlineSub->GetSubsystemName() : NAME_None;
-}
-
-bool UEasySessionSubsystem::IsOnlineSubsystemAvailable() const
-{
-	return GetSessionInterface().IsValid();
-}
-
-bool UEasySessionSubsystem::ServerTravelToMap(const FString& MapName)
-{
-	if (MapName.IsEmpty())
+	// First reason wins, because destroying the session can fail on its own (the connection dropping while we leave).
+	// Those later failures would replace the real cause with a symptom.
+	// Only the reason is protected.
+	// Reading it is optional, so a reason the game never read must never stop a later disconnect from being cleaned up.
+	if (!PendingDisconnectInfo.IsSet())
 	{
-		return false;
-	}
-
-	// UWorld::ServerTravel does not refuse a client.
-	// With no game mode it still sets NextURL and returns true, so this entry check is the only guard.
-	if (!IsSessionAuthority())
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("ServerTravelToMap can only be called by the game hosting the session. %s"), EasySession::RequiresSessionAuthorityFix);
-		return false;
-	}
-
-	if (!Travel->ServerTravelToMap(MapName))
-	{
-		return false;
-	}
-
-	// The next world starts its own beacon listener, which can only bind the beacon port after this one released it.
-	Host->DestroyWorldActors();
-	BeaconPort->ReleaseListener();
-	return true;
-}
-
-void UEasySessionSubsystem::CancelPendingTravel()
-{
-	Travel->CancelPendingTravel();
-}
-
-bool UEasySessionSubsystem::IsSessionBeingDestroyed() const
-{
-	return RequestQueue.IsValid() && RequestQueue->Contains(FEasySessionRequest::EType::Destroy);
-}
-
-IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
-{
-	return Online::GetSessionInterface(GetWorld());
-}
-
-void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
-{
-	// Where a request's target session is decided. Every step of the request reads it from the request.
-	// Queries and gates are game session only and read the constant.
-	Request->Bind(*RequestContext, NAME_GameSession);
-
-	RequestQueue->Enqueue(Request);
-
-	// Reported right away, so the UI disables its buttons on the same frame as the click.
-	RefreshBusyState();
-}
-
-const TSharedPtr<FEasySessionRequest>& UEasySessionSubsystem::GetActiveRequest() const
-{
-	return RequestQueue->GetActive();
-}
-
-void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
-{
-	// Every net driver reports here, so a beacon query timing out or a replay error
-	// would otherwise destroy the session. Only the game connection counts: the
-	// world's driver, and the pending one a client uses while still traveling.
-	if (NetDriver != nullptr &&
-		NetDriver->NetDriverName != NAME_GameNetDriver &&
-		NetDriver->NetDriverName != NAME_PendingNetDriver)
-	{
-		return;
-	}
-
-	const UWorld* OwnWorld = GetWorld();
-	if (World != nullptr)
-	{
-		if (World != OwnWorld)
-		{
-			return;
-		}
-	}
-	else
-	{
-		// A pending-connection failure broadcasts with no world to match against.
-		// Being in a session is what says this instance was the one joining.
-		if (!IsInSession())
-		{
-			return;
-		}
-	}
-
-	const FString Reason = FString::Printf(TEXT("%s: %s"), ENetworkFailure::ToString(FailureType), *ErrorString);
-	UE_LOG(LogEasySession, Warning, TEXT("Network failure: %s"), *Reason);
-	OnSessionFailure.Broadcast(Reason);
-
-	if (IsSessionAuthority())
-	{
-		// On the host this fires for a client whose connection died, not the host's
-		// own. The session is still alive, so returning keeps the host from traveling
-		// to the menu over another player's disconnect.
-		return;
-	}
-
-	EEasyDisconnectReason DisconnectReason = EEasyDisconnectReason::ConnectionLost;
-	FText ReasonText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
-
-	// Only these two types carry a message written for the player. Every other type carries debug text, which belongs in the log.
-	const bool bHasMessage =
-		(FailureType == ENetworkFailure::PendingConnectionFailure ||
-			FailureType == ENetworkFailure::FailureReceived) &&
-		!ErrorString.IsEmpty();
-
-	if (bHasMessage)
-	{
-		// A lost host connection has a message too, so only the gate's RefusalMark in front means a refusal.
-		FString Message = ErrorString;
-		if (Message.RemoveFromStart(FEasySessionServerGate::RefusalMark, ESearchCase::CaseSensitive))
-		{
-			DisconnectReason = EEasyDisconnectReason::Rejected;
-		}
-
-		ReasonText = FText::FromString(Message);
-	}
-
-	NotifyDisconnectedFromSession(DisconnectReason, ReasonText);
-}
-
-void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
-{
-	const UWorld* OwnWorld = GetWorld();
-	if (World != OwnWorld)
-	{
-		return;
-	}
-
-	// The travel is over even though no map was loaded. The recovery below may start
-	// a new one, which marks itself.
-	Travel->NotifyTravelFailed();
-
-	const FString Reason = FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(FailureType), *ErrorString);
-	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
-	OnSessionFailure.Broadcast(Reason);
-
-	// A failed server travel leaves the host's world, session and players untouched. Only the map change failed, which OnSessionFailure just reported.
-	if (IsSessionAuthority())
-	{
-		// ServerTravelToMap stopped the beacon for a world that never arrived.
-		Host->SpawnWorldActors();
-		return;
-	}
-
-	NotifyDisconnectedFromSession(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));
-}
-
-void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason Reason, const FText& ReasonText)
-{
-	// First reason wins: destroying the session can fail on its own (the connection
-	// dropping while we leave), and those later failures would replace the real
-	// cause with a symptom. Only the reason is protected. Reading it is optional,
-	// so a reason the game never read must never stop a later disconnect from being cleaned up.
-	if (!bHasPendingDisconnectInfo)
-	{
-		LastDisconnectInfo.Reason = Reason;
-		LastDisconnectInfo.ReasonText = ReasonText;
-		bHasPendingDisconnectInfo = true;
+		FEasyDisconnectInfo& Info = PendingDisconnectInfo.Emplace();
+		Info.Reason = Reason;
+		Info.ReasonText = ReasonText;
 	}
 
 	const bool bReturnToMenu = GetDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect;
@@ -758,13 +533,18 @@ void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason 
 	if (IsInSession())
 	{
 		// A destroy already on the queue empties the session before a second one would run, so a second only adds a NoSessionExists failure.
-		if (RequestQueue->Contains(FEasySessionRequest::EType::Destroy))
+		// That destroy may come from the game and not return to the menu, so the menu travel is requested here.
+		if (RequestQueue->Find(FEasySessionRequest::EType::Destroy).IsValid())
 		{
+			if (bReturnToMenu)
+			{
+				Travel->ReturnToMenu();
+			}
 			return;
 		}
 
 		// Clean up the dead session so the player can host or join again right away.
-		DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 			[this, bReturnToMenu](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
 			{
 				if (bReturnToMenu)
@@ -779,112 +559,26 @@ void UEasySessionSubsystem::NotifyDisconnectedFromSession(EEasyDisconnectReason 
 	}
 }
 
-FEasyDisconnectInfo UEasySessionSubsystem::ConsumeLastDisconnectInfo()
+FEasyJoinApprovalResponse UEasySessionSubsystem::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
 {
-	const FEasyDisconnectInfo Info = LastDisconnectInfo;
-	LastDisconnectInfo = FEasyDisconnectInfo();
-	bHasPendingDisconnectInfo = false;
-	return Info;
+	// World actors call in, and one may outlive Deinitialize while its world is destroyed.
+	return Host.IsValid() ? Host->ApproveJoin(Request, Requester) : FEasyJoinApprovalResponse::NotAnswering();
 }
 
-// Invites, friends and the platform overlays are handled by FEasySessionSocial.
-// These stay here so Blueprints keep calling one subsystem.
-
-EEasySessionResult UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
+void UEasySessionSubsystem::ClearReplicatedSessionState()
 {
-	return Social.IsValid() ? Social->SendInviteToFriend(Friend) : EEasySessionResult::NoOnlineSubsystem;
+	ReplicatedSessionState.Reset();
 }
 
-EEasySessionResult UEasySessionSubsystem::ShowInviteUI()
+void UEasySessionSubsystem::HandleReplicatedSessionState(EEasySessionState HostState)
 {
-	return Social.IsValid() ? Social->ShowInviteUI() : EEasySessionResult::NoOnlineSubsystem;
-}
+	// Record what the host reports, which is all a client does with it.
+	// Get Session State returns this value.
+	// The client's own session copy is left alone on purpose, because nothing reads its state on a client and destroying works from any state.
+	ReplicatedSessionState = HostState;
 
-// Two entry points for one overlay call: Blueprint cannot hold a unique id, so the
-// caller passes whichever struct it has and the id is taken out here.
-EEasySessionResult UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
-{
-	return Social.IsValid() ? Social->ShowProfileUI(Friend.NativeId.GetUniqueNetId()) : EEasySessionResult::NoOnlineSubsystem;
-}
-
-EEasySessionResult UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player)
-{
-	return Social.IsValid() ? Social->ShowProfileUI(Player.PlayerId.GetUniqueNetId()) : EEasySessionResult::NoOnlineSubsystem;
-}
-
-void UEasySessionSubsystem::FindEasyFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete)
-{
-	if (!Social.IsValid() || !RequestQueue.IsValid())
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The session subsystem is shutting down."), {});
-		return;
-	}
-
-	if (IsFriendSearchRunning())
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, TEXT("A friend session search is already running."), {});
-		return;
-	}
-
-	const TSharedRef<FEasyFriendSessionOperation> Operation = MakeShared<FEasyFriendSessionOperation>(*this);
-	RequestQueue->BeginOperation(Operation);
-
-	// Registered before Start: a friends read that fails inside Start ends the operation before Start returns.
-	Operation->Start(FEasyFriendSessionsCompleteDelegate::CreateWeakLambda(this,
-		[this, WeakOperation = TWeakPtr<FEasyFriendSessionOperation>(Operation), UserDelegate = MoveTemp(OnComplete)](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
-		{
-			const TSharedPtr<FEasyFriendSessionOperation> Ended = WeakOperation.Pin();
-			if (Ended.IsValid() && RequestQueue.IsValid())
-			{
-				RequestQueue->EndOperation(*Ended);
-			}
-			UserDelegate.ExecuteIfBound(Result, ErrorMessage, FriendSessions);
-		}));
-}
-
-void UEasySessionSubsystem::CancelFriendSearch()
-{
-	if (const TSharedPtr<IEasySessionOperation> Operation = RequestQueue->FindOperation(EEasySessionOperationType::FriendSearch))
-	{
-		Operation->Cancel();
-	}
-}
-
-bool UEasySessionSubsystem::IsFriendSearchRunning() const
-{
-	return RequestQueue.IsValid() && RequestQueue->FindOperation(EEasySessionOperationType::FriendSearch).IsValid();
-}
-
-void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
-{
-	if (!Social.IsValid())
-	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::NoOnlineSubsystem, TEXT("The session subsystem is shutting down."), {});
-		return;
-	}
-
-	Social->ReadFriends(MoveTemp(OnComplete));
-}
-
-void UEasySessionSubsystem::ClearReplicatedHostSessionState()
-{
-	ReplicatedHostSessionState = EEasySessionState::NoSession;
-	bHasReplicatedHostSessionState = false;
-}
-
-void UEasySessionSubsystem::HandleReplicatedHostSessionState(EEasySessionState HostState)
-{
-	// Record what the host reports; that is all a client does with it. Get Session
-	// State returns this value, and the client's own session copy is deliberately
-	// left alone: nothing reads its state on a client, and destroying works from
-	// any state.
-	if (bHasReplicatedHostSessionState && ReplicatedHostSessionState == HostState)
-	{
-		return;
-	}
-
-	ReplicatedHostSessionState = HostState;
-	bHasReplicatedHostSessionState = true;
+	// The host decides the session state, so a client reports the new one as soon as it arrives.
+	RefreshSessionState();
 }
 
 void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings)
@@ -936,27 +630,157 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 	}
 }
 
-
-void UEasySessionSubsystem::DestroyEasySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
+IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 {
-	UWorld* World = GetWorld();
-	if (World == nullptr || !IsSessionAuthority())
+	return Online::GetSessionInterface(GetWorld());
+}
+
+void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
+{
+	// Where a request's target session is decided.
+	// Every sub-request of the request reads it from the request.
+	// Queries and gates are game session only and read the constant.
+	Request->Initialize(*RequestContext, NAME_GameSession);
+
+	RequestQueue->Enqueue(Request);
+
+	// Reported inside this call, so the UI disables its buttons on the same frame as the click.
+	RefreshBusyState();
+}
+
+EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	if (NamedSession == nullptr)
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("DestroyEasySessionForEveryone can only be called by the server that created the session."));
-		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority,
-			FString::Printf(TEXT("Only the game that created the session can destroy it for everyone. %s"), EasySession::RequiresSessionAuthorityFix));
+		return EEasySessionState::NoSession;
+	}
+
+	switch (NamedSession->SessionState)
+	{
+		case EOnlineSessionState::Creating:		return EEasySessionState::Creating;
+		case EOnlineSessionState::Pending:		return EEasySessionState::Pending;
+		case EOnlineSessionState::Starting:		return EEasySessionState::Starting;
+		case EOnlineSessionState::InProgress:	return EEasySessionState::InProgress;
+		case EOnlineSessionState::Ending:		return EEasySessionState::Ending;
+		case EOnlineSessionState::Ended:		return EEasySessionState::Ended;
+		case EOnlineSessionState::Destroying:	return EEasySessionState::Destroying;
+		default:								return EEasySessionState::NoSession;
+	}
+}
+
+void UEasySessionSubsystem::RefreshBusyState()
+{
+	const bool bBusy = IsBusy();
+	if (bBusy == bLastReportedBusy)
+	{
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
+	bLastReportedBusy = bBusy;
+	OnBusyChanged.Broadcast(bBusy);
+}
 
-	// Tell every remote client to leave with the reason before the session is destroyed.
-	Host->TellEveryoneToReturnToMenu(Reason);
+void UEasySessionSubsystem::RefreshSessionState()
+{
+	const EEasySessionState State = GetSessionState();
+	if (State == LastReportedSessionState)
+	{
+		return;
+	}
 
-	DestroyEasySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
+	const EEasySessionState OldState = LastReportedSessionState;
+	LastReportedSessionState = State;
+	OnSessionStateChanged.Broadcast(OldState, State);
+}
+
+void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString)
+{
+	// Every net driver reports here, so a beacon query timing out or a replay error would otherwise destroy the session.
+	// Only the game connection counts: the world's driver, and the pending one a client uses while still traveling.
+	if (NetDriver != nullptr &&
+		NetDriver->NetDriverName != NAME_GameNetDriver &&
+		NetDriver->NetDriverName != NAME_PendingNetDriver)
+	{
+		return;
+	}
+
+	const UWorld* OwnWorld = GetWorld();
+	if (World != nullptr)
+	{
+		if (World != OwnWorld)
 		{
-			Travel->ReturnToMenu();
-			OnComplete.ExecuteIfBound(Result, ErrorMessage);
-		}));
+			return;
+		}
+	}
+	else
+	{
+		// A pending-connection failure broadcasts with no world to match against.
+		// Being in a session is what says this instance was the one joining.
+		if (!IsInSession())
+		{
+			return;
+		}
+	}
+
+	const FString Reason = FString::Printf(TEXT("%s: %s"), ENetworkFailure::ToString(FailureType), *ErrorString);
+	UE_LOG(LogEasySession, Warning, TEXT("Network failure: %s"), *Reason);
+	OnSessionFailure.Broadcast(Reason);
+
+	if (IsSessionAuthority())
+	{
+		// On the host this fires for a client whose connection died, not for the host's own.
+		// The session is still alive, so returning keeps the host from traveling to the menu over another player's disconnect.
+		return;
+	}
+
+	EEasyDisconnectReason DisconnectReason = EEasyDisconnectReason::ConnectionLost;
+	FText ReasonText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
+
+	// Only these two types carry a message written for the player. Every other type carries debug text, which belongs in the log.
+	const bool bHasMessage =
+		(FailureType == ENetworkFailure::PendingConnectionFailure ||
+			FailureType == ENetworkFailure::FailureReceived) &&
+		!ErrorString.IsEmpty();
+
+	if (bHasMessage)
+	{
+		// A lost host connection has a message too, so only the gate's RefusalMark in front means a refusal.
+		FString Message = ErrorString;
+		if (Message.RemoveFromStart(FEasySessionServerGate::RefusalMark, ESearchCase::CaseSensitive))
+		{
+			DisconnectReason = EEasyDisconnectReason::Rejected;
+		}
+
+		ReasonText = FText::FromString(Message);
+	}
+
+	HandleDisconnect(DisconnectReason, ReasonText);
+}
+
+void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
+{
+	const UWorld* OwnWorld = GetWorld();
+	if (World != OwnWorld)
+	{
+		return;
+	}
+
+	// The travel is over even though no map was loaded.
+	// The recovery below may start a new one, which marks itself.
+	Travel->NotifyTravelFailed();
+
+	const FString Reason = FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(FailureType), *ErrorString);
+	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
+	OnSessionFailure.Broadcast(Reason);
+
+	// A failed server travel leaves the host's world, session and players untouched. Only the map change failed, which OnSessionFailure just reported.
+	if (IsSessionAuthority())
+	{
+		Host->OnServerTravelFailed();
+		return;
+	}
+
+	HandleDisconnect(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));
 }

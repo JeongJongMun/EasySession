@@ -2,10 +2,12 @@
 
 #include "Nodes/EasyJoinSessionNode.h"
 
+#include "EasySessionMessages.h"
+
 UEasyJoinSessionNode* UEasyJoinSessionNode::JoinEasySession(UObject* WorldContextObject, const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions)
 {
 	UEasyJoinSessionNode* Node = NewObject<UEasyJoinSessionNode>();
-	Node->NodeWorldContext = WorldContextObject;
+	Node->WorldContext = WorldContextObject;
 	Node->SearchResult = SearchResult;
 	Node->Password = Password;
 	Node->AdditionalTravelOptions = AdditionalTravelOptions;
@@ -15,14 +17,14 @@ UEasyJoinSessionNode* UEasyJoinSessionNode::JoinEasySession(UObject* WorldContex
 
 void UEasyJoinSessionNode::Activate()
 {
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem();
+	UEasySessionSubsystem* Subsystem = GetSubsystem();
 	if (Subsystem == nullptr)
 	{
-		HandleComplete(EEasySessionResult::NoOnlineSubsystem, TEXT("EasySession subsystem is not available."));
+		HandleComplete(EEasySessionResult::InvalidParams, EasySession::NoEasySessionSubsystemMessage);
 		return;
 	}
 
-	Subsystem->JoinEasySession(SearchResult, Password, AdditionalTravelOptions, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyJoinSessionNode::HandleComplete));
+	Subsystem->JoinSession(SearchResult, Password, AdditionalTravelOptions, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyJoinSessionNode::HandleComplete));
 }
 
 void UEasyJoinSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

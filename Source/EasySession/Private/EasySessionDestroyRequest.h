@@ -6,8 +6,11 @@
 #include "EasySessionRequest.h"
 
 /**
- * Destroys this game's named session.
+ * FEasySessionDestroyRequest destroys this game's session.
  * On success the host side of the session and the state a client received through replication are cleared.
+ *
+ * The subsystem creates it for Destroy Easy Session, Leave Easy Session and a lost connection.
+ * Create, Join and matchmaking run it as a sub-request to destroy a session they created or joined.
  */
 class FEasySessionDestroyRequest final : public FEasySessionRequest
 {
@@ -19,7 +22,7 @@ protected:
 
 	//~ Begin FEasySessionRequest interface
 	virtual void Execute() override;
-	virtual void Cleanup(bool bAbandoned) override;
+	virtual void Cleanup() override;
 	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) override;
 	//~ End FEasySessionRequest interface
 

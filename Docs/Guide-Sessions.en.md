@@ -4,7 +4,7 @@
 
 Everything about creating, finding, joining, starting a match and leaving sessions. Every async node here shares the same shape: inputs on the left, `OnSuccess` / `OnFailure` exec pins with a `Result` enum and an `ErrorMessage` string.
 
-All operations are **queued and executed one at a time** - you can call them in any order, even in the same frame, and they will never corrupt the online service.
+All requests are **queued and executed one at a time** - you can call them in any order, even in the same frame, and they will never corrupt the online service.
 
 ## Create Session
 
@@ -45,7 +45,6 @@ The map you hand to `Update Easy Session` replaces the session's custom data: a 
 |---|---|---|
 | Max Results | 50 | How many results to take at most |
 | LAN Query | false | Forced on automatically under NULL |
-| Timeout Override Seconds | 0 | Deadline for this search alone. 0 uses `RequestTimeoutSeconds` from the project settings (30). A search still running when it passes fails with `Timeout`. A LAN search always answers within five seconds |
 | Min Open Slots | 0 | Only sessions with at least this many free slots |
 | Max Ping Ms | 0 | 0 = no limit |
 | Required Custom Settings | (empty) | Exact-match filters against advertised custom data |
@@ -57,10 +56,10 @@ and finds the session each friend playing this game is in, one entry per friend.
 entries come back ordered for a list: friends in a joinable session first, then the rest
 by presence (playing this game, online, offline) and name. A friend session joins like
 any other search result. `Cancel Easy Friend Search` stops a friend session search a menu no longer needs,
-and `Is Easy Friend Search Running` tells a Refresh button to wait. Like the friends list
+and `Is Easy Session Busy` tells a Refresh button to wait, like every other session call. Like the friends list
 itself, it is not supported on NULL/LAN.
 
-Results arrive on `OnSuccess` and are also cached - `Get Last Easy Search Results` returns them anywhere, anytime (useful for server browser UIs).
+Results arrive on `OnSuccess`.
 
 Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, region, in-progress flag, and the custom settings map.
 
@@ -93,7 +92,7 @@ it to the travel URL for the travels it performs.
 ### Reading the result
 
 The host is asked for approval before anything else happens. A wrong password fails the
-node with `WrongPassword`, a full room with `JoinSessionFull`, and a match that no longer
+node with `WrongPassword`, a full session with `JoinSessionFull`, and a match that no longer
 takes players with `JoinRefused` -
 in both cases no map has started loading, `ErrorMessage` carries the host's own sentence,
 and the player can retry immediately:
@@ -119,13 +118,21 @@ first, or the project removed the engine's
 it, and `EasySession.Diagnose` checks for it) - the join proceeds directly and the host
 refuses the connection as it arrives instead.
 
+The beacon uses the engine's own port, 15000 by default. Move it with `ListenPort` under
+`[/Script/OnlineSubsystemUtils.OnlineBeaconHost]` in `DefaultEngine.ini`, or with
+`-BeaconPort=` on the command line. Only the host binds that port; joining players connect
+from a port the operating system picks, so two instances on one machine only collide when
+both of them host. Give each host its own `-BeaconPort=` then. When the port is already
+taken, the engine binds the next free one while the session keeps advertising the
+configured one, and the host logs a warning naming both ports.
+
 That late refusal is a disconnect, which sends the player back to the menu level
 (`bAutoReturnToMenuOnDisconnect`, on by default). Read it there:
 
 ```
 Event Construct
   Has Pending Easy Disconnect Info ?
-    Consume Last Easy Disconnect Info  ->  Break Easy Disconnect Info
+    Consume Pending Easy Disconnect Info  ->  Break Easy Disconnect Info
                                              Reason      == Rejected
                                              Reason Text == "Wrong session password."
 ```
@@ -185,15 +192,19 @@ Update:
 Joined players receive the update automatically. The plugin replicates the member-visible
 settings - display name, max players, the flags, region, join code and custom settings -
 to every client, patches their local session copy so the regular getters return the new
-values, and fires `OnSessionSettingsChanged` for the UI to refresh on. Only the password
-and its friends exception stay on the host.
+values, and fires `OnSessionSettingsChanged` for the UI to refresh on. The host fires the
+same event for its own UI. Only the password and its friends exception stay on the host.
+
+`OnSessionStateChanged` covers the other half: it fires on the host and on every client
+whenever the session's state changes, so a client sees the host start or end the match
+without polling.
 
 ## Destroy Session
 
 `Destroy Easy Session` removes this game's named session - and only that. The player
 stays on their current map, which is what a host between matches wants. A client
-leaving the room wants `Leave Easy Session` instead: it destroys the named session and
-then returns to the menu map. A host pressing Leave closes the room for everyone, with
+leaving the session wants `Leave Easy Session` instead: it destroys the named session and
+then returns to the menu map. A host pressing Leave closes the session for everyone, with
 "The host has left the game." as the reason clients read. After either one you can
 immediately host or join again.
 
@@ -205,12 +216,12 @@ When the host calls it, clients see the connection drop and return to the menu w
 
 Always change maps with this node: it stops the join approval beacon before the map changes, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
-If the map fails to load (a typo, a map missing from the cook), the room and its players stay exactly where they were. The failure arrives on `On Session Failure` - call again with the right map name.
+If the map fails to load (a typo, a map missing from the cook), the session and its players stay exactly where they were. The failure arrives on `OnSessionFailure` - call again with the right map name.
 
 ## Regions
 
 Hosting advertises `Region` (`Any` by default) and searching filters by it: set the same
-region in both places and players only see rooms they can play in. `Any` on the search
+region in both places and players only see sessions they can play in. `Any` on the search
 lists every region; `Any` on the host matches only searches that do not filter. The
 regions are coarse on purpose - one region means playable latency. A game that needs its
 own split (country servers, a single home region) leaves the field at `Any` and filters
@@ -219,21 +230,22 @@ with a `Custom Settings` key through `Required Custom Settings` instead.
 ## Join codes
 
 Turn on `Use Join Code` when hosting and the session advertises a generated six character
-code, readable with `Get Easy Session Join Code` by everyone in the room. Joining is a
-search away: `Find Easy Sessions` with `Join Code` set returns that one room, hidden or
+code, readable with `Get Easy Session Join Code` by everyone in the session. Joining is a
+search away: `Find Easy Sessions` with `Join Code` set returns that one session, hidden or
 not - show it, then pass it to `Join Easy Session`. Matchmaking with the same `Join
-Code` does both in one call, retrying while the room comes up. `Hidden` plus a code is
-a friends-only room: no browser lists it, anyone with the code walks in.
+Code` does both in one call, retrying while the session comes up. `Hidden` plus a code is
+a friends-only session: no browser lists it, anyone with the code walks in.
 
-The code identifies the room but does not protect it. Protection is `Password`, and the
-two combine: the code finds the room, the password still gates the door.
+The code identifies the session but does not protect it. Protection is `Password`, and the
+two combine: the code finds the session, the password still gates the door.
 
 ## Events and state queries
 
-Bind these on the subsystem (`Get Easy Session Subsystem`) for UI updates:
+The result of each request arrives on its node's output pins. For UI that watches the session as a whole,
+bind these on the subsystem (`Get Easy Session Subsystem`):
 
-- `OnSessionCreated`, `OnSessionsFound`, `OnSessionJoined`, `OnSessionUpdated`, `OnSessionStarted`, `OnSessionEnded`, `OnSessionDestroyed` - fired as each operation completes, regardless of who initiated it
-- `OnSessionFailure` - something failed outside any node's result: the connection dropped, or a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name). A client that lost its session is sent back to the menu, where `Consume Last Easy Disconnect Info` has the reason to show the player
+- `OnBusyChanged` - a request started or everything finished. `Get Easy Session Activity` names the activity, so a spinner can say what it waits for
+- `OnSessionFailure` - something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)
 
 Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.

@@ -25,9 +25,9 @@ struct FUniqueNetIdRepl;
  * FEasySessionHost is responsible for the host side of the session.
  * That is the session's bHosting flag, the replicated state actor, the server gate's credentials and the join approval beacon.
  *
- * The session requests call this object when the session is created, joined, updated or destroyed, and when the match state changes.
+ * The session requests call this object when the session is created, updated or destroyed, when the match state changes, and around a server travel.
  * The state actor and the beacon host object are actors, so they are destroyed with their world.
- * This object spawns both again in every world the session reaches, when the server initializes the game mode of that world.
+ * This object spawns both again in every world the session reaches, when the host initializes the game mode of that world.
  *
  * Owned by the subsystem and destroyed with it.
  * Delegates are bound raw because this object cannot outlive the owner that destroys it.
@@ -56,14 +56,14 @@ public:
 
 	/**
 	 * The session settings changed.
-	 * The server gate gets the new credentials and the state actor replicates the new settings.
+	 * The engine's player cap and the open slot count follow the new Max Players.
+	 * The server gate gets the new credentials, and the state actor replicates the new settings.
 	 */
 	void OnSettingsUpdated(const FEasySessionSettings& Settings);
 
 	/**
 	 * The match started or ended.
 	 * The state actor replicates the new session state.
-	 * Does nothing when this process is not the authority.
 	 */
 	void OnMatchStateChanged();
 
@@ -73,20 +73,17 @@ public:
 	 */
 	void OnSessionDestroyed();
 
-public:
+	/**
+	 * A server travel was requested.
+	 * Destroys the world actors and releases the beacon listener, so the next world can bind the beacon port.
+	 */
+	void OnServerTravelStarted();
 
 	/**
-	 * Spawn the state actor and the join approval host object in the current world.
-	 * An actor that already exists in this world is kept.
-	 * Called in every world the session travels to, and after a failed server travel.
+	 * A server travel failed, so no new world arrives.
+	 * Spawns the world actors again in the world this game stayed in.
 	 */
-	void SpawnWorldActors();
-
-	/**
-	 * Destroy the state actor and the join approval host object.
-	 * Called before a server travel, which frees the beacon port for the next world, and when the session is destroyed.
-	 */
-	void DestroyWorldActors();
+	void OnServerTravelFailed();
 
 public:
 
@@ -102,10 +99,19 @@ public:
 private:
 
 	/**
-	 * The server initialized the game mode of a new world.
+	 * The host initialized the game mode of a new world.
 	 * Calls SpawnWorldActors there one tick later.
 	 */
 	void HandleGameModeInitialized(AGameModeBase* GameMode);
+
+	/**
+	 * Spawn the state actor and the join approval host object in the current world.
+	 * An actor that already exists in this world is kept.
+	 */
+	void SpawnWorldActors();
+
+	/** Destroy the state actor and the join approval host object. */
+	void DestroyWorldActors();
 
 	/**
 	 * Spawn the state actor if the current world has none, then update it.
@@ -122,14 +128,15 @@ private:
 	/** The world this subsystem runs in, or null before one exists. */
 	UWorld* GetWorld() const;
 
-private:
-
 	/** @return The settings a session member may see, read from the advertised session settings. */
 	static FEasySessionReplicatedSettings MakeReplicatedSettings(const FOnlineSessionSettings& Settings);
 
 private:
 
 	UEasySessionSubsystem& Owner;
+
+	/** The shared beacon port, released before a server travel so the next world can bind it. */
+	FEasySessionBeaconPort& BeaconPort;
 
 	/** Decides who may join, and refuses arriving players in PreLogin. */
 	TUniquePtr<FEasySessionServerGate> Gate;

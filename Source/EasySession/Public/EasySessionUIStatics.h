@@ -23,12 +23,21 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
 	static FText GetResultMessage(EEasySessionResult Result);
 
-	/** A status line for a running operation, e.g. "Creating the session...". None gives empty text, so a status line clears itself with it. */
+	/**
+	 * A player facing name for a session state, e.g. "In Match".
+	 * Feed it Get Easy Session State.
+	 * Pending and Ended both read "Waiting", because both mean the match can be started.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
+	static FText GetSessionStateMessage(EEasySessionState State);
+
+	/** A status line for an activity, e.g. "Creating the session...". None gives empty text, so a status line clears itself with it. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
 	static FText GetActivityMessage(EEasySessionActivity Activity);
 
 	/**
-	 * A status line for a matchmaking run, e.g. "Searching... 12s". Idle reads "Ready".
+	 * A status line for a matchmaking run, e.g. "Searching... 12s".
+	 * Idle reads "Ready".
 	 * Feed it the values On Matchmaking Updated delivers, which fires once a second while a run is running.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|UI")

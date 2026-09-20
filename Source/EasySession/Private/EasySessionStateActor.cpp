@@ -43,7 +43,7 @@ void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& R
 
 	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
-		Subsystem->NotifyDisconnectedFromSession(EEasyDisconnectReason::HostDestroyedSession, Reason);
+		Subsystem->HandleDisconnect(EEasyDisconnectReason::HostDestroyedSession, Reason);
 	}
 }
 
@@ -61,7 +61,7 @@ void AEasySessionStateActor::OnRep_HostSessionState()
 {
 	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
-		Subsystem->HandleReplicatedHostSessionState(HostSessionState);
+		Subsystem->HandleReplicatedSessionState(HostSessionState);
 	}
 }
 

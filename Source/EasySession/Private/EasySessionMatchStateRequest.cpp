@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionHost.h"
+#include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 #include "OnlineSessionSettings.h"
 
@@ -19,7 +20,7 @@ void FEasySessionMatchStateRequest::Execute()
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, TEXT("No online subsystem available."));
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
 		return;
 	}
 
@@ -31,8 +32,7 @@ void FEasySessionMatchStateRequest::Execute()
 
 	if (!GetContext().Subsystem.IsSessionAuthority())
 	{
-		Complete(EEasySessionResult::RequiresSessionAuthority, FString::Printf(TEXT("Only the game hosting the session can %s the match. %s"),
-			IsStart() ? TEXT("start") : TEXT("end"), EasySession::RequiresSessionAuthorityFix));
+		Complete(EEasySessionResult::RequiresSessionAuthority, EasySession::RequiresSessionAuthorityMessage);
 		return;
 	}
 
@@ -62,71 +62,7 @@ void FEasySessionMatchStateRequest::Execute()
 	}
 }
 
-void FEasySessionMatchStateRequest::HandleStateChangeComplete(FName InSessionName, bool bWasSuccessful)
-{
-	if (!IsActive() || InSessionName != SessionName)
-	{
-		return;
-	}
-
-	if (!bWasSuccessful)
-	{
-		Complete(EEasySessionResult::StateChangeFailure, IsStart()
-			? TEXT("The online subsystem failed to start the session.")
-			: TEXT("The online subsystem failed to end the session."));
-		return;
-	}
-
-	UE_LOG(LogEasySession, Log, TEXT("%s"), IsStart() ? TEXT("Session started.") : TEXT("Session ended."));
-
-	// NULL completes the update inside the call, which already finished this request.
-	// Only a refusal with the request still active is left to finish here.
-	if (!AdvertiseMatchInProgress() && IsActive())
-	{
-		Finish(false);
-	}
-}
-
-bool FEasySessionMatchStateRequest::AdvertiseMatchInProgress()
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return false;
-	}
-
-	AdvertiseCompleteHandle = Sessions->AddOnUpdateSessionCompleteDelegate_Handle(
-		FOnUpdateSessionCompleteDelegate::CreateSP(this, &FEasySessionMatchStateRequest::HandleAdvertiseComplete));
-
-	NamedSession->SessionSettings.Set(EasySession::SettingKey_MatchInProgress, IsStart() ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	return Sessions->UpdateSession(SessionName, NamedSession->SessionSettings, true);
-}
-
-void FEasySessionMatchStateRequest::HandleAdvertiseComplete(FName InSessionName, bool bWasSuccessful)
-{
-	if (!IsActive() || InSessionName != SessionName)
-	{
-		return;
-	}
-
-	Finish(bWasSuccessful);
-}
-
-void FEasySessionMatchStateRequest::Finish(bool bAdvertised)
-{
-	// The match state itself already changed, so a refused re-advertise is a stale advertisement, not a failed Start or End.
-	if (!bAdvertised)
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("The match state changed but re-advertising it failed - searching players see the old value until the next update."));
-	}
-
-	GetContext().Host.OnMatchStateChanged();
-
-	Complete(EEasySessionResult::Success);
-}
-
-void FEasySessionMatchStateRequest::Cleanup(bool bAbandoned)
+void FEasySessionMatchStateRequest::Cleanup()
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
@@ -148,13 +84,68 @@ void FEasySessionMatchStateRequest::Cleanup(bool bAbandoned)
 void FEasySessionMatchStateRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
 {
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
+}
 
-	if (IsStart())
+void FEasySessionMatchStateRequest::HandleStateChangeComplete(FName InSessionName, bool bWasSuccessful)
+{
+	if (!IsRunning() || InSessionName != SessionName)
 	{
-		GetContext().Subsystem.OnSessionStarted.Broadcast(Result, ErrorMessage);
+		return;
 	}
-	else
+
+	if (!bWasSuccessful)
 	{
-		GetContext().Subsystem.OnSessionEnded.Broadcast(Result, ErrorMessage);
+		Complete(EEasySessionResult::StateChangeFailure, IsStart()
+			? TEXT("The online subsystem failed to start the session.")
+			: TEXT("The online subsystem failed to end the session."));
+		return;
 	}
+
+	UE_LOG(LogEasySession, Log, TEXT("%s"), IsStart() ? TEXT("Session started.") : TEXT("Session ended."));
+
+	// NULL completes the update inside the call, which already finished this request.
+	// Only a refusal with the request still running is left to complete here.
+	if (!AdvertiseMatchInProgress() && IsRunning())
+	{
+		CompleteStateChange(false);
+	}
+}
+
+bool FEasySessionMatchStateRequest::AdvertiseMatchInProgress()
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return false;
+	}
+
+	AdvertiseCompleteHandle = Sessions->AddOnUpdateSessionCompleteDelegate_Handle(
+		FOnUpdateSessionCompleteDelegate::CreateSP(this, &FEasySessionMatchStateRequest::HandleAdvertiseComplete));
+
+	NamedSession->SessionSettings.Set(EasySession::SettingKey_MatchInProgress, IsStart() ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	return Sessions->UpdateSession(SessionName, NamedSession->SessionSettings, true);
+}
+
+void FEasySessionMatchStateRequest::HandleAdvertiseComplete(FName InSessionName, bool bWasSuccessful)
+{
+	if (!IsRunning() || InSessionName != SessionName)
+	{
+		return;
+	}
+
+	CompleteStateChange(bWasSuccessful);
+}
+
+void FEasySessionMatchStateRequest::CompleteStateChange(bool bAdvertised)
+{
+	// The match state itself already changed, so a refused re-advertise is a stale advertisement, not a failed Start or End.
+	if (!bAdvertised)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("The match state changed, but advertising it failed. Searching players see the old value until the next update."));
+	}
+
+	GetContext().Host.OnMatchStateChanged();
+
+	Complete(EEasySessionResult::Success);
 }

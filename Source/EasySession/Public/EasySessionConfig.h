@@ -22,34 +22,29 @@ public:
 	//~ End UDeveloperSettings Interface
 
 	/**
-	 * Automatically destroy the session and travel to the project's Game Default Map when the connection to a session is lost or traveling to a session fails.
-	 * Turn it off to keep the player in place and handle it yourself.
-	 * The reason is kept and can be read on the menu with Consume Last Easy Disconnect Info.
+	 * Travel to the project's Game Default Map when the connection to a session is lost or traveling to a session fails.
+	 * The lost session is destroyed either way, because it is gone for this player already.
+	 * This setting only decides whether the travel follows.
+	 * Turn it off to keep the player in the map they are in and travel them yourself.
+	 * The reason is kept and can be read on the menu with Consume Pending Easy Disconnect Info.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Recovery")
 	bool bAutoReturnToMenuOnDisconnect = true;
 
 	/**
 	 * Automatically join the session when the player accepts an invite from the platform overlay (e.g. Steam).
-	 * Turn it off to only receive the On Session Invite Accepted event and handle joining yourself.
+	 * Turn it off to only receive the On Session Invite Accepted event and join with Join Easy Session yourself.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites")
 	bool bAutoJoinAcceptedInvites = true;
 
 	/**
-	 * Whether an invite can be accepted while this player is already in a session.
+	 * Whether an accepted invite is joined automatically while this player is already in a session.
 	 * With this on, one click in the platform overlay destroys the session they are in before joining the invited one.
-	 * The On Session Invite Accepted event still fires either way, so the game can ask the player first and then join.
+	 * A host that leaves this way takes its session with it, and its players are told why before their connection closes.
+	 * This decides the automatic join only.
+	 * A Join Easy Session the game calls itself always leaves the current session first.
 	 */
-	UPROPERTY(config, EditAnywhere, Category = "Invites")
+	UPROPERTY(config, EditAnywhere, Category = "Invites", meta = (EditCondition = "bAutoJoinAcceptedInvites"))
 	bool bAcceptInvitesWhileInSession = false;
-
-	/**
-	 * How long a session request may wait for the online subsystem before it completes with Timeout and the queue moves on.
-	 * The online subsystem is not required to ever call back, so without this one request could block every request behind it.
-	 * A search may replace it with its own Timeout Override Seconds.
-	 * Timeout means the outcome is unknown. A session the request still creates afterwards is destroyed, so the next request starts clean. 0 waits forever.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Advanced", meta = (ClampMin = 0.0, UIMin = 0.0))
-	float RequestTimeoutSeconds = 30.0f;
 };

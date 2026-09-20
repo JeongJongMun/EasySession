@@ -26,8 +26,8 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Create a new session and optionally travel to the session map.
-	 * For listen servers the map is opened with the ?listen option automatically.
+	 * Create a new session and travel to Initial Map Name.
+	 * The map is opened with the ?listen option, which is what starts the listen server.
 	 *
 	 * @param HostParams Parameters describing the session to create.
 	 */
@@ -40,7 +40,7 @@ public:
 
 private:
 
-	/** Called when the subsystem finishes the create operation. */
+	/** Called when the subsystem finishes the create request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** Parameters to create the session with. */

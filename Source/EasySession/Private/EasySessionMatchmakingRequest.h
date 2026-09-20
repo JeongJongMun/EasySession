@@ -1,0 +1,150 @@
+// Copyright (c) 2026 Langerak. Licensed under the MIT License.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Containers/Ticker.h"
+#include "EasySessionRequest.h"
+#include "UObject/StrongObjectPtr.h"
+
+class UEasyMatchmakingPolicy;
+
+/**
+ * FEasySessionMatchmakingRequest is responsible for one matchmaking run.
+ * The run searches for sessions, joins the best one, and hosts a session of its own when no search pass found one to join.
+ * The subsystem creates it for Start Easy Matchmaking, and the queue runs it like any other request.
+ *
+ * The searches, the joins and the host are its sub-requests, so no other request runs between two of them.
+ * UEasyMatchmakingPolicy decides which session is joined first.
+ * The run broadcasts its progress on the subsystem's On Matchmaking events.
+ *
+ * A cancel during a search ends the run inside the Cancel call.
+ * A join or a host that is running finishes first, and a success is undone, so Canceled always means that this player is not in a session.
+ *
+ * @see UEasyMatchmakingPolicy
+ */
+class FEasySessionMatchmakingRequest final : public FEasySessionRequest
+{
+	//~ FEasySessionTestAccess feeds crafted search results into the run and reads what it decided.
+	friend class FEasySessionTestAccess;
+
+public:
+
+	FEasySessionMatchmakingRequest(const FEasyMatchmakingParams& InParams, UEasyMatchmakingPolicy& InPolicy, FEasySessionCompleteDelegate InOnComplete);
+
+	/** Removes the tickers of the run. */
+	virtual ~FEasySessionMatchmakingRequest() override;
+
+	/** @return The request as a matchmaking request when its type says it is one. Null otherwise. */
+	static TSharedPtr<FEasySessionMatchmakingRequest> Cast(const TSharedPtr<FEasySessionRequest>& Request);
+
+	/** @return The current state of the run. */
+	EEasyMatchmakingState GetState() const { return State; }
+
+	/** @return Whole seconds since the run started. It stops counting when the run completes. */
+	int32 GetElapsedWholeSeconds() const;
+
+	/** @return The policy that scores the sessions of this run. */
+	UEasyMatchmakingPolicy* GetPolicy() const { return Policy.Get(); }
+
+protected:
+
+	//~ Begin FEasySessionRequest interface
+	virtual void Execute() override;
+	virtual void Cleanup() override;
+	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) override;
+	virtual void HandleCancel() override;
+	virtual FString GetProgressText() const override;
+	//~ End FEasySessionRequest interface
+
+private:
+
+	/** Run one search pass as a sub-request. */
+	void StartSearchPass();
+
+	/** A search pass completed. Joins the best candidate, or finishes the pass when there is none. */
+	void HandleSearchComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results);
+
+	/** Fill Candidates with the joinable results, best score first, and shuffle the best few. */
+	void BuildCandidates(const TArray<FEasySessionSearchResult>& Results);
+
+	/** Join the next candidate as a sub-request, or finish the pass when every candidate was tried. */
+	void JoinNextCandidate();
+
+	/** A join completed. Completes the run, or moves on to the next candidate. */
+	void HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage);
+
+	/**
+	 * Start the next search pass, or host or complete the run when no pass is left.
+	 *
+	 * @param SearchResult The result of this pass's search. A failure other than Success ends the run with it when no pass is left.
+	 * @param SearchError The message that came with SearchResult.
+	 */
+	void FinishSearchPass(EEasySessionResult SearchResult = EEasySessionResult::Success, const FString& SearchError = FString());
+
+	/** The delay between two search passes is over. */
+	bool HandlePassDelayElapsed(float DeltaTime);
+
+	/** Host a session as a sub-request, because no session could be joined. */
+	void HostFallbackSession();
+
+	/** @return The run's host params with the search's LAN flag and required custom settings copied in. */
+	FEasySessionHostParams MakeFallbackHostParams() const;
+
+	/** The fallback host completed. */
+	void HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage);
+
+	/**
+	 * Complete the run as Canceled after the join or host sub-request that ran during the cancel.
+	 * A sub-request that succeeded is undone first: its travel is canceled and its session is destroyed.
+	 */
+	void CompleteAsCanceled(EEasySessionResult SubRequestResult);
+
+	/** Move to a new state and broadcast On Matchmaking State Changed and On Matchmaking Updated. */
+	void SetState(EEasyMatchmakingState NewState);
+
+	/** Broadcast On Matchmaking Updated once a second, so elapsed time UI needs no timer of its own. */
+	bool BroadcastUpdate(float DeltaTime);
+
+	/** Remove the pass delay and update tickers. */
+	void StopTickers();
+
+	/** @return A stable identifier for a search result, used by the failed session list. */
+	static FString GetSessionKey(const FEasySessionSearchResult& Session);
+
+	/** Parameters of this run. */
+	FEasyMatchmakingParams Params;
+
+	/** Scores the sessions a search pass found. */
+	TStrongObjectPtr<UEasyMatchmakingPolicy> Policy;
+
+	/** The requester's delegate. */
+	FEasySessionCompleteDelegate OnComplete;
+
+	/** Current state of the run. Canceling from the requester's cancel until the run completes. */
+	EEasyMatchmakingState State = EEasyMatchmakingState::Idle;
+
+	/** Search passes completed so far. */
+	int32 PassesCompleted = 0;
+
+	/** Candidates of the current pass, best first. */
+	TArray<FEasySessionSearchResult> Candidates;
+
+	/** Index of the candidate the running join sub-request tries. */
+	int32 NextCandidateIndex = 0;
+
+	/** Sessions that refused this player during this run. They are never tried again. */
+	TSet<FString> FailedSessionKeys;
+
+	/** Ticker handle for the delay between search passes. */
+	FTSTicker::FDelegateHandle PassDelayTickerHandle;
+
+	/** Ticker handle for the once-a-second On Matchmaking Updated broadcast. */
+	FTSTicker::FDelegateHandle UpdateTickerHandle;
+
+	/** When the run started, in FPlatformTime seconds. Zero before the start. */
+	double RunStartTimeSeconds = 0.0;
+
+	/** When the run completed, in FPlatformTime seconds. Elapsed time stops here. */
+	double RunEndTimeSeconds = 0.0;
+};

@@ -10,10 +10,16 @@ class AEasySessionJoinApprovalBeaconClient;
 struct FEasyJoinApprovalResponse;
 
 /**
- * Joins a session a search returned and travels the local player to the host.
+ * FEasySessionJoinRequest joins a session a search returned and travels the local player to the host.
+ *
+ * The subsystem creates it for Join Easy Session and for an accepted invite.
+ * Matchmaking runs it as a sub-request to join each candidate.
  *
  * The request asks the host's join approval beacon first when the session advertises one.
- * A refusal then uses no session slot and starts no travel.
+ * A refusal then uses no player slot, starts no travel and keeps the session this player is in.
+ *
+ * A player in another session leaves it after the approval, with a Destroy sub-request, and a host tells its clients why first.
+ * A join that fails after leaving travels the player to the menu, because the session they left is destroyed.
  * The beacon client actor exists for this request only, from the join approval request to its response or to Cleanup.
  * An unreachable beacon does not fail the join, because the server gate runs the same check when the joining player arrives.
  */
@@ -30,7 +36,7 @@ protected:
 
 	//~ Begin FEasySessionRequest interface
 	virtual void Execute() override;
-	virtual void Cleanup(bool bAbandoned) override;
+	virtual void Cleanup() override;
 	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) override;
 	//~ End FEasySessionRequest interface
 
@@ -43,10 +49,13 @@ private:
 	void HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response);
 
 	/** Destroy the beacon client actor, so a late response cannot reach a completed request. */
-	void StopApprovalClient();
+	void DestroyApprovalClient();
 
-	/** Ask the online subsystem to join. Every join path ends in this step. */
+	/** Ask the online subsystem to join. Every join path ends here. A player in another session leaves it first. */
 	void JoinOnlineSession();
+
+	/** Leaving the session this player was in completed. Joins on success. */
+	void HandleDestroyComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** The online subsystem finished joining a session. Sessions with another name are ignored. */
 	void HandleJoinSessionComplete(FName InSessionName, EOnJoinSessionCompleteResult::Type JoinResult);
@@ -68,4 +77,7 @@ private:
 
 	/** Handle for the online subsystem's join completion, bound while the request runs. */
 	FDelegateHandle JoinCompleteHandle;
+
+	/** Did this player leave a session to join this one. */
+	bool bLeftSession = false;
 };

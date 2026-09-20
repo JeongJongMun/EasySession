@@ -92,14 +92,14 @@ bool FEasySessionWaitForRegionRun::Update()
 
 		case 1:
 		{
-			// One search case per pass: start the find, feed it the crafted result once it is
-			// actually running (the queue executes on its own tick), then judge what it listed.
+			// One search case per pass.
+			// Start the find, feed it the crafted result once it is actually running (the queue executes on its own tick), then judge what it listed.
 			if (!State->bFindStarted)
 			{
 				FEasySessionSearchParams Params;
 				Params.bLANQuery = true;
 				Params.Region = SearchCases[State->CaseIndex].Filter;
-				Subsystem->FindEasySessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+				Subsystem->FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 					{
 						Shared->DeliveredCount = Result == EEasySessionResult::Success ? Results.Num() : -1;
@@ -125,7 +125,7 @@ bool FEasySessionWaitForRegionRun::Update()
 				return false;
 			}
 
-			Subsystem->DestroyEasySession();
+			Subsystem->DestroySession();
 			State->Phase = 2;
 			return false;
 		}
@@ -144,9 +144,8 @@ bool FEasySessionWaitForRegionRun::Update()
 }
 
 /**
- * The advertised region round-trips and the search filter honors it: no filter and the
- * matching filter list the session, any other region excludes it. The results are injected
- * because one process cannot find its own LAN session.
+ * The advertised region round-trips and the search filter honors it: no filter and the matching filter list the session, any other region excludes it.
+ * The results are injected because one process cannot find its own LAN session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRegionFilterTest, "EasySession.Search.FiltersByRegion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionRegionFilterTest::RunTest(const FString& Parameters)
@@ -169,7 +168,7 @@ bool FEasySessionRegionFilterTest::RunTest(const FString& Parameters)
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 	HostParams.Region = EEasySessionRegion::EastAsia;
-	Subsystem->CreateEasySession(HostParams);
+	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForRegionRun(State));

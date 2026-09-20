@@ -8,9 +8,9 @@
 #include "Engine/EngineBaseTypes.h"
 
 /**
- * Port 0 detection. The cases that matter are the ones where the string cannot
- * be read with certainty: those must report "no problem", because a wrong
- * complaint refuses a join that would have worked.
+ * Port 0 detection.
+ * The cases that matter are the ones where the string cannot be read with certainty.
+ * Those must report "no problem", because a wrong complaint refuses a join that would have worked.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressZeroPortTest, "EasySession.Address.HasZeroPort", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressZeroPortTest::RunTest(const FString& Parameters)
@@ -48,9 +48,8 @@ bool FEasySessionAddressZeroPortTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The ?listen option must be matched as a URL option. Substring matching used to
- * get both of these wrong: it missed "?Listen" and it mistook "?listenport" for
- * the option itself.
+ * The ?listen option must be matched as a URL option.
+ * Substring matching used to get both of these wrong: it missed "?Listen" and it mistook "?listenport" for the option itself.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressListenOptionTest, "EasySession.Address.HasListenOption", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressListenOptionTest::RunTest(const FString& Parameters)
@@ -82,9 +81,8 @@ bool FEasySessionAddressListenOptionTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The capacity the engine enforces comes from this option, so it has to be on every
- * host URL, but a game that set it itself in its map name or extra travel options
- * keeps its own value.
+ * The capacity the engine enforces comes from this option, so it has to be on every host URL.
+ * A game that set it itself in its map name or extra travel options keeps its own value.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressMaxPlayersOptionTest, "EasySession.Address.AppendMaxPlayersOption", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressMaxPlayersOptionTest::RunTest(const FString& Parameters)
@@ -121,9 +119,8 @@ bool FEasySessionAddressMaxPlayersOptionTest::RunTest(const FString& Parameters)
 }
 
 /**
- * Reading an option out of the URL a joining player arrives with. This decides
- * whether a password matches, so every form the engine can pass has to read
- * the same way it does: the map path in front, several options, no options.
+ * Reading an option out of the URL a joining player arrives with.
+ * This decides whether a password matches, so every form the engine can pass has to read the same way it does: the map path in front, several options, no options.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressParseOptionTest, "EasySession.Address.ParseTravelOption", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressParseOptionTest::RunTest(const FString& Parameters)
@@ -151,8 +148,7 @@ bool FEasySessionAddressParseOptionTest::RunTest(const FString& Parameters)
 		{ TEXT("?Pwx=other?Pw=secret"),                TEXT("secret"), TEXT("a longer key that starts the same is a different option") },
 		{ TEXT("?Pw=a%3Fb"),                           TEXT("a%3Fb"), TEXT("encoded values come back encoded - decoding is a separate step") },
 
-		// Why senders encode: a raw ? ends the value early and the rest becomes
-		// its own option.
+		// Why senders encode: a raw ? ends the value early and the rest becomes its own option.
 		{ TEXT("?Pw=a?b"),                             TEXT("a"),      TEXT("a raw ? cuts the value in half") },
 	};
 
@@ -167,8 +163,7 @@ bool FEasySessionAddressParseOptionTest::RunTest(const FString& Parameters)
 
 /**
  * A session password is whatever the host typed, and it travels as a URL option.
- * Encoding has to give the exact string back, or a host protects a session with a
- * password no player can enter, including the player who was told it correctly.
+ * Encoding has to give the exact string back, or a host protects a session with a password no player can enter, including the player who was told it correctly.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressEncodeOptionTest, "EasySession.Address.EncodeTravelOptionValue", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressEncodeOptionTest::RunTest(const FString& Parameters)
@@ -207,12 +202,11 @@ bool FEasySessionAddressEncodeOptionTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The same values through the engine's own URL parser, which is what splits an
- * unencoded password in half. Testing our two functions against each other would
- * agree with itself no matter what the engine does with the string in between.
+ * The same values through the engine's own URL parser, which is what splits an unencoded password in half.
+ * Testing our two functions against each other would agree with itself no matter what the engine does with the string in between.
  *
- * What this still cannot show: the transfer from the joining client to
- * the host's PendingConnection. That needs two running games.
+ * What this still cannot show: the transfer from the joining client to the host's PendingConnection.
+ * That needs two running games.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressTravelURLTest, "EasySession.Address.EncodedOptionSurvivesTheEngineURL", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressTravelURLTest::RunTest(const FString& Parameters)

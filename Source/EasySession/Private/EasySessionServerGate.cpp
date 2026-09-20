@@ -76,8 +76,7 @@ FEasyJoinApprovalResponse FEasySessionServerGate::ApproveJoin(const FEasyJoinApp
 	const FString& SuppliedPassword = Request.Credential;
 	UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
 
-	// Searching already hides a started session, but a result fetched before the match
-	// started and a direct connect both get past that, so the host refuses here too.
+	// Searching already hides a started session, but a result fetched before the match started and a direct connect both get past that, so the host refuses here too.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(OwnWorld);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	if (NamedSession != nullptr && !NamedSession->SessionSettings.bAllowJoinInProgress)
@@ -109,8 +108,7 @@ FEasyJoinApprovalResponse FEasySessionServerGate::ApproveJoin(const FEasyJoinApp
 		return MakeResponse(EEasyJoinApprovalResult::Approved);
 	}
 
-	// Invited players arrive without the password, and invites only go to friends,
-	// so being a friend of the host counts as knowing it.
+	// Invited players arrive without the password, and invites only go to friends, so being a friend of the host counts as knowing it.
 	if (bFriendsBypassPassword && PlayerId.IsValid())
 	{
 		const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(OwnWorld);
@@ -122,8 +120,8 @@ FEasyJoinApprovalResponse FEasySessionServerGate::ApproveJoin(const FEasyJoinApp
 		}
 	}
 
-	// Never log the password: on a listen server the log file is on a player's
-	// machine. Logging which kind of failure happened is enough.
+	// Never log the password: on a listen server the log file is on a player's machine.
+	// Logging which kind of failure happened is enough.
 	UE_LOG(LogEasySession, Warning, TEXT("ServerGate: refusing '%s' - %s."),
 		*PlayerId.ToString(),
 		SuppliedPassword.IsEmpty()
@@ -148,9 +146,9 @@ void FEasySessionServerGate::HandlePreLogin(AGameModeBase* GameMode, const FUniq
 
 	UWorld* OwnWorld = Owner.GetGameInstance()->GetWorld();
 
-	// The password arrives in the travel URL. The engine sets Connection->PlayerId before
-	// PreLogin, so the joining player's connection can be found by id and its URL read. In-session
-	// map changes must use seamless travel, or players already in would be refused here.
+	// The password arrives in the travel URL.
+	// The engine sets Connection->PlayerId before PreLogin, so the joining player's connection can be found by id and its URL read.
+	// In-session map changes must use seamless travel, or players already in would be refused here.
 	FString SuppliedPassword;
 	if (!SessionPassword.IsEmpty())
 	{
