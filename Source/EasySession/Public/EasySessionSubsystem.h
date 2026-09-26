@@ -31,8 +31,6 @@ class FEasySessionRequestQueue;
 class FEasySessionSocial;
 class FEasySessionTravel;
 class UEasyMatchmakingPolicy;
-struct FEasyJoinApprovalRequest;
-struct FEasyJoinApprovalResponse;
 struct FEasySessionRequestContext;
 
 /** Multicast event fired with the result of a session request, used by the async nodes and by On Matchmaking Complete. */
@@ -465,18 +463,6 @@ public:
 	FEasyModifyTravelURLDelegate OnModifyClientTravelURL;
 
 public:
-
-	/**
-	 * Internal, called by the join approval beacon: decide whether the requester may join the session, as the server gate decides it.
-	 * The beacon asks this before the player travels, so a refused player never starts the travel.
-	 * PreLogin enforces the same decision when the player arrives, which also covers a player who never requested join approval.
-	 * The beacon is a world actor, and world actors reach this subsystem through its public API rather than through a collaborator.
-	 * Refuses the join while no server gate exists.
-	 *
-	 * @param Request What the joining player sent over the beacon.
-	 * @param Requester The id the joining player presented at beacon login.
-	 */
-	FEasyJoinApprovalResponse ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const;
 
 	/**
 	 * Internal, called by every request when it finishes and by the replicated state below.

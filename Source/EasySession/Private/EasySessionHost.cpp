@@ -3,10 +3,8 @@
 #include "EasySessionHost.h"
 
 #include "EasySession.h"
-#include "EasySessionJoinApproval.h"
 #include "EasySessionBeaconPort.h"
-#include "EasySessionJoinApprovalBeacon.h"
-#include "EasySessionServerGate.h"
+#include "EasySessionReservations.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
@@ -20,10 +18,8 @@
 FEasySessionHost::FEasySessionHost(UEasySessionSubsystem& InOwner, FEasySessionBeaconPort& InBeaconPort)
 	: Owner(InOwner)
 	, BeaconPort(InBeaconPort)
-	, Gate(MakeUnique<FEasySessionServerGate>(InOwner))
-	, JoinApproval(MakeUnique<FEasySessionJoinApproval>(InOwner, InBeaconPort))
+	, Reservations(MakeUnique<FEasySessionReservations>(InOwner, InBeaconPort))
 {
-	Gate->Initialize();
 	GameModeInitializedHandle = FGameModeEvents::GameModeInitializedEvent.AddRaw(this, &FEasySessionHost::HandleGameModeInitialized);
 }
 
@@ -38,8 +34,7 @@ FEasySessionHost::~FEasySessionHost()
 	FTSTicker::GetCoreTicker().RemoveTicker(DeferredSetUpHandle);
 	DeferredSetUpHandle.Reset();
 
-	JoinApproval.Reset();
-	Gate.Reset();
+	Reservations.Reset();
 }
 
 void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
@@ -51,7 +46,7 @@ void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
 		NamedSession->bHosting = true;
 	}
 
-	Gate->SetSessionCredentials(Params.Password.TrimStartAndEnd(), Params.bFriendsBypassPassword);
+	Reservations->OnSessionCreated(Params);
 }
 
 void FEasySessionHost::OnSettingsUpdated(const FEasySessionSettings& Settings)
@@ -72,7 +67,7 @@ void FEasySessionHost::OnSettingsUpdated(const FEasySessionSettings& Settings)
 			FMath::Max(0, NamedSession->SessionSettings.NumPublicConnections - NamedSession->RegisteredPlayers.Num());
 	}
 
-	Gate->SetSessionCredentials(Settings.Password.TrimStartAndEnd(), Settings.bFriendsBypassPassword);
+	Reservations->OnSettingsUpdated(Settings);
 
 	// Joined players learn about the update through the replicated state actor.
 	UpdateStateActor();
@@ -90,14 +85,16 @@ void FEasySessionHost::OnMatchStateChanged()
 
 void FEasySessionHost::OnSessionDestroyed()
 {
-	Gate->ClearSessionCredentials();
-	DestroyWorldActors();
+	Reservations->OnSessionDestroyed();
+	DestroyStateActor();
 }
 
 void FEasySessionHost::OnServerTravelStarted()
 {
+	Reservations->OnServerTravelStarted();
+	DestroyStateActor();
+
 	// The next world starts its own beacon listener, which can only bind the beacon port after this one released it.
-	DestroyWorldActors();
 	BeaconPort.ReleaseListener();
 }
 
@@ -110,23 +107,16 @@ void FEasySessionHost::OnServerTravelFailed()
 void FEasySessionHost::SpawnWorldActors()
 {
 	EnsureStateActor();
-	JoinApproval->EnsureHost();
+	Reservations->StartBeacon();
 }
 
-void FEasySessionHost::DestroyWorldActors()
+void FEasySessionHost::DestroyStateActor()
 {
-	JoinApproval->StopHost();
-
 	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
 		Actor->Destroy();
 	}
 	StateActor.Reset();
-}
-
-FEasyJoinApprovalResponse FEasySessionHost::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
-{
-	return Gate->ApproveJoin(Request, Requester);
 }
 
 void FEasySessionHost::TellEveryoneToReturnToMenu(const FText& Reason)

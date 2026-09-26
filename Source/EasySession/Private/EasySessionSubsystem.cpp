@@ -19,11 +19,10 @@
 #include "EasySessionRequest.h"
 #include "EasySessionUpdateRequest.h"
 #include "EasySessionRequestQueue.h"
-#include "EasySessionServerGate.h"
 #include "EasySessionSocial.h"
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
-#include "EasySessionJoinApproval.h"
+#include "EasySessionReservations.h"
 #include "EasySessionConfig.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -319,8 +318,8 @@ FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
 
 	// Plain text on purpose, because this game already holds the password to check players against.
 	// Blanking it here would leave no way to remove one through Update.
-	Params.Password = Host->GetGate().GetSessionPassword();
-	Params.bFriendsBypassPassword = Host->GetGate().GetFriendsBypassPassword();
+	Params.Password = Host->GetReservations().GetSessionPassword();
+	Params.bFriendsBypassPassword = Host->GetReservations().GetFriendsBypassPassword();
 
 	return Params;
 }
@@ -559,12 +558,6 @@ void UEasySessionSubsystem::HandleDisconnect(EEasyDisconnectReason Reason, const
 	}
 }
 
-FEasyJoinApprovalResponse UEasySessionSubsystem::ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const
-{
-	// World actors call in, and one may outlive Deinitialize while its world is destroyed.
-	return Host.IsValid() ? Host->ApproveJoin(Request, Requester) : FEasyJoinApprovalResponse::NotAnswering();
-}
-
 void UEasySessionSubsystem::ClearReplicatedSessionState()
 {
 	ReplicatedSessionState.Reset();
@@ -746,9 +739,9 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 
 	if (bHasMessage)
 	{
-		// A lost host connection has a message too, so only the gate's RefusalMark in front means a refusal.
+		// A lost host connection has a message too, so only the RefusalMark PreLogin writes in front means a refusal.
 		FString Message = ErrorString;
-		if (Message.RemoveFromStart(FEasySessionServerGate::RefusalMark, ESearchCase::CaseSensitive))
+		if (Message.RemoveFromStart(FEasySessionReservations::RefusalMark, ESearchCase::CaseSensitive))
 		{
 			DisconnectReason = EEasyDisconnectReason::Rejected;
 		}

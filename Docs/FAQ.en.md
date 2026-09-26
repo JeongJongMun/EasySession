@@ -26,6 +26,16 @@ Check the map path on the host.)
 
 Fix on the **host** side: the host travels to `Initial Map Name` with `?listen`, and that travel is what opens the server. If the host still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
 
+## "The session shows a free slot, but joining fails with JoinSessionFull"
+
+Another player was approved for that slot a moment earlier and is still loading the map. The host holds the slot for them, but search results count only the players already in the session, so the slot still shows as free. The host's log names the refusal:
+
+```
+LogEasySession: Warning: Reservations: refusing '<player id>' - the session is full.
+```
+
+Nothing needs fixing. Once that player arrives, the next search shows the session as full. If they never arrive, the host releases the slot after 45 seconds, the engine's `TravelSessionTimeoutSecs` ([Holding the player slot](Guide-Sessions.en.md#holding-the-player-slot)). Matchmaking moves on to its next candidate by itself.
+
 ## "Steam: only the first player can join, everyone after that fails"
 
 Your Host Params have **Allow Join In Progress off**. On Steam, leave it on.
@@ -47,7 +57,7 @@ bool bLobbyJoinable = Session.SessionSettings.bAllowJoinInProgress && (LobbyMemb
 
 So with the setting off, the first join closes the lobby and nothing reopens it - not a player leaving, not `End Easy Session`. A newly created lobby is open because the create path never runs this check, which is why exactly one player gets in. Invited friends are refused as well, since a closed lobby refuses everyone.
 
-EasySession does not work around this: it passes the setting to the online service as given, and refuses join-in-progress itself through the approval beacon and `PreLogin`, which do check the match state. If you need "no joining once the match starts" on Steam, leave Allow Join In Progress on and let those checks do it.
+EasySession does not work around this: it passes the setting to the online service as given, and refuses join-in-progress itself through the reservation beacon and `PreLogin`, which do check the match state. If you need "no joining once the match starts" on Steam, leave Allow Join In Progress on and let those checks do it.
 
 A player whose join fails this way is sent back to the main menu when joining made them leave a session first, so they do not end up in a map with no session.
 

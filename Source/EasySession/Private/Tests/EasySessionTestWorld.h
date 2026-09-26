@@ -22,7 +22,7 @@ namespace EasySessionTest
 	/**
 	 * Initialize a test game instance and disable the host's travel in its subsystem.
 	 * A headless world has no player controller, so the travel to Initial Map Name would always fail.
-	 * A test that needs the state actor or the join approval beacon calls FEasySessionTestAccess::ArriveInSessionMap after the create.
+	 * A test that needs the state actor or the reservation beacon calls FEasySessionTestAccess::ArriveInSessionMap after the create.
 	 */
 	template <typename GameInstancePtrType>
 	void InitializeGameInstance(const GameInstancePtrType& GameInstance)

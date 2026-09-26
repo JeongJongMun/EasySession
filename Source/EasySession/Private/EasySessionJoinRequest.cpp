@@ -6,8 +6,8 @@
 #include "EasySessionAddress.h"
 #include "EasySessionDestroyRequest.h"
 #include "EasySessionHost.h"
-#include "EasySessionJoinApproval.h"
-#include "EasySessionJoinApprovalBeacon.h"
+#include "EasySessionReservations.h"
+#include "EasySessionReservationBeacon.h"
 #include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
@@ -24,7 +24,7 @@ FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult&
 
 FEasySessionJoinRequest::~FEasySessionJoinRequest()
 {
-	DestroyApprovalClient();
+	DestroyReservationClient();
 }
 
 void FEasySessionJoinRequest::Execute()
@@ -50,11 +50,11 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
-	// Sessions without the approval key are joined directly.
-	// The server gate still decides, after the travel instead of before it.
-	if (FEasySessionJoinApproval::IsAdvertisedBy(Target.NativeResult.Session.SessionSettings))
+	// Sessions without the reservations key are joined directly.
+	// PreLogin still decides, after the travel instead of before it.
+	if (FEasySessionReservations::IsAdvertisedBy(Target.NativeResult.Session.SessionSettings))
 	{
-		RequestJoinApproval();
+		RequestReservation();
 		return;
 	}
 
@@ -69,8 +69,8 @@ void FEasySessionJoinRequest::Cleanup()
 		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
 	}
 
-	// The approval request may still be waiting for a response.
-	DestroyApprovalClient();
+	// The reservation request may still be waiting for a response.
+	DestroyReservationClient();
 }
 
 void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
@@ -85,34 +85,34 @@ void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& E
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
 }
 
-void FEasySessionJoinRequest::RequestJoinApproval()
+void FEasySessionJoinRequest::RequestReservation()
 {
-	const FEasyJoinApprovalComplete OnResponse = FEasyJoinApprovalComplete::CreateSP(this, &FEasySessionJoinRequest::HandleJoinApprovalResponse);
+	const FEasyReservationRequestComplete OnResponse = FEasyReservationRequestComplete::CreateSP(this, &FEasySessionJoinRequest::HandleReservationResponse);
 
-	AEasySessionJoinApprovalBeaconClient* Client = nullptr;
+	AEasySessionReservationBeaconClient* Client = nullptr;
 	if (UWorld* World = GetWorld())
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.ObjectFlags |= RF_Transient;
-		Client = World->SpawnActor<AEasySessionJoinApprovalBeaconClient>(SpawnParams);
+		Client = World->SpawnActor<AEasySessionReservationBeaconClient>(SpawnParams);
 	}
 
 	if (Client == nullptr)
 	{
-		OnResponse.ExecuteIfBound(FEasyJoinApprovalResponse::Unreachable());
+		OnResponse.ExecuteIfBound(FEasyReservationResponse::Unreachable());
 		return;
 	}
 
-	ApprovalClient = Client;
-	if (!Client->RequestApproval(Target, Password, OnResponse))
+	ReservationClient = Client;
+	if (!Client->RequestJoin(Target, Password, OnResponse))
 	{
 		// The delegate already fired with Unreachable.
 		// Only the actor is left to destroy.
-		DestroyApprovalClient();
+		DestroyReservationClient();
 	}
 }
 
-void FEasySessionJoinRequest::HandleJoinApprovalResponse(const FEasyJoinApprovalResponse& Response)
+void FEasySessionJoinRequest::HandleReservationResponse(const FEasyReservationResponse& Response)
 {
 	// The request may have been canceled while the beacon was waiting.
 	if (!IsRunning())
@@ -122,22 +122,22 @@ void FEasySessionJoinRequest::HandleJoinApprovalResponse(const FEasyJoinApproval
 
 	switch (Response.Result)
 	{
-		case EEasyJoinApprovalResult::Approved:
+		case EEasyReservationResult::Approved:
 			JoinOnlineSession();
 			break;
 
-		case EEasyJoinApprovalResult::Unreachable:
-			// The join continues without the approval, because the server gate runs the same ApproveJoin when the joining player arrives.
+		case EEasyReservationResult::Unreachable:
+			// The join continues without the host's response, because PreLogin runs the same ApproveJoin when the joining player arrives.
 			// An unreachable beacon can only delay a refusal, never skip one.
-			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the join approval beacon, so the join continues without it. A refusal will now arrive after the travel instead of before it."));
+			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the reservation beacon, so the join continues without it. A refusal will now arrive after the travel instead of before it."));
 			JoinOnlineSession();
 			break;
 
-		case EEasyJoinApprovalResult::WrongPassword:
+		case EEasyReservationResult::WrongPassword:
 			Complete(EEasySessionResult::WrongPassword, Response.ReasonText);
 			break;
 
-		case EEasyJoinApprovalResult::SessionFull:
+		case EEasyReservationResult::SessionFull:
 			Complete(EEasySessionResult::JoinSessionFull, Response.ReasonText);
 			break;
 
@@ -147,13 +147,13 @@ void FEasySessionJoinRequest::HandleJoinApprovalResponse(const FEasyJoinApproval
 	}
 }
 
-void FEasySessionJoinRequest::DestroyApprovalClient()
+void FEasySessionJoinRequest::DestroyReservationClient()
 {
-	if (AEasySessionJoinApprovalBeaconClient* Client = ApprovalClient.Get())
+	if (AEasySessionReservationBeaconClient* Client = ReservationClient.Get())
 	{
 		Client->DestroyBeacon();
 	}
-	ApprovalClient.Reset();
+	ReservationClient.Reset();
 }
 
 void FEasySessionJoinRequest::JoinOnlineSession()

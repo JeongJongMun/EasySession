@@ -69,6 +69,63 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 EasySession은 성공을 알리기 **전에** 호스트 주소를 검증합니다. 호스트에 실제로 닿을 수 없으면([FAQ: 포트 0](FAQ.ko.md)) 20초짜리 접속 타임아웃 대신 곧바로 `ResolveFailure`와 설명이 돌아오고, 반쯤 참가된 세션도 정리되므로 바로 다시 시도할 수 있습니다.
 
+### 호스트에게 먼저 묻기
+
+참가하는 플레이어는 Travel 전에 호스트에게 자리를 요청합니다. 호스트는 매치가 아직 플레이어를 받는지, 빈자리가 있는지, 비밀번호가 맞는지를 확인합니다.
+
+매치가 더 이상 플레이어를 받지 않으면 노드가 `JoinRefused`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 비밀번호가 틀리면 `WrongPassword`로 실패합니다. 세 경우 모두 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며, 플레이어는 곧바로 다시 시도할 수 있습니다.
+
+```
+Join Easy Session
+  OnFailure -> Result == WrongPassword ?
+                 true  -> 비밀번호 입력창을 다시 열고 ErrorMessage 표시
+                 false -> ErrorMessage 표시
+```
+
+예제의 비밀번호 팝업이 바로 이렇게 합니다. 다시 입력할 수 있도록 열린 채로 남고, 입력칸 아래에 사유를 보여줍니다(`WBP_JoinPasswordPopup`).
+
+### 자리를 잡아두기
+
+승인받은 플레이어는 몇 초 동안 맵을 로드하고, 호스트는 그동안 그 플레이어의 자리를 잡아둡니다. 그래서 마지막 한 자리를 두 명이 동시에 승인받는 일은 생기지 않습니다. 자리는 그 플레이어가 도착할 때까지 잡혀 있고, 45초 안에 도착하지 않으면 호스트가 풀어줍니다. 세션에서 나간 플레이어의 자리는 로그아웃과 함께 풀리므로, 다음 플레이어나 방금 나간 그 플레이어가 그 자리로 들어올 수 있습니다.
+
+호스트도 자리 하나를 차지합니다. Max Players에 호스트가 포함되기 때문입니다.
+
+검색 결과는 이미 세션에 들어와 있는 플레이어만 세고, 아직 로드 중인 플레이어가 잡아둔 자리는 세지 않습니다. 그래서 검색 결과에는 빈자리가 보이는데 참가하면 `JoinSessionFull`로 실패할 수 있습니다. 이때 Matchmaking은 다음 후보로 넘어갑니다.
+
+맵을 바꾸면 이미 들어와 있던 사람들까지 전부 다시 이동하게 되므로, 호스트는 잡아둔 자리를 모두 새 맵으로 가져갑니다. 호스트는 각 플레이어가 도착하기를 45초 기다리며, 이 값은 엔진의 `TravelSessionTimeoutSecs`입니다. 맵 로딩이 그보다 오래 걸리면 `DefaultEngine.ini`에서 올리세요. 아래는 90초로 올리는 예입니다.
+
+```ini
+[/Script/OnlineSubsystemUtils.PartyBeaconHost]
+TravelSessionTimeoutSecs=90
+```
+
+### 호스트에게 물을 수 없을 때
+
+자리 요청은 비콘을 타고 갑니다. 비콘은 호스트로 향하는 두 번째의 가벼운 연결입니다. 프로젝트가 이미 자기 비콘 호스트를 쓰고 있다면 예약 비콘은 새 포트를 열지 않고 그 호스트에 얹혀 동작합니다. 그 비콘에 닿지 못하면(포트가 막혔거나, 같은 PC의 다른 인스턴스가 같은 포트를 먼저 쓰고 있거나, 프로젝트가 엔진의 `BeaconNetDriver` 정의를 지웠거나 - 그 줄을 되살리는 방법은 [Steam 설정](Setup-Steam.ko.md)에 있고 `EasySession.Diagnose`도 검사합니다) 참가가 그대로 진행되고, 대신 호스트가 도착한 연결을 거절합니다.
+
+비콘은 엔진의 포트를 씁니다. 기본값은 15000이고, `DefaultEngine.ini`의 `[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`나 커맨드라인 `-BeaconPort=`로 옮길 수 있습니다. 그 포트를 잡는 쪽은 호스트뿐이고 참가자는 운영체제가 주는 임의 포트에서 접속하므로, 한 PC의 두 인스턴스는 둘 다 호스트일 때만 충돌합니다. 그때는 호스트마다 `-BeaconPort=`를 다르게 주세요. 포트가 이미 사용 중이면 엔진이 다음 빈 포트에 바인딩하는데 세션은 설정된 포트를 계속 광고하므로, 호스트가 두 포트를 모두 적은 경고를 남깁니다.
+
+이렇게 늦게 오는 거절은 디스커넥트이므로 플레이어는 메뉴 레벨로 돌아갑니다(`bAutoReturnToMenuOnDisconnect`, 기본값 켜짐). 사유는 거기서 읽으세요.
+
+```
+Event Construct
+  Has Pending Easy Disconnect Info ?
+    Consume Pending Easy Disconnect Info  ->  Break Easy Disconnect Info
+                                             Reason      == Rejected
+                                             Reason Text == "Wrong session password."
+```
+
+이 정보는 메뉴가 보여줄 수 있도록 Travel을 넘어 보존됩니다. 문자열을 비교하지 말고 `Reason`을 보세요. `Reason`은 네 가지입니다.
+
+| Reason | 언제 |
+|---|---|
+| `ConnectionLost` | 호스트가 나갔거나, 죽었거나, 네트워크가 끊김. 조인 도중 호스트가 죽은 경우도 여기 |
+| `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 내보냄 |
+| `TravelFailure` | 세션의 맵으로 이동하지 못함 |
+| `Rejected` | 호스트가 도착한 연결을 거절함. 비밀번호가 틀렸거나 매치가 닫혀 있음. 사유는 `Reason Text`에 |
+
+비콘이 잘 동작하더라도 이 핸들러는 남겨 두세요. 연결이 끊기는 모든 경우를 받아내는 안전망입니다.
+
 ## 비밀번호로 잠근 세션
 
 ### 세션 잠그기
@@ -80,76 +137,15 @@ Create Easy Session
   Host Params > Password = "1234"
 ```
 
-비밀번호 자체는 광고되지 않습니다. "비밀번호가 걸려 있음"이라는 표시만 세션과 함께
-나가고, `Find Easy Sessions`가 그것을 각 검색 결과의 `Password Protected`로 돌려줍니다.
-입력을 받을지 말지 이 값으로 정하세요.
+비밀번호 자체는 광고되지 않습니다. "비밀번호가 걸려 있음"이라는 표시만 세션과 함께 나가고, `Find Easy Sessions`가 그것을 각 검색 결과의 `Password Protected`로 돌려줍니다. 입력을 받을지 말지 이 값으로 정하세요.
 
 ### 잠긴 세션에 참가하기
 
-플레이어가 입력한 값을 `Join Easy Session`의 `Password` 핀에 넘기세요. 플러그인이 자기가
-수행하는 Travel의 URL에 그 값을 붙입니다.
-
-### 결과 읽기
-
-다른 일이 벌어지기 전에 호스트에게 먼저 승인을 묻습니다. 비밀번호가 틀리면 노드가
-`WrongPassword`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 매치가 더 이상 플레이어를 받지
-않으면 `JoinRefused`로 실패합니다.
-두 경우 모두 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며,
-플레이어는 곧바로 다시 시도할 수 있습니다.
-
-```
-Join Easy Session
-  OnFailure -> Result == WrongPassword ?
-                 true  -> 비밀번호 입력창을 다시 열고 ErrorMessage 표시
-                 false -> ErrorMessage 표시
-```
-
-예제의 비밀번호 팝업이 바로 이렇게 합니다. 다시 입력할 수 있도록 열린 채로 남고, 입력칸
-아래에 사유를 보여줍니다(`WBP_JoinPasswordPopup`).
-
-### 호스트에게 물을 수 없을 때
-
-승인은 비콘을 타고 갑니다. 비콘은 호스트로 향하는 두 번째의 가벼운 연결입니다. 프로젝트가 이미 자기 비콘 호스트를 쓰고 있다면 승인은 새 포트를 열지 않고 그 호스트에 얹혀 동작합니다. 그 비콘에
-닿지 못하면(포트가 막혔거나, 같은 PC의 다른 인스턴스가 같은 포트를 먼저 쓰고 있거나, 프로젝트가 엔진의 `BeaconNetDriver` 정의를 지웠거나 - 그 줄을
-되살리는 방법은 [Steam 설정](Setup-Steam.ko.md)에 있고 `EasySession.Diagnose`도 검사합니다)
-참가가 그대로 진행되고, 대신 호스트가 도착한 연결을 거절합니다.
-
-비콘은 엔진의 포트를 씁니다. 기본값은 15000이고, `DefaultEngine.ini`의
-`[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`나 커맨드라인 `-BeaconPort=`로
-옮길 수 있습니다. 그 포트를 잡는 쪽은 호스트뿐이고 참가자는 운영체제가 주는 임의 포트에서
-접속하므로, 한 PC의 두 인스턴스는 둘 다 호스트일 때만 충돌합니다. 그때는 호스트마다
-`-BeaconPort=`를 다르게 주세요. 포트가 이미 사용 중이면 엔진이 다음 빈 포트에 바인딩하는데
-세션은 설정된 포트를 계속 광고하므로, 호스트가 두 포트를 모두 적은 경고를 남깁니다.
-
-이렇게 늦게 오는 거절은 디스커넥트이므로 플레이어는 메뉴 레벨로 돌아갑니다
-(`bAutoReturnToMenuOnDisconnect`, 기본값 켜짐). 사유는 거기서 읽으세요.
-
-```
-Event Construct
-  Has Pending Easy Disconnect Info ?
-    Consume Pending Easy Disconnect Info  ->  Break Easy Disconnect Info
-                                             Reason      == Rejected
-                                             Reason Text == "Wrong session password."
-```
-
-이 정보는 메뉴가 보여줄 수 있도록 Travel을 넘어 보존됩니다. 문자열을 비교하지 말고
-`Reason`을 보세요. `Reason`은 네 가지입니다.
-
-| Reason | 언제 |
-|---|---|
-| `ConnectionLost` | 호스트가 나갔거나, 죽었거나, 네트워크가 끊김. 조인 도중 호스트가 죽은 경우도 여기 |
-| `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 내보냄 |
-| `TravelFailure` | 세션의 맵으로 이동하지 못함 |
-| `Rejected` | 호스트의 승인 검사가 연결을 거절함. 비밀번호가 틀렸거나 매치가 닫혀 있음. 사유는 `Reason Text`에 |
-
-비콘이 잘 동작하더라도 이 핸들러는 남겨 두세요. 연결이 끊기는 모든 경우를 받아내는 안전망입니다.
+플레이어가 입력한 값을 `Join Easy Session`의 `Password` 핀에 넘기세요. 호스트가 Travel 전에 그 값을 확인하고([호스트에게 먼저 묻기](#호스트에게-먼저-묻기)), 플러그인은 자기가 수행하는 Travel의 URL에도 그 값을 붙입니다.
 
 ### 친구는 비밀번호를 건너뜁니다
 
-`Friends Bypass Password`의 기본값은 **true**입니다. 플랫폼 초대에는 비밀번호를 입력할 자리가
-없어서, 이게 없으면 초대받은 친구가 정작 그 세션에서 쫓겨납니다. 호스트가 플랫폼 친구 목록으로
-친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는
-아무 영향이 없습니다.
+`Friends Bypass Password`의 기본값은 **true**입니다. 플랫폼 초대에는 비밀번호를 입력할 자리가 없어서, 이게 없으면 초대받은 친구가 정작 그 세션에서 쫓겨납니다. 호스트가 플랫폼 친구 목록으로 친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는 아무 영향이 없습니다.
 
 ## Start Session / End Session
 
@@ -205,7 +201,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 `Server Travel Easy Session`(호스트 전용)은 세션 전체를 새 맵으로 옮기며, 서버가 데디케이티드이거나 옵션을 직접 적은 경우가 아니면 `?listen`을 붙입니다. 클라이언트는 자동으로 따라옵니다. 다른 노드와 달리 이건 비동기 노드가 아니라 성공 여부를 bool로 즉시 돌려줍니다.
 
-맵 전환은 항상 이 노드로 하세요. 이 노드는 맵이 바뀌기 전에 참가 승인 비콘을 멈춥니다. 그냥 `ServerTravel`을 하면 포트가 계속 잡혀 있어서 새 맵이 자기 비콘을 띄우지 못합니다.
+맵 전환은 항상 이 노드로 하세요. 이 노드는 맵이 바뀌기 전에 예약 비콘을 멈추고, 잡아둔 자리를 새 맵으로 가져갑니다. 그냥 `ServerTravel`을 하면 포트가 계속 잡혀 있어서 새 맵이 자기 비콘을 띄우지 못합니다.
 
 맵 로드가 실패해도(오타, 쿠킹에서 빠진 맵) 세션과 접속자는 그대로입니다. 실패는 `OnSessionFailure`로 알려지니, 올바른 맵 이름으로 다시 부르면 됩니다.
 

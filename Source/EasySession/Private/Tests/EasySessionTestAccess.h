@@ -9,12 +9,11 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
-#include "EasySessionJoinApproval.h"
 #include "EasySessionFindRequest.h"
 #include "EasySessionMatchmakingRequest.h"
 #include "EasySessionRequest.h"
 #include "EasySessionRequestQueue.h"
-#include "EasySessionServerGate.h"
+#include "EasySessionReservations.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
@@ -61,7 +60,7 @@ public:
 	}
 
 	/**
-	 * Spawn the state actor and the join approval host object, as the host does when it initializes the game mode of the session's map.
+	 * Spawn the state actor and the reservation beacon, as the host does when it initializes the game mode of the session's map.
 	 * Tests call it after the create, because SkipHostTravel keeps them in the world they started in.
 	 */
 	static void ArriveInSessionMap(UEasySessionSubsystem& Subsystem)
@@ -135,7 +134,7 @@ public:
 	/** The password arriving players are actually checked against. */
 	static FString GetEnforcedSessionPassword(const UEasySessionSubsystem& Subsystem)
 	{
-		return Subsystem.Host.IsValid() ? Subsystem.Host->GetGate().GetSessionPassword() : FString();
+		return Subsystem.Host.IsValid() ? Subsystem.Host->GetReservations().GetSessionPassword() : FString();
 	}
 
 	/**
@@ -247,10 +246,29 @@ public:
 		return *Subsystem.BeaconPort;
 	}
 
-	/** The beacon host the join approval registered on, the plugin's own or the project's. Null while none runs. */
-	static AOnlineBeaconHost* GetJoinApprovalBeaconHost(const UEasySessionSubsystem& Subsystem)
+	/** The listener the reservation beacon registered on, the plugin's own or the project's. Null while none runs. */
+	static AOnlineBeaconHost* GetReservationListener(const UEasySessionSubsystem& Subsystem)
 	{
 		return Subsystem.BeaconPort.IsValid() ? Subsystem.BeaconPort->GetListener() : nullptr;
+	}
+
+	/** Whether the beacon holds a player slot for this player, which PreLogin reads when the player arrives. */
+	static bool HasPlayerSlot(const UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	{
+		const AEasySessionReservationBeaconHost* Beacon = GetReservationBeacon(Subsystem);
+		return Beacon != nullptr && PlayerId.IsValid() && Beacon->PlayerHasReservation(*PlayerId.GetUniqueNetId());
+	}
+
+	/** The part of a player's logout that releases their slot, which a headless test cannot drive with a real controller. */
+	static void ReleasePlayerSlot(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	{
+		Subsystem.Host->Reservations->ReleasePlayerSlot(PlayerId);
+	}
+
+	/** The beacon host that holds the player slots, or null while no beacon runs. */
+	static AEasySessionReservationBeaconHost* GetReservationBeacon(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.Host.IsValid() ? Subsystem.Host->Reservations->BeaconHost.Get() : nullptr;
 	}
 
 	/** @return The id of the session this subsystem holds, or empty when it holds none. The join refuses a result carrying this id. */
@@ -264,7 +282,7 @@ public:
 	/**
 	 * A joinable search result copied from the session this subsystem currently holds.
 	 * The copy shares the live session info, so its address (port 0 when the host never listened) stays readable after the session is destroyed.
-	 * Join approval is turned off in the copy, so joining it does not wait for a beacon no host runs.
+	 * The reservations key is turned off in the copy, so joining it does not wait for a beacon no host runs.
 	 */
 	static FOnlineSessionSearchResult MakeSearchResultFromCurrentSession(UEasySessionSubsystem& Subsystem)
 	{
@@ -277,7 +295,7 @@ public:
 		}
 
 		Result.Session = *NamedSession;
-		Result.Session.SessionSettings.Set(EasySession::SettingKey_JoinApproval, 0, EOnlineDataAdvertisementType::ViaOnlineService);
+		Result.Session.SessionSettings.Set(EasySession::SettingKey_Reservations, 0, EOnlineDataAdvertisementType::ViaOnlineService);
 
 		// Created without a local player, the session may have no owner, and an ownerless result fails the join's validity check.
 		if (!Result.Session.OwningUserId.IsValid())
@@ -290,12 +308,12 @@ public:
 		return Result;
 	}
 
-	/** Ask the server gate directly whether a player may join. The approval beacon and PreLogin both call this. */
-	static EEasyJoinApprovalResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& SuppliedPassword)
+	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */
+	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password)
 	{
-		FEasyJoinApprovalRequest Request;
-		Request.Credential = SuppliedPassword;
-		return Subsystem.ApproveJoin(Request, FUniqueNetIdRepl()).Result;
+		return Subsystem.Host.IsValid()
+			? Subsystem.Host->Reservations->ApproveJoin(Password, FUniqueNetIdRepl()).Result
+			: FEasyReservationResponse::NotAnswering().Result;
 	}
 
 	/**

@@ -22,6 +22,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **Every request reports its progress and result** - `Is Busy` covers the request running or queued and the level load that follows hosting or joining, so binding it to a button's Is Enabled keeps that button locked for as long as the player is actually waiting. When the request finishes you get a result enum and a message you can show a player.
 - **Overlapping calls are handled in order** - every request goes through a queue and runs one at a time. A call made while another is still running waits its turn instead of failing, and a repeat of the same call ends with a clear result such as `SessionAlreadyExists`.
 - **Passwords and join-in-progress enforced by the host** - checked as the player connects, so a stale search result or a direct connect cannot walk into a running match.
+- **Slot reservations** - two players are never approved for the last slot, and a player who leaves frees theirs for the next one.
 - **Disconnect recovery** - when the host leaves or a travel fails, the session is cleaned up and the player is returned to the menu. The reason survives the map change so you can show it there.
 - **Steam invites and friends** - accepting Join Game from the overlay joins automatically, plus friend invites, the invite and profile overlays, and the friends list.
 - **A working example** - example maps and widgets with the full main menu -> lobby -> match cycle.
@@ -30,9 +31,9 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 ## Limitations
 
 - **One session at a time.** Everything uses the engine's `NAME_GameSession` slot, so running more than one session side by side is not supported.
-- **Not implemented yet.** `OnlineBeacon` based parties, seat reservations and reconnect are not in the plugin. The scope is a single session: create it, find it, join it, play.
+- **Not implemented yet.** `OnlineBeacon` based parties and reconnect are not in the plugin. The scope is a single session: create it, find it, join it, play.
 - **Local player 0 only.** Split-screen is not supported.
-- **Map changes during a match must use seamless travel.** The host-side join gate treats a new connection as a new player, so a hard travel mid-match would lock your own players out. The plugin's own travels already do the right thing.
+- **Map changes during a match must use seamless travel.** The host's join checks treat a new connection as a new player, so a hard travel mid-match would lock your own players out. The plugin's own travels already do the right thing.
 - **Rolling your own `ClientTravel` into a password session** means appending the password option yourself; the plugin only adds it on the travels it performs.
 - **Dedicated servers** are not supported yet - sessions are hosted on listen servers.
 

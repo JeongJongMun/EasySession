@@ -83,16 +83,16 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	// Start and End update it.
 	Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// The port joining players reach the join approval beacon on.
+	// The port joining players reach the reservation beacon on.
 	// Read from config rather than from a running beacon, because none exists yet.
 	// One is created per world, after each travel.
 	// GetResolvedConnectString reads this key to build the beacon address.
-	Settings.Set(SETTING_BEACONPORT, EasySession::GetJoinApprovalBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(SETTING_BEACONPORT, EasySession::GetReservationBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// Whether this host runs a join approval beacon.
-	// Joining players that find the key request join approval before traveling.
+	// Whether this host runs a reservation beacon.
+	// Joining players that find the key ask it for a player slot before traveling.
 	// The host reads the key back after each travel to decide whether the new world needs a beacon.
-	Settings.Set(EasySession::SettingKey_JoinApproval, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	return Settings;
 }

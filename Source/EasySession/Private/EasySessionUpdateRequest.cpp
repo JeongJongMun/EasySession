@@ -44,7 +44,7 @@ void FEasySessionUpdateRequest::Execute()
 	}
 
 	// Only the password flag is advertised here.
-	// The server gate gets the password itself once the update succeeds, so the two never differ if this request fails.
+	// The host takes the password itself once the update succeeds, so the two never differ if this request fails.
 	FOnlineSessionSettings UpdatedSettings = NamedSession->SessionSettings;
 	Settings.ApplyTo(UpdatedSettings);
 

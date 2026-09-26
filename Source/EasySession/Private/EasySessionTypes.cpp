@@ -28,13 +28,13 @@ namespace EasySession
 	/** Custom session setting key holding the shareable join code. */
 	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
 
-	/** Custom session setting key marking a session whose host runs join approval over a beacon. */
-	const FName SettingKey_JoinApproval = TEXT("EASYJOINAPPROVAL");
+	/** Custom session setting key marking a session whose host runs the reservation beacon. */
+	const FName SettingKey_Reservations = TEXT("EASYRESERVATIONS");
 
 	/** Travel URL option carrying the password a client supplies when joining. */
 	const TCHAR* TravelOption_Password = TEXT("EasySessionPassword");
 
-	int32 GetJoinApprovalBeaconPort()
+	int32 GetReservationBeaconPort()
 	{
 		// AOnlineBeaconHost::InitHost reads this override too, but writes it on the listener rather than on the class default below.
 		int32 PortOverride = 0;
@@ -54,7 +54,7 @@ namespace EasySession
 			|| Key == SettingKey_Region
 			|| Key == SettingKey_MatchInProgress
 			|| Key == SettingKey_JoinCode
-			|| Key == SettingKey_JoinApproval
+			|| Key == SettingKey_Reservations
 			|| Key == SETTING_BEACONPORT;
 	}
 
@@ -158,7 +158,7 @@ void FEasySessionSettings::ApplyTo(FOnlineSessionSettings& OutSettings) const
 	OutSettings.Set(EasySession::SettingKey_Hidden, bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	OutSettings.Set(EasySession::SettingKey_Region, static_cast<int32>(Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// Only the flag is advertised, and the server gate keeps the password. A whitespace-only password counts as none in both.
+	// Only the flag is advertised, and the host keeps the password. A whitespace-only password counts as none in both.
 	OutSettings.Set(EasySession::SettingKey_PasswordProtected, Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// A join code stays once generated, so players who already have it can still join.

@@ -26,6 +26,16 @@ Check the map path on the host.)
 
 **호스트** 쪽에서 고치세요. 호스트는 `Initial Map Name`으로 `?listen`과 함께 이동하고, 그 이동이 서버를 엽니다. 그런데도 서버가 되지 않았다면 이동이 실패한 것입니다. 맵 경로(`/Game/Maps/YourMap`)를 확인하고, PIE라면 *Run Under One Process*가 꺼져 있는지 확인하세요.
 
+## "검색 결과에는 빈자리가 있는데, 참가하면 JoinSessionFull로 실패합니다"
+
+조금 전에 다른 플레이어가 그 자리를 승인받고 아직 맵을 로드하는 중입니다. 호스트는 그 플레이어의 자리를 잡아두지만, 검색 결과는 이미 세션에 들어와 있는 플레이어만 세므로 그 자리가 여전히 비어 보입니다. 호스트의 로그에 거절 사유가 남습니다.
+
+```
+LogEasySession: Warning: Reservations: refusing '<player id>' - the session is full.
+```
+
+고칠 것은 없습니다. 그 플레이어가 도착하면 다음 검색부터 세션이 꽉 찬 것으로 보입니다. 끝내 도착하지 않으면 호스트가 45초 뒤에 자리를 풀어주며, 이 값은 엔진의 `TravelSessionTimeoutSecs`입니다([자리를 잡아두기](Guide-Sessions.ko.md#자리를-잡아두기)). Matchmaking은 알아서 다음 후보로 넘어갑니다.
+
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 
 Host Params의 **Allow Join In Progress가 꺼져 있습니다.** 스팀에서는 켜 두세요.
@@ -47,7 +57,7 @@ bool bLobbyJoinable = Session.SessionSettings.bAllowJoinInProgress && (LobbyMemb
 
 그래서 이 설정이 꺼져 있으면 첫 참가가 로비를 닫고, 아무것도 다시 열지 못합니다 - 플레이어가 나가도, `End Easy Session`을 불러도 마찬가지입니다. 새로 만든 로비가 열려 있는 이유는 생성 경로가 이 계산을 한 번도 돌리지 않기 때문이고, 그래서 딱 한 명만 들어옵니다. 닫힌 로비는 모두를 거부하므로 초대받은 친구도 거부됩니다.
 
-EasySession은 이걸 우회하지 않습니다. 설정을 받은 그대로 온라인 서비스에 넘기고, 난입 거부는 매치 상태를 실제로 확인하는 참가 승인 비콘과 `PreLogin`이 직접 합니다. 스팀에서 "매치가 시작되면 참가 금지"가 필요하다면, Allow Join In Progress는 켜 두고 그 검사들에 맡기세요.
+EasySession은 이걸 우회하지 않습니다. 설정을 받은 그대로 온라인 서비스에 넘기고, 난입 거부는 매치 상태를 실제로 확인하는 예약 비콘과 `PreLogin`이 직접 합니다. 스팀에서 "매치가 시작되면 참가 금지"가 필요하다면, Allow Join In Progress는 켜 두고 그 검사들에 맡기세요.
 
 이렇게 참가가 실패한 플레이어는, 참가하느라 원래 있던 세션을 먼저 나온 경우라면 메인 메뉴로 돌아갑니다. 세션 없는 맵에 남지 않습니다.
 

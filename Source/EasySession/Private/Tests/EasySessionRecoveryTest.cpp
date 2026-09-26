@@ -5,7 +5,7 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 #include "EasySessionConfig.h"
-#include "EasySessionServerGate.h"
+#include "EasySessionReservations.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestEventListener.h"
@@ -363,13 +363,13 @@ bool FEasySessionWaitForTravelFailure::Update()
 				return false;
 			}
 			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
-			CurrentTest->TestNotNull(TEXT("The approval beacon is up before the travel"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+			CurrentTest->TestNotNull(TEXT("The reservation beacon is up before the travel"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
 
 			// The engine accepts a travel to a map that does not exist.
 			// Only the next tick's load fails.
 			// The failure broadcast below stands in for that tick.
 			CurrentTest->TestTrue(TEXT("ServerTravel accepted the bad map"), Subsystem->ServerTravel(TEXT("/Game/EasySessionTests/ES_NoSuchMap")));
-			CurrentTest->TestNull(TEXT("The travel stopped the beacon"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+			CurrentTest->TestNull(TEXT("The travel stopped the beacon"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
 			CurrentTest->TestTrue(TEXT("OnModifyServerTravelURL received the server travel URL"),
 				State->ModifiedServerTravelURL.Contains(TEXT("ES_NoSuchMap")) && State->ModifiedServerTravelURL.Contains(TEXT("?listen")));
 			CurrentTest->TestTrue(TEXT("The travel reports busy"), Subsystem->IsBusy());
@@ -380,7 +380,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 			CurrentTest->TestTrue(TEXT("The failure was reported"), State->Listener->FailureReasons.Num() >= 1);
 			CurrentTest->TestFalse(TEXT("No disconnect was recorded - nobody disconnected"), Subsystem->HasPendingDisconnectInfo());
 			CurrentTest->TestFalse(TEXT("The failed travel no longer reports busy"), Subsystem->IsBusy());
-			CurrentTest->TestNotNull(TEXT("The approval beacon is back up"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+			CurrentTest->TestNotNull(TEXT("The reservation beacon is back up"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
 
 			// The same broadcast on a client still destroys the lost session.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
@@ -559,8 +559,8 @@ bool FEasySessionWaitForNetworkFilter::Update()
 			CurrentTest->TestEqual(TEXT("A host lost before the map loaded is a lost connection"), LostHost.Reason, EEasyDisconnectReason::ConnectionLost);
 			CurrentTest->TestEqual(TEXT("With the engine's message unchanged"), LostHost.ReasonText.ToString(), FString(TEXT("Your connection to the host has been lost.")));
 
-			// The same failure type with the gate's RefusalMark in front is a refusal, and the mark is removed before the message is shown.
-			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::PendingConnectionFailure, FString(FEasySessionServerGate::RefusalMark) + TEXT("Wrong session password."));
+			// The same failure type with the RefusalMark PreLogin writes in front is a refusal, and the mark is removed before the message is shown.
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::PendingConnectionFailure, FString(FEasySessionReservations::RefusalMark) + TEXT("Wrong session password."));
 			const FEasyDisconnectInfo Marked = Subsystem->ConsumePendingDisconnectInfo();
 			CurrentTest->TestEqual(TEXT("A marked pending failure is a rejection"), Marked.Reason, EEasyDisconnectReason::Rejected);
 			CurrentTest->TestEqual(TEXT("With the mark removed"), Marked.ReasonText.ToString(), FString(TEXT("Wrong session password.")));

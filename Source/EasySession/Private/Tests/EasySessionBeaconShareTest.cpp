@@ -4,7 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionJoinApprovalBeacon.h"
+#include "EasySessionReservationBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -52,7 +52,7 @@ bool FEasySessionBeaconShareStep::Update()
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	UWorld* World = State->GameInstance->GetWorld();
-	const FString ApprovalType = GetDefault<AEasySessionJoinApprovalBeaconHostObject>()->GetBeaconType();
+	const FString ReservationBeaconType = GetDefault<AEasySessionReservationBeaconHost>()->GetBeaconType();
 
 	switch (State->Step)
 	{
@@ -69,15 +69,15 @@ bool FEasySessionBeaconShareStep::Update()
 				return false;
 			}
 
-			// The join approval host object is registered when the host initializes the game mode of the session's map.
+			// The reservation beacon is registered when the host initializes the game mode of the session's map.
 			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
 
 			AOnlineBeaconHost* ProjectHost = State->ProjectHost.Get();
 			CurrentTest->TestEqual(TEXT("No second beacon host was spawned"), CountBeaconHosts(World), 1);
-			CurrentTest->TestTrue(TEXT("The approval registered on the project's host"),
-				FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem) == ProjectHost);
-			CurrentTest->TestNotNull(TEXT("The project's host answers for the approval type"),
-				ProjectHost != nullptr ? ProjectHost->GetHost(ApprovalType) : nullptr);
+			CurrentTest->TestTrue(TEXT("The reservation beacon registered on the project's host"),
+				FEasySessionTestAccess::GetReservationListener(*Subsystem) == ProjectHost);
+			CurrentTest->TestNotNull(TEXT("The project's host answers for the reservation beacon type"),
+				ProjectHost != nullptr ? ProjectHost->GetHost(ReservationBeaconType) : nullptr);
 
 			Subsystem->DestroySession();
 			State->Step = FTestState::EStep::AwaitingDestroy;
@@ -101,7 +101,7 @@ bool FEasySessionBeaconShareStep::Update()
 			AOnlineBeaconHost* ProjectHost = State->ProjectHost.Get();
 			if (CurrentTest->TestNotNull(TEXT("The project's host survives the session"), ProjectHost))
 			{
-				CurrentTest->TestNull(TEXT("Only the approval type was unregistered"), ProjectHost->GetHost(ApprovalType));
+				CurrentTest->TestNull(TEXT("Only the reservation beacon type was unregistered"), ProjectHost->GetHost(ReservationBeaconType));
 				ProjectHost->DestroyBeacon();
 			}
 
@@ -115,11 +115,11 @@ bool FEasySessionBeaconShareStep::Update()
 
 /**
  * A beacon host is one shared listener per process, so a project that already runs one keeps it.
- * The join approval must register its host object there instead of spawning a second host.
+ * The reservation beacon must register its beacon host there instead of spawning a second listener.
  * It must also take only its own type off again when the session ends.
  *
- * Before this behavior, the second host bound a different port than the session advertised and every approval request ended Unreachable.
- * Join approval was silently off for the whole session, whichever side spawned first.
+ * Before this behavior, the second listener bound a different port than the session advertised and every reservation request ended Unreachable.
+ * The reservation beacon was silently off for the whole session, whichever side spawned first.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconShareTest, "EasySession.Beacon.SharesAnExistingHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
@@ -186,7 +186,7 @@ namespace EasySessionBeaconPortTest
 			FActorSpawnParameters SpawnParams;
 			SpawnParams.ObjectFlags |= RF_Transient;
 			// The plain engine class has an empty beacon type, which is all the second family needs to differ from the first.
-			First = World->SpawnActor<AEasySessionJoinApprovalBeaconHostObject>(SpawnParams);
+			First = World->SpawnActor<AEasySessionReservationBeaconHost>(SpawnParams);
 			Second = World->SpawnActor<AOnlineBeaconHostObject>(SpawnParams);
 			return Test.TestNotNull(TEXT("The first host object spawned"), First) && Test.TestNotNull(TEXT("The second host object spawned"), Second);
 		}
@@ -200,7 +200,7 @@ namespace EasySessionBeaconPortTest
 
 /**
  * The listener is shared by every beacon family, so it has to outlive any one of them.
- * The party beacon will depend on this: a game session ending unregisters the join approval, and the party's connection must stay up.
+ * The party beacon will depend on this: a game session ending unregisters the reservation beacon, and the party's connection must stay up.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconPortSharedTest, "EasySession.Beacon.ListenerOutlivesOneOfTwoHostObjects", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionBeaconPortSharedTest::RunTest(const FString& Parameters)

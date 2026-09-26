@@ -67,7 +67,7 @@ enum class EEasySessionResult : uint8
 	/** Could not join because the session no longer exists. */
 	JoinSessionDoesNotExist,
 
-	/** The host refused the join because the supplied session password did not match. */
+	/** The host refused the join because the session password did not match. */
 	WrongPassword,
 
 	/** The host refused the join for another reason. The error message says which. */
@@ -198,18 +198,18 @@ namespace EasySession
 	EASYSESSION_API FString GenerateJoinCode();
 
 	/**
-	 * Custom session setting key marking a session whose host runs join approval over a beacon.
-	 * Approval checks every join rule: the password, the free slots and the joinable state.
+	 * Custom session setting key marking a session whose host runs the reservation beacon.
+	 * A joining player that finds it asks the host first, which checks the password, the free slots and the joinable state.
 	 * It is written for every session this plugin hosts, so there is no per-session switch.
 	 */
-	EASYSESSION_API extern const FName SettingKey_JoinApproval;
+	EASYSESSION_API extern const FName SettingKey_Reservations;
 
 	/**
-	 * The port a join approval beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
+	 * The port the reservation beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
-	 * A listener that ends up on another port is reported rather than corrected, and joining players fall back to the server gate.
+	 * A listener that ends up on another port is reported rather than corrected, and joining players fall back to the check in PreLogin.
 	 */
-	EASYSESSION_API int32 GetJoinApprovalBeaconPort();
+	EASYSESSION_API int32 GetReservationBeaconPort();
 
 	/**
 	 * Whether this key is one the plugin writes for itself rather than one the game put in Custom Settings.
@@ -359,7 +359,7 @@ struct EASYSESSION_API FEasySessionSettings
 
 	/**
 	 * Read these settings from the online subsystem's settings, the other direction of ApplyTo.
-	 * Password and Friends Bypass Password are not advertised, so they stay untouched and the host fills them from its server gate.
+	 * Password and Friends Bypass Password are not advertised, so they stay untouched and the host fills them from the password it holds.
 	 */
 	void ReadFrom(const FOnlineSessionSettings& Settings);
 };
@@ -809,7 +809,7 @@ enum class EEasyDisconnectReason : uint8
 	/** Traveling to the session's map failed. */
 	TravelFailure,
 
-	/** The host's join approval refused the connection (wrong password, not joinable). Reason Text is the refusal message. */
+	/** The host refused the connection when it arrived (wrong password, not joinable). Reason Text is the refusal message. */
 	Rejected
 };
 

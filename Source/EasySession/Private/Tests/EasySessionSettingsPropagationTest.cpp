@@ -131,7 +131,7 @@ bool FEasySessionWaitForSettingsPush::Update()
 			}
 
 			// The plugin's own keys stay out of the custom list.
-			// They are either dedicated payload fields or internal, like the join approval flag.
+			// They are either dedicated payload fields or internal, like the reservations key.
 			const bool bLeakedReservedKey = Payload.CustomSettings.ContainsByPredicate(
 				[](const FEasySessionReplicatedSetting& Setting) { return EasySession::IsReservedSettingKey(FName(*Setting.Key)); });
 			CurrentTest->TestFalse(TEXT("No reserved key leaked into the custom list"), bLeakedReservedKey);

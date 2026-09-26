@@ -9,24 +9,20 @@
 class AEasySessionStateActor;
 class AGameModeBase;
 class FEasySessionBeaconPort;
-class FEasySessionJoinApproval;
+class FEasySessionReservations;
 class FOnlineSessionSettings;
-class FEasySessionServerGate;
 class UEasySessionSubsystem;
 class UWorld;
-struct FEasyJoinApprovalRequest;
-struct FEasyJoinApprovalResponse;
 struct FEasySessionHostParams;
 struct FEasySessionReplicatedSettings;
 struct FEasySessionSettings;
-struct FUniqueNetIdRepl;
 
 /**
  * FEasySessionHost is responsible for the host side of the session.
- * That is the session's bHosting flag, the replicated state actor, the server gate's credentials and the join approval beacon.
+ * That is the session's bHosting flag, the replicated state actor, and FEasySessionReservations, which decides who may join.
  *
  * The session requests call this object when the session is created, updated or destroyed, when the match state changes, and around a server travel.
- * The state actor and the beacon host object are actors, so they are destroyed with their world.
+ * The state actor and the reservation beacon are actors, so they are destroyed with their world.
  * This object spawns both again in every world the session reaches, when the host initializes the game mode of that world.
  *
  * Owned by the subsystem and destroyed with it.
@@ -39,17 +35,17 @@ class FEasySessionHost
 
 public:
 
-	/** Creates the server gate and the join approval, and starts watching game mode initialization. */
+	/** Creates the reservations, and starts watching game mode initialization. */
 	FEasySessionHost(UEasySessionSubsystem& InOwner, FEasySessionBeaconPort& InBeaconPort);
 
-	/** Stops watching and destroys the join approval before the server gate. */
+	/** Stops watching and destroys the reservations. */
 	~FEasySessionHost();
 
 public:
 
 	/**
 	 * This process created the session.
-	 * FNamedOnlineSession's bHosting is set and the server gate gets the credentials.
+	 * FNamedOnlineSession's bHosting is set and the reservations remember the password.
 	 * The world actors are spawned later, in the map the host travels to.
 	 */
 	void OnSessionCreated(const FEasySessionHostParams& Params);
@@ -57,7 +53,7 @@ public:
 	/**
 	 * The session settings changed.
 	 * The engine's player cap and the open slot count follow the new Max Players.
-	 * The server gate gets the new credentials, and the state actor replicates the new settings.
+	 * The reservations take the new password and Max Players, and the state actor replicates the new settings.
 	 */
 	void OnSettingsUpdated(const FEasySessionSettings& Settings);
 
@@ -69,13 +65,14 @@ public:
 
 	/**
 	 * The session was destroyed.
-	 * Clears the server gate's credentials and destroys the world actors.
+	 * The reservations forget the password and stop the beacon, and the state actor is destroyed.
 	 */
 	void OnSessionDestroyed();
 
 	/**
 	 * A server travel was requested.
-	 * Destroys the world actors and releases the beacon listener, so the next world can bind the beacon port.
+	 * The reservations keep the held slots for the next world and stop the beacon, and the state actor is destroyed.
+	 * The beacon listener is released too, so the next world can bind the beacon port.
 	 */
 	void OnServerTravelStarted();
 
@@ -87,14 +84,11 @@ public:
 
 public:
 
-	/** Decide whether the requester may join, as the server gate decides it. */
-	FEasyJoinApprovalResponse ApproveJoin(const FEasyJoinApprovalRequest& Request, const FUniqueNetIdRepl& Requester) const;
-
 	/** Tell every connected client to return to the menu with this reason, through the state actor. */
 	void TellEveryoneToReturnToMenu(const FText& Reason);
 
-	/** @return The server gate, for the credentials it enforces. */
-	const FEasySessionServerGate& GetGate() const { return *Gate; }
+	/** @return The reservations, which hold the password the host reads back. */
+	const FEasySessionReservations& GetReservations() const { return *Reservations; }
 
 private:
 
@@ -105,13 +99,13 @@ private:
 	void HandleGameModeInitialized(AGameModeBase* GameMode);
 
 	/**
-	 * Spawn the state actor and the join approval host object in the current world.
+	 * Spawn the state actor and start the reservation beacon in the current world.
 	 * An actor that already exists in this world is kept.
 	 */
 	void SpawnWorldActors();
 
-	/** Destroy the state actor and the join approval host object. */
-	void DestroyWorldActors();
+	/** Destroy the state actor. */
+	void DestroyStateActor();
 
 	/**
 	 * Spawn the state actor if the current world has none, then update it.
@@ -138,14 +132,8 @@ private:
 	/** The shared beacon port, released before a server travel so the next world can bind it. */
 	FEasySessionBeaconPort& BeaconPort;
 
-	/** Decides who may join, and refuses arriving players in PreLogin. */
-	TUniquePtr<FEasySessionServerGate> Gate;
-
-	/**
-	 * Runs the join approval beacon.
-	 * Destroyed before Gate.
-	 */
-	TUniquePtr<FEasySessionJoinApproval> JoinApproval;
+	/** Decides who may join and holds their player slots, with the reservation beacon of each world. */
+	TUniquePtr<FEasySessionReservations> Reservations;
 
 	/**
 	 * The replicated state actor of the session.

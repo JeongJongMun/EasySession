@@ -245,8 +245,8 @@ bool FEasySessionWaitForApprovalTable::Update()
 			}
 
 			// An open session admits anyone, whatever they typed.
-			CurrentTest->TestEqual(TEXT("Open session, no password"), Approve(TEXT("")), EEasyJoinApprovalResult::Approved);
-			CurrentTest->TestEqual(TEXT("Open session, stray password"), Approve(TEXT("anything")), EEasyJoinApprovalResult::Approved);
+			CurrentTest->TestEqual(TEXT("Open session, no password"), Approve(TEXT("")), EEasyReservationResult::Approved);
+			CurrentTest->TestEqual(TEXT("Open session, stray password"), Approve(TEXT("anything")), EEasyReservationResult::Approved);
 
 			Subsystem->DestroySession();
 			State->Phase = 1;
@@ -281,11 +281,11 @@ bool FEasySessionWaitForApprovalTable::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("The right password enters"), Approve(TEXT("hunter2")), EEasyJoinApprovalResult::Approved);
-			CurrentTest->TestEqual(TEXT("Whitespace around it is forgiven"), Approve(TEXT("  hunter2  ")), EEasyJoinApprovalResult::Approved);
-			CurrentTest->TestEqual(TEXT("A wrong password is refused"), Approve(TEXT("wrong")), EEasyJoinApprovalResult::WrongPassword);
-			CurrentTest->TestEqual(TEXT("No password is refused"), Approve(TEXT("")), EEasyJoinApprovalResult::WrongPassword);
-			CurrentTest->TestEqual(TEXT("The comparison is case sensitive"), Approve(TEXT("HUNTER2")), EEasyJoinApprovalResult::WrongPassword);
+			CurrentTest->TestEqual(TEXT("The right password enters"), Approve(TEXT("hunter2")), EEasyReservationResult::Approved);
+			CurrentTest->TestEqual(TEXT("Whitespace around it is forgiven"), Approve(TEXT("  hunter2  ")), EEasyReservationResult::Approved);
+			CurrentTest->TestEqual(TEXT("A wrong password is refused"), Approve(TEXT("wrong")), EEasyReservationResult::WrongPassword);
+			CurrentTest->TestEqual(TEXT("No password is refused"), Approve(TEXT("")), EEasyReservationResult::WrongPassword);
+			CurrentTest->TestEqual(TEXT("The comparison is case sensitive"), Approve(TEXT("HUNTER2")), EEasyReservationResult::WrongPassword);
 
 			Subsystem->StartSession();
 			State->Phase = 3;
@@ -301,7 +301,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 			}
 
 			// With join-in-progress off, a started match refuses even the right password.
-			CurrentTest->TestEqual(TEXT("A started match turns the right password away"), Approve(TEXT("hunter2")), EEasyJoinApprovalResult::Refused);
+			CurrentTest->TestEqual(TEXT("A started match turns the right password away"), Approve(TEXT("hunter2")), EEasyReservationResult::Refused);
 
 			Subsystem->DestroySession();
 			State->Phase = 4;
@@ -323,13 +323,13 @@ bool FEasySessionWaitForApprovalTable::Update()
 }
 
 /**
- * The join decision table, asked at the single call the approval beacon and PreLogin both make.
+ * The join decision table, asked at the single call the reservation beacon and PreLogin both make.
  * The password tests elsewhere only prove the password was stored; this one proves what the stored value decides.
  *
  * Two rows cannot run headless and stay on the on-device list.
  * The capacity refusal needs connected players for AtCapacity, and the friends bypass needs a friends interface the NULL subsystem does not provide.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionApprovalTableTest, "EasySession.JoinApproval.ApprovalTable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionApprovalTableTest, "EasySession.Reservation.ApprovalTable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionApprovalTableTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionApprovalTableTest;

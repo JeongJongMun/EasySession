@@ -14,7 +14,7 @@ class UWorld;
  * It keeps the one beacon listener that binds the port, and counts the host objects registered on it.
  *
  * A beacon listener (AOnlineBeaconHost) binds one port, and each beacon family registers a host object on it.
- * Join approval is the only family today.
+ * The reservation beacon is the only family today.
  * The party beacon registers on the same listener later, so neither family spawns a listener of its own.
  * A project that already runs a listener keeps it.
  * Host objects register on the project's listener, and this object never pauses, resumes or destroys it.

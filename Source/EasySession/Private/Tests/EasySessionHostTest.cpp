@@ -18,7 +18,7 @@ namespace EasySessionHostTest
 	/** Maximum time to wait for each step before failing the test. */
 	static constexpr double TimeoutSeconds = 20.0;
 
-	/** The password the test session is created with, so the server gate has credentials to clear. */
+	/** The password the test session is created with, so the host has a password to forget. */
 	static const TCHAR* TestPassword = TEXT("host-test");
 
 	enum class EStep : uint8
@@ -38,15 +38,15 @@ namespace EasySessionHostTest
 		double StartTime = 0.0;
 	};
 
-	/** Check the four parts of the host side: the authority, the credentials, the state actor and the join approval beacon. */
+	/** Check the four parts of the host side: the authority, the credentials, the state actor and the reservation beacon. */
 	static void TestHostSide(FAutomationTestBase& Test, UEasySessionSubsystem& Subsystem, bool bExpected, const TCHAR* When)
 	{
 		Test.TestEqual(FString::Printf(TEXT("%s: session authority"), When), Subsystem.IsSessionAuthority(), bExpected);
-		Test.TestEqual(FString::Printf(TEXT("%s: the server gate holds the password"), When),
+		Test.TestEqual(FString::Printf(TEXT("%s: the host holds the password"), When),
 			FEasySessionTestAccess::GetEnforcedSessionPassword(Subsystem), bExpected ? FString(TestPassword) : FString());
 		Test.TestEqual(FString::Printf(TEXT("%s: the state actor exists"), When), FEasySessionTestAccess::HasStateActor(Subsystem), bExpected);
-		Test.TestEqual(FString::Printf(TEXT("%s: the join approval beacon is registered"), When),
-			FEasySessionTestAccess::GetJoinApprovalBeaconHost(Subsystem) != nullptr, bExpected);
+		Test.TestEqual(FString::Printf(TEXT("%s: the reservation beacon is registered"), When),
+			FEasySessionTestAccess::GetReservationListener(Subsystem) != nullptr, bExpected);
 	}
 
 	static bool StartTest(FAutomationTestBase& Test, bool bChangeWorld);
@@ -90,7 +90,7 @@ bool FEasySessionHostStep::Update()
 				// The server then initializes the game mode of the next world.
 				FEasySessionTestAccess::DestroyHostSideActors(*Subsystem);
 				CurrentTest->TestFalse(TEXT("The state actor is destroyed after the world change"), FEasySessionTestAccess::HasStateActor(*Subsystem));
-				CurrentTest->TestNull(TEXT("The join approval beacon is unregistered after the world change"), FEasySessionTestAccess::GetJoinApprovalBeaconHost(*Subsystem));
+				CurrentTest->TestNull(TEXT("The reservation beacon is unregistered after the world change"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
 
 				FActorSpawnParameters SpawnParams;
 				SpawnParams.ObjectFlags |= RF_Transient;
@@ -174,7 +174,7 @@ namespace EasySessionHostTest
 
 /**
  * Creating a session does four things on the host.
- * It sets the authority and the server gate's credentials, and spawns the state actor and the join approval beacon.
+ * It sets the authority and the session password, and spawns the state actor and the reservation beacon.
  * Destroying the session has to undo all four, because a later session would otherwise start with the previous one's password or actors.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostDestroyTest, "EasySession.Host.DestroyUndoesWhatCreateDid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -184,7 +184,7 @@ bool FEasySessionHostDestroyTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The state actor and the beacon host object are actors, so a travel destroys them.
+ * The state actor and the reservation beacon are actors, so a travel destroys them.
  * One game mode initialization hook has to spawn both again in the next world, not only one of them.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostNextWorldTest, "EasySession.Host.SpawnsTheWorldActorsAgainInTheNextWorld", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

@@ -81,16 +81,16 @@ bool FEasySessionRunReservedKeySteps::Update()
 			return true;
 		}
 
-		CurrentTest->TestEqual(TEXT("Join approval is advertised as a number"),
-			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, EasySession::SettingKey_JoinApproval), EOnlineKeyValuePairDataType::Int32);
+		CurrentTest->TestEqual(TEXT("The reservations key is advertised as a number"),
+			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, EasySession::SettingKey_Reservations), EOnlineKeyValuePairDataType::Int32);
 		CurrentTest->TestEqual(TEXT("Beacon port is advertised as a number"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
 		// What a Blueprint gets from Get Easy Session Settings.
 		// The plugin's own keys must not be in there, or passing this struct back to Update rewrites them.
 		const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
-		CurrentTest->TestFalse(TEXT("Join approval is not exposed as a custom setting"),
-			ReadBack.CustomSettings.Contains(EasySession::SettingKey_JoinApproval.ToString()));
+		CurrentTest->TestFalse(TEXT("The reservations key is not exposed as a custom setting"),
+			ReadBack.CustomSettings.Contains(EasySession::SettingKey_Reservations.ToString()));
 		CurrentTest->TestFalse(TEXT("Beacon port is not exposed as a custom setting"),
 			ReadBack.CustomSettings.Contains(SETTING_BEACONPORT.ToString()));
 		CurrentTest->TestTrue(TEXT("The game's own custom setting survives the read"),
@@ -117,16 +117,17 @@ bool FEasySessionRunReservedKeySteps::Update()
 	{
 		CurrentTest->TestEqual(TEXT("Update succeeded"), Result, EEasySessionResult::Success);
 
-		CurrentTest->TestEqual(TEXT("Join approval is still a number after the round trip"),
-			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, EasySession::SettingKey_JoinApproval), EOnlineKeyValuePairDataType::Int32);
+		CurrentTest->TestEqual(TEXT("The reservations key is still a number after the round trip"),
+			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, EasySession::SettingKey_Reservations), EOnlineKeyValuePairDataType::Int32);
 		CurrentTest->TestEqual(TEXT("Beacon port is still a number after the round trip"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
-		// The values matter as much as the types: a string rewrite leaves the key in place and every reader sees zero, so the host stops starting its approval beacon.
-		CurrentTest->TestEqual(TEXT("Join approval still reads as enabled"),
-			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_JoinApproval), 1);
+		// The values matter as much as the types: a string rewrite leaves the key in place and every reader sees zero.
+		// The host then stops starting its reservation beacon.
+		CurrentTest->TestEqual(TEXT("The reservations key still reads as enabled"),
+			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_Reservations), 1);
 		CurrentTest->TestEqual(TEXT("Beacon port still reads as the configured port"),
-			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, SETTING_BEACONPORT), EasySession::GetJoinApprovalBeaconPort());
+			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, SETTING_BEACONPORT), EasySession::GetReservationBeaconPort());
 
 		CurrentTest->TestEqual(TEXT("Max players took the update"), Subsystem->GetSessionMaxPlayers(), 8);
 
@@ -159,7 +160,7 @@ bool FEasySessionRunReservedKeySteps::Update()
  * Reading the host params and passing them back to Update leaves the plugin's own keys alone.
  *
  * The keys are advertised as numbers and Custom Settings is a string map, so a key that leaks into that map comes back as a string.
- * The key stays present, so every reader gets zero instead of a missing key, and the host quietly stops running join approval.
+ * The key stays present, so every reader gets zero instead of a missing key, and the host quietly stops running the reservation beacon.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.SettingsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)
