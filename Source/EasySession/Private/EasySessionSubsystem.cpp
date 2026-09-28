@@ -693,24 +693,26 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	// Every net driver reports here, so a beacon query timing out or a replay error would otherwise destroy the session.
 	// Only the game connection counts: the world's driver, and the pending one a client uses while still traveling.
 	if (NetDriver != nullptr &&
-		NetDriver->NetDriverName != NAME_GameNetDriver &&
-		NetDriver->NetDriverName != NAME_PendingNetDriver)
+		NetDriver->NetDriverName != NAME_GameNetDriver && NetDriver->NetDriverName != NAME_PendingNetDriver)
 	{
 		return;
 	}
 
-	const UWorld* OwnWorld = GetWorld();
-	if (World != nullptr)
+	if (World != nullptr && World != GetWorld())
 	{
-		if (World != OwnWorld)
+		return;
+	}
+
+	if (World == nullptr)
+	{
+		// A connection failure has no world and reaches every game instance in the process, so only the one whose pending game owns this net driver handles it.
+		const FWorldContext* PendingContext = NetDriver != nullptr ? GEngine->GetWorldContextFromPendingNetGameNetDriver(NetDriver) : nullptr;
+		if (PendingContext != nullptr && PendingContext->OwningGameInstance != GetGameInstance())
 		{
 			return;
 		}
-	}
-	else
-	{
-		// A pending-connection failure broadcasts with no world to match against.
-		// Being in a session is what says this instance was the one joining.
+
+		// A connection this plugin did not start, such as the open console command, leaves no session to clean up.
 		if (!IsInSession())
 		{
 			return;

@@ -28,13 +28,13 @@ Fix on the **host** side: the host travels to `Initial Map Name` with `?listen`,
 
 ## "The session shows a free slot, but joining fails with JoinSessionFull"
 
-Another player was approved for that slot a moment earlier and is still loading the map. The host holds the slot for them, but search results count only the players already in the session, so the slot still shows as free. The host's log names the refusal:
+Another player was approved a moment earlier and is still loading the map. The host holds a reservation for them, but search results count only the players already in the session, so the slot they reserved still shows as free. The host's log names the refusal:
 
 ```
 LogEasySession: Warning: Reservations: refusing '<player id>' - the session is full.
 ```
 
-Nothing needs fixing. Once that player arrives, the next search shows the session as full. If they never arrive, the host releases the slot after 45 seconds, the engine's `TravelSessionTimeoutSecs` ([Holding the player slot](Guide-Sessions.en.md#holding-the-player-slot)). Matchmaking moves on to its next candidate by itself.
+Nothing needs fixing. Once that player arrives, the next search shows the session as full. If they never arrive, the host removes the reservation after 45 seconds, the engine's `TravelSessionTimeoutSecs` ([Reservations](Guide-Sessions.en.md#reservations)). Matchmaking moves on to its next candidate by itself.
 
 ## "Steam: only the first player can join, everyone after that fails"
 
@@ -75,7 +75,7 @@ Accepting an invite is one click in the platform overlay, and joining would dest
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
-**One occurrence during client travel is normal, and it comes from the engine.** When the client leaves its previous map, that map's `APlayerState` is destroyed and tries to take the local player out of a session the online service cannot find them in. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
+**One or two of these during client travel are normal, and they come from the engine.** When the client leaves its previous map, each `APlayerState` in that map is destroyed and tries to take the local player out of a session the online service cannot find them in. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
 
 ## "Connected fine, but the other player doesn't move on my screen"
 

@@ -49,7 +49,7 @@ void FEasySessionTravel::TravelToOwnSession(const FEasySessionHostParams& HostPa
 	MarkStarted(TEXT("host travel to own session"));
 }
 
-void FEasySessionTravel::TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions)
+void FEasySessionTravel::TravelToJoinedSession(const FString& ConnectString, const FString& AdditionalTravelOptions)
 {
 	APlayerController* PlayerController = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
 	if (PlayerController == nullptr)
@@ -59,12 +59,6 @@ void FEasySessionTravel::TravelToJoinedSession(const FString& ConnectString, con
 	}
 
 	FString TravelURL = ConnectString;
-	const FString TrimmedPassword = Password.TrimStartAndEnd();
-	if (!TrimmedPassword.IsEmpty())
-	{
-		TravelURL += FString::Printf(TEXT("?%s=%s"), EasySession::TravelOption_Password,
-			*EasySessionAddress::EncodeTravelOptionValue(TrimmedPassword));
-	}
 	AppendTravelOptions(TravelURL, AdditionalTravelOptions);
 	Owner.OnModifyClientTravelURL.Broadcast(TravelURL);
 

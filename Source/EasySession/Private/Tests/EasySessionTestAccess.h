@@ -252,20 +252,20 @@ public:
 		return Subsystem.BeaconPort.IsValid() ? Subsystem.BeaconPort->GetListener() : nullptr;
 	}
 
-	/** Whether the beacon holds a player slot for this player, which PreLogin reads when the player arrives. */
-	static bool HasPlayerSlot(const UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	/** Whether the beacon holds a reservation for this player, which PreLogin reads when the player arrives. */
+	static bool PlayerHasReservation(const UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{
 		const AEasySessionReservationBeaconHost* Beacon = GetReservationBeacon(Subsystem);
 		return Beacon != nullptr && PlayerId.IsValid() && Beacon->PlayerHasReservation(*PlayerId.GetUniqueNetId());
 	}
 
-	/** The part of a player's logout that releases their slot, which a headless test cannot drive with a real controller. */
-	static void ReleasePlayerSlot(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	/** The part of a player's logout that removes their reservation, which a headless test cannot drive with a real controller. */
+	static void RemovePlayerReservation(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{
-		Subsystem.Host->Reservations->ReleasePlayerSlot(PlayerId);
+		Subsystem.Host->Reservations->RemovePlayerReservation(PlayerId);
 	}
 
-	/** The beacon host that holds the player slots, or null while no beacon runs. */
+	/** The beacon host that holds the reservations, or null while no beacon runs. */
 	static AEasySessionReservationBeaconHost* GetReservationBeacon(const UEasySessionSubsystem& Subsystem)
 	{
 		return Subsystem.Host.IsValid() ? Subsystem.Host->Reservations->BeaconHost.Get() : nullptr;
@@ -308,7 +308,7 @@ public:
 		return Result;
 	}
 
-	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */
+	/** Ask the reservations directly whether a player may join. The reservation beacon calls this, and PreLogin calls it for a player without a reservation. */
 	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password)
 	{
 		return Subsystem.Host.IsValid()

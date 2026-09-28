@@ -71,7 +71,7 @@ public:
 
 	/**
 	 * A server travel was requested.
-	 * The reservations keep the held slots for the next world and stop the beacon, and the state actor is destroyed.
+	 * The reservations are kept for the next world, the beacon stops, and the state actor is destroyed.
 	 * The beacon listener is released too, so the next world can bind the beacon port.
 	 */
 	void OnServerTravelStarted();
@@ -132,7 +132,7 @@ private:
 	/** The shared beacon port, released before a server travel so the next world can bind it. */
 	FEasySessionBeaconPort& BeaconPort;
 
-	/** Decides who may join and holds their player slots, with the reservation beacon of each world. */
+	/** Decides who may join and holds their reservations, with the reservation beacon of each world. */
 	TUniquePtr<FEasySessionReservations> Reservations;
 
 	/**

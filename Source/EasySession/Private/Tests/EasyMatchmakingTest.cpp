@@ -1128,7 +1128,8 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				return false;
 			}
 
-			// The join fails on address resolve and the run ends with nothing joined, but the failed join proves the session was really tried.
+			// No beacon runs for the crafted result, so the join is refused before the travel and the run ends with nothing joined.
+			// The failed join still proves the session was really tried.
 			CurrentTest->TestEqual(TEXT("The run still ends in NoSessionsFound"), State->WithPasswordResult.GetValue(), EEasySessionResult::NoSessionsFound);
 			CurrentTest->TestEqual(TEXT("The password opened the coded session for one real join attempt"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 1);
 
@@ -1141,7 +1142,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 /**
  * Targeted matchmaking searches for one specific session.
  * A Join Code in the search params finds the hidden, password protected session, and Join Password decides whether it may become a candidate.
- * The injected result stands in for the search, and the cleanup destroy after the failed resolve is the proof that a join was really attempted.
+ * The injected result stands in for the search, and the failed join it leaves on the run is the proof that a join was really attempted.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.PasswordOpensTheCodedSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)

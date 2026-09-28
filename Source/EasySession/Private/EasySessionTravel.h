@@ -40,8 +40,11 @@ public:
 	 */
 	void TravelToOwnSession(const FEasySessionHostParams& HostParams);
 
-	/** Client side, after joining: travel to the host address in the connect string. */
-	void TravelToJoinedSession(const FString& ConnectString, const FString& Password, const FString& AdditionalTravelOptions);
+	/**
+	 * Client side, after joining: travel to the host address in the connect string.
+	 * The URL carries no password, because the reservation beacon already checked it and the engine logs every travel URL.
+	 */
+	void TravelToJoinedSession(const FString& ConnectString, const FString& AdditionalTravelOptions);
 
 	/**
 	 * Travel the session to another map with a server travel, so the connected players travel with the host.

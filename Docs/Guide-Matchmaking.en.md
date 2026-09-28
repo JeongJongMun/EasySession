@@ -74,7 +74,7 @@ The default policy narrows the search results down to candidates, then scores th
 
 1. **Ping buckets** - ping is grouped into tiers (50ms or better, 100ms or better, 150ms or better, worse). A lower tier always wins.
 2. **Fill ratio** - within the same tier, fuller sessions win, so matches start sooner and the player pool doesn't spread across half-empty sessions.
-3. **Full sessions go last** - a session with no open slot takes a large penalty and always sorts last, but it is not dropped. The player count is a snapshot from the search, so someone may have left since - worth one knock before hosting a second session. The count also leaves out the slots held for players still loading, so a session that shows a free slot can still refuse with `JoinSessionFull`, and the run then tries the next candidate.
+3. **Full sessions go last** - a session with no open slot takes a large penalty and always sorts last, but it is not dropped. The player count is a snapshot from the search, so someone may have left since - worth one knock before hosting a second session. The count also leaves out the reservations of players still loading, so a session that shows a free slot can still refuse with `JoinSessionFull`, and the run then tries the next candidate.
 4. **Randomized top picks** - once ordered, the best 3 candidates are shuffled, so players searching at the same moment don't all pile onto the same session and bounce off `JoinSessionFull`.
 
 ## Custom scoring - one function override

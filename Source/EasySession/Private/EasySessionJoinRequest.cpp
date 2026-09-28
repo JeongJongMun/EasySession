@@ -50,15 +50,13 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
-	// Sessions without the reservations key are joined directly.
-	// PreLogin still decides, after the travel instead of before it.
-	if (FEasySessionReservations::IsAdvertisedBy(Target.NativeResult.Session.SessionSettings))
+	if (FEasySessionReservations::UsesReservationBeacon(Target.NativeResult.Session.SessionSettings))
 	{
 		RequestReservation();
 		return;
 	}
 
-	JoinOnlineSession();
+	JoinWithoutReservation();
 }
 
 void FEasySessionJoinRequest::Cleanup()
@@ -127,10 +125,8 @@ void FEasySessionJoinRequest::HandleReservationResponse(const FEasyReservationRe
 			break;
 
 		case EEasyReservationResult::Unreachable:
-			// The join continues without the host's response, because PreLogin runs the same ApproveJoin when the joining player arrives.
-			// An unreachable beacon can only delay a refusal, never skip one.
-			UE_LOG(LogEasySession, Warning, TEXT("Could not ask the reservation beacon, so the join continues without it. A refusal will now arrive after the travel instead of before it."));
-			JoinOnlineSession();
+			UE_LOG(LogEasySession, Warning, TEXT("Could not reach the reservation beacon."));
+			JoinWithoutReservation();
 			break;
 
 		case EEasyReservationResult::WrongPassword:
@@ -154,6 +150,20 @@ void FEasySessionJoinRequest::DestroyReservationClient()
 		Client->DestroyBeacon();
 	}
 	ReservationClient.Reset();
+}
+
+void FEasySessionJoinRequest::JoinWithoutReservation()
+{
+	// Only the reservation beacon checks the password, so the travel would only end in a refusal from PreLogin.
+	if (Target.bPasswordProtected)
+	{
+		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to check the password."));
+		return;
+	}
+
+	// PreLogin runs ApproveJoin when this player arrives, so a refusal arrives after the travel instead of before it.
+	UE_LOG(LogEasySession, Log, TEXT("Joining without a reservation. The host decides when this player arrives."));
+	JoinOnlineSession();
 }
 
 void FEasySessionJoinRequest::JoinOnlineSession()
@@ -261,7 +271,7 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
 	// Requested before the request completes, so Is Busy is already true for the travel when the completion delegate fires.
-	GetContext().Travel.TravelToJoinedSession(ConnectString, Password, TravelOptions);
+	GetContext().Travel.TravelToJoinedSession(ConnectString, TravelOptions);
 
 	Complete(EEasySessionResult::Success);
 }

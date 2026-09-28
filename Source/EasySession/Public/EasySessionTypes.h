@@ -199,7 +199,7 @@ namespace EasySession
 
 	/**
 	 * Custom session setting key marking a session whose host runs the reservation beacon.
-	 * A joining player that finds it asks the host first, which checks the password, the free slots and the joinable state.
+	 * A joining player that finds it asks the host first, which checks the password, whether the session is full and the joinable state.
 	 * It is written for every session this plugin hosts, so there is no per-session switch.
 	 */
 	EASYSESSION_API extern const FName SettingKey_Reservations;
@@ -207,7 +207,8 @@ namespace EasySession
 	/**
 	 * The port the reservation beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
-	 * A listener that ends up on another port is reported rather than corrected, and joining players fall back to the check in PreLogin.
+	 * A listener that ends up on another port is reported rather than corrected.
+	 * Joining players then reach no beacon, so PreLogin checks them on arrival and a password-protected session cannot be joined.
 	 */
 	EASYSESSION_API int32 GetReservationBeaconPort();
 
@@ -217,9 +218,6 @@ namespace EasySession
 	 * A game that read them back and passed them to Update Easy Session would rewrite them as strings, and the code that reads them as numbers would break.
 	 */
 	EASYSESSION_API bool IsReservedSettingKey(FName Key);
-
-	/** Travel URL option carrying the password a client supplies when joining. */
-	EASYSESSION_API extern const TCHAR* TravelOption_Password;
 }
 
 /** Native delegate fired before a travel URL is used, so C++ code can change it in place. */
@@ -809,7 +807,7 @@ enum class EEasyDisconnectReason : uint8
 	/** Traveling to the session's map failed. */
 	TravelFailure,
 
-	/** The host refused the connection when it arrived (wrong password, not joinable). Reason Text is the refusal message. */
+	/** The host refused the connection when it arrived (not joinable, or a password session joined without the reservation beacon). Reason Text is the refusal message. */
 	Rejected
 };
 

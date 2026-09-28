@@ -31,9 +31,6 @@ namespace EasySession
 	/** Custom session setting key marking a session whose host runs the reservation beacon. */
 	const FName SettingKey_Reservations = TEXT("EASYRESERVATIONS");
 
-	/** Travel URL option carrying the password a client supplies when joining. */
-	const TCHAR* TravelOption_Password = TEXT("EasySessionPassword");
-
 	int32 GetReservationBeaconPort()
 	{
 		// AOnlineBeaconHost::InitHost reads this override too, but writes it on the listener rather than on the class default below.

@@ -3,13 +3,10 @@
 #include "EasySessionReservations.h"
 
 #include "EasySession.h"
-#include "EasySessionAddress.h"
 #include "EasySessionBeaconPort.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
-#include "Engine/NetConnection.h"
-#include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/GameModeBase.h"
@@ -59,7 +56,7 @@ void FEasySessionReservations::OnSettingsUpdated(const FEasySessionSettings& Set
 {
 	SessionPassword = Settings.Password.TrimStartAndEnd();
 	bFriendsBypassPassword = Settings.bFriendsBypassPassword;
-	SetMaxPlayerSlots(Settings.MaxPlayers);
+	SetMaxReservations(Settings.MaxPlayers);
 }
 
 void FEasySessionReservations::OnSessionDestroyed()
@@ -67,7 +64,7 @@ void FEasySessionReservations::OnSessionDestroyed()
 	SessionPassword.Empty();
 	bFriendsBypassPassword = false;
 
-	// A new session must never start on the slots of the one before it.
+	// A new session must never start on the reservations of the one before it.
 	KeptReservations.Reset();
 	StopBeacon();
 }
@@ -90,7 +87,7 @@ void FEasySessionReservations::StartBeacon()
 
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
-	if (NamedSession == nullptr || !IsAdvertisedBy(NamedSession->SessionSettings))
+	if (NamedSession == nullptr || !UsesReservationBeacon(NamedSession->SessionSettings))
 	{
 		return;
 	}
@@ -110,21 +107,21 @@ void FEasySessionReservations::StartBeacon()
 		return;
 	}
 
-	// Takes the slots a server travel kept, and returns false when nothing was kept.
-	const bool bKeptSlots = Beacon->InitFromBeaconState(KeptReservations.Get());
+	// Takes the reservations a server travel kept, and returns false when nothing was kept.
+	const bool bRestoredReservations = Beacon->InitFromBeaconState(KeptReservations.Get());
 	KeptReservations.Reset();
 
 	// One team, because this plugin never splits a session into sides.
-	// Max Players counts the host too, so the same number is the team size and the slot count.
+	// Max Players counts the host too, so the same number is the team size and the reservation count.
 	const int32 MaxPlayers = NamedSession->SessionSettings.NumPublicConnections;
-	if (bKeptSlots)
+	if (bRestoredReservations)
 	{
 		Beacon->WaitForEveryoneToArrive();
 	}
 	else if (!Beacon->InitHostBeacon(1, MaxPlayers, MaxPlayers, NAME_GameSession, 0, true))
 	{
 		// Without that state the parent refuses every reservation, so a beacon left running here would refuse every join.
-		UE_LOG(LogEasySession, Error, TEXT("The reservation beacon cannot hold player slots for %d players, so it is not running. A refused join is now reported after the travel instead of before it."), MaxPlayers);
+		UE_LOG(LogEasySession, Error, TEXT("The reservation beacon cannot hold reservations for %d players, so it is not running. A refused join is now reported after the travel instead of before it."), MaxPlayers);
 		Beacon->Destroy();
 		return;
 	}
@@ -140,8 +137,8 @@ void FEasySessionReservations::StartBeacon()
 	}
 
 	// After the registration, because the parent refuses every reservation until the listener owns this actor.
-	// Kept slots already include the host's, and a dedicated server is not a player, so it reserves none.
-	if (!bKeptSlots && Owner.IsHost())
+	// Kept reservations already include the host's, and a dedicated server is not a player, so it reserves none.
+	if (!bRestoredReservations && Owner.IsHost())
 	{
 		AddHostReservation(*Beacon, *NamedSession);
 	}
@@ -213,10 +210,10 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 	return MakeResponse(EEasyReservationResult::WrongPassword, NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password."));
 }
 
-bool FEasySessionReservations::IsAdvertisedBy(const FOnlineSessionSettings& Settings)
+bool FEasySessionReservations::UsesReservationBeacon(const FOnlineSessionSettings& Settings)
 {
-	int32 bRunsBeacon = 0;
-	return Settings.Get(EasySession::SettingKey_Reservations, bRunsBeacon) && bRunsBeacon != 0;
+	int32 bUsesBeacon = 0;
+	return Settings.Get(EasySession::SettingKey_Reservations, bUsesBeacon) && bUsesBeacon != 0;
 }
 
 void FEasySessionReservations::HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage)
@@ -232,39 +229,22 @@ void FEasySessionReservations::HandlePreLogin(AGameModeBase* GameMode, const FUn
 		return;
 	}
 
-	UWorld* OwnWorld = Owner.GetGameInstance()->GetWorld();
-
-	// The password arrives in the travel URL.
-	// The engine sets Connection->PlayerId before PreLogin, so the joining player's connection can be found by id and its URL read.
-	// In-session map changes must use seamless travel, or players already in would be refused here.
-	FString PasswordFromTravelURL;
-	if (!SessionPassword.IsEmpty())
+	// ApproveJoin already approved this player over the reservation beacon.
+	// Reservations are kept across a map change, so this also lets in the players a hard travel reconnects.
+	if (PlayerHasReservation(NewPlayer))
 	{
-		const UNetConnection* PendingConnection = nullptr;
-		if (const UNetDriver* NetDriver = OwnWorld->GetNetDriver())
-		{
-			for (const TObjectPtr<UNetConnection>& ClientConnection : NetDriver->ClientConnections)
-			{
-				if (ClientConnection != nullptr && ClientConnection->PlayerId == NewPlayer)
-				{
-					PendingConnection = ClientConnection;
-					break;
-				}
-			}
-		}
-
-		if (PendingConnection == nullptr)
-		{
-			UE_LOG(LogEasySession, Warning, TEXT("PreLogin: could not find the pending connection for '%s'. Rejecting to protect the password session."), *NewPlayer.ToString());
-			ErrorMessage = RefusalMark + NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
-			return;
-		}
-
-		PasswordFromTravelURL = EasySessionAddress::DecodeTravelOptionValue(
-			EasySessionAddress::ParseTravelOption(PendingConnection->RequestURL, EasySession::TravelOption_Password));
+		return;
 	}
 
-	const FEasyReservationResponse Response = ApproveJoin(PasswordFromTravelURL, NewPlayer);
+	// Only the reservation beacon receives the password, so a player without a reservation is checked as if they sent none.
+	FEasyReservationResponse Response = ApproveJoin(FString(), NewPlayer);
+	if (Response.Result == EEasyReservationResult::WrongPassword)
+	{
+		// This player sent no password at all, so "wrong password" would mislead them.
+		UE_LOG(LogEasySession, Warning, TEXT("Reservations: '%s' arrived without a reservation, and only the reservation beacon checks the password."), *NewPlayer.ToString());
+		Response.ReasonText = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
+	}
+
 	if (Response.Result != EEasyReservationResult::Approved)
 	{
 		ErrorMessage = RefusalMark + Response.ReasonText;
@@ -278,30 +258,36 @@ void FEasySessionReservations::HandleLogout(AGameModeBase* GameMode, AController
 		return;
 	}
 
-	// A controller without a player state, such as the gameplay debugger's camera, never held a slot.
+	// A controller without a player state, such as the gameplay debugger's camera, never held a reservation.
 	const APlayerState* PlayerState = Exiting != nullptr ? Exiting->PlayerState : nullptr;
 	if (PlayerState == nullptr)
 	{
 		return;
 	}
 
-	ReleasePlayerSlot(PlayerState->GetUniqueId());
+	RemovePlayerReservation(PlayerState->GetUniqueId());
 }
 
-void FEasySessionReservations::ReleasePlayerSlot(const FUniqueNetIdRepl& PlayerId)
+void FEasySessionReservations::RemovePlayerReservation(const FUniqueNetIdRepl& PlayerId)
 {
 	if (AEasySessionReservationBeaconHost* Beacon = BeaconHost.Get())
 	{
-		Beacon->ReleasePlayerSlot(PlayerId);
+		Beacon->RemovePlayerReservation(PlayerId);
 	}
+}
+
+bool FEasySessionReservations::PlayerHasReservation(const FUniqueNetIdRepl& PlayerId) const
+{
+	const AEasySessionReservationBeaconHost* Beacon = BeaconHost.Get();
+	return Beacon != nullptr && PlayerId.IsValid() && Beacon->PlayerHasReservation(*PlayerId.GetUniqueNetId());
 }
 
 bool FEasySessionReservations::IsSessionFull(const FUniqueNetIdRepl& PlayerId) const
 {
 	if (const AEasySessionReservationBeaconHost* Beacon = BeaconHost.Get())
 	{
-		// This player holds a slot already, so arriving on it takes no other one.
-		if (PlayerId.IsValid() && Beacon->PlayerHasReservation(*PlayerId.GetUniqueNetId()))
+		// This player holds a reservation already, so arriving takes no second one.
+		if (PlayerHasReservation(PlayerId))
 		{
 			return false;
 		}
@@ -321,7 +307,7 @@ bool FEasySessionReservations::IsOwnWorld(const AGameModeBase* GameMode) const
 	return GameMode != nullptr && OwnWorld != nullptr && GameMode->GetWorld() == OwnWorld;
 }
 
-void FEasySessionReservations::SetMaxPlayerSlots(int32 MaxPlayers)
+void FEasySessionReservations::SetMaxReservations(int32 MaxPlayers)
 {
 	AEasySessionReservationBeaconHost* Beacon = BeaconHost.Get();
 	if (Beacon == nullptr)
@@ -331,7 +317,7 @@ void FEasySessionReservations::SetMaxPlayerSlots(int32 MaxPlayers)
 
 	if (!Beacon->ReconfigureTeamAndPlayerCount(1, MaxPlayers, MaxPlayers))
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("The reservation beacon still holds %d of %d player slots, which is more than the new Max Players of %d, so it keeps the previous one."),
+		UE_LOG(LogEasySession, Warning, TEXT("The reservation beacon still holds %d of %d reservations, which is more than the new Max Players of %d, so it keeps the previous one."),
 			Beacon->GetNumConsumedReservations(), Beacon->GetMaxReservations(), MaxPlayers);
 	}
 }
@@ -356,7 +342,7 @@ void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconH
 	const FUniqueNetIdRepl HostId(NamedSession.OwningUserId);
 	if (!HostId.IsValid())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("This session has no owning player id, so the reservation beacon holds no slot for the host and one player more than Max Players can join."));
+		UE_LOG(LogEasySession, Warning, TEXT("This session has no owning player id, so the reservation beacon holds no reservation for the host and one player more than Max Players can join."));
 		return;
 	}
 
@@ -366,10 +352,10 @@ void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconH
 
 	Reservation.PartyMembers.Add(EasySessionReservation::MakePlayerReservation(HostId));
 
-	// APartyBeaconHost::Tick never expires the owner of the session, so this slot is held for as long as the beacon runs.
+	// APartyBeaconHost::Tick never expires the owner of the session, so this reservation is kept for as long as the beacon runs.
 	const EPartyReservationResult::Type Result = Beacon.AddPartyReservation(Reservation);
 	if (Result != EPartyReservationResult::ReservationAccepted)
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("The reservation beacon holds no slot for the host (%s), so one player more than Max Players can join."), EPartyReservationResult::ToString(Result));
+		UE_LOG(LogEasySession, Warning, TEXT("The reservation beacon holds no reservation for the host (%s), so one player more than Max Players can join."), EPartyReservationResult::ToString(Result));
 	}
 }

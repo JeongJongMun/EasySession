@@ -212,7 +212,7 @@ void AEasySessionReservationBeaconHost::WaitForEveryoneToArrive()
 	}
 }
 
-void AEasySessionReservationBeaconHost::ReleasePlayerSlot(const FUniqueNetIdRepl& PlayerId)
+void AEasySessionReservationBeaconHost::RemovePlayerReservation(const FUniqueNetIdRepl& PlayerId)
 {
 	// The same two calls the parent's Tick makes when a player times out.
 	// A player who leaves in the frame they arrived is still in PlayersPendingJoin, and left there their next join is refused.
@@ -231,7 +231,7 @@ void AEasySessionReservationBeaconHost::ProcessReservationRequest(APartyBeaconCl
 		return;
 	}
 
-	// The password arrived on the RPC before this one, so the join is decided before any player slot is held.
+	// The password arrived on the RPC before this one, so the join is decided before any reservation is added.
 	// GetUniqueId is the id the joining player presented at beacon login, which the engine already checked.
 	const FEasyReservationResponse Response = ApproveJoinDelegate.IsBound()
 		? ApproveJoinDelegate.Execute(ReservationClient->GetReceivedPassword(), ReservationClient->GetUniqueId())
@@ -242,6 +242,6 @@ void AEasySessionReservationBeaconHost::ProcessReservationRequest(APartyBeaconCl
 		return;
 	}
 
-	// The parent checks that the slots are free, holds them, and sends the result.
+	// The parent checks that the session has room, adds the reservation, and sends the result.
 	Super::ProcessReservationRequest(Client, SessionId, ReservationRequest);
 }

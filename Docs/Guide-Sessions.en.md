@@ -71,7 +71,7 @@ EasySession validates the host address **before** reporting success - if the hos
 
 ### Asking the host first
 
-Before the travel, the joining player asks the host for a player slot. The host checks that the match still takes players, that a slot is free, and the password.
+Before the travel, the joining player asks the host for a reservation. The host checks that the match still takes players, that the session is not full, and the password.
 
 A match that no longer takes players fails the node with `JoinRefused`, a full session with `JoinSessionFull`, and a wrong password with `WrongPassword`. In all three cases no map has started loading, `ErrorMessage` carries the host's own sentence, and the player can retry immediately:
 
@@ -84,15 +84,15 @@ Join Easy Session
 
 The example's password popup does exactly this - it stays available for a retype and shows the reason under the input (`WBP_JoinPasswordPopup`).
 
-### Holding the player slot
+### Reservations
 
-An approved player still spends a few seconds loading the map, and the host holds their slot for that whole time, so two players are never approved for the same last slot. The slot stays held until that player arrives, and the host releases it when they do not arrive within 45 seconds. A player who leaves the session releases their slot as they log out, so the next player, or the same player again, can take it.
+An approved player still spends a few seconds loading the map, and the host holds a reservation for them for that whole time, so two players are never approved for the last free slot. The reservation stays until that player arrives, and the host removes it when they do not arrive within 45 seconds. A player who leaves the session loses their reservation as they log out, so the next player, or the same player again, can join.
 
-The host holds one slot for itself, because Max Players counts the host.
+The host holds a reservation for itself, because Max Players counts the host.
 
-Search results count only the players already in the session, not the slots held for players still loading. A search result can therefore show a free slot that a joining player already holds, and joining it fails with `JoinSessionFull`. Matchmaking moves on to its next candidate in that case.
+Search results count only the players already in the session, not the reservations of players still loading. A search result can therefore show a free slot that a joining player has already reserved, and joining it fails with `JoinSessionFull`. Matchmaking moves on to its next candidate in that case.
 
-A map change sends everyone traveling again, the players already in the session included, and the host carries every held slot into the new map. The host waits 45 seconds for each player to arrive, which is the engine's own `TravelSessionTimeoutSecs`. Raise it in `DefaultEngine.ini` when a map takes longer than that to load. This example raises it to 90 seconds:
+A map change sends everyone traveling again, the players already in the session included, and the host keeps every reservation for the new map. The host waits 45 seconds for each player to arrive, which is the engine's own `TravelSessionTimeoutSecs`. Raise it in `DefaultEngine.ini` when a map takes longer than that to load. This example raises it to 90 seconds:
 
 ```ini
 [/Script/OnlineSubsystemUtils.PartyBeaconHost]
@@ -101,7 +101,7 @@ TravelSessionTimeoutSecs=90
 
 ### When the host cannot be asked
 
-The slot request travels over a beacon, a second lightweight connection to the host. If the project already runs its own beacon host, the reservation beacon registers on it instead of opening a second port. When that beacon cannot be reached - the port is blocked, another instance on this machine took it first, or the project removed the engine's `BeaconNetDriver` definition ([Steam setup](Setup-Steam.en.md) shows the line that restores it, and `EasySession.Diagnose` checks for it) - the join proceeds directly and the host refuses the connection as it arrives instead.
+The reservation request travels over a beacon, a second lightweight connection to the host. If the project already runs its own beacon host, the reservation beacon registers on it instead of opening a second port. When that beacon cannot be reached - the port is blocked, another instance on this machine took it first, or the project removed the engine's `BeaconNetDriver` definition ([Steam setup](Setup-Steam.en.md) shows the line that restores it, and `EasySession.Diagnose` checks for it) - the join of an open session proceeds directly, and the host checks the player as they arrive instead. A password-protected session fails the node with `JoinRefused`, because only the beacon carries the password.
 
 The beacon uses the engine's own port, 15000 by default. Move it with `ListenPort` under `[/Script/OnlineSubsystemUtils.OnlineBeaconHost]` in `DefaultEngine.ini`, or with `-BeaconPort=` on the command line. Only the host binds that port; joining players connect from a port the operating system picks, so two instances on one machine only collide when both of them host. Give each host its own `-BeaconPort=` then. When the port is already taken, the engine binds the next free one while the session keeps advertising the configured one, and the host logs a warning naming both ports.
 
@@ -112,7 +112,7 @@ Event Construct
   Has Pending Easy Disconnect Info ?
     Consume Pending Easy Disconnect Info  ->  Break Easy Disconnect Info
                                              Reason      == Rejected
-                                             Reason Text == "Wrong session password."
+                                             Reason Text == "The match is already in progress."
 ```
 
 The information survives the travel precisely so the menu can show it. Check `Reason` rather than matching the text. There are four of them:
@@ -122,7 +122,7 @@ The information survives the travel precisely so the menu can show it. Check `Re
 | `ConnectionLost` | The host quit, crashed, or the network dropped - a host that died while you were joining lands here too |
 | `HostDestroyedSession` | The host sent everyone out with `Destroy Easy Session For Everyone` |
 | `TravelFailure` | Traveling to the session's map failed |
-| `Rejected` | The host refused the connection when it arrived - wrong password, or a closed match. `Reason Text` says which |
+| `Rejected` | The host refused the connection when it arrived - a closed match, or a password session reached without the reservation beacon. `Reason Text` says which |
 
 Keep this handler even with the beacon working: it is the safety net for every way a connection can end.
 
@@ -141,7 +141,7 @@ The password itself is never advertised. Only a "password protected" flag goes o
 
 ### Joining a locked session
 
-Pass the player's answer to the `Password` pin on `Join Easy Session`. The host checks it before the travel ([Asking the host first](#asking-the-host-first)), and the plugin also appends it to the travel URL for the travels it performs.
+Pass the player's answer to the `Password` pin on `Join Easy Session`. The host checks it over the reservation beacon before the travel ([Asking the host first](#asking-the-host-first)), and it never goes into the travel URL, so the engine's travel logs never show it. A player the beacon did not approve is refused on arrival, so a direct connect such as the `open` console command cannot enter a password session.
 
 ### Friends skip the password
 
@@ -204,7 +204,7 @@ When the host calls it, clients see the connection drop and return to the menu w
 
 `Server Travel Easy Session` (host only) moves the whole session to a new map, appending `?listen` unless the server is dedicated or you wrote the option yourself. Clients follow automatically. Unlike the other nodes this one is not async - it returns success as a bool right away.
 
-Always change maps with this node: it stops the reservation beacon before the map changes and carries the held player slots into the new map, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
+Always change maps with this node: it stops the reservation beacon before the map changes and keeps the reservations for the new map, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
 If the map fails to load (a typo, a map missing from the cook), the session and its players stay exactly where they were. The failure arrives on `OnSessionFailure` - call again with the right map name.
 

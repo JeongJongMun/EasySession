@@ -44,7 +44,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`, then travels to Initial Map Name with `?listen` so this game becomes the server. Fails with `InvalidParams` while Initial Map Name is empty, because the session would be advertised with no server behind it |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
-| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for a player slot first, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
+| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for a reservation first, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewSettings` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` from a `FEasySessionSettings` and re-advertises. The struct holds exactly the fields a live session can change, so there is nothing here that gets ignored. Session authority only |
@@ -258,10 +258,10 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`SessionAlreadyExists`** | Create: you are already in a session, so `Destroy Easy Session` first. Join: you are already in the session you asked to join |
 | **`NoSessionExists`** | There is no session to act on |
 | **`NoSessionsFound`** | The search ran fine and found nothing. Not an error - offer to host |
-| **`JoinSessionFull`** | The session is full - refused by the host before the travel, or by the online service after it. The host also counts the slots held for players still loading, so a search result with a free slot can end here |
+| **`JoinSessionFull`** | The session is full - refused by the host before the travel, or by the online service after it. The host also counts the reservations of players still loading, so a search result with a free slot can end here |
 | **`JoinSessionDoesNotExist`** | The session was gone by the time you joined. Search again |
 | **`WrongPassword`** | The host refused the join: the password did not match. Let the player retype it |
-| **`JoinRefused`** | The host refused the join for another reason, e.g. the match no longer takes players. `ErrorMessage` is the host's own sentence, safe to show |
+| **`JoinRefused`** | The host refused the join for another reason, e.g. the match no longer takes players, or the reservation beacon of a password session could not be reached. `ErrorMessage` is safe to show |
 | **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.en.md)) |
 | **`RequiresSessionAuthority`** | Only the game that created the session may do this. Show the button only when `Is Easy Session Authority` is true |
 | **`Canceled`** | `Cancel Easy Matchmaking` stopped a Matchmaking run |

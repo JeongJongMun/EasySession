@@ -90,7 +90,7 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	Settings.Set(SETTING_BEACONPORT, EasySession::GetReservationBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// Whether this host runs a reservation beacon.
-	// Joining players that find the key ask it for a player slot before traveling.
+	// Joining players that find the key ask it for a reservation before traveling.
 	// The host reads the key back after each travel to decide whether the new world needs a beacon.
 	Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 

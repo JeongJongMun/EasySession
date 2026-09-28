@@ -32,23 +32,4 @@ namespace EasySessionAddress
 	 * The engine reads this option into AGameSession::MaxPlayers, the cap its "Server full" refusal compares against.
 	 */
 	void AppendMaxPlayersOption(FString& TravelURL, int32 MaxPlayers);
-
-	/**
-	 * The value of one option in a travel URL, trimmed, or empty when the option is absent.
-	 * Accepts the whole request URL: the map path in front is skipped, the same way the engine skips it before PreLogin.
-	 *
-	 * The value comes back exactly as it appears in the URL, so one written by EncodeTravelOptionValue is still encoded.
-	 */
-	FString ParseTravelOption(const FString& RequestURL, const TCHAR* Key);
-
-	/**
-	 * Make a value safe to carry as a travel option.
-	 * The engine splits options on '?' and '#' (FURL.cpp, ValidNetChar), so a value containing either one would arrive truncated.
-	 * '%' is escaped as well so decoding stays unambiguous.
-	 * Everything else, spaces and '=' included, is left alone.
-	 */
-	FString EncodeTravelOptionValue(const FString& Value);
-
-	/** Undo EncodeTravelOptionValue. Characters it never escaped are left as they are. */
-	FString DecodeTravelOptionValue(const FString& Value);
 }

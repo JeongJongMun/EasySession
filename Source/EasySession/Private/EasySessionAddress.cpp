@@ -3,7 +3,6 @@
 #include "EasySessionAddress.h"
 
 #include "Engine/EngineBaseTypes.h"
-#include "Kismet/GameplayStatics.h"
 
 namespace
 {
@@ -62,34 +61,4 @@ void EasySessionAddress::AppendMaxPlayersOption(FString& TravelURL, int32 MaxPla
 	}
 
 	TravelURL += FString::Printf(TEXT("?MaxPlayers=%d"), MaxPlayers);
-}
-
-FString EasySessionAddress::ParseTravelOption(const FString& RequestURL, const TCHAR* Key)
-{
-	// ParseOption only reads from the first '?' onwards, and what arrives at PreLogin has the map path in front (e.g. "/Game/Maps/Menu?Pw=x").
-	const int32 OptionsStart = RequestURL.Find(TEXT("?"), ESearchCase::CaseSensitive);
-	if (OptionsStart == INDEX_NONE)
-	{
-		return FString();
-	}
-
-	return UGameplayStatics::ParseOption(RequestURL.Mid(OptionsStart), Key).TrimStartAndEnd();
-}
-
-FString EasySessionAddress::EncodeTravelOptionValue(const FString& Value)
-{
-	// '%' first: it is the escape character, so escaping it after the others would also mangle the escapes they just wrote.
-	return Value
-		.Replace(TEXT("%"), TEXT("%25"), ESearchCase::CaseSensitive)
-		.Replace(TEXT("?"), TEXT("%3F"), ESearchCase::CaseSensitive)
-		.Replace(TEXT("#"), TEXT("%23"), ESearchCase::CaseSensitive);
-}
-
-FString EasySessionAddress::DecodeTravelOptionValue(const FString& Value)
-{
-	// '%' last, mirroring the order above: a value that really contained "%3F" was written as "%253F", and unescaping '%' first would turn it into a '?'.
-	return Value
-		.Replace(TEXT("%3F"), TEXT("?"), ESearchCase::CaseSensitive)
-		.Replace(TEXT("%23"), TEXT("#"), ESearchCase::CaseSensitive)
-		.Replace(TEXT("%25"), TEXT("%"), ESearchCase::CaseSensitive);
 }

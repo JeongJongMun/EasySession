@@ -19,7 +19,7 @@ enum class EEasyReservationResult : uint8
 	/** The session password did not match. An empty one never does. */
 	WrongPassword,
 
-	/** The session has no open slot for another player. */
+	/** The session has no reservation left for another player. */
 	SessionFull,
 
 	/** Refused for another reason. The reason text says which. */
@@ -72,7 +72,7 @@ namespace EasySessionReservation
  * The game connection cannot ask it early enough, because it only exists once the client is already traveling.
  * A beacon is a second, lightweight connection to the host that exists before the travel.
  *
- * It derives from the engine's APartyBeaconClient, which holds the player slot, and adds the question whether the player may join.
+ * It derives from the engine's APartyBeaconClient, which requests the reservation, and adds the question whether the player may join.
  * A beacon connection carries one beacon type, so the two on separate beacons would take two connections to the same host.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
@@ -108,7 +108,7 @@ public:
 
 	/**
 	 * Turn one of the parent's reservation results into this plugin's response.
-	 * A duplicate is the parent putting a player who already holds a slot back on it, so it reads as approved here.
+	 * A duplicate is the parent finding a reservation the player already holds, so it reads as approved here.
 	 */
 	static FEasyReservationResponse MakeResponseFromReservationResult(EPartyReservationResult::Type Result);
 
@@ -149,11 +149,11 @@ private:
 };
 
 /**
- * AEasySessionReservationBeaconHost is the host side of the reservation beacon, and holds the player slots of the session.
- * It holds a slot only for a player OnApproveJoin approves.
- * FEasySessionReservations binds that delegate and runs the same ApproveJoin in PreLogin, so the beacon and PreLogin never decide differently.
+ * AEasySessionReservationBeaconHost is the host side of the reservation beacon, and holds the reservations of the session.
+ * It adds a reservation only for a player OnApproveJoin approves.
+ * FEasySessionReservations binds that delegate, and its PreLogin lets in the players this beacon holds a reservation for.
  *
- * The parent APartyBeaconHost keeps the slots, and releases one when its player never arrives.
+ * The parent APartyBeaconHost keeps the reservations, and removes one when its player never arrives.
  */
 UCLASS(NotBlueprintable, NotPlaceable, Transient)
 class AEasySessionReservationBeaconHost : public APartyBeaconHost
@@ -168,13 +168,13 @@ public:
 	FEasyApproveJoinDelegate& OnApproveJoin() { return ApproveJoinDelegate; }
 
 	/**
-	 * Wait for every player holding a slot to arrive again, because a map change makes them all travel.
+	 * Wait for every player holding a reservation to arrive again, because a map change makes them all travel.
 	 * Each wait starts over on the parent's TravelSessionTimeoutSecs, rather than on the shorter SessionTimeoutSecs meant for a player who left the session.
 	 */
 	void WaitForEveryoneToArrive();
 
-	/** Release the player slot of a player who logged out. */
-	void ReleasePlayerSlot(const FUniqueNetIdRepl& PlayerId);
+	/** Remove the reservation of a player who logged out. */
+	void RemovePlayerReservation(const FUniqueNetIdRepl& PlayerId);
 
 	//~ Begin APartyBeaconHost Interface
 	virtual void ProcessReservationRequest(APartyBeaconClient* Client, const FString& SessionId, const FPartyReservation& ReservationRequest) override;

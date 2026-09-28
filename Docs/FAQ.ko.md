@@ -28,13 +28,13 @@ Check the map path on the host.)
 
 ## "검색 결과에는 빈자리가 있는데, 참가하면 JoinSessionFull로 실패합니다"
 
-조금 전에 다른 플레이어가 그 자리를 승인받고 아직 맵을 로드하는 중입니다. 호스트는 그 플레이어의 자리를 잡아두지만, 검색 결과는 이미 세션에 들어와 있는 플레이어만 세므로 그 자리가 여전히 비어 보입니다. 호스트의 로그에 거절 사유가 남습니다.
+조금 전에 다른 플레이어가 승인받고 아직 맵을 로드하는 중입니다. 호스트는 그 플레이어의 예약을 유지하지만, 검색 결과는 이미 세션에 들어와 있는 플레이어만 세므로 예약된 자리가 여전히 비어 보입니다. 호스트의 로그에 거절 사유가 남습니다.
 
 ```
 LogEasySession: Warning: Reservations: refusing '<player id>' - the session is full.
 ```
 
-고칠 것은 없습니다. 그 플레이어가 도착하면 다음 검색부터 세션이 꽉 찬 것으로 보입니다. 끝내 도착하지 않으면 호스트가 45초 뒤에 자리를 풀어주며, 이 값은 엔진의 `TravelSessionTimeoutSecs`입니다([자리를 잡아두기](Guide-Sessions.ko.md#자리를-잡아두기)). Matchmaking은 알아서 다음 후보로 넘어갑니다.
+고칠 것은 없습니다. 그 플레이어가 도착하면 다음 검색부터 세션이 꽉 찬 것으로 보입니다. 끝내 도착하지 않으면 호스트가 45초 뒤에 예약을 지우며, 이 값은 엔진의 `TravelSessionTimeoutSecs`입니다([예약](Guide-Sessions.ko.md#예약)). Matchmaking은 알아서 다음 후보로 넘어갑니다.
 
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 
@@ -75,7 +75,7 @@ LogEasySession: Warning: Not joining the invited session: this player is already
 
 ## "Travel 중에 Warning: Player ... is not part of session (GameSession)이 뜹니다"
 
-**클라이언트 Travel 중 한 번 나오는 것은 정상이고, 엔진이 내는 것입니다.** 클라이언트가 이전 맵을 떠날 때 그 맵의 `APlayerState`가 파괴되면서, 온라인 서비스가 그 플레이어를 찾을 수 없는 세션에서 빼내려 시도합니다. 무시하세요. `LogOnlineSession`의 로그 레벨을 낮추면 진짜 경고까지 같이 가려집니다.
+**클라이언트 Travel 중 한두 번 나오는 것은 정상이고, 엔진이 내는 것입니다.** 클라이언트가 이전 맵을 떠날 때 그 맵의 `APlayerState`마다 파괴되면서, 온라인 서비스가 그 플레이어를 찾을 수 없는 세션에서 빼내려 시도합니다. 무시하세요. `LogOnlineSession`의 로그 레벨을 낮추면 진짜 경고까지 같이 가려집니다.
 
 ## "접속은 잘 됐는데 상대 플레이어가 내 화면에서 안 움직입니다"
 

@@ -27,7 +27,7 @@ Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] Defaul
 
 - A **session** is the advertisement and the online service's record of a running game - the thing Create / Find / Join manage. It says where the game is; it carries no gameplay.
 - A **lobby** means two unrelated things, which is why it confuses everyone. Inside your game it is just a map where players gather before the match (the example's `L_Example_Lobby`) - an ordinary map as far as the online service is concerned. On Steam it is the name of the backend object that stores a presence session - EasySession creates and destroys those for you, so you never handle one directly.
-- A **beacon** is a second, lightweight connection to a host, made for questions that must be answered without loading a map. No pawn spawns and no level loads over it. EasySession uses one so `Join Easy Session` can ask "may this player join?" and fail cleanly before any travel starts, and so the host can hold the approved player's slot until they arrive ([guide](Guide-Sessions.en.md#asking-the-host-first)).
+- A **beacon** is a second, lightweight connection to a host, made for questions that must be answered without loading a map. No pawn spawns and no level loads over it. EasySession uses one so `Join Easy Session` can ask "may this player join?" and fail cleanly before any travel starts, and so the host can hold a reservation for the approved player until they arrive ([guide](Guide-Sessions.en.md#asking-the-host-first)).
 
 ## What "traveling" means
 
@@ -43,10 +43,10 @@ Traveling does not destroy the session. The session lives on the online service,
 
 A server travel comes in two forms, and the difference matters once players are already in your session.
 
-- **Hard travel** (the default) disconnects every player and reconnects them on the new map. Reconnecting means the host runs its join checks again. The host carries their player slots into the new map, so an open session takes them back, but a password session or a match in progress turns away the players who are already inside.
+- **Hard travel** (the default) disconnects every player and reconnects them on the new map. Reconnecting means the host runs its join checks again, but `Server Travel Easy Session` keeps every reservation for the new map, so the players already inside are let back in, even into a password session or a match that no longer takes players.
 - **Seamless travel** carries players through a small transition map without ever dropping the connection. No reconnect, no second round of join checks.
 
-**Use seamless travel for map changes during a session.** Turn it on with `bUseSeamlessTravel` on your GameMode, and set a **Transition Map** in Project Settings -> Maps & Modes. `Server Travel Easy Session` follows that setting.
+**Seamless travel is still the better choice for map changes during a session.** Nobody is disconnected, and each player's controller carries over to the new map. Turn it on with `bUseSeamlessTravel` on your GameMode, and set a **Transition Map** in Project Settings -> Maps & Modes. `Server Travel Easy Session` follows that setting.
 
 One exception is handled for you: the first travel, the one that turns the host into a server, is always a hard load. Seamless travel drops the `?listen` option, and the host would never become a server.
 
