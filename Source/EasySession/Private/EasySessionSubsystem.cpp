@@ -756,8 +756,7 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
 {
-	const UWorld* OwnWorld = GetWorld();
-	if (World != OwnWorld)
+	if (World != GetWorld())
 	{
 		return;
 	}
