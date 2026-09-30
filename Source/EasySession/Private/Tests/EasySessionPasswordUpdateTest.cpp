@@ -323,7 +323,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 }
 
 /**
- * The join decision table, asked at ApproveJoin, which the reservation beacon calls and PreLogin calls for a player without a reservation.
+ * The join decision table, asked at ApproveJoin, which the reservation beacon and PreLogin both call.
  * The password tests elsewhere only prove the password was stored; this one proves what the stored value decides.
  *
  * Two rows cannot run headless and stay on the on-device list.

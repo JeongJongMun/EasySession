@@ -30,8 +30,12 @@ protected:
 
 private:
 
-	/** Build the settings a new session is created and advertised with: the host params, plus what only a new session sets. */
-	static FOnlineSessionSettings MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN);
+	/**
+	 * Build the settings a new session is created and advertised with: the host params, plus what only a new session sets.
+	 *
+	 * @param OwnerId The player the online subsystem creates the session for. Invalid when no player is logged in.
+	 */
+	static FOnlineSessionSettings MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN, const FUniqueNetIdRepl& OwnerId);
 
 	/** The online subsystem finished creating a session. Sessions with another name are ignored. */
 	void HandleCreateSessionComplete(FName InSessionName, bool bWasSuccessful);

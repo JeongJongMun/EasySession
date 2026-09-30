@@ -35,6 +35,13 @@ public:
 	/** Removes the tickers of the run. */
 	virtual ~FEasySessionMatchmakingRequest() override;
 
+	/**
+	 * Make a run that follows a host who already holds a reservation for this player.
+	 * It searches for that host's session only, may start while this player is in a session, and never hosts one of its own.
+	 * Password-protected sessions stay candidates, because the reservation lets this player in without the password.
+	 */
+	static TSharedRef<FEasySessionMatchmakingRequest> MakeFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery, UEasyMatchmakingPolicy& InPolicy, FEasySessionCompleteDelegate InOnComplete);
+
 	/** @return The request as a matchmaking request when its type says it is one. Null otherwise. */
 	static TSharedPtr<FEasySessionMatchmakingRequest> Cast(const TSharedPtr<FEasySessionRequest>& Request);
 
@@ -147,4 +154,7 @@ private:
 
 	/** When the run completed, in FPlatformTime seconds. Elapsed time stops here. */
 	double RunEndTimeSeconds = 0.0;
+
+	/** Does this run follow a host who holds a reservation for this player. */
+	bool bFollowsHost = false;
 };

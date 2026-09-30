@@ -179,9 +179,22 @@ namespace EasySessionReservationTest
 		Reservation.TeamNum = 0;
 		Reservation.PartyLeader = PlayerId;
 
-		Reservation.PartyMembers.Add(EasySessionReservation::MakePlayerReservation(PlayerId));
+		Reservation.PartyMembers.Add(EasySessionReservation::MakeReservation(PlayerId));
 
 		return Beacon.AddPartyReservation(Reservation) == EPartyReservationResult::ReservationAccepted;
+	}
+
+	/**
+	 * Ask the beacon for one reservation that holds a leader and the group travelling with them, the way a group leader's join does.
+	 * @return The parent's result, before this plugin turns it into a response.
+	 */
+	static EPartyReservationResult::Type AddGroupReservation(APartyBeaconHost& Beacon, const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers)
+	{
+		FPartyReservation Reservation;
+		Reservation.TeamNum = 0;
+		Reservation.PartyLeader = LeaderId;
+		Reservation.PartyMembers = EasySessionReservation::MakeReservations(LeaderId, GroupMembers);
+		return Beacon.AddPartyReservation(Reservation);
 	}
 
 	/** @return The refusal PreLogin writes for this player, or empty when it lets them in. */
@@ -683,6 +696,178 @@ bool FEasySessionPreLoginTest::RunTest(const FString& Parameters)
 	}
 
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPreLoginStep(State));
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionHolderChecksStep, TSharedPtr<EasySessionReservationTest::FTestState>, State);
+bool FEasySessionHolderChecksStep::Update()
+{
+	using namespace EasySessionReservationTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UWorld* World = State->GameInstance->GetWorld();
+
+	const TCHAR* What = TEXT("create");
+	switch (State->Step)
+	{
+		case EStep::AwaitingStart: What = TEXT("start"); break;
+		case EStep::AwaitingDestroy: What = TEXT("destroy"); break;
+		default: break;
+	}
+
+	const EWait Wait = WaitForRequest(*State, *CurrentTest, What);
+	if (Wait != EWait::Ready)
+	{
+		return Wait == EWait::TimedOut;
+	}
+
+	const FUniqueNetIdRepl Member = MakePlayerId(World, TEXT("EasySessionGroupMember"));
+	const FUniqueNetIdRepl Stranger = MakePlayerId(World, TEXT("EasySessionStranger"));
+
+	switch (State->Step)
+	{
+		case EStep::AwaitingCreate:
+		{
+			CurrentTest->TestEqual(TEXT("Creating the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
+
+			AEasySessionReservationBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
+			if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
+			{
+				// The host and this member take both slots, the way a group leader's reservation would hold the member.
+				CurrentTest->TestTrue(TEXT("The member holds a reservation"), AddReservationFor(*Beacon, Member));
+			}
+
+			CurrentTest->TestEqual(TEXT("A member holding a reservation needs no password, even in a full session"),
+				FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString(), Member), EEasyReservationResult::Approved);
+			CurrentTest->TestEqual(TEXT("A player without one is refused on the full session"),
+				FEasySessionTestAccess::AskApproveJoin(*Subsystem, TEXT("hunter2"), Stranger), EEasyReservationResult::SessionFull);
+
+			State->Step = EStep::AwaitingStart;
+			Subsystem->StartSession(MakeCallback(State));
+			return false;
+		}
+
+		case EStep::AwaitingStart:
+		{
+			CurrentTest->TestEqual(TEXT("Starting the match succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+			CurrentTest->TestEqual(TEXT("A member holding a reservation is approved into a started match"),
+				FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString(), Member), EEasyReservationResult::Approved);
+			CurrentTest->TestEqual(TEXT("A player without one is refused on the started match"),
+				FEasySessionTestAccess::AskApproveJoin(*Subsystem, TEXT("hunter2"), Stranger), EEasyReservationResult::Refused);
+
+			StartDestroy(State, *Subsystem);
+			return false;
+		}
+
+		default:
+		{
+			CurrentTest->TestEqual(TEXT("The cleanup destroy succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+	}
+}
+
+/**
+ * A player holding a reservation is approved before any other check, so a member a group leader brought needs no password and no slot of their own.
+ * The password, the free slots and join-in-progress still decide for every other player.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHolderChecksTest, "EasySession.Reservation.HoldersSkipTheJoinChecks", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionHolderChecksTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionReservationTest;
+
+	FEasySessionHostParams Params = MakeParams(2);
+	Params.Password = TEXT("hunter2");
+	Params.bAllowJoinInProgress = false;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this, Params) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionHolderChecksStep(State));
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionGroupReservationStep, TSharedPtr<EasySessionReservationTest::FTestState>, State);
+bool FEasySessionGroupReservationStep::Update()
+{
+	using namespace EasySessionReservationTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UWorld* World = State->GameInstance->GetWorld();
+
+	const EWait Wait = WaitForRequest(*State, *CurrentTest, State->Step == EStep::AwaitingCreate ? TEXT("create") : TEXT("destroy"));
+	if (Wait != EWait::Ready)
+	{
+		return Wait == EWait::TimedOut;
+	}
+
+	if (State->Step == EStep::AwaitingDestroy)
+	{
+		CurrentTest->TestEqual(TEXT("The cleanup destroy succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return true;
+	}
+
+	CurrentTest->TestEqual(TEXT("Creating the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+	FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
+
+	const FUniqueNetIdRepl Leader = MakePlayerId(World, TEXT("EasySessionGroupLeader"));
+	const FUniqueNetIdRepl MemberA = MakePlayerId(World, TEXT("EasySessionGroupMemberA"));
+	const FUniqueNetIdRepl MemberB = MakePlayerId(World, TEXT("EasySessionGroupMemberB"));
+	const FUniqueNetIdRepl MemberC = MakePlayerId(World, TEXT("EasySessionGroupMemberC"));
+
+	const TArray<FPlayerReservation> Listed = EasySessionReservation::MakeReservations(Leader, { MemberA, Leader, FUniqueNetIdRepl(), MemberA, MemberB });
+	if (CurrentTest->TestEqual(TEXT("The leader, then each member once, with no invalid id"), Listed.Num(), 3))
+	{
+		CurrentTest->TestTrue(TEXT("The leader is listed first"), Listed[0].UniqueId == Leader);
+	}
+
+	APartyBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
+	if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
+	{
+		// Four players, and the host already holds one of the four slots.
+		const EPartyReservationResult::Type TooLarge = AddGroupReservation(*Beacon, Leader, { MemberA, MemberB, MemberC });
+		CurrentTest->TestEqual(TEXT("A group of four does not fit the three slots left"),
+			AEasySessionReservationBeaconClient::MakeResponseFromReservationResult(TooLarge).Result, EEasyReservationResult::SessionFull);
+		CurrentTest->TestEqual(TEXT("A refused group holds no slot"), Beacon->GetNumConsumedReservations(), 1);
+
+		CurrentTest->TestEqual(TEXT("A group of three takes the three slots left in one reservation"),
+			AddGroupReservation(*Beacon, Leader, { MemberA, MemberB }), EPartyReservationResult::ReservationAccepted);
+		CurrentTest->TestEqual(TEXT("Every member of the group holds a slot"), Beacon->GetNumConsumedReservations(), 4);
+
+		// A member following the leader asks for a reservation of their own, and the parent moves them out of the group's.
+		CurrentTest->TestEqual(TEXT("A member's own request is accepted on the full session"),
+			AddGroupReservation(*Beacon, MemberB, {}), EPartyReservationResult::ReservationAccepted);
+		CurrentTest->TestEqual(TEXT("It takes no second slot"), Beacon->GetNumConsumedReservations(), 4);
+	}
+
+	StartDestroy(State, *Subsystem);
+	return false;
+}
+
+/**
+ * One reservation holds a group leader and every member, or none of them, so a group never splits across a session with too few slots.
+ * A member who then asks for their own reservation keeps the slot the group held, which is what lets them follow the leader with a normal join.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionGroupReservationTest, "EasySession.Reservation.AGroupTakesItsSlotsTogether", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionGroupReservationTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionReservationTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this, 4) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionGroupReservationStep(State));
 	return true;
 }
 

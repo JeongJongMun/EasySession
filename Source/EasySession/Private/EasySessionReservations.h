@@ -18,8 +18,7 @@ struct FEasySessionSettings;
 
 /**
  * FEasySessionReservations is responsible for who may join the session, and for the reservation each of them holds.
- * Every join is decided in ApproveJoin, which the reservation beacon asks before the travel.
- * PreLogin lets in a player holding a reservation, and asks ApproveJoin about any other player.
+ * Every join is decided in ApproveJoin, which the reservation beacon asks before the travel and PreLogin asks again on arrival.
  * A reservation is added when a join is approved, kept across a map change, and removed when the player logs out.
  *
  * The beacon host this class starts in every world keeps the reservations.
@@ -71,7 +70,8 @@ public:
 
 	/**
 	 * Decide whether a player may join.
-	 * Checks the join-in-progress policy first, then whether the session is full, then the password, which friends of the host may skip.
+	 * Approves a player holding a reservation at once, so the members of a group need no password and no free slot of their own.
+	 * Checks any other player against the join-in-progress policy first, then whether the session is full, then the password, which friends of the host may skip.
 	 * Never returns Unreachable, which only the beacon client produces.
 	 *
 	 * @param Password What the joining player sent over the reservation beacon. PreLogin passes none, because the password is never in the travel URL.
@@ -96,7 +96,7 @@ public:
 
 private:
 
-	/** Let in a player holding a reservation, and refuse any other player ApproveJoin says no to, by writing the reason into ErrorMessage. */
+	/** Refuse the arriving player when ApproveJoin says no, by writing the reason into ErrorMessage. */
 	void HandlePreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& NewPlayer, FString& ErrorMessage);
 
 	/** Remove the reservation of a player whose controller logged out. */
@@ -111,8 +111,8 @@ private:
 	/** @return Whether this player holds a reservation on the beacon of the current world. */
 	bool PlayerHasReservation(const FUniqueNetIdRepl& PlayerId) const;
 
-	/** @return Whether the session has no reservation left for this player. A player already holding one is never refused here. */
-	bool IsSessionFull(const FUniqueNetIdRepl& PlayerId) const;
+	/** @return Whether the session has no reservation left for another player. */
+	bool IsSessionFull() const;
 
 	/** @return Whether the event belongs to the world this subsystem runs in. Ignores PIE instances other than this one. */
 	bool IsOwnWorld(const AGameModeBase* GameMode) const;

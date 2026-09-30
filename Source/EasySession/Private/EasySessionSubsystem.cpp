@@ -623,6 +623,31 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 	}
 }
 
+void UEasySessionSubsystem::FollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+{
+	// One matchmaking run at a time, and a player in a group has no run of their own to cancel for this.
+	if (IsMatchmakingRunning())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Not following host '%s': a matchmaking run is already running."), *HostId.ToString());
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Following host '%s'."), *HostId.ToString());
+
+	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this);
+	EnqueueRequest(FEasySessionMatchmakingRequest::MakeFollow(HostId, bLANQuery, *Policy, FEasySessionCompleteDelegate::CreateWeakLambda(this,
+		[this](EEasySessionResult Result, const FString& ErrorMessage)
+		{
+			// No node waits for a follow, so a failure is broadcast.
+			if (Result != EEasySessionResult::Success && Result != EEasySessionResult::Canceled)
+			{
+				OnSessionFailure.Broadcast(FString::Printf(TEXT("Following the host failed: %s"), *ErrorMessage));
+			}
+		})));
+
+	OnMatchmakingStarted.Broadcast();
+}
+
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 {
 	return Online::GetSessionInterface(GetWorld());

@@ -13,12 +13,35 @@
 #include "EasySessionTravel.h"
 #include "HAL/PlatformTime.h"
 
+namespace
+{
+	/** Search passes a follow runs. The host's session can appear a moment after the host approved the group, so one pass is not enough. */
+	constexpr int32 FollowSearchPasses = 5;
+
+	/** Seconds between two search passes of a follow. */
+	constexpr float FollowPassDelaySeconds = 1.0f;
+}
+
 FEasySessionMatchmakingRequest::FEasySessionMatchmakingRequest(const FEasyMatchmakingParams& InParams, UEasyMatchmakingPolicy& InPolicy, FEasySessionCompleteDelegate InOnComplete)
 	: FEasySessionRequest(EType::Matchmaking)
 	, Params(InParams)
 	, Policy(&InPolicy)
 	, OnComplete(MoveTemp(InOnComplete))
 {
+}
+
+TSharedRef<FEasySessionMatchmakingRequest> FEasySessionMatchmakingRequest::MakeFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery, UEasyMatchmakingPolicy& InPolicy, FEasySessionCompleteDelegate InOnComplete)
+{
+	FEasyMatchmakingParams FollowParams;
+	FollowParams.Search.OwnerId = HostId;
+	FollowParams.Search.bLANQuery = bLANQuery;
+	FollowParams.MaxSearchPasses = FollowSearchPasses;
+	FollowParams.DelayBetweenPassesSeconds = FollowPassDelaySeconds;
+	FollowParams.bAllowHostFallback = false;
+
+	TSharedRef<FEasySessionMatchmakingRequest> Follow = MakeShared<FEasySessionMatchmakingRequest>(FollowParams, InPolicy, MoveTemp(InOnComplete));
+	Follow->bFollowsHost = true;
+	return Follow;
 }
 
 FEasySessionMatchmakingRequest::~FEasySessionMatchmakingRequest()
@@ -47,7 +70,8 @@ void FEasySessionMatchmakingRequest::Execute()
 	RunStartTimeSeconds = FPlatformTime::Seconds();
 
 	// An accepted invite or the game's own Create or Join ran before this run started, and every sub-request would fail against that session.
-	if (GetContext().Subsystem.IsInSession())
+	// A follow starts inside a session on purpose, because its join leaves that session only once the host approved.
+	if (!bFollowsHost && GetContext().Subsystem.IsInSession())
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a session. Call Leave Easy Session first, or use Join Easy Session to switch to a session you found."));
 		return;
@@ -146,8 +170,8 @@ void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSe
 	Candidates.Empty();
 	for (const FEasySessionSearchResult& Result : Results)
 	{
-		// A password-protected session is only a candidate when this run carries a password to offer.
-		if (Result.bPasswordProtected && Params.JoinPassword.TrimStartAndEnd().IsEmpty())
+		// A password-protected session is only a candidate when this run carries a password to offer, or a reservation that needs none.
+		if (!bFollowsHost && Result.bPasswordProtected && Params.JoinPassword.TrimStartAndEnd().IsEmpty())
 		{
 			continue;
 		}

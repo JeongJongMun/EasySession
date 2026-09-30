@@ -205,6 +205,12 @@ namespace EasySession
 	EASYSESSION_API extern const FName SettingKey_Reservations;
 
 	/**
+	 * Custom session setting key holding the host's unique id as a string.
+	 * A search for one host filters on it on the online service, so that host's session is found however many other sessions exist.
+	 */
+	EASYSESSION_API extern const FName SettingKey_OwnerId;
+
+	/**
 	 * The port the reservation beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
 	 * A listener that ends up on another port is reported rather than corrected.
@@ -475,7 +481,8 @@ struct EASYSESSION_API FEasySessionSearchParams
 
 	/**
 	 * Only return sessions hosted by this player.
-	 * Runs as a normal search with an owner filter, so Max Results still limits how many sessions the filter sees.
+	 * The online service filters on it, so the host's session is found however many other sessions exist.
+	 * NULL (LAN) filters the returned results instead.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FUniqueNetIdRepl OwnerId;

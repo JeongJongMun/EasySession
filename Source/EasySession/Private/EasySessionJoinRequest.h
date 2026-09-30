@@ -32,7 +32,9 @@ class FEasySessionJoinRequest final : public FEasySessionRequest
 
 public:
 
-	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete);
+	/** @param InGroupMembers The players who travel with this one, asked for in the same reservation. Empty for a player joining alone. */
+	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete,
+		const TArray<FUniqueNetIdRepl>& InGroupMembers = TArray<FUniqueNetIdRepl>());
 
 	/** Destroys the beacon client actor if the request is destroyed while it waits for the response. */
 	virtual ~FEasySessionJoinRequest() override;
@@ -76,6 +78,9 @@ private:
 
 	/** Extra options appended to the client travel URL. */
 	FString TravelOptions;
+
+	/** The players who travel with this one. The reservation beacon holds a slot for each of them too. */
+	TArray<FUniqueNetIdRepl> GroupMembers;
 
 	/** The requester's delegate. */
 	FEasySessionCompleteDelegate OnComplete;

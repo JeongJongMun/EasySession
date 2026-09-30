@@ -161,6 +161,13 @@ void FEasySessionReservations::StopBeacon()
 
 FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Password, const FUniqueNetIdRepl& Requester) const
 {
+	// This player was approved before: over this beacon, or as a member of the group whose leader asked for the reservation.
+	// Reservations are kept across a map change, so this also lets in the players a hard travel reconnects.
+	if (PlayerHasReservation(Requester))
+	{
+		return MakeResponse(EEasyReservationResult::Approved);
+	}
+
 	UWorld* OwnWorld = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
 
 	// Searching already hides a started session, but a result fetched before the match started and a direct connect both get past that.
@@ -177,7 +184,7 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 		}
 	}
 
-	if (IsSessionFull(Requester))
+	if (IsSessionFull())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Reservations: refusing '%s' - the session is full."), *Requester.ToString());
 		return MakeResponse(EEasyReservationResult::SessionFull, NSLOCTEXT("EasySession", "SessionFull", "The session is full."));
@@ -229,13 +236,6 @@ void FEasySessionReservations::HandlePreLogin(AGameModeBase* GameMode, const FUn
 		return;
 	}
 
-	// ApproveJoin already approved this player over the reservation beacon.
-	// Reservations are kept across a map change, so this also lets in the players a hard travel reconnects.
-	if (PlayerHasReservation(NewPlayer))
-	{
-		return;
-	}
-
 	// Only the reservation beacon receives the password, so a player without a reservation is checked as if they sent none.
 	FEasyReservationResponse Response = ApproveJoin(FString(), NewPlayer);
 	if (Response.Result == EEasyReservationResult::WrongPassword)
@@ -282,16 +282,10 @@ bool FEasySessionReservations::PlayerHasReservation(const FUniqueNetIdRepl& Play
 	return Beacon != nullptr && PlayerId.IsValid() && Beacon->PlayerHasReservation(*PlayerId.GetUniqueNetId());
 }
 
-bool FEasySessionReservations::IsSessionFull(const FUniqueNetIdRepl& PlayerId) const
+bool FEasySessionReservations::IsSessionFull() const
 {
 	if (const AEasySessionReservationBeaconHost* Beacon = BeaconHost.Get())
 	{
-		// This player holds a reservation already, so arriving takes no second one.
-		if (PlayerHasReservation(PlayerId))
-		{
-			return false;
-		}
-
 		return Beacon->GetMaxReservations() <= Beacon->GetNumConsumedReservations();
 	}
 
@@ -350,7 +344,7 @@ void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconH
 	Reservation.TeamNum = 0;
 	Reservation.PartyLeader = HostId;
 
-	Reservation.PartyMembers.Add(EasySessionReservation::MakePlayerReservation(HostId));
+	Reservation.PartyMembers.Add(EasySessionReservation::MakeReservation(HostId));
 
 	// APartyBeaconHost::Tick never expires the owner of the session, so this reservation is kept for as long as the beacon runs.
 	const EPartyReservationResult::Type Result = Beacon.AddPartyReservation(Reservation);

@@ -13,11 +13,13 @@
 #include "EasySessionTravel.h"
 #include "Engine/World.h"
 
-FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete)
+FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete,
+	const TArray<FUniqueNetIdRepl>& InGroupMembers)
 	: FEasySessionRequest(EType::Join)
 	, Target(InTarget)
 	, Password(InPassword)
 	, TravelOptions(InTravelOptions)
+	, GroupMembers(InGroupMembers)
 	, OnComplete(MoveTemp(InOnComplete))
 {
 }
@@ -110,7 +112,7 @@ void FEasySessionJoinRequest::RequestReservation()
 	}
 
 	ReservationClient = Client;
-	if (!Client->RequestJoin(Target, Password, OnResponse))
+	if (!Client->RequestJoin(Target, Password, GroupMembers, OnResponse))
 	{
 		// The delegate already fired with Unreachable.
 		// Only the actor is left to destroy.

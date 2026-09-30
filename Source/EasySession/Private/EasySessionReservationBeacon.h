@@ -56,14 +56,20 @@ DECLARE_DELEGATE_OneParam(FEasyReservationRequestComplete, const FEasyReservatio
 /** Delegate the beacon host calls to decide whether a player may join. */
 DECLARE_DELEGATE_RetVal_TwoParams(FEasyReservationResponse, FEasyApproveJoinDelegate, const FString& /** Password */, const FUniqueNetIdRepl& /** Requester */);
 
-/** The reservation entries the beacon client and FEasySessionReservations both build. */
+/** The reservations the beacon client and FEasySessionReservations both build. */
 namespace EasySessionReservation
 {
 	/**
-	 * Make the reservation entry for one player.
+	 * Make the reservation for one player.
 	 * It carries the local platform, because the parent refuses a member without one and no setting turns that check off.
 	 */
-	FPlayerReservation MakePlayerReservation(const FUniqueNetIdRepl& PlayerId);
+	FPlayerReservation MakeReservation(const FUniqueNetIdRepl& PlayerId);
+
+	/**
+	 * Make the reservations for a leader and the group that travels with them, the leader first.
+	 * Invalid ids and a second entry for the same player are left out, because the parent refuses a reservation that holds either.
+	 */
+	TArray<FPlayerReservation> MakeReservations(const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers);
 }
 
 /**
@@ -88,8 +94,10 @@ public:
 	 * Resolve Target's beacon address, connect, and ask to join.
 	 * OnComplete fires exactly once, with Unreachable when the address does not resolve, the connection fails, or the host never responds.
 	 * A failure inside this call is reported the same way, so the caller only has one path to handle.
+	 *
+	 * @param GroupMembers The players who travel with the local player, without the local player. One reservation holds them all, or none of them.
 	 */
-	bool RequestJoin(const FEasySessionSearchResult& Target, const FString& Password, const FEasyReservationRequestComplete& OnComplete);
+	bool RequestJoin(const FEasySessionSearchResult& Target, const FString& Password, const TArray<FUniqueNetIdRepl>& GroupMembers, const FEasyReservationRequestComplete& OnComplete);
 
 	/**
 	 * Sends the password ahead of the reservation request the parent sends on the same connection.

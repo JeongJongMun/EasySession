@@ -19,12 +19,29 @@ namespace
 	constexpr float RequestTimeoutSeconds = 5.0f;
 }
 
-FPlayerReservation EasySessionReservation::MakePlayerReservation(const FUniqueNetIdRepl& PlayerId)
+FPlayerReservation EasySessionReservation::MakeReservation(const FUniqueNetIdRepl& PlayerId)
 {
 	FPlayerReservation Member;
 	Member.UniqueId = PlayerId;
 	Member.Platform = IOnlineSubsystem::GetLocalPlatformName();
 	return Member;
+}
+
+TArray<FPlayerReservation> EasySessionReservation::MakeReservations(const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers)
+{
+	TArray<FPlayerReservation> Members;
+	Members.Add(MakeReservation(LeaderId));
+
+	for (const FUniqueNetIdRepl& MemberId : GroupMembers)
+	{
+		const bool bAlreadyListed = Members.ContainsByPredicate([&MemberId](const FPlayerReservation& Listed) { return Listed.UniqueId == MemberId; });
+		if (MemberId.IsValid() && !bAlreadyListed)
+		{
+			Members.Add(MakeReservation(MemberId));
+		}
+	}
+
+	return Members;
 }
 
 FEasyReservationResponse FEasyReservationResponse::Unreachable()
@@ -47,7 +64,7 @@ AEasySessionReservationBeaconClient::AEasySessionReservationBeaconClient()
 {
 }
 
-bool AEasySessionReservationBeaconClient::RequestJoin(const FEasySessionSearchResult& Target, const FString& Password, const FEasyReservationRequestComplete& OnComplete)
+bool AEasySessionReservationBeaconClient::RequestJoin(const FEasySessionSearchResult& Target, const FString& Password, const TArray<FUniqueNetIdRepl>& GroupMembers, const FEasyReservationRequestComplete& OnComplete)
 {
 	CompleteDelegate = OnComplete;
 	PasswordToSend = Password;
@@ -57,8 +74,7 @@ bool AEasySessionReservationBeaconClient::RequestJoin(const FEasySessionSearchRe
 	const ULocalPlayer* LocalPlayer = GetGameInstance() ? GetGameInstance()->GetFirstGamePlayer() : nullptr;
 	const FUniqueNetIdRepl LocalPlayerId = LocalPlayer ? LocalPlayer->GetPreferredUniqueNetId() : FUniqueNetIdRepl();
 
-	// One member today, the local player. A party asks for all of its members in the same request.
-	const TArray<FPlayerReservation> Members = { EasySessionReservation::MakePlayerReservation(LocalPlayerId) };
+	const TArray<FPlayerReservation> Members = EasySessionReservation::MakeReservations(LocalPlayerId, GroupMembers);
 
 	// The parent resolves the beacon address, opens the connection, and holds the request until OnConnected.
 	if (!RequestReservation(Target.NativeResult, LocalPlayerId, Members))

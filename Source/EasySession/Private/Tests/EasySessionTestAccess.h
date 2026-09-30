@@ -309,11 +309,11 @@ public:
 		return Result;
 	}
 
-	/** Ask the reservations directly whether a player may join. The reservation beacon calls this, and PreLogin calls it for a player without a reservation. */
-	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password)
+	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */
+	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password, const FUniqueNetIdRepl& Requester = FUniqueNetIdRepl())
 	{
 		return Subsystem.Host.IsValid()
-			? Subsystem.Host->Reservations->ApproveJoin(Password, FUniqueNetIdRepl()).Result
+			? Subsystem.Host->Reservations->ApproveJoin(Password, Requester).Result
 			: FEasyReservationResponse::NotAnswering().Result;
 	}
 
@@ -435,6 +435,12 @@ public:
 	static TSet<FString> GetFailedSessionKeys(const FEasySessionMatchmakingRequest& Run)
 	{
 		return Run.FailedSessionKeys;
+	}
+
+	/** @return The params the run searches and joins with. */
+	static const FEasyMatchmakingParams& GetMatchmakingParams(const FEasySessionMatchmakingRequest& Run)
+	{
+		return Run.Params;
 	}
 
 	/** How many candidates of the run's last search pass were joined and failed. */

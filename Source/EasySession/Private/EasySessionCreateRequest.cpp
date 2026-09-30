@@ -7,8 +7,10 @@
 #include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
+#include "Interfaces/OnlineIdentityInterface.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
+#include "OnlineSubsystemUtils.h"
 
 FEasySessionCreateRequest::FEasySessionCreateRequest(const FEasySessionHostParams& InHostParams, FEasySessionCompleteDelegate InOnComplete)
 	: FEasySessionRequest(EType::Create)
@@ -38,7 +40,11 @@ void FEasySessionCreateRequest::Execute()
 		return;
 	}
 
-	const FOnlineSessionSettings Settings = MakeSessionSettings(HostParams, ShouldForceLAN());
+	// The session is created for local player 0 below, so that player is the owner a search for this host looks for.
+	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
+	const FUniqueNetIdRepl OwnerId(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
+
+	const FOnlineSessionSettings Settings = MakeSessionSettings(HostParams, ShouldForceLAN(), OwnerId);
 
 	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateSP(this, &FEasySessionCreateRequest::HandleCreateSessionComplete));
@@ -68,7 +74,7 @@ void FEasySessionCreateRequest::Notify(EEasySessionResult Result, const FString&
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
 }
 
-FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN)
+FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN, const FUniqueNetIdRepl& OwnerId)
 {
 	FOnlineSessionSettings Settings;
 	Params.ApplyTo(Settings);
@@ -93,6 +99,13 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	// Joining players that find the key ask it for a reservation before traveling.
 	// The host reads the key back after each travel to decide whether the new world needs a beacon.
 	Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
+	// The host's id, so a search for this host filters on the online service rather than on the results it returned.
+	// Without a logged in player there is no id to advertise.
+	if (OwnerId.IsValid())
+	{
+		Settings.Set(EasySession::SettingKey_OwnerId, OwnerId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
 
 	return Settings;
 }

@@ -455,8 +455,6 @@ public:
 
 	/**
 	 * C++ delegate: change the client travel URL (joining a host) before it is used.
-	 * This URL carries the session password as an option.
-	 * Do not log it.
 	 * Bind at startup.
 	 * The delegate fires before the completion callback of the request that travels, so binding inside that callback misses its own travel.
 	 * For one request's options, use Additional Travel Options on the params instead.
@@ -486,6 +484,15 @@ public:
 	 * Clients write them into their local session copy so the regular getters return the host's values, then broadcast OnSessionSettingsChanged.
 	 */
 	void HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings);
+
+	/**
+	 * Internal, called when a group leader moves this player along: join the session of a host who already holds a reservation for this player.
+	 * Runs as a matchmaking run that searches for that host only, so the On Matchmaking events report its progress and Cancel Easy Matchmaking stops it.
+	 *
+	 * @param HostId The player who hosts the session to join.
+	 * @param bLANQuery Whether that session is a LAN session.
+	 */
+	void FollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 private:
 
