@@ -63,6 +63,7 @@ void FEasySessionReservations::OnSessionDestroyed()
 {
 	SessionPassword.Empty();
 	bFriendsBypassPassword = false;
+	KickedPlayers.Reset();
 
 	// A new session must never start on the reservations of the one before it.
 	KeptReservations.Reset();
@@ -159,8 +160,22 @@ void FEasySessionReservations::StopBeacon()
 	BeaconHost.Reset();
 }
 
-FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Password, const FUniqueNetIdRepl& Requester) const
+FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Password, const FUniqueNetIdRepl& Requester, const TArray<FUniqueNetIdRepl>& GroupMembers) const
 {
+	if (Requester.IsValid() && KickedPlayers.Contains(Requester))
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Reservations: refusing '%s' - the host removed this player from the session."), *Requester.ToString());
+		return MakeResponse(EEasyReservationResult::Refused, NSLOCTEXT("EasySession", "RemovedFromSession", "The host removed you from this session."));
+	}
+
+	// The requester waits for every member to leave before joining, so approving the rest would leave the removed player behind.
+	const FUniqueNetIdRepl* KickedMember = GroupMembers.FindByPredicate([this](const FUniqueNetIdRepl& Member) { return KickedPlayers.Contains(Member); });
+	if (KickedMember != nullptr)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Reservations: refusing '%s' - the host removed '%s', who travels with this player."), *Requester.ToString(), *KickedMember->ToString());
+		return MakeResponse(EEasyReservationResult::Refused, NSLOCTEXT("EasySession", "GroupMemberRemoved", "The host removed a player who travels with you from this session."));
+	}
+
 	// This player was approved before: over this beacon, or as a member of the group whose leader asked for the reservation.
 	// Reservations are kept across a map change, so this also lets in the players a hard travel reconnects.
 	if (PlayerHasReservation(Requester))
@@ -215,6 +230,15 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 	// Never log the password: on a listen server the log file is on a player's machine.
 	UE_LOG(LogEasySession, Warning, TEXT("Reservations: refusing '%s' - the session password did not match."), *Requester.ToString());
 	return MakeResponse(EEasyReservationResult::WrongPassword, NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password."));
+}
+
+void FEasySessionReservations::AddKickedPlayer(const FUniqueNetIdRepl& PlayerId)
+{
+	if (PlayerId.IsValid())
+	{
+		KickedPlayers.AddUnique(PlayerId);
+		RemovePlayerReservation(PlayerId);
+	}
 }
 
 bool FEasySessionReservations::UsesReservationBeacon(const FOnlineSessionSettings& Settings)

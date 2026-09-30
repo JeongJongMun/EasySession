@@ -70,20 +70,25 @@ public:
 
 	/**
 	 * Decide whether a player may join.
+	 * Refuses a player the host removed, and a group with such a player in it, because the group moves together.
 	 * Approves a player holding a reservation at once, so the members of a group need no password and no free slot of their own.
 	 * Checks any other player against the join-in-progress policy first, then whether the session is full, then the password, which friends of the host may skip.
 	 * Never returns Unreachable, which only the beacon client produces.
 	 *
 	 * @param Password What the joining player sent over the reservation beacon. PreLogin passes none, because the password is never in the travel URL.
 	 * @param Requester The id the engine checked at beacon login or at PreLogin, which is the only id this decision trusts.
+	 * @param GroupMembers The players who travel with the requester in the same reservation. PreLogin passes none.
 	 */
-	FEasyReservationResponse ApproveJoin(const FString& Password, const FUniqueNetIdRepl& Requester) const;
+	FEasyReservationResponse ApproveJoin(const FString& Password, const FUniqueNetIdRepl& Requester, const TArray<FUniqueNetIdRepl>& GroupMembers = TArray<FUniqueNetIdRepl>()) const;
 
 	/** @return The password joining players must send. Empty when the session is open. */
 	const FString& GetSessionPassword() const { return SessionPassword; }
 
 	/** @return Whether friends of the host may join a password session without it. */
 	bool GetFriendsBypassPassword() const { return bFriendsBypassPassword; }
+
+	/** Keep this player out until the session is destroyed, and remove their reservation. The list is kept across a map change. */
+	void AddKickedPlayer(const FUniqueNetIdRepl& PlayerId);
 
 	/** @return Whether a session with these settings uses the reservation beacon, so a joining player asks for a reservation before traveling. */
 	static bool UsesReservationBeacon(const FOnlineSessionSettings& Settings);
@@ -146,6 +151,9 @@ private:
 
 	/** Password joining players must send, or empty for an open session. */
 	FString SessionPassword;
+
+	/** Players the host kicked. ApproveJoin refuses them until the session is destroyed. */
+	TArray<FUniqueNetIdRepl> KickedPlayers;
 
 	FDelegateHandle PreLoginHandle;
 

@@ -260,6 +260,15 @@ public:
 	void UpdateSession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
+	 * Remove a player from the session, and keep them out until the session is destroyed.
+	 * The player travels to the menu, and Consume Pending Easy Disconnect Info returns Kicked with this reason there.
+	 * Needs session authority: only the game that created the session can do this.
+	 *
+	 * @return Success, RequiresSessionAuthority, or InvalidParams for a player who is not a connected remote player.
+	 */
+	EEasySessionResult KickPlayer(const FEasySessionPlayerInfo& Player, const FText& Reason);
+
+	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.
 	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
 	 * Needs session authority: only the game that created the session can travel it.

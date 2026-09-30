@@ -15,6 +15,7 @@ class UEasyMatchmakingPolicy;
  * The subsystem creates it for Start Easy Matchmaking, and the queue runs it like any other request.
  *
  * The searches, the joins and the host are its sub-requests, so no other request runs between two of them.
+ * A host whose match has not started may run one from its session: each join takes the session's players along, and no session is hosted.
  * UEasyMatchmakingPolicy decides which session is joined first.
  * The run broadcasts its progress on the subsystem's On Matchmaking events.
  *

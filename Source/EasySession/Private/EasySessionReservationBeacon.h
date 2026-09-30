@@ -54,7 +54,7 @@ struct FEasyReservationResponse
 DECLARE_DELEGATE_OneParam(FEasyReservationRequestComplete, const FEasyReservationResponse&);
 
 /** Delegate the beacon host calls to decide whether a player may join. */
-DECLARE_DELEGATE_RetVal_TwoParams(FEasyReservationResponse, FEasyApproveJoinDelegate, const FString& /** Password */, const FUniqueNetIdRepl& /** Requester */);
+DECLARE_DELEGATE_RetVal_ThreeParams(FEasyReservationResponse, FEasyApproveJoinDelegate, const FString& /** Password */, const FUniqueNetIdRepl& /** Requester */, const TArray<FUniqueNetIdRepl>& /** GroupMembers */);
 
 /** The reservations the beacon client and FEasySessionReservations both build. */
 namespace EasySessionReservation

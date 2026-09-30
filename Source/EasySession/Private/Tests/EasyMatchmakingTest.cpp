@@ -519,6 +519,16 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
 			return false;
 		}
 
+		// A host may matchmake from a session whose match has not started, so the match is started to get the refusal.
+		if (Subsystem->GetSessionState() != EEasySessionState::InProgress)
+		{
+			if (Subsystem->GetSessionState() == EEasySessionState::Pending)
+			{
+				Subsystem->StartSession();
+			}
+			return false;
+		}
+
 		TSharedPtr<FTestState> Shared = State;
 		Subsystem->StartMatchmaking(FEasyMatchmakingParams(), nullptr, FEasySessionCompleteDelegate::CreateLambda(
 			[Shared](EEasySessionResult Result, const FString& ErrorMessage)
@@ -575,6 +585,7 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
  * A session that arrived another way makes every join and host of a matchmaking run fail with SessionAlreadyExists.
  * It can arrive from an accepted invite, or from the game's own Create or Join.
  * The run must report that once and stop, instead of spending candidates and passes on it.
+ * Only the host of a match that has not started may run one, and this player hosts a match in progress.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingAlreadyInSessionTest, "EasySession.Matchmaking.RefusesWhenAlreadyInASession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
@@ -893,6 +904,16 @@ bool FEasyMatchmakingWaitEvents::Update()
 		{
 			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
 			{
+				return false;
+			}
+
+			// A host may matchmake from a session whose match has not started, so the match is started to get the refusal.
+			if (Subsystem->GetSessionState() != EEasySessionState::InProgress)
+			{
+				if (Subsystem->GetSessionState() == EEasySessionState::Pending)
+				{
+					Subsystem->StartSession();
+				}
 				return false;
 			}
 

@@ -266,6 +266,12 @@ public:
 		Subsystem.Host->Reservations->RemovePlayerReservation(PlayerId);
 	}
 
+	/** Keep a player out of the session, the part of a kick that needs no connected player. */
+	static void AddKickedPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	{
+		Subsystem.Host->Reservations->AddKickedPlayer(PlayerId);
+	}
+
 	/** The beacon host that holds the reservations, or null while no beacon runs. */
 	static AEasySessionReservationBeaconHost* GetReservationBeacon(const UEasySessionSubsystem& Subsystem)
 	{
@@ -310,10 +316,11 @@ public:
 	}
 
 	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */
-	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password, const FUniqueNetIdRepl& Requester = FUniqueNetIdRepl())
+	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password, const FUniqueNetIdRepl& Requester = FUniqueNetIdRepl(),
+		const TArray<FUniqueNetIdRepl>& GroupMembers = TArray<FUniqueNetIdRepl>())
 	{
 		return Subsystem.Host.IsValid()
-			? Subsystem.Host->Reservations->ApproveJoin(Password, Requester).Result
+			? Subsystem.Host->Reservations->ApproveJoin(Password, Requester, GroupMembers).Result
 			: FEasyReservationResponse::NotAnswering().Result;
 	}
 

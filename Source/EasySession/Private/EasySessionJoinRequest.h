@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Containers/Ticker.h"
 #include "EasySessionRequest.h"
 #include "UObject/WeakObjectPtr.h"
 
@@ -24,6 +25,8 @@ struct FEasyReservationResponse;
  * An unreachable beacon fails the join of a password-protected session, because PreLogin admits no player without a reservation there.
  * It also fails the join of a player in a session, who would otherwise leave it before any host approved the join.
  * Any other join continues, and PreLogin runs ApproveJoin when the joining player arrives.
+ *
+ * A host whose match has not started brings every other player: the reservation holds them too, and they are told to follow before the host leaves.
  */
 class FEasySessionJoinRequest final : public FEasySessionRequest
 {
@@ -32,9 +35,7 @@ class FEasySessionJoinRequest final : public FEasySessionRequest
 
 public:
 
-	/** @param InGroupMembers The players who travel with this one, asked for in the same reservation. Empty for a player joining alone. */
-	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete,
-		const TArray<FUniqueNetIdRepl>& InGroupMembers = TArray<FUniqueNetIdRepl>());
+	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete);
 
 	/** Destroys the beacon client actor if the request is destroyed while it waits for the response. */
 	virtual ~FEasySessionJoinRequest() override;
@@ -58,6 +59,12 @@ private:
 	/** Destroy the beacon client actor, so a late response cannot reach a completed request. */
 	void DestroyReservationClient();
 
+	/** Tell the group to follow, and join once every member left this session or the wait is over. */
+	void JoinOnlineSessionWithGroup();
+
+	/** Check whether the group left this session, and join when it did or the wait is over. */
+	bool HandleGroupWaitTick(float DeltaTime);
+
 	/** Join without a reservation, or complete with JoinRefused when the session is password-protected or this player is in a session. */
 	void JoinWithoutReservation();
 
@@ -79,7 +86,7 @@ private:
 	/** Extra options appended to the client travel URL. */
 	FString TravelOptions;
 
-	/** The players who travel with this one. The reservation beacon holds a slot for each of them too. */
+	/** The players who travel with this one, read from the host when the request starts. The reservation holds each of them too. */
 	TArray<FUniqueNetIdRepl> GroupMembers;
 
 	/** The requester's delegate. */
@@ -90,6 +97,12 @@ private:
 
 	/** Handle for the online subsystem's join completion, bound while the request runs. */
 	FDelegateHandle JoinCompleteHandle;
+
+	/** Ticker handle for the wait until the group left this session. */
+	FTSTicker::FDelegateHandle GroupWaitHandle;
+
+	/** When the wait for the group started, in FPlatformTime seconds. */
+	double GroupWaitStartSeconds = 0.0;
 
 	/** Did this player leave a session to join this one. */
 	bool bLeftSession = false;

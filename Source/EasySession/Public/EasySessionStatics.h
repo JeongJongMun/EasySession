@@ -167,6 +167,16 @@ public:
 	static bool ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName);
 
 	/**
+	 * Remove a player from the session, and keep them out until the session is destroyed.
+	 * The player travels to the menu, and Consume Pending Easy Disconnect Info returns Kicked with this reason there.
+	 * Session authority only.
+	 *
+	 * @return Success, Requires Session Authority, or Invalid Params for a player who is not a connected remote player.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Advanced", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult KickEasySessionPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player, FText Reason);
+
+	/**
 	 * Destroy the session for every player.
 	 * Clients record Reason as a Host Destroyed Session disconnect and travel back to the menu.
 	 * There, Consume Pending Easy Disconnect Info returns it so the menu can show it to the player.

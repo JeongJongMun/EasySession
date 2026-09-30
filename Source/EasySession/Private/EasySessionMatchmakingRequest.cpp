@@ -7,6 +7,7 @@
 #include "EasySessionCreateRequest.h"
 #include "EasySessionDestroyRequest.h"
 #include "EasySessionFindRequest.h"
+#include "EasySessionHost.h"
 #include "EasySessionJoinRequest.h"
 #include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
@@ -71,7 +72,19 @@ void FEasySessionMatchmakingRequest::Execute()
 
 	// An accepted invite or the game's own Create or Join ran before this run started, and every sub-request would fail against that session.
 	// A follow starts inside a session on purpose, because its join leaves that session only once the host approved.
-	if (!bFollowsHost && GetContext().Subsystem.IsInSession())
+	// So does a host whose match has not started, because each of its joins takes the session's players along.
+	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
+	const bool bMovesGroup = GetContext().Subsystem.IsSessionAuthority() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
+	if (bMovesGroup)
+	{
+		Params.Search.MinOpenSlots = FMath::Max(Params.Search.MinOpenSlots, GetContext().Host.GetGroupMembers().Num() + 1);
+	}
+	else if (!bFollowsHost && GetContext().Subsystem.IsSessionAuthority())
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
+		return;
+	}
+	else if (!bFollowsHost && GetContext().Subsystem.IsInSession())
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a session. Call Leave Easy Session first, or use Join Easy Session to switch to a session you found."));
 		return;
@@ -167,9 +180,23 @@ void FEasySessionMatchmakingRequest::HandleSearchComplete(EEasySessionResult Res
 
 void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSearchResult>& Results)
 {
+	// A host searching from its own session can find that session, and joining it would only fail.
+	FString CurrentSessionId;
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* CurrentSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr;
+	if (CurrentSession != nullptr && CurrentSession->SessionInfo.IsValid())
+	{
+		CurrentSessionId = CurrentSession->SessionInfo->GetSessionId().ToString();
+	}
+
 	Candidates.Empty();
 	for (const FEasySessionSearchResult& Result : Results)
 	{
+		if (!CurrentSessionId.IsEmpty() && Result.NativeResult.GetSessionIdStr() == CurrentSessionId)
+		{
+			continue;
+		}
+
 		// A password-protected session is only a candidate when this run carries a password to offer, or a reservation that needs none.
 		if (!bFollowsHost && Result.bPasswordProtected && Params.JoinPassword.TrimStartAndEnd().IsEmpty())
 		{
@@ -253,7 +280,8 @@ void FEasySessionMatchmakingRequest::FinishSearchPass(EEasySessionResult SearchR
 
 	if (PassesCompleted >= Params.MaxSearchPasses)
 	{
-		if (Params.bAllowHostFallback)
+		// A host that moves its players already has a session, so it stays in it rather than hosting another.
+		if (Params.bAllowHostFallback && !GetContext().Subsystem.IsInSession())
 		{
 			HostFallbackSession();
 		}

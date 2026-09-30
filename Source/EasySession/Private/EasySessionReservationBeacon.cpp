@@ -247,10 +247,20 @@ void AEasySessionReservationBeaconHost::ProcessReservationRequest(APartyBeaconCl
 		return;
 	}
 
+	// Every other player in the request travels with the requester, in the same reservation.
+	TArray<FUniqueNetIdRepl> GroupMembers;
+	for (const FPlayerReservation& Member : ReservationRequest.PartyMembers)
+	{
+		if (Member.UniqueId != ReservationClient->GetUniqueId())
+		{
+			GroupMembers.Add(Member.UniqueId);
+		}
+	}
+
 	// The password arrived on the RPC before this one, so the join is decided before any reservation is added.
 	// GetUniqueId is the id the joining player presented at beacon login, which the engine already checked.
 	const FEasyReservationResponse Response = ApproveJoinDelegate.IsBound()
-		? ApproveJoinDelegate.Execute(ReservationClient->GetReceivedPassword(), ReservationClient->GetUniqueId())
+		? ApproveJoinDelegate.Execute(ReservationClient->GetReceivedPassword(), ReservationClient->GetUniqueId(), GroupMembers)
 		: FEasyReservationResponse::NotAnswering();
 	if (Response.Result != EEasyReservationResult::Approved)
 	{

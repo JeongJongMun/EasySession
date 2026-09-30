@@ -209,6 +209,16 @@ void UEasySessionSubsystem::UpdateSession(const FEasySessionSettings& NewSetting
 	EnqueueRequest(MakeShared<FEasySessionUpdateRequest>(NewSettings, MoveTemp(OnComplete)));
 }
 
+EEasySessionResult UEasySessionSubsystem::KickPlayer(const FEasySessionPlayerInfo& Player, const FText& Reason)
+{
+	if (!IsSessionAuthority())
+	{
+		return EEasySessionResult::RequiresSessionAuthority;
+	}
+
+	return Host->KickPlayer(Player.PlayerId, Reason) ? EEasySessionResult::Success : EEasySessionResult::InvalidParams;
+}
+
 bool UEasySessionSubsystem::ServerTravel(const FString& MapName)
 {
 	if (MapName.IsEmpty())

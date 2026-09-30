@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionBeaconPort.h"
+#include "EasySessionPlayerComponent.h"
 #include "EasySessionReservations.h"
 #include "EasySessionStateActor.h"
 #include "EasySessionSubsystem.h"
@@ -12,6 +13,9 @@
 #include "Engine/World.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameSession.h"
+#include "GameFramework/GameStateBase.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
 
@@ -33,6 +37,8 @@ FEasySessionHost::~FEasySessionHost()
 
 	FTSTicker::GetCoreTicker().RemoveTicker(DeferredSetUpHandle);
 	DeferredSetUpHandle.Reset();
+
+	UnbindActorSpawnedDelegate();
 
 	Reservations.Reset();
 }
@@ -87,12 +93,14 @@ void FEasySessionHost::OnSessionDestroyed()
 {
 	Reservations->OnSessionDestroyed();
 	DestroyStateActor();
+	UnbindActorSpawnedDelegate();
 }
 
 void FEasySessionHost::OnServerTravelStarted()
 {
 	Reservations->OnServerTravelStarted();
 	DestroyStateActor();
+	UnbindActorSpawnedDelegate();
 
 	// The next world starts its own beacon listener, which can only bind the beacon port after this one released it.
 	BeaconPort.ReleaseListener();
@@ -108,6 +116,19 @@ void FEasySessionHost::SpawnWorldActors()
 {
 	EnsureStateActor();
 	Reservations->StartBeacon();
+	BindActorSpawnedDelegate();
+
+	// A seamless travel swaps the controllers before this runs, so the ones already here get a component too.
+	if (UWorld* World = GetWorld())
+	{
+		for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+		{
+			if (APlayerController* Controller = It->Get())
+			{
+				AddPlayerComponent(*Controller);
+			}
+		}
+	}
 }
 
 void FEasySessionHost::DestroyStateActor()
@@ -119,12 +140,146 @@ void FEasySessionHost::DestroyStateActor()
 	StateActor.Reset();
 }
 
+void FEasySessionHost::BindActorSpawnedDelegate()
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || BoundWorld.Get() == World)
+	{
+		return;
+	}
+
+	UnbindActorSpawnedDelegate();
+	BoundWorld = World;
+	ActorSpawnedHandle = World->AddOnActorSpawnedHandler(FOnActorSpawned::FDelegate::CreateRaw(this, &FEasySessionHost::HandleActorSpawned));
+}
+
+void FEasySessionHost::UnbindActorSpawnedDelegate()
+{
+	if (UWorld* World = BoundWorld.Get())
+	{
+		World->RemoveOnActorSpawnedHandler(ActorSpawnedHandle);
+	}
+	ActorSpawnedHandle.Reset();
+	BoundWorld.Reset();
+}
+
+void FEasySessionHost::HandleActorSpawned(AActor* Actor)
+{
+	if (APlayerController* Controller = Cast<APlayerController>(Actor))
+	{
+		AddPlayerComponent(*Controller);
+	}
+}
+
+void FEasySessionHost::AddPlayerComponent(APlayerController& Controller)
+{
+	if (Controller.FindComponentByClass<UEasySessionPlayerComponent>() != nullptr)
+	{
+		return;
+	}
+
+	UEasySessionPlayerComponent* Component = NewObject<UEasySessionPlayerComponent>(&Controller);
+	Component->RegisterComponent();
+}
+
+APlayerController* FEasySessionHost::FindRemoteController(const FUniqueNetIdRepl& PlayerId) const
+{
+	UWorld* World = GetWorld();
+	if (World == nullptr || !PlayerId.IsValid())
+	{
+		return nullptr;
+	}
+
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		APlayerController* Controller = It->Get();
+		if (Controller != nullptr && !Controller->IsLocalController() && Controller->PlayerState != nullptr && Controller->PlayerState->GetUniqueId() == PlayerId)
+		{
+			return Controller;
+		}
+	}
+
+	return nullptr;
+}
+
 void FEasySessionHost::TellEveryoneToReturnToMenu(const FText& Reason)
 {
 	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
 		Actor->MulticastReturnToMenu(Reason);
 	}
+}
+
+TArray<FUniqueNetIdRepl> FEasySessionHost::GetGroupMembers() const
+{
+	TArray<FUniqueNetIdRepl> Members;
+
+	// A leaving host takes its session with it, so the host of a match in progress moves nobody.
+	const EEasySessionState State = Owner.GetSessionState();
+	if (!Owner.IsSessionAuthority() || State == EEasySessionState::Starting || State == EEasySessionState::InProgress)
+	{
+		return Members;
+	}
+
+	const UWorld* World = GetWorld();
+	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+	if (GameState == nullptr)
+	{
+		return Members;
+	}
+
+	const APlayerController* LocalController = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetFirstLocalPlayerController() : nullptr;
+	const APlayerState* LocalPlayerState = LocalController ? LocalController->PlayerState : nullptr;
+
+	for (const APlayerState* PlayerState : GameState->PlayerArray)
+	{
+		if (PlayerState != nullptr && PlayerState != LocalPlayerState && PlayerState->GetUniqueId().IsValid())
+		{
+			Members.Add(PlayerState->GetUniqueId());
+		}
+	}
+
+	return Members;
+}
+
+void FEasySessionHost::TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery)
+{
+	// Only the members the reservation holds, so a player who arrived after the group was counted stays.
+	for (const FUniqueNetIdRepl& Member : Members)
+	{
+		APlayerController* Controller = FindRemoteController(Member);
+		if (UEasySessionPlayerComponent* Component = Controller ? Controller->FindComponentByClass<UEasySessionPlayerComponent>() : nullptr)
+		{
+			Component->ClientFollowHost(HostId, bLANQuery);
+		}
+	}
+}
+
+bool FEasySessionHost::KickPlayer(const FUniqueNetIdRepl& PlayerId, const FText& Reason)
+{
+	UWorld* World = GetWorld();
+	APlayerController* Kicked = FindRemoteController(PlayerId);
+	if (World == nullptr || Kicked == nullptr)
+	{
+		return false;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Kicking '%s' from the session."), *PlayerId.ToString());
+	Reservations->AddKickedPlayer(PlayerId);
+
+	// The engine's kick drops its reason on the client, so the reason goes first on the same connection.
+	if (UEasySessionPlayerComponent* Component = Kicked->FindComponentByClass<UEasySessionPlayerComponent>())
+	{
+		Component->ClientKicked(Reason);
+	}
+
+	const AGameModeBase* GameMode = World->GetAuthGameMode();
+	if (GameMode != nullptr && GameMode->GameSession != nullptr)
+	{
+		GameMode->GameSession->KickPlayer(Kicked, Reason);
+	}
+
+	return true;
 }
 
 void FEasySessionHost::HandleGameModeInitialized(AGameModeBase* GameMode)

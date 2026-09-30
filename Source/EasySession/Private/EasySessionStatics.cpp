@@ -166,6 +166,12 @@ bool UEasySessionStatics::ServerTravelEasySession(const UObject* WorldContextObj
 	return Subsystem != nullptr && Subsystem->ServerTravel(MapName);
 }
 
+EEasySessionResult UEasySessionStatics::KickEasySessionPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player, FText Reason)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->KickPlayer(Player, Reason) : EEasySessionResult::NoOnlineSubsystem;
+}
+
 void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason)
 {
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))

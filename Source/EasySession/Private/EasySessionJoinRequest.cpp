@@ -12,14 +12,22 @@
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
 #include "Engine/World.h"
+#include "HAL/PlatformTime.h"
 
-FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete,
-	const TArray<FUniqueNetIdRepl>& InGroupMembers)
+namespace
+{
+	/** Seconds between two checks whether the group left this session. */
+	constexpr float GroupWaitIntervalSeconds = 0.1f;
+
+	/** Seconds the host waits for its group before it leaves anyway. */
+	constexpr double GroupWaitTimeoutSeconds = 10.0;
+}
+
+FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete)
 	: FEasySessionRequest(EType::Join)
 	, Target(InTarget)
 	, Password(InPassword)
 	, TravelOptions(InTravelOptions)
-	, GroupMembers(InGroupMembers)
 	, OnComplete(MoveTemp(InOnComplete))
 {
 }
@@ -60,6 +68,9 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
+	// A host whose match has not started takes the players of its session along, in the same reservation.
+	GroupMembers = GetContext().Host.GetGroupMembers();
+
 	if (FEasySessionReservations::UsesReservationBeacon(Target.NativeResult.Session.SessionSettings))
 	{
 		RequestReservation();
@@ -76,6 +87,9 @@ void FEasySessionJoinRequest::Cleanup()
 	{
 		Sessions->ClearOnJoinSessionCompleteDelegate_Handle(JoinCompleteHandle);
 	}
+
+	FTSTicker::GetCoreTicker().RemoveTicker(GroupWaitHandle);
+	GroupWaitHandle.Reset();
 
 	// The reservation request may still be waiting for a response.
 	DestroyReservationClient();
@@ -131,7 +145,14 @@ void FEasySessionJoinRequest::HandleReservationResponse(const FEasyReservationRe
 	switch (Response.Result)
 	{
 		case EEasyReservationResult::Approved:
-			JoinOnlineSession();
+			if (GroupMembers.IsEmpty())
+			{
+				JoinOnlineSession();
+			}
+			else
+			{
+				JoinOnlineSessionWithGroup();
+			}
 			break;
 
 		case EEasyReservationResult::Unreachable:
@@ -160,6 +181,43 @@ void FEasySessionJoinRequest::DestroyReservationClient()
 		Client->DestroyBeacon();
 	}
 	ReservationClient.Reset();
+}
+
+void FEasySessionJoinRequest::JoinOnlineSessionWithGroup()
+{
+	UE_LOG(LogEasySession, Log, TEXT("Moving %d players to '%s' before this host leaves."), GroupMembers.Num(), *Target.SessionDisplayName);
+
+	// The members search for the new host, which holds a reservation for each of them.
+	const FUniqueNetIdRepl NewHostId(Target.NativeResult.Session.OwningUserId);
+	GetContext().Host.TellGroupToFollow(GroupMembers, NewHostId, Target.NativeResult.Session.SessionSettings.bIsLANMatch);
+
+	GroupWaitStartSeconds = FPlatformTime::Seconds();
+	GroupWaitHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateSP(this, &FEasySessionJoinRequest::HandleGroupWaitTick), GroupWaitIntervalSeconds);
+}
+
+bool FEasySessionJoinRequest::HandleGroupWaitTick(float DeltaTime)
+{
+	if (!IsRunning())
+	{
+		return false;
+	}
+
+	const TArray<FUniqueNetIdRepl> StillHere = GetContext().Host.GetGroupMembers();
+	const bool bAnyStillHere = GroupMembers.ContainsByPredicate([&StillHere](const FUniqueNetIdRepl& Member) { return StillHere.Contains(Member); });
+	if (bAnyStillHere && FPlatformTime::Seconds() - GroupWaitStartSeconds < GroupWaitTimeoutSeconds)
+	{
+		return true;
+	}
+
+	// Leaving takes the session with it, so a member who did not follow in time is sent to the menu with the reason.
+	if (bAnyStillHere)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("Not every player left to follow within %.0f seconds. The rest return to the menu when this host leaves."), GroupWaitTimeoutSeconds);
+	}
+
+	GroupWaitHandle.Reset();
+	JoinOnlineSession();
+	return false;
 }
 
 void FEasySessionJoinRequest::JoinWithoutReservation()

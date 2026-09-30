@@ -815,7 +815,10 @@ enum class EEasyDisconnectReason : uint8
 	TravelFailure,
 
 	/** The host refused the connection when it arrived (not joinable, or a password session joined without the reservation beacon). Reason Text is the refusal message. */
-	Rejected
+	Rejected,
+
+	/** The host removed this player from the session, which keeps them out until it is destroyed. Reason Text is the host's reason. */
+	Kicked
 };
 
 /**

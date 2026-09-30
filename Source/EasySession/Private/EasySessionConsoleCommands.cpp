@@ -13,6 +13,8 @@
 //   EasySession.End             End the match (session state -> Ended).
 //   EasySession.Cancel          Cancel the running matchmaking.
 //   EasySession.Status          Print the current session state.
+//   EasySession.Players         List the players in the session, numbered for EasySession.Kick.
+//   EasySession.Kick <Index> [Reason]  Kick a player listed by EasySession.Players (host only).
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.Diagnose        Run the online configuration diagnostics.
@@ -250,6 +252,51 @@ namespace EasySessionConsole
 					Subsystem->IsBusy() ? 1 : 0,
 					Subsystem->IsMatchmakingRunning() ? 1 : 0));
 				Print(FString::Printf(TEXT("Queue: %s"), *Subsystem->GetQueueStatus()));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GPlayersCommand(
+		TEXT("EasySession.Players"),
+		TEXT("List the players in the session, numbered for EasySession.Kick."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const TArray<FEasySessionPlayerInfo> Players = Subsystem->GetSessionPlayerInfos();
+				Print(FString::Printf(TEXT("Players: %d in the session."), Players.Num()));
+				for (int32 Index = 0; Index < Players.Num(); ++Index)
+				{
+					Print(FString::Printf(TEXT("  [%d] '%s'%s%s"), Index, *Players[Index].PlayerName,
+						Players[Index].bIsHost ? TEXT(" (host)") : TEXT(""),
+						Players[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT("")));
+				}
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GKickCommand(
+		TEXT("EasySession.Kick"),
+		TEXT("Kick a player listed by EasySession.Players. Args: index, then an optional reason."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const TArray<FEasySessionPlayerInfo> Players = Subsystem->GetSessionPlayerInfos();
+				const int32 Index = Args.Num() > 0 ? FCString::Atoi(*Args[0]) : INDEX_NONE;
+				if (!Players.IsValidIndex(Index))
+				{
+					Print(TEXT("Kick: no player at that index. Run EasySession.Players first."));
+					return;
+				}
+
+				// The reason is every word after the index, so it can hold spaces.
+				FString Reason;
+				for (int32 ArgIndex = 1; ArgIndex < Args.Num(); ++ArgIndex)
+				{
+					Reason += (ArgIndex > 1 ? TEXT(" ") : TEXT("")) + Args[ArgIndex];
+				}
+
+				const EEasySessionResult Result = Subsystem->KickPlayer(Players[Index], FText::FromString(Reason));
+				Print(FString::Printf(TEXT("Kick '%s': %s"), *Players[Index].PlayerName, *EasySession::ResultToString(Result)));
 			}
 		}));
 
