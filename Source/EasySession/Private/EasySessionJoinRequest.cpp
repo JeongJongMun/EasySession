@@ -50,6 +50,14 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
+	// A leaving host takes its session with it, so leaving a match in progress would end it for every player.
+	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
+	if (GetContext().Subsystem.IsSessionAuthority() && (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress))
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
+		return;
+	}
+
 	if (FEasySessionReservations::UsesReservationBeacon(Target.NativeResult.Session.SessionSettings))
 	{
 		RequestReservation();
@@ -158,6 +166,13 @@ void FEasySessionJoinRequest::JoinWithoutReservation()
 	if (Target.bPasswordProtected)
 	{
 		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to check the password."));
+		return;
+	}
+
+	// Leaving is safe only once the host approved the join, so a player in a session stays in it.
+	if (GetContext().Subsystem.IsInSession())
+	{
+		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to ask for a reservation, so this player stays in the current session."));
 		return;
 	}
 

@@ -44,7 +44,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`, then travels to Initial Map Name with `?listen` so this game becomes the server. Fails with `InvalidParams` while Initial Map Name is empty, because the session would be advertised with no server behind it |
 | **Find Easy Sessions** | `SearchParams` | Calls `FindSessions` and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out |
-| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for a reservation first, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
+| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for a reservation first, then calls `JoinSession`, resolves the host address, and travels there. A wrong password or a closed match fails the node with `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked by a player outside a session does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)) |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewSettings` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` from a `FEasySessionSettings` and re-advertises. The struct holds exactly the fields a live session can change, so there is nothing here that gets ignored. Session authority only |
@@ -65,6 +65,14 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 > host, which makes `Is Easy Session Host` false even though the server created the
 > session - so logic that also runs on a dedicated server has to use
 > `Is Easy Session Authority`.
+
+**Calling a request from inside a session.** A player holds one game session at a time, so these three requests check the current one first:
+
+| Node | What happens in a session |
+|---|---|
+| **Create Easy Session** | Fails with `SessionAlreadyExists`. Leave the session first. A host changes maps with `Server Travel Easy Session` instead |
+| **Start Easy Matchmaking** | Fails with `SessionAlreadyExists`. Leave the session first, or pick a session yourself and join it |
+| **Join Easy Session** | Switches sessions. The current session is left only after the new host approved the join, so a refused join keeps the player where they were. Fails with `SessionAlreadyExists` for the session already held, and for the host of a match in progress, whose leaving would end the match for everyone. Fails with `JoinRefused`, keeping the current session, when the new host cannot be asked |
 
 ## 2. Query Blueprint nodes
 
@@ -255,7 +263,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | Value | Means |
 |---|---|
 | `Success` | It worked |
-| **`SessionAlreadyExists`** | Create: you are already in a session, so `Destroy Easy Session` first. Join: you are already in the session you asked to join |
+| **`SessionAlreadyExists`** | Create or Matchmaking: you are already in a session, so leave it first. Join: you are already in the session you asked to join, or you host a match in progress ([rules](#1-async-blueprint-nodes)) |
 | **`NoSessionExists`** | There is no session to act on |
 | **`NoSessionsFound`** | The search ran fine and found nothing. Not an error - offer to host |
 | **`JoinSessionFull`** | The session is full - refused by the host before the travel, or by the online service after it. The host also counts the reservations of players still loading, so a search result with a free slot can end here |
@@ -318,7 +326,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 |---|---|---|
 | `bAutoReturnToMenuOnDisconnect` | true | On disconnect or a failed travel, browse to the project's **Game Default Map**, keeping the reason for that map to read. The lost session is destroyed either way; off only leaves the player in the map they are in |
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
-| `bAcceptInvitesWhileInSession` | false | An automatically accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first and call `Join Easy Session` yourself, which always leaves the current session |
+| `bAcceptInvitesWhileInSession` | false | An automatically accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first and call `Join Easy Session` yourself, which leaves the current session once the new host approved |
 
 ## 9. C++ notes
 

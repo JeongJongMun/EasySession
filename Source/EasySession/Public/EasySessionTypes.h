@@ -40,7 +40,7 @@ enum class EEasySessionResult : uint8
 	/** The given parameters were invalid. */
 	InvalidParams,
 
-	/** A session already exists. Destroy it before creating or joining another one. */
+	/** This player is already in a session. Leave it first; Join Easy Session switches sessions on its own, except for the host of a match in progress. */
 	SessionAlreadyExists,
 
 	/** There is no session to act upon. */

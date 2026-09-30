@@ -34,7 +34,7 @@ void FEasySessionCreateRequest::Execute()
 
 	if (Sessions->GetNamedSession(SessionName) != nullptr)
 	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Destroy it first."));
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a session. Call Leave Easy Session first. A host changes maps with Server Travel Easy Session."));
 		return;
 	}
 

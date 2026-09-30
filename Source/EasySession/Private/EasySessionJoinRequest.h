@@ -21,11 +21,15 @@ struct FEasyReservationResponse;
  * A player in another session leaves it once the join is approved, with a Destroy sub-request, and a host tells its clients why first.
  * A join that fails after leaving travels the player to the menu, because the session they left is destroyed.
  * The beacon client actor exists for this request only, from the reservation request to its response or to Cleanup.
- * An unreachable beacon does not fail the join of an open session, because PreLogin runs ApproveJoin when the joining player arrives.
- * It fails the join of a password-protected session, because PreLogin admits no player without a reservation there.
+ * An unreachable beacon fails the join of a password-protected session, because PreLogin admits no player without a reservation there.
+ * It also fails the join of a player in a session, who would otherwise leave it before any host approved the join.
+ * Any other join continues, and PreLogin runs ApproveJoin when the joining player arrives.
  */
 class FEasySessionJoinRequest final : public FEasySessionRequest
 {
+	//~ FEasySessionTestAccess delivers the reservation beacon's approval for the tests.
+	friend class FEasySessionTestAccess;
+
 public:
 
 	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete);
@@ -52,7 +56,7 @@ private:
 	/** Destroy the beacon client actor, so a late response cannot reach a completed request. */
 	void DestroyReservationClient();
 
-	/** Join without a reservation, or complete with JoinRefused when the session is password-protected. */
+	/** Join without a reservation, or complete with JoinRefused when the session is password-protected or this player is in a session. */
 	void JoinWithoutReservation();
 
 	/** Ask the online subsystem to join. Every join path ends here. A player in another session leaves it first. */

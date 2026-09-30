@@ -43,7 +43,7 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 |---|---|---|
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 이어서 Initial Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 됩니다. Initial Map Name이 비어 있으면 `InvalidParams`로 실패합니다. 접속할 서버 없이 세션만 광고되기 때문입니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
-| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 예약을 먼저 요청한 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
+| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 예약을 먼저 요청한 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 세션 밖의 플레이어가 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewSettings` | `UpdateSession` 호출. `FEasySessionSettings`로 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 이 구조체는 살아있는 세션이 바꿀 수 있는 필드만 들고 있어서, 무시되는 값이 없습니다. 세션 권한 필요 |
@@ -62,6 +62,14 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 > 됩니다. 데디케이티드 서버에는 호스트가 될 로컬 플레이어가 없어, 서버가 세션을 만들었는데도
 > `Is Easy Session Host`가 false입니다. 그래서 데디케이티드 서버에서도 실행되는 로직에는
 > `Is Easy Session Authority`를 써야 합니다.
+
+**세션 안에서 요청을 부르면.** 플레이어는 게임 세션을 한 번에 하나만 가지므로, 아래 세 요청은 먼저 현재 세션을 확인합니다.
+
+| 노드 | 세션 안에서 부르면 |
+|---|---|
+| **Create Easy Session** | `SessionAlreadyExists`로 실패합니다. 세션을 먼저 나가세요. 호스트의 맵 이동은 `Server Travel Easy Session`으로 합니다 |
+| **Start Easy Matchmaking** | `SessionAlreadyExists`로 실패합니다. 세션을 먼저 나가거나, 직접 고른 세션에 Join하세요 |
+| **Join Easy Session** | 세션을 옮깁니다. 새 호스트가 참가를 승인한 뒤에야 현재 세션을 떠나므로, 거절되면 플레이어는 그 자리에 그대로 남습니다. 이미 들어가 있는 세션이거나, 진행 중인 매치의 호스트라면 `SessionAlreadyExists`로 실패합니다. 호스트가 떠나면 모두의 매치가 끝나기 때문입니다. 새 호스트에게 물을 수 없으면 현재 세션을 지킨 채 `JoinRefused`로 실패합니다 |
 
 ## 2. 조회 블루프린트 노드
 
@@ -244,7 +252,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | 값 | 뜻 |
 |---|---|
 | `Success` | 성공 |
-| **`SessionAlreadyExists`** | Create: 이미 세션에 들어가 있으니 `Destroy Easy Session`을 먼저 부르세요. Join: 참가하려는 그 세션에 이미 들어가 있습니다 |
+| **`SessionAlreadyExists`** | Create 또는 Matchmaking: 이미 세션에 들어가 있으니 먼저 나가세요. Join: 참가하려는 그 세션에 이미 들어가 있거나, 진행 중인 매치의 호스트입니다 ([규칙](#1-비동기-블루프린트-노드)) |
 | **`NoSessionExists`** | 대상이 될 세션이 없습니다 |
 | **`NoSessionsFound`** | 검색은 정상이었고 결과가 없었습니다. 오류가 아니므로 직접 호스팅을 권하면 됩니다 |
 | **`JoinSessionFull`** | 세션이 꽉 찼습니다. 트래블 전에는 호스트가, 그 뒤에는 온라인 서비스가 거절합니다. 호스트는 아직 로드 중인 플레이어의 예약까지 세므로, 빈자리가 보이던 검색 결과도 여기서 끝날 수 있습니다 |
@@ -310,7 +318,7 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 |---|---|---|
 | `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 Travel이 실패하면 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끊긴 세션은 설정과 무관하게 파괴되고, 끄면 플레이어만 있던 맵에 남습니다 |
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
-| `bAcceptInvitesWhileInSession` | false | 자동 참가가 지금 있는 세션을 파괴하고 초대받은 세션에 참가해도 되는지 정합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로, 먼저 물어본 뒤 `Join Easy Session`을 직접 부르면 됩니다. 이 호출은 언제나 지금 세션을 먼저 나갑니다 |
+| `bAcceptInvitesWhileInSession` | false | 자동 참가가 지금 있는 세션을 파괴하고 초대받은 세션에 참가해도 되는지 정합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로, 먼저 물어본 뒤 `Join Easy Session`을 직접 부르면 됩니다. 이 호출은 새 호스트가 승인한 뒤에 지금 세션을 나갑니다 |
 
 ## 9. C++ 참고
 

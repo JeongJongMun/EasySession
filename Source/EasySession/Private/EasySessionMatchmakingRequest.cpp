@@ -49,7 +49,7 @@ void FEasySessionMatchmakingRequest::Execute()
 	// An accepted invite or the game's own Create or Join ran before this run started, and every sub-request would fail against that session.
 	if (GetContext().Subsystem.IsInSession())
 	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A session already exists. Matchmaking stopped."));
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a session. Call Leave Easy Session first, or use Join Easy Session to switch to a session you found."));
 		return;
 	}
 

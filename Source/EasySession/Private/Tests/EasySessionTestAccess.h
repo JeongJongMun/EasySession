@@ -10,6 +10,7 @@
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
 #include "EasySessionFindRequest.h"
+#include "EasySessionJoinRequest.h"
 #include "EasySessionMatchmakingRequest.h"
 #include "EasySessionRequest.h"
 #include "EasySessionRequestQueue.h"
@@ -360,6 +361,33 @@ public:
 			Count += Request->Type == Type ? 1 : 0;
 		}
 		return Count;
+	}
+
+	/**
+	 * Approve the running join, standing in for the host's reservation beacon.
+	 * The beacon client actor is destroyed first, so its own late response cannot reach the request.
+	 *
+	 * @return Whether a join was waiting for the beacon.
+	 */
+	static bool ApproveRunningJoin(UEasySessionSubsystem& Subsystem)
+	{
+		const TSharedPtr<FEasySessionRequest> Active = Subsystem.RequestQueue->GetActiveRequest();
+		if (!Active.IsValid() || Active->Type != FEasySessionRequest::EType::Join)
+		{
+			return false;
+		}
+
+		FEasySessionJoinRequest& Join = static_cast<FEasySessionJoinRequest&>(*Active);
+		if (!Join.ReservationClient.IsValid())
+		{
+			return false;
+		}
+
+		Join.DestroyReservationClient();
+		FEasyReservationResponse Approved;
+		Approved.Result = EEasyReservationResult::Approved;
+		Join.HandleReservationResponse(Approved);
+		return true;
 	}
 
 	/** The running matchmaking request. Null while no matchmaking runs. */

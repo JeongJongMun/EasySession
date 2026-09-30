@@ -43,7 +43,7 @@ public:
 	 * With this on, one click in the platform overlay destroys the session they are in before joining the invited one.
 	 * A host that leaves this way takes its session with it, and its players are told why before their connection closes.
 	 * This decides the automatic join only.
-	 * A Join Easy Session the game calls itself always leaves the current session first.
+	 * A Join Easy Session the game calls itself leaves the current session once the new host approved the join.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites", meta = (EditCondition = "bAutoJoinAcceptedInvites"))
 	bool bAcceptInvitesWhileInSession = false;
