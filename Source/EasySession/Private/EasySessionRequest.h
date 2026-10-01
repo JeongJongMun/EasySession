@@ -73,6 +73,9 @@ enum class EEasySessionRequestType : uint8
 	/** Create the party session and start the party beacon. */
 	CreateParty,
 
+	/** Join a party session and log in on the leader's party beacon. */
+	JoinParty,
+
 	/** Close the party beacon and destroy the party session. */
 	LeaveParty
 };

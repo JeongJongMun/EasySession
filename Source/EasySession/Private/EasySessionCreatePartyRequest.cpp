@@ -136,7 +136,7 @@ void FEasySessionCreatePartyRequest::HandleCreateSessionComplete(FName InSession
 		NamedSession->bHosting = true;
 	}
 
-	if (!GetContext().Party.StartHosting(PartyParams.MaxMembers))
+	if (!GetContext().Party.StartHosting(PartyParams))
 	{
 		// The party session would advertise a party that nobody can join, so it is destroyed again.
 		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,

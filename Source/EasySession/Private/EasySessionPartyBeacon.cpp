@@ -2,6 +2,12 @@
 
 #include "EasySessionPartyBeacon.h"
 
+#include "EasySession.h"
+#include "Engine/World.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "Kismet/GameplayStatics.h"
+#include "OnlineSubsystemUtils.h"
+
 AEasySessionPartyBeaconState::AEasySessionPartyBeaconState()
 {
 	LobbyBeaconPlayerStateClass = AEasySessionPartyBeaconPlayerState::StaticClass();
@@ -32,30 +38,73 @@ void AEasySessionPartyBeaconState::DestroyMembers()
 	}
 }
 
+bool AEasySessionPartyBeaconClient::ConnectToParty(const FString& ConnectString, const FString& PartySessionId)
+{
+	// The host compares this id with its own party session before it lets the player log in.
+	DestSessionId = PartySessionId;
+	FURL URL(nullptr, *ConnectString, TRAVEL_Absolute);
+	return InitClient(URL);
+}
+
+void AEasySessionPartyBeaconClient::ClientJoinRefused_Implementation(const FText& Reason)
+{
+	JoinRefusedDelegate.ExecuteIfBound(Reason);
+}
+
+void AEasySessionPartyBeaconClient::ClientLeftParty_Implementation(EEasyPartyLeaveReason Reason, const FText& ReasonText)
+{
+	LeftPartyDelegate.ExecuteIfBound(Reason, ReasonText);
+}
+
 AEasySessionPartyBeaconHost::AEasySessionPartyBeaconHost()
 {
 	ClientBeaconActorClass = AEasySessionPartyBeaconClient::StaticClass();
 	LobbyStateClass = AEasySessionPartyBeaconState::StaticClass();
 }
 
-bool AEasySessionPartyBeaconHost::StartParty(int32 MaxMembers, const FUniqueNetIdRepl& LeaderId, const FString& LeaderName)
+bool AEasySessionPartyBeaconHost::StartParty(int32 MaxMembers, const FUniqueNetIdRepl& InLeaderId, const FString& LeaderName)
 {
 	SetupLobbyState(MaxMembers);
-	if (LobbyState == nullptr || !LeaderId.IsValid())
+	if (LobbyState == nullptr || !InLeaderId.IsValid())
 	{
 		return false;
 	}
 
 	// The leader plays on this machine and has no beacon connection, so its entry is added here instead of at a login.
-	ALobbyBeaconPlayerState* Leader = LobbyState->AddPlayer(FText::FromString(LeaderName), LeaderId);
+	ALobbyBeaconPlayerState* Leader = LobbyState->AddPlayer(FText::FromString(LeaderName), InLeaderId);
 	if (Leader == nullptr)
 	{
 		return false;
 	}
 
-	// Every member's party owner is the leader, the leader's own entry too.
+	LeaderId = InLeaderId;
 	Leader->PartyOwnerUniqueId = LeaderId;
 	return true;
+}
+
+bool AEasySessionPartyBeaconHost::RemoveMember(const FUniqueNetIdRepl& PlayerId, EEasyPartyLeaveReason Reason, const FText& ReasonText)
+{
+	AEasySessionPartyBeaconClient* Client = FindMemberClient(PlayerId);
+	if (Client == nullptr)
+	{
+		return false;
+	}
+
+	// The engine's kick drops its reason on the member, so the reason goes first on the same connection.
+	Client->ClientLeftParty(Reason, ReasonText);
+	KickPlayer(Client, ReasonText);
+	return true;
+}
+
+void AEasySessionPartyBeaconHost::TellMembersPartyEnds(const FText& ReasonText)
+{
+	for (AOnlineBeaconClient* ExistingClient : ClientActors)
+	{
+		if (AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ExistingClient))
+		{
+			Client->ClientLeftParty(EEasyPartyLeaveReason::LeaderLeft, ReasonText);
+		}
+	}
 }
 
 const AEasySessionPartyBeaconState* AEasySessionPartyBeaconHost::GetPartyState() const
@@ -77,4 +126,87 @@ void AEasySessionPartyBeaconHost::EndPlay(const EEndPlayReason::Type EndPlayReas
 	LobbyState = nullptr;
 
 	Super::EndPlay(EndPlayReason);
+}
+
+void AEasySessionPartyBeaconHost::NotifyClientDisconnected(AOnlineBeaconClient* LeavingClientActor)
+{
+	// The engine's version needs a game mode, which the menu world of a party may not have, and it logs the player out of the game session.
+	const ALobbyBeaconPlayerState* Member = LobbyState != nullptr ? LobbyState->GetPlayer(LeavingClientActor) : nullptr;
+	if (Member != nullptr && Member->bInLobby)
+	{
+		HandlePlayerLogout(Member->UniqueId);
+	}
+
+	AOnlineBeaconHostObject::NotifyClientDisconnected(LeavingClientActor);
+}
+
+void AEasySessionPartyBeaconHost::HandlePlayerLogout(const FUniqueNetIdRepl& InUniqueId)
+{
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
+	if (Sessions.IsValid() && InUniqueId.IsValid())
+	{
+		Sessions->UnregisterPlayer(NAME_PartySession, *InUniqueId);
+	}
+
+	Super::HandlePlayerLogout(InUniqueId);
+}
+
+ALobbyBeaconPlayerState* AEasySessionPartyBeaconHost::HandlePlayerLogin(ALobbyBeaconClient* ClientActor, const FUniqueNetIdRepl& InUniqueId, const FString& Options)
+{
+	if (LobbyState == nullptr)
+	{
+		return nullptr;
+	}
+
+	FText Reason;
+	if (!ApproveMemberDelegate.IsBound() || !ApproveMemberDelegate.Execute(InUniqueId, Reason))
+	{
+		if (Reason.IsEmpty())
+		{
+			Reason = NSLOCTEXT("EasySession", "PartyNotAnswering", "The party leader could not decide the join.");
+		}
+
+		UE_LOG(LogEasySession, Log, TEXT("Party: refusing '%s' - %s"), *InUniqueId.ToString(), *Reason.ToString());
+
+		// A null player state fails the login, and the engine closes the connection after this reason.
+		if (AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ClientActor))
+		{
+			Client->ClientJoinRefused(Reason);
+		}
+		return nullptr;
+	}
+
+	// The open slot count of the party session follows the registered players, and a search reports it.
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
+	if (Sessions.IsValid())
+	{
+		Sessions->RegisterPlayer(NAME_PartySession, *InUniqueId, false);
+	}
+
+	FString MemberName = UGameplayStatics::ParseOption(Options, TEXT("Name")).Left(20);
+	if (MemberName.IsEmpty())
+	{
+		MemberName = InUniqueId.ToString();
+	}
+
+	ALobbyBeaconPlayerState* NewMember = LobbyState->AddPlayer(FText::FromString(MemberName), InUniqueId);
+	if (NewMember != nullptr)
+	{
+		NewMember->PartyOwnerUniqueId = LeaderId;
+		UE_LOG(LogEasySession, Log, TEXT("Party: '%s' joined."), *MemberName);
+	}
+	return NewMember;
+}
+
+AEasySessionPartyBeaconClient* AEasySessionPartyBeaconHost::FindMemberClient(const FUniqueNetIdRepl& PlayerId) const
+{
+	for (AOnlineBeaconClient* ExistingClient : ClientActors)
+	{
+		AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ExistingClient);
+		if (Client != nullptr && Client->PlayerState != nullptr && Client->PlayerState->UniqueId == PlayerId)
+		{
+			return Client;
+		}
+	}
+	return nullptr;
 }

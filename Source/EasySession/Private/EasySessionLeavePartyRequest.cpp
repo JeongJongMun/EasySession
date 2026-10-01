@@ -7,8 +7,10 @@
 #include "EasySessionMessages.h"
 #include "EasySessionParty.h"
 
-FEasySessionLeavePartyRequest::FEasySessionLeavePartyRequest(FEasySessionCompleteDelegate InOnComplete)
+FEasySessionLeavePartyRequest::FEasySessionLeavePartyRequest(EEasyPartyLeaveReason InReason, const FText& InReasonText, FEasySessionCompleteDelegate InOnComplete)
 	: FEasySessionRequest(EType::LeaveParty)
+	, Reason(InReason)
+	, ReasonText(InReasonText)
 	, OnComplete(MoveTemp(InOnComplete))
 {
 }
@@ -44,5 +46,7 @@ void FEasySessionLeavePartyRequest::Notify(EEasySessionResult Result, const FStr
 
 void FEasySessionLeavePartyRequest::HandleDestroyComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
+	// The beacon is already closed, so the player is out of the party even when the session could not be destroyed.
+	GetContext().Party.HandlePartyLeft(Reason, ReasonText);
 	Complete(Result, ErrorMessage);
 }

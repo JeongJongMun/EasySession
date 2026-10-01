@@ -130,6 +130,7 @@ EEasySessionActivity FEasySessionRequest::GetActivity() const
 		case EType::FriendSessions:	return EEasySessionActivity::Searching;
 		case EType::ReadFriends:		return EEasySessionActivity::Searching;
 		case EType::CreateParty:	return EEasySessionActivity::Creating;
+		case EType::JoinParty:		return EEasySessionActivity::Joining;
 		case EType::LeaveParty:		return EEasySessionActivity::Leaving;
 		default:					return EEasySessionActivity::None;
 	}
@@ -150,6 +151,7 @@ const TCHAR* FEasySessionRequest::GetTypeName() const
 		case EType::FriendSessions:	return TEXT("FriendSessions");
 		case EType::ReadFriends:		return TEXT("ReadFriends");
 		case EType::CreateParty:	return TEXT("CreateParty");
+		case EType::JoinParty:		return TEXT("JoinParty");
 		case EType::LeaveParty:		return TEXT("LeaveParty");
 		default:					return TEXT("Unknown");
 	}

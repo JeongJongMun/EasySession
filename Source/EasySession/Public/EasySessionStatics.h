@@ -121,6 +121,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasyPartyMemberInfo> GetEasyPartyMembers(const UObject* WorldContextObject);
 
+	/**
+	 * Remove a member from the party, and keep them out of this party.
+	 * The member receives On Party Left with Kicked and this reason.
+	 * Party leader only.
+	 *
+	 * @return Success, Requires Party Leader, or Invalid Params for a player who is not a connected member.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult KickEasyPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member, FText Reason);
+
 	/** Whether a disconnect reason is waiting to be shown, for example as a popup on the menu. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static bool HasPendingEasyDisconnectInfo(const UObject* WorldContextObject);

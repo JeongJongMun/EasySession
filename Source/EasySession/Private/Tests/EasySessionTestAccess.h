@@ -323,6 +323,37 @@ public:
 		return Subsystem.Party->BeaconHost.Get();
 	}
 
+	/**
+	 * Ask the party this process leads whether a player may join, as the party beacon does at a login.
+	 *
+	 * @return Whether the player is admitted. OutReason holds the refusal otherwise.
+	 */
+	static bool AskApproveMember(const UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId, FText& OutReason)
+	{
+		return Subsystem.Party->ApproveMember(PlayerId, OutReason);
+	}
+
+	/** Add a member to the member list of the party this process leads, as a login the leader approved does. */
+	static void AddPartyMember(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	{
+		if (AEasySessionPartyBeaconState* State = const_cast<AEasySessionPartyBeaconState*>(Subsystem.Party->GetPartyState()))
+		{
+			State->AddPlayer(FText::FromString(PlayerId.ToString()), PlayerId);
+		}
+	}
+
+	/** Keep a player out of the party this process leads, the part of a kick that needs no connected member. */
+	static void AddKickedPartyPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	{
+		Subsystem.Party->KickedPlayers.AddUnique(PlayerId);
+	}
+
+	/** Let an invite-only party this process leads admit a player, as an invite does. */
+	static void AllowPartyPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
+	{
+		Subsystem.Party->AllowedPlayers.AddUnique(PlayerId);
+	}
+
 	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */
 	static EEasyReservationResult AskApproveJoin(const UEasySessionSubsystem& Subsystem, const FString& Password, const FUniqueNetIdRepl& Requester = FUniqueNetIdRepl(),
 		const TArray<FUniqueNetIdRepl>& GroupMembers = TArray<FUniqueNetIdRepl>())

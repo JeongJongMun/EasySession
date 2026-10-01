@@ -103,6 +103,7 @@ namespace EasySession
 			case EEasySessionResult::RequiresSessionAuthority:	return TEXT("RequiresSessionAuthority");
 			case EEasySessionResult::FriendSearchAlreadyInProgress:	return TEXT("FriendSearchAlreadyInProgress");
 			case EEasySessionResult::NotSupportedByService:		return TEXT("NotSupportedByService");
+			case EEasySessionResult::RequiresPartyLeader:		return TEXT("RequiresPartyLeader");
 			default:											return TEXT("UnknownFailure");
 		}
 	}

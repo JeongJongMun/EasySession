@@ -15,6 +15,7 @@
 #include "EasySessionCreateRequest.h"
 #include "EasySessionDestroyRequest.h"
 #include "EasySessionFindRequest.h"
+#include "EasySessionJoinPartyRequest.h"
 #include "EasySessionJoinRequest.h"
 #include "EasySessionLeavePartyRequest.h"
 #include "EasySessionMatchStateRequest.h"
@@ -284,9 +285,24 @@ void UEasySessionSubsystem::CreateParty(const FEasyPartyParams& PartyParams, FEa
 	EnqueueRequest(MakeShared<FEasySessionCreatePartyRequest>(PartyParams, MoveTemp(OnComplete)), NAME_PartySession);
 }
 
+void UEasySessionSubsystem::FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
+{
+	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete)), NAME_PartySession);
+}
+
+void UEasySessionSubsystem::JoinParty(const FEasySessionSearchResult& SearchResult, FEasySessionCompleteDelegate OnComplete)
+{
+	EnqueueRequest(MakeShared<FEasySessionJoinPartyRequest>(SearchResult, MoveTemp(OnComplete)), NAME_PartySession);
+}
+
 void UEasySessionSubsystem::LeaveParty(FEasySessionCompleteDelegate OnComplete)
 {
-	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(MoveTemp(OnComplete)), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)), NAME_PartySession);
+}
+
+EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason)
+{
+	return Party->KickMember(Member.PlayerId, Reason);
 }
 
 bool UEasySessionSubsystem::IsInParty() const
@@ -686,6 +702,17 @@ void UEasySessionSubsystem::FollowHost(const FUniqueNetIdRepl& HostId, bool bLAN
 		})));
 
 	OnMatchmakingStarted.Broadcast();
+}
+
+void UEasySessionSubsystem::HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText)
+{
+	// A leave already on the queue destroys the party session, and its own reason is the one the player asked for.
+	if (RequestQueue->Find(FEasySessionRequest::EType::LeaveParty).IsValid())
+	{
+		return;
+	}
+
+	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(Reason, ReasonText, FEasySessionCompleteDelegate()), NAME_PartySession);
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const

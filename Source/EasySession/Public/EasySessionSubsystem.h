@@ -64,6 +64,12 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyMatchmakingStateEvent, EEasyMa
 /** Multicast event fired on every state change and once a second while the run is active. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyMatchmakingUpdatedEvent, EEasyMatchmakingState, State, int32, ElapsedSeconds);
 
+/** Multicast event fired when a member joins or leaves the party, and when the local player leaves it. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyPartyMembersChangedEvent);
+
+/** Multicast event fired when the local player is no longer in the party, with the reason. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyPartyLeftEvent, EEasyPartyLeaveReason, Reason, const FText&, ReasonText);
+
 /** The Success and Failure pins of the Read Easy Friends node. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionFriend>&, Friends);
 
@@ -166,6 +172,20 @@ public:
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionInviteAcceptedEvent OnSessionInviteAccepted;
+
+	/**
+	 * Fired when a member joins or leaves the party, on the leader and on every member.
+	 * Get Easy Party Members already returns the new list when this fires, so a UI reads it and refreshes.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasyPartyMembersChangedEvent OnPartyMembersChanged;
+
+	/**
+	 * Fired when the local player is no longer in the party: they left, the leader kicked them or left, or the connection was lost.
+	 * Reason Text is the leader's reason for a kick, and a message for the player otherwise.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasyPartyLeftEvent OnPartyLeft;
 
 public:
 
@@ -308,12 +328,41 @@ public:
 	void CreateParty(const FEasyPartyParams& PartyParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
+	 * Search for parties.
+	 * Find Easy Parties lists public parties, and a Join Code finds the party that advertises it.
+	 *
+	 * @param SearchParams Parameters describing what to search for. The game session filters do not apply to parties.
+	 * @param OnComplete Called with the parties found when the search completes.
+	 */
+	void FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete = FEasySessionFindCompleteDelegate());
+
+	/**
+	 * Join a party a search returned.
+	 * The leader decides the join, and a refusal fails with JoinRefused and the leader's reason.
+	 * A player in a party or in a game session is refused with SessionAlreadyExists.
+	 *
+	 * @param SearchResult A party returned by Find Parties.
+	 * @param OnComplete Called when the request completes. On Success, Get Party Members already lists the local player.
+	 */
+	void JoinParty(const FEasySessionSearchResult& SearchResult, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
 	 * Leave the party.
 	 * A leader who leaves ends the party for every member.
+	 * On Party Left fires with Left once the party is left.
 	 *
 	 * @param OnComplete Called when the request completes.
 	 */
 	void LeaveParty(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
+	 * Remove a member from the party, and keep them out of this party.
+	 * The member receives On Party Left with Kicked and this reason.
+	 * Only the leader can do this.
+	 *
+	 * @return Success, RequiresPartyLeader, or InvalidParams for a player who is not a connected member.
+	 */
+	EEasySessionResult KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason);
 
 	/** @return Whether the local player is in a party. */
 	bool IsInParty() const;
@@ -532,6 +581,12 @@ public:
 	 * @param bLANQuery Whether that session is a LAN session.
 	 */
 	void FollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
+
+	/**
+	 * Internal, called by the party when the leader ended this member's membership or the connection to the leader was lost.
+	 * Destroys the party session, then broadcasts On Party Left with the reason.
+	 */
+	void HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
 private:
 

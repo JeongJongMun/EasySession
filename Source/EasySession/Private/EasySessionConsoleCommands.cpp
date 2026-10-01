@@ -18,6 +18,9 @@
 //   EasySession.CreateParty [MaxMembers] [invite|code|public]  Create a party.
 //   EasySession.LeaveParty      Leave the party.
 //   EasySession.Party           List the members of the party.
+//   EasySession.FindParties [Code]  Search for parties and list the results.
+//   EasySession.JoinParty [Index]  Join a result of the last EasySession.FindParties (default index 0).
+//   EasySession.KickParty <Index> [Reason]  Kick a member listed by EasySession.Party (leader only).
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.Diagnose        Run the online configuration diagnostics.
@@ -359,6 +362,89 @@ namespace EasySessionConsole
 						Members[Index].bIsLeader ? TEXT(" (leader)") : TEXT(""),
 						Members[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT("")));
 				}
+			}
+		}));
+
+	/** The results of the last EasySession.FindParties, which EasySession.JoinParty picks from by index. */
+	static TArray<FEasySessionSearchResult> LastFoundParties;
+
+	static FAutoConsoleCommandWithWorldAndArgs GFindPartiesCommand(
+		TEXT("EasySession.FindParties"),
+		TEXT("Search for parties and list the results. Args: an optional join code."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				FEasySessionSearchParams SearchParams;
+				if (Args.Num() > 0)
+				{
+					SearchParams.JoinCode = Args[0];
+				}
+
+				Print(TEXT("Searching for parties..."));
+				LastFoundParties.Reset();
+				Subsystem->FindParties(SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
+					[](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
+					{
+						LastFoundParties = Results;
+						if (Result != EEasySessionResult::Success)
+						{
+							Print(FString::Printf(TEXT("FindParties: %s (%s)"), *EasySession::ResultToString(Result), *ErrorMessage));
+							return;
+						}
+
+						Print(FString::Printf(TEXT("FindParties: %d party(s) found."), Results.Num()));
+						for (int32 Index = 0; Index < Results.Num(); ++Index)
+						{
+							Print(FString::Printf(TEXT("  [%d] '%s' %d/%d"), Index, *Results[Index].SessionDisplayName,
+								Results[Index].MaxPlayers - Results[Index].OpenSlots, Results[Index].MaxPlayers));
+						}
+					}));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GJoinPartyCommand(
+		TEXT("EasySession.JoinParty"),
+		TEXT("Join a party listed by EasySession.FindParties. Args: index (default 0)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const int32 Index = Args.Num() > 0 ? FCString::Atoi(*Args[0]) : 0;
+				if (!LastFoundParties.IsValidIndex(Index))
+				{
+					Print(TEXT("JoinParty: no party at that index. Run EasySession.FindParties first."));
+					return;
+				}
+
+				Subsystem->JoinParty(LastFoundParties[Index], MakePrintDelegate(TEXT("JoinParty")));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GKickPartyCommand(
+		TEXT("EasySession.KickParty"),
+		TEXT("Kick a member listed by EasySession.Party. Args: index, then an optional reason."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const TArray<FEasyPartyMemberInfo> Members = Subsystem->GetPartyMembers();
+				const int32 Index = Args.Num() > 0 ? FCString::Atoi(*Args[0]) : INDEX_NONE;
+				if (!Members.IsValidIndex(Index))
+				{
+					Print(TEXT("KickParty: no member at that index. Run EasySession.Party first."));
+					return;
+				}
+
+				// The reason is every word after the index, so it can hold spaces.
+				FString Reason;
+				for (int32 ArgIndex = 1; ArgIndex < Args.Num(); ++ArgIndex)
+				{
+					Reason += (ArgIndex > 1 ? TEXT(" ") : TEXT("")) + Args[ArgIndex];
+				}
+
+				const EEasySessionResult Result = Subsystem->KickPartyMember(Members[Index], FText::FromString(Reason));
+				Print(FString::Printf(TEXT("KickParty '%s': %s"), *Members[Index].PlayerName, *EasySession::ResultToString(Result)));
 			}
 		}));
 

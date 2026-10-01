@@ -98,7 +98,10 @@ enum class EEasySessionResult : uint8
 	FriendSearchAlreadyInProgress,
 
 	/** The online subsystem in use does not offer this feature. Friends and invites need Steam. NULL (LAN) has no friends, which is not a configuration problem. */
-	NotSupportedByService
+	NotSupportedByService,
+
+	/** Only the party leader can do this. Show the button only when Is Easy Party Leader is true. */
+	RequiresPartyLeader
 };
 
 /**
@@ -862,6 +865,25 @@ struct EASYSESSION_API FEasyPartyMemberInfo
 	/** The member's id on the online subsystem. Names can repeat between players. This cannot. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FUniqueNetIdRepl PlayerId;
+};
+
+/**
+ * Why the local player is no longer in the party.
+ */
+UENUM(BlueprintType)
+enum class EEasyPartyLeaveReason : uint8
+{
+	/** The local player called Leave Easy Party. */
+	Left,
+
+	/** The leader removed the local player, who cannot join this party again. Reason Text is the leader's reason. */
+	Kicked,
+
+	/** The leader left, which ends the party for every member. */
+	LeaderLeft UMETA(DisplayName = "Leader Left"),
+
+	/** The connection to the leader was lost: the leader quit, crashed, or the network failed. */
+	ConnectionLost UMETA(DisplayName = "Connection Lost")
 };
 
 /**

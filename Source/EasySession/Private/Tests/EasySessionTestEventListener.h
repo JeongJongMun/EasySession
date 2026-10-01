@@ -110,6 +110,28 @@ public:
 		MatchmakingJournal.Add(FString::Printf(TEXT("Completed=%s"), *EasySession::ResultToString(Result)));
 	}
 
+	/** How many times OnPartyMembersChanged fired. */
+	UPROPERTY()
+	int32 PartyMembersChangedBroadcasts = 0;
+
+	/** Bind to the subsystem's OnPartyMembersChanged. */
+	UFUNCTION()
+	void HandlePartyMembersChanged()
+	{
+		++PartyMembersChangedBroadcasts;
+	}
+
+	/** The reasons seen on OnPartyLeft, in order. */
+	UPROPERTY()
+	TArray<EEasyPartyLeaveReason> PartyLeftReasons;
+
+	/** Bind to the subsystem's OnPartyLeft. */
+	UFUNCTION()
+	void HandlePartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText)
+	{
+		PartyLeftReasons.Add(Reason);
+	}
+
 	/** How many journal entries match the given prefix, so a test can assert an event fired exactly once. */
 	int32 CountJournal(const TCHAR* Prefix) const
 	{

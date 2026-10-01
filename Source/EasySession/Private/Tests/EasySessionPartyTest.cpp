@@ -7,6 +7,7 @@
 #include "EasySessionPartyBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -23,6 +24,7 @@ namespace EasySessionPartyTest
 	struct FTestState
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
+		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 		TOptional<EEasySessionResult> PendingResult;
 		TOptional<int32> FoundCount;
 		int32 Phase = 0;
@@ -66,6 +68,7 @@ namespace EasySessionPartyTest
 	{
 		++State->Phase;
 		State->PendingResult.Reset();
+		State->FoundCount.Reset();
 		State->StartTime = FPlatformTime::Seconds();
 	}
 
@@ -78,6 +81,16 @@ namespace EasySessionPartyTest
 		});
 	}
 
+	/** The callback that stores a search's result and how many sessions it kept. */
+	FEasySessionFindCompleteDelegate MakeFindCallback(TSharedPtr<FTestState> State)
+	{
+		return FEasySessionFindCompleteDelegate::CreateLambda([State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
+		{
+			State->PendingResult = Result;
+			State->FoundCount = Results.Num();
+		});
+	}
+
 	FEasySessionHostParams MakeHostParams()
 	{
 		FEasySessionHostParams HostParams;
@@ -87,6 +100,21 @@ namespace EasySessionPartyTest
 		return HostParams;
 	}
 
+	FEasyPartyParams MakePartyParams(EEasyPartyPrivacy Privacy, int32 MaxMembers = 4)
+	{
+		FEasyPartyParams Params;
+		Params.MaxMembers = MaxMembers;
+		Params.Privacy = Privacy;
+		return Params;
+	}
+
+	/** An id for a made-up player, which the NULL subsystem creates for any name. */
+	FUniqueNetIdRepl MakePlayerId(TSharedPtr<FTestState> State, const TCHAR* PlayerName)
+	{
+		const IOnlineIdentityPtr Identity = GetIdentity(State);
+		return FUniqueNetIdRepl(Identity.IsValid() ? Identity->CreateUniquePlayerId(PlayerName) : nullptr);
+	}
+
 	/** @return The integer the party session advertises under this key, or -1 when it advertises none. */
 	int32 GetPartySettingInt(UEasySessionSubsystem& Subsystem, FName Key)
 	{
@@ -94,6 +122,43 @@ namespace EasySessionPartyTest
 		int32 Value = -1;
 		Result.Session.SessionSettings.Get(Key, Value);
 		return Value;
+	}
+
+	/**
+	 * Start a game instance with a logged in local player, because a party needs a leader with an id.
+	 * A headless test world starts with nobody logged in.
+	 *
+	 * @return The subsystem, or null when the test cannot run.
+	 */
+	UEasySessionSubsystem* Begin(TSharedPtr<FTestState> State, FAutomationTestBase& Test)
+	{
+		State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+		EasySessionTest::InitializeGameInstance(State->GameInstance);
+
+		UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+		if (!Test.TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+		{
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return nullptr;
+		}
+
+		const IOnlineIdentityPtr Identity = GetIdentity(State);
+		if (Identity.IsValid() && !Identity->GetUniquePlayerId(0).IsValid())
+		{
+			State->bLoggedIn = Identity->Login(0, FOnlineAccountCredentials(FString(), TEXT("EasySessionPartyTest"), FString()));
+		}
+		if (!Test.TestTrue(TEXT("A player is logged in"), Identity.IsValid() && Identity->GetUniquePlayerId(0).IsValid()))
+		{
+			End(State);
+			return nullptr;
+		}
+
+		State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
+		Subsystem->OnPartyMembersChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandlePartyMembersChanged);
+		Subsystem->OnPartyLeft.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandlePartyLeft);
+
+		State->StartTime = FPlatformTime::Seconds();
+		return Subsystem;
 	}
 }
 
@@ -109,10 +174,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 	{
 		case 0:
 		{
-			FEasyPartyParams Params;
-			Params.MaxMembers = 3;
-			Params.Privacy = EEasyPartyPrivacy::JoinCode;
-			Subsystem->CreateParty(Params, MakeCallback(State));
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::JoinCode, 3), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -153,15 +215,11 @@ bool FEasySessionPartyLifecycleStep::Update()
 			}
 
 			CurrentTest->TestEqual(TEXT("A second party is refused"), State->PendingResult.GetValue(), EEasySessionResult::SessionAlreadyExists);
+			CurrentTest->TestTrue(TEXT("The new member list was announced"), State->Listener->PartyMembersChangedBroadcasts > 0);
 
 			FEasySessionSearchParams Search;
 			Search.bLANQuery = true;
-			Subsystem->FindSessions(Search, FEasySessionFindCompleteDelegate::CreateLambda(
-				[Found = State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
-				{
-					Found->PendingResult = Result;
-					Found->FoundCount = Results.Num();
-				}));
+			Subsystem->FindSessions(Search, MakeFindCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -174,8 +232,8 @@ bool FEasySessionPartyLifecycleStep::Update()
 			}
 
 			// A search for game sessions that the party answers, as NULL does, which ignores the query settings.
-			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession) });
 			NextPhase(State);
+			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession) });
 			return false;
 		}
 
@@ -204,6 +262,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 			CurrentTest->TestFalse(TEXT("The local player is out of the party"), Subsystem->IsInParty());
 			CurrentTest->TestEqual(TEXT("A left party has no members"), Subsystem->GetPartyMembers().Num(), 0);
 			CurrentTest->TestNull(TEXT("The party beacon is closed"), FEasySessionTestAccess::GetPartyBeacon(*Subsystem));
+			CurrentTest->TestTrue(TEXT("Leaving is reported once, as Left"), State->Listener->PartyLeftReasons.Num() == 1 && State->Listener->PartyLeftReasons[0] == EEasyPartyLeaveReason::Left);
 
 			Subsystem->LeaveParty(MakeCallback(State));
 			NextPhase(State);
@@ -218,10 +277,9 @@ bool FEasySessionPartyLifecycleStep::Update()
 			}
 
 			CurrentTest->TestEqual(TEXT("Leaving without a party fails"), State->PendingResult.GetValue(), EEasySessionResult::NoSessionExists);
+			CurrentTest->TestEqual(TEXT("A leave that found no party reports nothing"), State->Listener->PartyLeftReasons.Num(), 1);
 
-			FEasyPartyParams TooSmall;
-			TooSmall.MaxMembers = 1;
-			Subsystem->CreateParty(TooSmall, MakeCallback(State));
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::Public, 1), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -281,7 +339,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 }
 
 /**
- * A party is created with the local player as its leader and only member, and leaving it closes the party beacon.
+ * A party is created with the local player as its leader and only member, and leaving it closes the party beacon and reports Left.
  * A second party, a party of one and a party inside a game session are refused.
  * A search for game sessions skips the party even when the online subsystem returns it.
  */
@@ -291,30 +349,166 @@ bool FEasySessionPartyLifecycleTest::RunTest(const FString& Parameters)
 	using namespace EasySessionPartyTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
-	EasySessionTest::InitializeGameInstance(State->GameInstance);
-
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	if (Begin(State, *this) == nullptr)
 	{
-		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
 
-	// A party needs a logged in leader, and a headless test world starts with nobody logged in.
-	const IOnlineIdentityPtr Identity = GetIdentity(State);
-	if (Identity.IsValid() && !Identity->GetUniquePlayerId(0).IsValid())
-	{
-		State->bLoggedIn = Identity->Login(0, FOnlineAccountCredentials(FString(), TEXT("EasySessionPartyTest"), FString()));
-	}
-	if (!TestTrue(TEXT("A player is logged in"), Identity.IsValid() && Identity->GetUniquePlayerId(0).IsValid()))
-	{
-		End(State);
-		return false;
-	}
-
-	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPartyLifecycleStep(State));
+	return true;
+}
+
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionPartyAdmissionStep, TSharedPtr<EasySessionPartyTest::FTestState>, State);
+bool FEasySessionPartyAdmissionStep::Update()
+{
+	using namespace EasySessionPartyTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	const FUniqueNetIdRepl Stranger = MakePlayerId(State, TEXT("EasySessionPartyStranger"));
+	FText Reason;
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			FEasyPartyMemberInfo StrangerInfo;
+			StrangerInfo.PlayerId = Stranger;
+			CurrentTest->TestEqual(TEXT("Outside a party nobody can kick"), Subsystem->KickPartyMember(StrangerInfo, FText::GetEmpty()), EEasySessionResult::RequiresPartyLeader);
+
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::Public, 3), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 1:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the public party create"));
+			}
+
+			const IOnlineIdentityPtr Identity = GetIdentity(State);
+			const FUniqueNetIdRepl LeaderId(Identity->GetUniquePlayerId(0));
+			const FUniqueNetIdRepl Kicked = MakePlayerId(State, TEXT("EasySessionPartyKicked"));
+
+			CurrentTest->TestTrue(TEXT("A public party admits anyone"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
+			CurrentTest->TestFalse(TEXT("A member cannot join twice"), FEasySessionTestAccess::AskApproveMember(*Subsystem, LeaderId, Reason));
+
+			FEasySessionTestAccess::AddKickedPartyPlayer(*Subsystem, Kicked);
+			CurrentTest->TestFalse(TEXT("A kicked player is refused"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Kicked, Reason));
+			CurrentTest->TestFalse(TEXT("The refusal says why"), Reason.IsEmpty());
+
+			FEasySessionTestAccess::AddPartyMember(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyMemberA")));
+			FEasySessionTestAccess::AddPartyMember(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyMemberB")));
+			CurrentTest->TestEqual(TEXT("The members are listed"), Subsystem->GetPartyMembers().Num(), 3);
+			CurrentTest->TestFalse(TEXT("A full party is refused"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
+
+			FEasyPartyMemberInfo StrangerInfo;
+			StrangerInfo.PlayerId = Stranger;
+			CurrentTest->TestEqual(TEXT("A player who is not connected cannot be kicked"), Subsystem->KickPartyMember(StrangerInfo, FText::GetEmpty()), EEasySessionResult::InvalidParams);
+
+			FEasyPartyMemberInfo LeaderInfo;
+			LeaderInfo.PlayerId = LeaderId;
+			CurrentTest->TestEqual(TEXT("The leader cannot kick themselves"), Subsystem->KickPartyMember(LeaderInfo, FText::GetEmpty()), EEasySessionResult::InvalidParams);
+
+			FEasySessionSearchParams Search;
+			Search.bLANQuery = true;
+			Subsystem->FindParties(Search, MakeFindCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 2:
+		{
+			if (!FEasySessionTestAccess::HasActiveSearch(*Subsystem))
+			{
+				return TimedOut(State, TEXT("the party search"));
+			}
+
+			// The party and a game session both answer, as they do on NULL, which ignores the query settings.
+			FOnlineSessionSearchResult Party = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession);
+			FOnlineSessionSearchResult GameSession = Party;
+			GameSession.Session.SessionSettings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineService);
+
+			NextPhase(State);
+			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { Party, GameSession });
+			return false;
+		}
+
+		case 3:
+		{
+			if (!State->FoundCount.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the party search result"));
+			}
+
+			CurrentTest->TestEqual(TEXT("A search for parties returns only the party"), State->FoundCount.GetValue(), 1);
+
+			Subsystem->LeaveParty(MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 4:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the public party leave"));
+			}
+
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::InviteOnly), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 5:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the invite-only party create"));
+			}
+
+			CurrentTest->TestFalse(TEXT("An invite-only party refuses a player it does not expect"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
+			FEasySessionTestAccess::AllowPartyPlayer(*Subsystem, Stranger);
+			CurrentTest->TestTrue(TEXT("An invite-only party admits an invited player"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
+
+			Subsystem->LeaveParty(MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		default:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInParty())
+			{
+				return TimedOut(State, TEXT("the invite-only party leave"));
+			}
+
+			End(State);
+			return true;
+		}
+	}
+}
+
+/**
+ * The leader admits a player unless they are a member already, were kicked, would overfill the party, or were not invited to an invite-only party.
+ * Only the leader kicks, and only a connected member.
+ * A search for parties skips game sessions even when the online subsystem returns them.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyAdmissionTest, "EasySession.Party.LeaderDecidesWhoJoins", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionPartyAdmissionTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionPartyTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPartyAdmissionStep(State));
 	return true;
 }
 
