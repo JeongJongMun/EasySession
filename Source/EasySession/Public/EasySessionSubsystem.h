@@ -26,6 +26,7 @@ class AGameModeBase;
 class APlayerController;
 class FEasySessionBeaconPort;
 class FEasySessionHost;
+class FEasySessionParty;
 class FEasySessionRequest;
 class FEasySessionRequestQueue;
 class FEasySessionSocial;
@@ -296,6 +297,35 @@ public:
 
 public:
 
+	/**
+	 * Create a party, with the local player as its leader.
+	 * A party lives outside game sessions and needs no map, so nothing travels.
+	 * Needs a player logged in to the online subsystem, because members are told apart by their ids.
+	 *
+	 * @param PartyParams How many players the party holds, and who may join it.
+	 * @param OnComplete Called when the request completes.
+	 */
+	void CreateParty(const FEasyPartyParams& PartyParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
+	 * Leave the party.
+	 * A leader who leaves ends the party for every member.
+	 *
+	 * @param OnComplete Called when the request completes.
+	 */
+	void LeaveParty(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/** @return Whether the local player is in a party. */
+	bool IsInParty() const;
+
+	/** @return Whether the local player leads the party. False outside a party. */
+	bool IsPartyLeader() const;
+
+	/** @return Every member of the party, the leader included. Empty outside a party. */
+	TArray<FEasyPartyMemberInfo> GetPartyMembers() const;
+
+public:
+
 	/** @return Whether matchmaking is running. */
 	bool IsMatchmakingRunning() const;
 
@@ -508,8 +538,12 @@ private:
 	/** Resolve the session interface for the current world context. */
 	IOnlineSessionPtr GetSessionInterface() const;
 
-	/** Add a request to the queue and start processing if idle. */
-	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
+	/**
+	 * Add a request to the queue and start processing if idle.
+	 *
+	 * @param SessionName The session the request acts on: the game session, or the party session for a party request.
+	 */
+	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request, FName SessionName = NAME_GameSession);
 
 	/** Session state as derived from the local online subsystem session copy. */
 	EEasySessionState GetLocalSessionState() const;
@@ -533,6 +567,7 @@ private:
 	TUniquePtr<FEasySessionSocial> Social;
 	TUniquePtr<FEasySessionBeaconPort> BeaconPort;
 	TUniquePtr<FEasySessionHost> Host;
+	TUniquePtr<FEasySessionParty> Party;
 
 	/** What every request may use while it runs. Created after the collaborators it refers to. */
 	TUniquePtr<FEasySessionRequestContext> RequestContext;

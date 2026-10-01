@@ -12,6 +12,8 @@
 #include "EasySessionFindRequest.h"
 #include "EasySessionJoinRequest.h"
 #include "EasySessionMatchmakingRequest.h"
+#include "EasySessionParty.h"
+#include "EasySessionPartyBeacon.h"
 #include "EasySessionRequest.h"
 #include "EasySessionRequestQueue.h"
 #include "EasySessionReservations.h"
@@ -287,15 +289,15 @@ public:
 	}
 
 	/**
-	 * A joinable search result copied from the session this subsystem currently holds.
+	 * A joinable search result copied from a session this subsystem currently holds: the game session, or the one SessionName names.
 	 * The copy shares the live session info, so its address (port 0 when the host never listened) stays readable after the session is destroyed.
 	 * The reservations key is turned off in the copy, so joining it does not wait for a beacon no host runs.
 	 */
-	static FOnlineSessionSearchResult MakeSearchResultFromCurrentSession(UEasySessionSubsystem& Subsystem)
+	static FOnlineSessionSearchResult MakeSearchResultFromCurrentSession(UEasySessionSubsystem& Subsystem, FName SessionName = NAME_GameSession)
 	{
 		FOnlineSessionSearchResult Result;
 		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
-		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+		const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr;
 		if (NamedSession == nullptr)
 		{
 			return Result;
@@ -313,6 +315,12 @@ public:
 		}
 
 		return Result;
+	}
+
+	/** @return The leader's party beacon, or null outside a party. */
+	static AEasySessionPartyBeaconHost* GetPartyBeacon(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.Party->BeaconHost.Get();
 	}
 
 	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */

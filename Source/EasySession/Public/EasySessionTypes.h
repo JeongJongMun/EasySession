@@ -211,6 +211,12 @@ namespace EasySession
 	EASYSESSION_API extern const FName SettingKey_OwnerId;
 
 	/**
+	 * Custom session setting key marking a party session with 1 and a game session with 0.
+	 * Both kinds are advertised, so every search asks for one kind and never returns the other.
+	 */
+	EASYSESSION_API extern const FName SettingKey_Party;
+
+	/**
 	 * The port the reservation beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
 	 * A listener that ends up on another port is reported rather than corrected.
@@ -792,6 +798,68 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	bool bIsHost = false;
 
 	/** The player's id on the online subsystem. Names can repeat between players. This cannot. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FUniqueNetIdRepl PlayerId;
+};
+
+/**
+ * Who may join a party.
+ * Every party is advertised, so a member can find the leader's party again after a match.
+ */
+UENUM(BlueprintType)
+enum class EEasyPartyPrivacy : uint8
+{
+	/** Only the players the leader invited, and the members of the party before a match. Hidden from Find Easy Parties. */
+	InviteOnly UMETA(DisplayName = "Invite Only"),
+
+	/** Anyone who searches with the party's join code. Hidden from Find Easy Parties without the code. */
+	JoinCode UMETA(DisplayName = "Join Code"),
+
+	/** Anyone. Listed by Find Easy Parties. */
+	Public
+};
+
+/**
+ * Parameters for creating a party.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasyPartyParams
+{
+	GENERATED_BODY()
+
+	/** How many players the party holds, the leader included. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = "2", UIMin = "2"))
+	int32 MaxMembers = 4;
+
+	/** Who may join the party. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	EEasyPartyPrivacy Privacy = EEasyPartyPrivacy::InviteOnly;
+
+	/** @return Whether these params can create a party. */
+	bool IsValid() const { return MaxMembers >= 2; }
+};
+
+/**
+ * Information about a single member of the party.
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasyPartyMemberInfo
+{
+	GENERATED_BODY()
+
+	/** Display name of the member. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	FString PlayerName;
+
+	/** Whether this member is the local player on this machine. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsLocalPlayer = false;
+
+	/** Whether this member leads the party. The leader hosts it and decides where the party goes. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsLeader = false;
+
+	/** The member's id on the online subsystem. Names can repeat between players. This cannot. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FUniqueNetIdRepl PlayerId;
 };

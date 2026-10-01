@@ -14,8 +14,8 @@ class UEasySessionSubsystem;
  * Blueprint function library for reading EasySession state and for the calls that answer inside the call.
  * A call that changes the session is an async node instead, such as Create Easy Session or Join Easy Session.
  *
- * Every function here is about the game session, the one players find, join and play in.
- * There is one per process, so none of them take a session argument.
+ * Every function here is about the game session, the one players find, join and play in, except the Party ones.
+ * There is one of each per process, so none of them take a session argument.
  */
 UCLASS()
 class EASYSESSION_API UEasySessionStatics : public UBlueprintFunctionLibrary
@@ -108,6 +108,18 @@ public:
 	/** The maximum number of players allowed in the current session. 0 when no session exists. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasySessionMaxPlayers(const UObject* WorldContextObject);
+
+	/** Whether the local player is in a party. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static bool IsInEasyParty(const UObject* WorldContextObject);
+
+	/** Whether the local player leads the party. False outside a party. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasyPartyLeader(const UObject* WorldContextObject);
+
+	/** Every member of the party, the leader included: name, whether it is the local player, and whether it leads the party. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static TArray<FEasyPartyMemberInfo> GetEasyPartyMembers(const UObject* WorldContextObject);
 
 	/** Whether a disconnect reason is waiting to be shown, for example as a popup on the menu. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))

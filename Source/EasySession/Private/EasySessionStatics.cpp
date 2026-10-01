@@ -101,6 +101,24 @@ int32 UEasySessionStatics::GetEasySessionMaxPlayers(const UObject* WorldContextO
 	return Subsystem != nullptr ? Subsystem->GetSessionMaxPlayers() : 0;
 }
 
+bool UEasySessionStatics::IsInEasyParty(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsInParty();
+}
+
+bool UEasySessionStatics::IsEasyPartyLeader(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsPartyLeader();
+}
+
+TArray<FEasyPartyMemberInfo> UEasySessionStatics::GetEasyPartyMembers(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetPartyMembers() : TArray<FEasyPartyMemberInfo>();
+}
+
 bool UEasySessionStatics::HasPendingEasyDisconnectInfo(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

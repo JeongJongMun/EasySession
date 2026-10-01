@@ -15,6 +15,9 @@
 //   EasySession.Status          Print the current session state.
 //   EasySession.Players         List the players in the session, numbered for EasySession.Kick.
 //   EasySession.Kick <Index> [Reason]  Kick a player listed by EasySession.Players (host only).
+//   EasySession.CreateParty [MaxMembers] [invite|code|public]  Create a party.
+//   EasySession.LeaveParty      Leave the party.
+//   EasySession.Party           List the members of the party.
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.Diagnose        Run the online configuration diagnostics.
@@ -297,6 +300,65 @@ namespace EasySessionConsole
 
 				const EEasySessionResult Result = Subsystem->KickPlayer(Players[Index], FText::FromString(Reason));
 				Print(FString::Printf(TEXT("Kick '%s': %s"), *Players[Index].PlayerName, *EasySession::ResultToString(Result)));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GCreatePartyCommand(
+		TEXT("EasySession.CreateParty"),
+		TEXT("Create a party. Args: optional max members, then optional privacy (invite, code or public)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				FEasyPartyParams PartyParams;
+				if (Args.Num() > 0)
+				{
+					PartyParams.MaxMembers = FCString::Atoi(*Args[0]);
+				}
+				if (Args.Num() > 1)
+				{
+					PartyParams.Privacy = Args[1] == TEXT("public") ? EEasyPartyPrivacy::Public
+						: Args[1] == TEXT("code") ? EEasyPartyPrivacy::JoinCode
+						: EEasyPartyPrivacy::InviteOnly;
+				}
+
+				Print(FString::Printf(TEXT("Creating a party (max %d members)..."), PartyParams.MaxMembers));
+				Subsystem->CreateParty(PartyParams, MakePrintDelegate(TEXT("CreateParty")));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GLeavePartyCommand(
+		TEXT("EasySession.LeaveParty"),
+		TEXT("Leave the party. A leader who leaves ends it for every member."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				Subsystem->LeaveParty(MakePrintDelegate(TEXT("LeaveParty")));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GPartyCommand(
+		TEXT("EasySession.Party"),
+		TEXT("List the members of the party."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				if (!Subsystem->IsInParty())
+				{
+					Print(TEXT("Party: not in a party."));
+					return;
+				}
+
+				const TArray<FEasyPartyMemberInfo> Members = Subsystem->GetPartyMembers();
+				Print(FString::Printf(TEXT("Party: %d member(s)."), Members.Num()));
+				for (int32 Index = 0; Index < Members.Num(); ++Index)
+				{
+					Print(FString::Printf(TEXT("  [%d] '%s'%s%s"), Index, *Members[Index].PlayerName,
+						Members[Index].bIsLeader ? TEXT(" (leader)") : TEXT(""),
+						Members[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT("")));
+				}
 			}
 		}));
 

@@ -100,6 +100,9 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	// The host reads the key back after each travel to decide whether the new world needs a beacon.
 	Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
+	// A game session, so a search for parties never returns it.
+	Settings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+
 	// The host's id, so a search for this host filters on the online service rather than on the results it returned.
 	// Without a logged in player there is no id to advertise.
 	if (OwnerId.IsValid())

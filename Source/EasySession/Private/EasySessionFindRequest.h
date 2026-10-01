@@ -56,6 +56,9 @@ private:
 	/** Filter what the online subsystem returned and complete with Success. */
 	void CompleteWithResults(const TArray<FOnlineSessionSearchResult>& NativeResults);
 
+	/** @return Whether this request looks for parties rather than game sessions. */
+	bool IsPartySearch() const;
+
 	/** The filters to search with, including the targeted-query ids. */
 	FEasySessionSearchParams SearchParams;
 

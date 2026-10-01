@@ -28,6 +28,9 @@ public class EasySession : ModuleRules
 			// OnlineSubsystemUtils are called in Private/ alone.
 			"OnlineSubsystemUtils",
 			"OnlineBase",
+			// The party is built on the engine's lobby beacons, whose state replicates through a fast array.
+			"Lobby",
+			"NetCore",
 			"InputCore",
 			"EnhancedInput"
 		});

@@ -11,11 +11,14 @@
 #include "EasySessionFriendSessionsRequest.h"
 #include "EasySessionReadFriendsRequest.h"
 #include "EasySessionMatchmakingRequest.h"
+#include "EasySessionCreatePartyRequest.h"
 #include "EasySessionCreateRequest.h"
 #include "EasySessionDestroyRequest.h"
 #include "EasySessionFindRequest.h"
 #include "EasySessionJoinRequest.h"
+#include "EasySessionLeavePartyRequest.h"
 #include "EasySessionMatchStateRequest.h"
+#include "EasySessionParty.h"
 #include "EasySessionRequest.h"
 #include "EasySessionUpdateRequest.h"
 #include "EasySessionRequestQueue.h"
@@ -61,7 +64,8 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 	Social = MakeUnique<FEasySessionSocial>(*this);
 	BeaconPort = MakeUnique<FEasySessionBeaconPort>();
 	Host = MakeUnique<FEasySessionHost>(*this, *BeaconPort);
-	RequestContext = MakeUnique<FEasySessionRequestContext>(FEasySessionRequestContext{ *this, *RequestQueue, *Travel, *Host });
+	Party = MakeUnique<FEasySessionParty>(*this, *BeaconPort);
+	RequestContext = MakeUnique<FEasySessionRequestContext>(FEasySessionRequestContext{ *this, *RequestQueue, *Travel, *Host, *Party });
 
 	if (GEngine != nullptr)
 	{
@@ -124,6 +128,7 @@ void UEasySessionSubsystem::Deinitialize()
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
 	RequestContext.Reset();
+	Party.Reset();
 	Host.Reset();
 	BeaconPort.Reset();
 	Social.Reset();
@@ -272,6 +277,31 @@ void UEasySessionSubsystem::CancelMatchmaking()
 	{
 		Matchmaking->Cancel();
 	}
+}
+
+void UEasySessionSubsystem::CreateParty(const FEasyPartyParams& PartyParams, FEasySessionCompleteDelegate OnComplete)
+{
+	EnqueueRequest(MakeShared<FEasySessionCreatePartyRequest>(PartyParams, MoveTemp(OnComplete)), NAME_PartySession);
+}
+
+void UEasySessionSubsystem::LeaveParty(FEasySessionCompleteDelegate OnComplete)
+{
+	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(MoveTemp(OnComplete)), NAME_PartySession);
+}
+
+bool UEasySessionSubsystem::IsInParty() const
+{
+	return Party->IsInParty();
+}
+
+bool UEasySessionSubsystem::IsPartyLeader() const
+{
+	return Party->IsLeader();
+}
+
+TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
+{
+	return Party->GetMembers();
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const
@@ -663,12 +693,12 @@ IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 	return Online::GetSessionInterface(GetWorld());
 }
 
-void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
+void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request, FName SessionName)
 {
 	// Where a request's target session is decided.
 	// Every sub-request of the request reads it from the request.
 	// Queries and gates are game session only and read the constant.
-	Request->Initialize(*RequestContext, NAME_GameSession);
+	Request->Initialize(*RequestContext, SessionName);
 
 	RequestQueue->Enqueue(Request);
 

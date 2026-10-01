@@ -34,6 +34,9 @@ namespace EasySession
 	/** Custom session setting key holding the host's unique id as a string. */
 	const FName SettingKey_OwnerId = TEXT("EASYOWNERID");
 
+	/** Custom session setting key marking a party session. */
+	const FName SettingKey_Party = TEXT("EASYPARTY");
+
 	int32 GetReservationBeaconPort()
 	{
 		// AOnlineBeaconHost::InitHost reads this override too, but writes it on the listener rather than on the class default below.
@@ -56,6 +59,7 @@ namespace EasySession
 			|| Key == SettingKey_JoinCode
 			|| Key == SettingKey_Reservations
 			|| Key == SettingKey_OwnerId
+			|| Key == SettingKey_Party
 			|| Key == SETTING_BEACONPORT;
 	}
 

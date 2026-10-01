@@ -54,10 +54,14 @@ void FEasySessionDestroyRequest::HandleDestroySessionComplete(FName InSessionNam
 
 	UE_LOG(LogEasySession, Log, TEXT("Session destroyed successfully."));
 
-	GetContext().Host.OnSessionDestroyed();
+	// The host side and the replicated state belong to the game session, and a destroyed party session leaves them alone.
+	if (SessionName == NAME_GameSession)
+	{
+		GetContext().Host.OnSessionDestroyed();
 
-	// A client also clears the host state it received through replication.
-	GetContext().Subsystem.ClearReplicatedSessionState();
+		// A client also clears the host state it received through replication.
+		GetContext().Subsystem.ClearReplicatedSessionState();
+	}
 
 	Complete(EEasySessionResult::Success);
 }

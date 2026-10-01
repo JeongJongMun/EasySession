@@ -8,6 +8,7 @@
 #include "Interfaces/OnlineSessionInterface.h"
 
 class FEasySessionHost;
+class FEasySessionParty;
 class FEasySessionRequestQueue;
 class FEasySessionTravel;
 class UEasySessionSubsystem;
@@ -31,6 +32,9 @@ struct FEasySessionRequestContext
 
 	/** The host side of the session, which a request notifies when the session is created, updated or destroyed. */
 	FEasySessionHost& Host;
+
+	/** The party, which the party requests start and close. */
+	FEasySessionParty& Party;
 };
 
 /** What a request does. The queue reads it for the activity, the status line and the checks for a request that is already running. */
@@ -64,7 +68,13 @@ enum class EEasySessionRequestType : uint8
 	FriendSessions,
 
 	/** Read the local player's friends list. */
-	ReadFriends
+	ReadFriends,
+
+	/** Create the party session and start the party beacon. */
+	CreateParty,
+
+	/** Close the party beacon and destroy the party session. */
+	LeaveParty
 };
 
 /**
@@ -212,7 +222,7 @@ protected:
 	/**
 	 * The session this request and its sub-requests act on.
 	 * Set by Initialize and constant afterwards.
-	 * It holds one value today, because the plugin hosts a single session per process.
+	 * It is the game session, except for the party requests, which act on the party session.
 	 */
 	FName SessionName;
 

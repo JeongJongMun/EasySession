@@ -129,6 +129,8 @@ EEasySessionActivity FEasySessionRequest::GetActivity() const
 		case EType::Matchmaking:	return EEasySessionActivity::Matchmaking;
 		case EType::FriendSessions:	return EEasySessionActivity::Searching;
 		case EType::ReadFriends:		return EEasySessionActivity::Searching;
+		case EType::CreateParty:	return EEasySessionActivity::Creating;
+		case EType::LeaveParty:		return EEasySessionActivity::Leaving;
 		default:					return EEasySessionActivity::None;
 	}
 }
@@ -147,6 +149,8 @@ const TCHAR* FEasySessionRequest::GetTypeName() const
 		case EType::Matchmaking:	return TEXT("Matchmaking");
 		case EType::FriendSessions:	return TEXT("FriendSessions");
 		case EType::ReadFriends:		return TEXT("ReadFriends");
+		case EType::CreateParty:	return TEXT("CreateParty");
+		case EType::LeaveParty:		return TEXT("LeaveParty");
 		default:					return TEXT("Unknown");
 	}
 }
