@@ -15,9 +15,11 @@
 //   EasySession.Status          Print the current session state.
 //   EasySession.Players         List the players in the session, numbered for EasySession.Kick.
 //   EasySession.Kick <Index> [Reason]  Kick a player listed by EasySession.Players (host only).
+//   EasySession.Ready <0|1>     Change whether the local player is ready in the session.
 //   EasySession.CreateParty [MaxMembers] [invite|code|public]  Create a party.
 //   EasySession.LeaveParty      Leave the party.
 //   EasySession.Party           List the members of the party.
+//   EasySession.PartyReady <0|1>  Change whether the local player is ready in the party.
 //   EasySession.FindParties [Code]  Search for parties and list the results.
 //   EasySession.JoinParty [Index]  Join a result of the last EasySession.FindParties (default index 0).
 //   EasySession.KickParty <Index> [Reason]  Kick a member listed by EasySession.Party (leader only).
@@ -272,9 +274,10 @@ namespace EasySessionConsole
 				Print(FString::Printf(TEXT("Players: %d in the session."), Players.Num()));
 				for (int32 Index = 0; Index < Players.Num(); ++Index)
 				{
-					Print(FString::Printf(TEXT("  [%d] '%s'%s%s"), Index, *Players[Index].PlayerName,
+					Print(FString::Printf(TEXT("  [%d] '%s'%s%s%s"), Index, *Players[Index].PlayerName,
 						Players[Index].bIsHost ? TEXT(" (host)") : TEXT(""),
-						Players[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT("")));
+						Players[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT(""),
+						Players[Index].bIsReady ? TEXT(" (ready)") : TEXT("")));
 				}
 			}
 		}));
@@ -358,9 +361,10 @@ namespace EasySessionConsole
 				Print(FString::Printf(TEXT("Party: %d member(s)."), Members.Num()));
 				for (int32 Index = 0; Index < Members.Num(); ++Index)
 				{
-					Print(FString::Printf(TEXT("  [%d] '%s'%s%s"), Index, *Members[Index].PlayerName,
+					Print(FString::Printf(TEXT("  [%d] '%s'%s%s%s"), Index, *Members[Index].PlayerName,
 						Members[Index].bIsLeader ? TEXT(" (leader)") : TEXT(""),
-						Members[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT("")));
+						Members[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT(""),
+						Members[Index].bIsReady ? TEXT(" (ready)") : TEXT("")));
 				}
 			}
 		}));
@@ -445,6 +449,30 @@ namespace EasySessionConsole
 
 				const EEasySessionResult Result = Subsystem->KickPartyMember(Members[Index], FText::FromString(Reason));
 				Print(FString::Printf(TEXT("KickParty '%s': %s"), *Members[Index].PlayerName, *EasySession::ResultToString(Result)));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GReadyCommand(
+		TEXT("EasySession.Ready"),
+		TEXT("Change whether the local player is ready in the session. Args: 1 or 0 (default 1)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const bool bReady = Args.Num() == 0 || Args[0] != TEXT("0");
+				Print(FString::Printf(TEXT("Ready %d: %s"), bReady ? 1 : 0, *EasySession::ResultToString(Subsystem->SetSessionReady(bReady))));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GPartyReadyCommand(
+		TEXT("EasySession.PartyReady"),
+		TEXT("Change whether the local player is ready in the party. Args: 1 or 0 (default 1)."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				const bool bReady = Args.Num() == 0 || Args[0] != TEXT("0");
+				Print(FString::Printf(TEXT("PartyReady %d: %s"), bReady ? 1 : 0, *EasySession::ResultToString(Subsystem->SetPartyReady(bReady))));
 			}
 		}));
 

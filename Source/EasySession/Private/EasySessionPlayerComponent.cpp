@@ -6,6 +6,7 @@
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "Net/UnrealNetwork.h"
 
 UEasySessionPlayerComponent::UEasySessionPlayerComponent()
 {
@@ -27,6 +28,75 @@ void UEasySessionPlayerComponent::ClientKicked_Implementation(const FText& Reaso
 	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
 		Subsystem->HandleDisconnect(EEasyDisconnectReason::Kicked, Reason);
+	}
+}
+
+void UEasySessionPlayerComponent::SetReady(bool bInReady)
+{
+	AActor* Owner = GetOwner();
+	if (Owner == nullptr)
+	{
+		return;
+	}
+
+	if (!Owner->HasAuthority())
+	{
+		ServerSetReady(bInReady);
+		return;
+	}
+
+	if (bReady == bInReady)
+	{
+		return;
+	}
+
+	bReady = bInReady;
+
+	// A PlayerState sends its properties about once a second, and a ready button should answer sooner.
+	Owner->ForceNetUpdate();
+
+	// OnRep only runs on clients, so the host reports its own change here.
+	OnRep_Ready();
+}
+
+void UEasySessionPlayerComponent::BeginPlay()
+{
+	Super::BeginPlay();
+
+	// A component starts with its PlayerState, which is when a player appears in the session on this machine.
+	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
+	{
+		Subsystem->HandleSessionPlayersChanged();
+	}
+}
+
+void UEasySessionPlayerComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
+	{
+		Subsystem->HandleSessionPlayersChanged();
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
+void UEasySessionPlayerComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UEasySessionPlayerComponent, bReady);
+}
+
+void UEasySessionPlayerComponent::ServerSetReady_Implementation(bool bInReady)
+{
+	SetReady(bInReady);
+}
+
+void UEasySessionPlayerComponent::OnRep_Ready()
+{
+	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
+	{
+		Subsystem->HandleSessionPlayersChanged();
 	}
 }
 

@@ -800,6 +800,10 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsHost = false;
 
+	/** Whether this player is ready, as Set Easy Session Ready set it. Unset again in every map the session travels to. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsReady = false;
+
 	/** The player's id on the online subsystem. Names can repeat between players. This cannot. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FUniqueNetIdRepl PlayerId;
@@ -861,6 +865,10 @@ struct EASYSESSION_API FEasyPartyMemberInfo
 	/** Whether this member leads the party. The leader hosts it and decides where the party goes. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsLeader = false;
+
+	/** Whether this member is ready, as Set Easy Party Ready set it. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsReady = false;
 
 	/** The member's id on the online subsystem. Names can repeat between players. This cannot. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")

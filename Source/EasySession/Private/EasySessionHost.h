@@ -10,6 +10,7 @@
 class AActor;
 class AEasySessionStateActor;
 class APlayerController;
+class APlayerState;
 class AGameModeBase;
 class FEasySessionBeaconPort;
 class FEasySessionReservations;
@@ -24,7 +25,7 @@ struct FEasySessionSettings;
 /**
  * FEasySessionHost is responsible for the host side of the session.
  * That is the session's bHosting flag, the replicated state actor, FEasySessionReservations, which decides who may join,
- * and a UEasySessionPlayerComponent on every player controller, which carries what one player receives.
+ * and a UEasySessionPlayerComponent on every PlayerState, which carries what one player receives or sends.
  *
  * The session requests call this object when the session is created, updated or destroyed, when the match state changes, and around a server travel.
  * The state actor and the reservation beacon are actors, so they are destroyed with their world.
@@ -121,7 +122,7 @@ private:
 	void HandleGameModeInitialized(AGameModeBase* GameMode);
 
 	/**
-	 * Spawn the state actor, start the reservation beacon and add a player component to every player controller in the current world.
+	 * Spawn the state actor, start the reservation beacon and add a player component to every PlayerState in the current world.
 	 * An actor or component that already exists in this world is kept.
 	 */
 	void SpawnWorldActors();
@@ -131,18 +132,21 @@ private:
 
 	/**
 	 * Bind HandleActorSpawned to the actor spawn notification of the current world, unless that world is bound already.
-	 * A spawn is what a login, a reconnect after a hard travel and a controller swap in a seamless travel all have in common.
+	 * A spawn is what a login, a reconnect after a hard travel and a PlayerState swap in a seamless travel all have in common.
 	 */
 	void BindActorSpawnedDelegate();
 
-	/** Unbind HandleActorSpawned. The components already added stay until their controllers are destroyed. */
+	/** Unbind HandleActorSpawned. The components already added stay until their PlayerStates are destroyed. */
 	void UnbindActorSpawnedDelegate();
 
-	/** A new actor in the bound world. Player controllers get a player component. */
+	/** A new actor in the bound world. PlayerStates get a player component. */
 	void HandleActorSpawned(AActor* Actor);
 
-	/** Add a player component to this controller, unless it has one. */
-	static void AddPlayerComponent(APlayerController& Controller);
+	/** Add a player component to this PlayerState, unless it has one. */
+	static void AddPlayerComponent(APlayerState& PlayerState);
+
+	/** @return The player component on the PlayerState of this controller, or null. */
+	static UEasySessionPlayerComponent* FindPlayerComponent(const APlayerController* Controller);
 
 	/** @return The connected remote player controller of this player, or null. */
 	APlayerController* FindRemoteController(const FUniqueNetIdRepl& PlayerId) const;

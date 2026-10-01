@@ -73,6 +73,13 @@ public:
 	void HandlePartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
 	/**
+	 * Change whether the local player is ready: directly on the leader, and through the leader on a member.
+	 *
+	 * @return Success, or NoSessionExists outside a party.
+	 */
+	EEasySessionResult SetReady(bool bReady);
+
+	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 *
 	 * @return Success, RequiresPartyLeader, or InvalidParams for a player who is not a connected member.
@@ -114,11 +121,14 @@ private:
 	/** Bind the member list events of the party beacon state, once it exists here. */
 	void BindStateEvents();
 
-	/** A member was added to or removed from the member list. Broadcasts On Party Members Changed on the next tick, after the list changed. */
+	/**
+	 * A member was added to or removed from the member list, or changed whether they are ready.
+	 * Broadcasts On Party Members Changed on the next tick, after the list changed.
+	 */
 	void HandleMemberListChanged(ALobbyBeaconPlayerState* Member);
 
 	/** @return The party beacon state this game reads the members from, or null outside a party. */
-	const AEasySessionPartyBeaconState* GetPartyState() const;
+	AEasySessionPartyBeaconState* GetPartyState() const;
 
 	/** @return The id of the local player, or an invalid id while nobody is logged in. */
 	FUniqueNetIdRepl GetLocalPlayerId() const;

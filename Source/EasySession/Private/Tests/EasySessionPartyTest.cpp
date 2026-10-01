@@ -376,6 +376,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 			FEasyPartyMemberInfo StrangerInfo;
 			StrangerInfo.PlayerId = Stranger;
 			CurrentTest->TestEqual(TEXT("Outside a party nobody can kick"), Subsystem->KickPartyMember(StrangerInfo, FText::GetEmpty()), EEasySessionResult::RequiresPartyLeader);
+			CurrentTest->TestEqual(TEXT("Outside a party nobody is ready"), Subsystem->SetPartyReady(true), EEasySessionResult::NoSessionExists);
 
 			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::Public, 3), MakeCallback(State));
 			NextPhase(State);
@@ -395,6 +396,10 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 			CurrentTest->TestTrue(TEXT("A public party admits anyone"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
 			CurrentTest->TestFalse(TEXT("A member cannot join twice"), FEasySessionTestAccess::AskApproveMember(*Subsystem, LeaderId, Reason));
+
+			CurrentTest->TestEqual(TEXT("The leader sets themselves ready"), Subsystem->SetPartyReady(true), EEasySessionResult::Success);
+			CurrentTest->TestTrue(TEXT("The member list shows the leader ready"), Subsystem->GetPartyMembers().ContainsByPredicate(
+				[](const FEasyPartyMemberInfo& Member) { return Member.bIsLeader && Member.bIsReady; }));
 
 			FEasySessionTestAccess::AddKickedPartyPlayer(*Subsystem, Kicked);
 			CurrentTest->TestFalse(TEXT("A kicked player is refused"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Kicked, Reason));

@@ -20,6 +20,7 @@
 #include "EasySessionLeavePartyRequest.h"
 #include "EasySessionMatchStateRequest.h"
 #include "EasySessionParty.h"
+#include "EasySessionPlayerComponent.h"
 #include "EasySessionRequest.h"
 #include "EasySessionUpdateRequest.h"
 #include "EasySessionRequestQueue.h"
@@ -126,6 +127,9 @@ void UEasySessionSubsystem::Deinitialize()
 		BusyTickerHandle.Reset();
 	}
 
+	FTSTicker::GetCoreTicker().RemoveTicker(SessionPlayersChangedHandle);
+	SessionPlayersChangedHandle.Reset();
+
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
 	RequestContext.Reset();
@@ -225,6 +229,22 @@ EEasySessionResult UEasySessionSubsystem::KickPlayer(const FEasySessionPlayerInf
 	return Host->KickPlayer(Player.PlayerId, Reason) ? EEasySessionResult::Success : EEasySessionResult::InvalidParams;
 }
 
+EEasySessionResult UEasySessionSubsystem::SetSessionReady(bool bReady)
+{
+	// The host adds the component to every PlayerState, the local player's own included.
+	const APlayerController* LocalController = GetGameInstance()->GetFirstLocalPlayerController();
+	UEasySessionPlayerComponent* Component = IsInSession() && LocalController != nullptr && LocalController->PlayerState != nullptr
+		? LocalController->PlayerState->FindComponentByClass<UEasySessionPlayerComponent>()
+		: nullptr;
+	if (Component == nullptr)
+	{
+		return EEasySessionResult::NoSessionExists;
+	}
+
+	Component->SetReady(bReady);
+	return EEasySessionResult::Success;
+}
+
 bool UEasySessionSubsystem::ServerTravel(const FString& MapName)
 {
 	if (MapName.IsEmpty())
@@ -303,6 +323,11 @@ void UEasySessionSubsystem::LeaveParty(FEasySessionCompleteDelegate OnComplete)
 EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason)
 {
 	return Party->KickMember(Member.PlayerId, Reason);
+}
+
+EEasySessionResult UEasySessionSubsystem::SetPartyReady(bool bReady)
+{
+	return Party->SetReady(bReady);
 }
 
 bool UEasySessionSubsystem::IsInParty() const
@@ -458,6 +483,9 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 		Info.PlayerName = PlayerState->GetPlayerName();
 		Info.bIsLocalPlayer = PlayerState == LocalPlayerState;
 		Info.bIsHost = HostId.IsValid() && PlayerId.GetUniqueNetId().IsValid() && *PlayerId.GetUniqueNetId() == *HostId;
+
+		const UEasySessionPlayerComponent* Component = PlayerState->FindComponentByClass<UEasySessionPlayerComponent>();
+		Info.bIsReady = Component != nullptr && Component->IsReady();
 		Info.PlayerId = PlayerId;
 	}
 
@@ -713,6 +741,23 @@ void UEasySessionSubsystem::HandlePartyEnded(EEasyPartyLeaveReason Reason, const
 	}
 
 	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(Reason, ReasonText, FEasySessionCompleteDelegate()), NAME_PartySession);
+}
+
+void UEasySessionSubsystem::HandleSessionPlayersChanged()
+{
+	// A component may end while the world is destroyed, after Deinitialize.
+	if (!RequestQueue.IsValid() || SessionPlayersChangedHandle.IsValid())
+	{
+		return;
+	}
+
+	// A leaving player's PlayerState is still listed while its component ends, so the list is read on the next tick.
+	SessionPlayersChangedHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float)
+	{
+		SessionPlayersChangedHandle.Reset();
+		OnSessionPlayersChanged.Broadcast();
+		return false;
+	}));
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const

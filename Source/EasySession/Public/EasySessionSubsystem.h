@@ -64,7 +64,10 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyMatchmakingStateEvent, EEasyMa
 /** Multicast event fired on every state change and once a second while the run is active. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyMatchmakingUpdatedEvent, EEasyMatchmakingState, State, int32, ElapsedSeconds);
 
-/** Multicast event fired when a member joins or leaves the party, and when the local player leaves it. */
+/** Multicast event fired when a player joins or leaves the session, or changes whether they are ready. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasySessionPlayersChangedEvent);
+
+/** Multicast event fired when a member joins or leaves the party, or changes whether they are ready, and when the local player leaves it. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyPartyMembersChangedEvent);
 
 /** Multicast event fired when the local player is no longer in the party, with the reason. */
@@ -174,7 +177,14 @@ public:
 	FEasySessionInviteAcceptedEvent OnSessionInviteAccepted;
 
 	/**
-	 * Fired when a member joins or leaves the party, on the leader and on every member.
+	 * Fired when a player joins or leaves the session, or changes whether they are ready, on the host and on every client.
+	 * Get Easy Session Player Infos already returns the new list when this fires, so a UI reads it and refreshes.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionPlayersChangedEvent OnSessionPlayersChanged;
+
+	/**
+	 * Fired when a member joins or leaves the party, or changes whether they are ready, on the leader and on every member.
 	 * Get Easy Party Members already returns the new list when this fires, so a UI reads it and refreshes.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
@@ -290,6 +300,15 @@ public:
 	EEasySessionResult KickPlayer(const FEasySessionPlayerInfo& Player, const FText& Reason);
 
 	/**
+	 * Change whether the local player is ready, which every player in the session sees in Get Session Player Infos.
+	 * The plugin only shares the value, and the game decides what being ready allows, such as starting the match.
+	 * Unset again in every map the session travels to.
+	 *
+	 * @return Success, or NoSessionExists outside a session.
+	 */
+	EEasySessionResult SetSessionReady(bool bReady);
+
+	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.
 	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
 	 * Needs session authority: only the game that created the session can travel it.
@@ -363,6 +382,14 @@ public:
 	 * @return Success, RequiresPartyLeader, or InvalidParams for a player who is not a connected member.
 	 */
 	EEasySessionResult KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason);
+
+	/**
+	 * Change whether the local player is ready, which every member sees in Get Party Members.
+	 * The plugin only shares the value, and the game decides what being ready allows.
+	 *
+	 * @return Success, or NoSessionExists outside a party.
+	 */
+	EEasySessionResult SetPartyReady(bool bReady);
 
 	/** @return Whether the local player is in a party. */
 	bool IsInParty() const;
@@ -588,6 +615,12 @@ public:
 	 */
 	void HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
+	/**
+	 * Internal, called by a player component when its player appears, leaves or changes whether they are ready.
+	 * Broadcasts On Session Players Changed on the next tick, once for every change in a frame.
+	 */
+	void HandleSessionPlayersChanged();
+
 private:
 
 	/** Resolve the session interface for the current world context. */
@@ -638,6 +671,9 @@ private:
 
 	/** Ticker that waits for the session interface before binding the invite delegates. */
 	FTSTicker::FDelegateHandle InviteBindTickerHandle;
+
+	/** Ticker that broadcasts On Session Players Changed once for every change in a frame. */
+	FTSTicker::FDelegateHandle SessionPlayersChangedHandle;
 
 	/** Ticker that watches Is Busy for the transitions no single call site sees, such as a travel ending. */
 	FTSTicker::FDelegateHandle BusyTickerHandle;

@@ -12,7 +12,7 @@
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
-#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
@@ -339,19 +339,19 @@ bool FEasySessionKickedPlayerTest::RunTest(const FString& Parameters)
 
 namespace EasySessionGroupTest
 {
-	/** Spawn a player controller in the world, the way a login or a controller swap does. */
-	APlayerController* SpawnController(UWorld* World)
+	/** Spawn a PlayerState in the world, the way a login or a PlayerState swap in a seamless travel does. */
+	APlayerState* SpawnPlayerState(UWorld* World)
 	{
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.ObjectFlags |= RF_Transient;
-		return World->SpawnActor<APlayerController>(SpawnParams);
+		return World->SpawnActor<APlayerState>(SpawnParams);
 	}
 
-	/** @return Whether this controller carries a replicated player component. */
-	bool HasPlayerComponent(const APlayerController* Controller)
+	/** @return The replicated player component on this PlayerState, or null. */
+	UEasySessionPlayerComponent* GetPlayerComponent(const APlayerState* PlayerState)
 	{
-		const UEasySessionPlayerComponent* Component = Controller ? Controller->FindComponentByClass<UEasySessionPlayerComponent>() : nullptr;
-		return Component != nullptr && Component->GetIsReplicated();
+		UEasySessionPlayerComponent* Component = PlayerState ? PlayerState->FindComponentByClass<UEasySessionPlayerComponent>() : nullptr;
+		return Component != nullptr && Component->GetIsReplicated() ? Component : nullptr;
 	}
 }
 
@@ -373,15 +373,23 @@ bool FEasySessionPlayerComponentStep::Update()
 				return TimedOut(State, TEXT("the create"));
 			}
 
-			// A seamless travel swaps the controllers before the host sets the new world up.
-			// This headless world never initializes its actors, so the controller joins the world's list here, as PostInitializeComponents does in a game.
-			APlayerController* AlreadyHere = SpawnController(World);
-			World->AddController(AlreadyHere);
-			CurrentTest->TestFalse(TEXT("A controller gets no component before the host sets the world up"), HasPlayerComponent(AlreadyHere));
+			// A seamless travel swaps the PlayerStates before the host sets the new world up.
+			APlayerState* AlreadyHere = SpawnPlayerState(World);
+			CurrentTest->TestNull(TEXT("A PlayerState gets no component before the host sets the world up"), GetPlayerComponent(AlreadyHere));
 
 			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
-			CurrentTest->TestTrue(TEXT("A controller already in the world gets one when the host sets it up"), HasPlayerComponent(AlreadyHere));
-			CurrentTest->TestTrue(TEXT("A controller spawned later gets one when it spawns"), HasPlayerComponent(SpawnController(World)));
+			CurrentTest->TestNotNull(TEXT("A PlayerState already in the world gets one when the host sets it up"), GetPlayerComponent(AlreadyHere));
+
+			UEasySessionPlayerComponent* Component = GetPlayerComponent(SpawnPlayerState(World));
+			if (CurrentTest->TestNotNull(TEXT("A PlayerState spawned later gets one when it spawns"), Component))
+			{
+				CurrentTest->TestFalse(TEXT("A new player starts not ready"), Component->IsReady());
+				Component->SetReady(true);
+				CurrentTest->TestTrue(TEXT("The host sets a player ready directly"), Component->IsReady());
+			}
+
+			// A headless world has no local player controller, so the local player has no PlayerState to be ready on.
+			CurrentTest->TestEqual(TEXT("Without a local PlayerState the ready state cannot change"), Subsystem->SetSessionReady(true), EEasySessionResult::NoSessionExists);
 
 			Subsystem->DestroySession(MakeCallback(State));
 			NextPhase(State);
@@ -395,7 +403,7 @@ bool FEasySessionPlayerComponentStep::Update()
 				return TimedOut(State, TEXT("the destroy"));
 			}
 
-			CurrentTest->TestFalse(TEXT("Without a session no controller gets one"), HasPlayerComponent(SpawnController(World)));
+			CurrentTest->TestNull(TEXT("Without a session no PlayerState gets one"), GetPlayerComponent(SpawnPlayerState(World)));
 
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
@@ -404,10 +412,10 @@ bool FEasySessionPlayerComponentStep::Update()
 }
 
 /**
- * The host adds a player component to every player controller of its world, which is the channel a message to one player takes.
- * A controller spawned before the host set the world up gets one too, because a seamless travel swaps the controllers that early.
+ * The host adds a player component to every PlayerState of its world, which carries a message to one player and the player's ready state.
+ * A PlayerState spawned before the host set the world up gets one too, because a seamless travel swaps the PlayerStates that early.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPlayerComponentTest, "EasySession.Group.EveryPlayerControllerGetsAPlayerComponent", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPlayerComponentTest, "EasySession.Group.EveryPlayerStateGetsAPlayerComponent", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionPlayerComponentTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionGroupTest;

@@ -11,6 +11,7 @@
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/GameSession.h"
 #include "GameFramework/GameStateBase.h"
@@ -118,15 +119,12 @@ void FEasySessionHost::SpawnWorldActors()
 	Reservations->StartBeacon();
 	BindActorSpawnedDelegate();
 
-	// A seamless travel swaps the controllers before this runs, so the ones already here get a component too.
+	// A seamless travel swaps the PlayerStates before this runs, so the ones already here get a component too.
 	if (UWorld* World = GetWorld())
 	{
-		for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+		for (TActorIterator<APlayerState> It(World); It; ++It)
 		{
-			if (APlayerController* Controller = It->Get())
-			{
-				AddPlayerComponent(*Controller);
-			}
+			AddPlayerComponent(**It);
 		}
 	}
 }
@@ -165,21 +163,26 @@ void FEasySessionHost::UnbindActorSpawnedDelegate()
 
 void FEasySessionHost::HandleActorSpawned(AActor* Actor)
 {
-	if (APlayerController* Controller = Cast<APlayerController>(Actor))
+	if (APlayerState* PlayerState = Cast<APlayerState>(Actor))
 	{
-		AddPlayerComponent(*Controller);
+		AddPlayerComponent(*PlayerState);
 	}
 }
 
-void FEasySessionHost::AddPlayerComponent(APlayerController& Controller)
+void FEasySessionHost::AddPlayerComponent(APlayerState& PlayerState)
 {
-	if (Controller.FindComponentByClass<UEasySessionPlayerComponent>() != nullptr)
+	if (PlayerState.FindComponentByClass<UEasySessionPlayerComponent>() != nullptr)
 	{
 		return;
 	}
 
-	UEasySessionPlayerComponent* Component = NewObject<UEasySessionPlayerComponent>(&Controller);
+	UEasySessionPlayerComponent* Component = NewObject<UEasySessionPlayerComponent>(&PlayerState);
 	Component->RegisterComponent();
+}
+
+UEasySessionPlayerComponent* FEasySessionHost::FindPlayerComponent(const APlayerController* Controller)
+{
+	return Controller != nullptr && Controller->PlayerState != nullptr ? Controller->PlayerState->FindComponentByClass<UEasySessionPlayerComponent>() : nullptr;
 }
 
 APlayerController* FEasySessionHost::FindRemoteController(const FUniqueNetIdRepl& PlayerId) const
@@ -248,7 +251,7 @@ void FEasySessionHost::TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members
 	for (const FUniqueNetIdRepl& Member : Members)
 	{
 		APlayerController* Controller = FindRemoteController(Member);
-		if (UEasySessionPlayerComponent* Component = Controller ? Controller->FindComponentByClass<UEasySessionPlayerComponent>() : nullptr)
+		if (UEasySessionPlayerComponent* Component = FindPlayerComponent(Controller))
 		{
 			Component->ClientFollowHost(HostId, bLANQuery);
 		}
@@ -268,7 +271,7 @@ bool FEasySessionHost::KickPlayer(const FUniqueNetIdRepl& PlayerId, const FText&
 	Reservations->AddKickedPlayer(PlayerId);
 
 	// The engine's kick drops its reason on the client, so the reason goes first on the same connection.
-	if (UEasySessionPlayerComponent* Component = Kicked->FindComponentByClass<UEasySessionPlayerComponent>())
+	if (UEasySessionPlayerComponent* Component = FindPlayerComponent(Kicked))
 	{
 		Component->ClientKicked(Reason);
 	}

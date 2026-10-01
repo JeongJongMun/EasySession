@@ -336,7 +336,7 @@ public:
 	/** Add a member to the member list of the party this process leads, as a login the leader approved does. */
 	static void AddPartyMember(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{
-		if (AEasySessionPartyBeaconState* State = const_cast<AEasySessionPartyBeaconState*>(Subsystem.Party->GetPartyState()))
+		if (AEasySessionPartyBeaconState* State = Subsystem.Party->GetPartyState())
 		{
 			State->AddPlayer(FText::FromString(PlayerId.ToString()), PlayerId);
 		}

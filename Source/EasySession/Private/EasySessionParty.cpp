@@ -131,6 +131,10 @@ void FEasySessionParty::Close()
 	{
 		State->OnPlayerLobbyStateAdded().RemoveAll(this);
 		State->OnPlayerLobbyStateRemoved().RemoveAll(this);
+		for (AEasySessionPartyBeaconPlayerState* Member : State->GetMembers())
+		{
+			Member->OnReadyChanged().RemoveAll(this);
+		}
 	}
 	BoundState.Reset();
 
@@ -165,6 +169,38 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 	UE_LOG(LogEasySession, Log, TEXT("Left the party: %s"), *UEnum::GetValueAsString(Reason));
 	Owner.OnPartyLeft.Broadcast(Reason, ReasonText);
 	Owner.OnPartyMembersChanged.Broadcast();
+}
+
+EEasySessionResult FEasySessionParty::SetReady(bool bReady)
+{
+	if (!IsInParty())
+	{
+		return EEasySessionResult::NoSessionExists;
+	}
+
+	if (AEasySessionPartyBeaconClient* Client = BeaconClient.Get())
+	{
+		Client->ServerSetReady(bReady);
+		return EEasySessionResult::Success;
+	}
+
+	const AEasySessionPartyBeaconState* State = GetPartyState();
+	if (State == nullptr)
+	{
+		return EEasySessionResult::NoSessionExists;
+	}
+
+	const FUniqueNetIdRepl LocalId = GetLocalPlayerId();
+	for (AEasySessionPartyBeaconPlayerState* Member : State->GetMembers())
+	{
+		if (Member->UniqueId == LocalId)
+		{
+			Member->SetReady(bReady);
+			return EEasySessionResult::Success;
+		}
+	}
+
+	return EEasySessionResult::NoSessionExists;
 }
 
 EEasySessionResult FEasySessionParty::KickMember(const FUniqueNetIdRepl& PlayerId, const FText& Reason)
@@ -216,7 +252,7 @@ TArray<FEasyPartyMemberInfo> FEasySessionParty::GetMembers() const
 	}
 
 	const FUniqueNetIdRepl LocalId = GetLocalPlayerId();
-	for (const ALobbyBeaconPlayerState* Member : State->GetMembers())
+	for (const AEasySessionPartyBeaconPlayerState* Member : State->GetMembers())
 	{
 		// A member whose id has not replicated yet cannot be told apart from the others.
 		if (!Member->UniqueId.IsValid())
@@ -229,6 +265,7 @@ TArray<FEasyPartyMemberInfo> FEasySessionParty::GetMembers() const
 		Info.PlayerId = Member->UniqueId;
 		Info.bIsLocalPlayer = LocalId.IsValid() && Member->UniqueId == LocalId;
 		Info.bIsLeader = Member->UniqueId == Member->PartyOwnerUniqueId;
+		Info.bIsReady = Member->IsReady();
 	}
 
 	return Members;
@@ -248,7 +285,7 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 		return false;
 	}
 
-	if (State->GetMembers().ContainsByPredicate([&PlayerId](const ALobbyBeaconPlayerState* Member) { return Member->UniqueId == PlayerId; }))
+	if (State->GetMembers().ContainsByPredicate([&PlayerId](const AEasySessionPartyBeaconPlayerState* Member) { return Member->UniqueId == PlayerId; }))
 	{
 		OutReason = NSLOCTEXT("EasySession", "AlreadyInParty", "You are already in this party.");
 		return false;
@@ -329,7 +366,7 @@ void FEasySessionParty::HandleConnectionFailure()
 
 void FEasySessionParty::BindStateEvents()
 {
-	AEasySessionPartyBeaconState* State = const_cast<AEasySessionPartyBeaconState*>(GetPartyState());
+	AEasySessionPartyBeaconState* State = GetPartyState();
 	if (State == nullptr || BoundState.Get() == State)
 	{
 		return;
@@ -340,11 +377,22 @@ void FEasySessionParty::BindStateEvents()
 	BoundState = State;
 
 	// The members already listed arrived before the binding.
+	for (AEasySessionPartyBeaconPlayerState* Member : State->GetMembers())
+	{
+		HandleMemberListChanged(Member);
+	}
 	HandleMemberListChanged(nullptr);
 }
 
 void FEasySessionParty::HandleMemberListChanged(ALobbyBeaconPlayerState* Member)
 {
+	// A member's ready state changes on the member's own entry, so each entry is bound once, when it is added.
+	AEasySessionPartyBeaconPlayerState* PartyMember = Cast<AEasySessionPartyBeaconPlayerState>(Member);
+	if (PartyMember != nullptr && !PartyMember->OnReadyChanged().IsBoundToObject(this))
+	{
+		PartyMember->OnReadyChanged().AddRaw(this, &FEasySessionParty::HandleMemberListChanged, static_cast<ALobbyBeaconPlayerState*>(nullptr));
+	}
+
 	if (MembersChangedHandle.IsValid())
 	{
 		return;
@@ -358,7 +406,7 @@ void FEasySessionParty::HandleMemberListChanged(ALobbyBeaconPlayerState* Member)
 	}));
 }
 
-const AEasySessionPartyBeaconState* FEasySessionParty::GetPartyState() const
+AEasySessionPartyBeaconState* FEasySessionParty::GetPartyState() const
 {
 	if (const AEasySessionPartyBeaconHost* Beacon = BeaconHost.Get())
 	{

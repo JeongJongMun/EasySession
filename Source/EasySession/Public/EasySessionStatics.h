@@ -101,6 +101,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionPlayerInfo> GetEasySessionPlayerInfos(const UObject* WorldContextObject);
 
+	/**
+	 * Change whether the local player is ready, which every player in the session sees in Get Easy Session Player Infos.
+	 * The plugin only shares the value, and the game decides what being ready allows, such as starting the match.
+	 * Unset again in every map the session travels to.
+	 *
+	 * @return Success, or No Session Exists outside a session.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult SetEasySessionReady(const UObject* WorldContextObject, bool bReady);
+
 	/** The number of players in the session. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasySessionPlayerCount(const UObject* WorldContextObject);
@@ -130,6 +140,15 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult KickEasyPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member, FText Reason);
+
+	/**
+	 * Change whether the local player is ready, which every member sees in Get Easy Party Members.
+	 * The plugin only shares the value, and the game decides what being ready allows.
+	 *
+	 * @return Success, or No Session Exists outside a party.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult SetEasyPartyReady(const UObject* WorldContextObject, bool bReady);
 
 	/** Whether a disconnect reason is waiting to be shown, for example as a popup on the menu. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))

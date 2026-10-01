@@ -89,6 +89,12 @@ TArray<FEasySessionPlayerInfo> UEasySessionStatics::GetEasySessionPlayerInfos(co
 	return Subsystem != nullptr ? Subsystem->GetSessionPlayerInfos() : TArray<FEasySessionPlayerInfo>();
 }
 
+EEasySessionResult UEasySessionStatics::SetEasySessionReady(const UObject* WorldContextObject, bool bReady)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->SetSessionReady(bReady) : EEasySessionResult::NoOnlineSubsystem;
+}
+
 int32 UEasySessionStatics::GetEasySessionPlayerCount(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
@@ -123,6 +129,12 @@ EEasySessionResult UEasySessionStatics::KickEasyPartyMember(const UObject* World
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->KickPartyMember(Member, Reason) : EEasySessionResult::NoOnlineSubsystem;
+}
+
+EEasySessionResult UEasySessionStatics::SetEasyPartyReady(const UObject* WorldContextObject, bool bReady)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->SetPartyReady(bReady) : EEasySessionResult::NoOnlineSubsystem;
 }
 
 bool UEasySessionStatics::HasPendingEasyDisconnectInfo(const UObject* WorldContextObject)

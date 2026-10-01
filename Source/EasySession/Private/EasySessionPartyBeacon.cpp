@@ -6,22 +6,49 @@
 #include "Engine/World.h"
 #include "Interfaces/OnlineSessionInterface.h"
 #include "Kismet/GameplayStatics.h"
+#include "Net/UnrealNetwork.h"
 #include "OnlineSubsystemUtils.h"
+
+void AEasySessionPartyBeaconPlayerState::SetReady(bool bInReady)
+{
+	if (!HasAuthority() || bReady == bInReady)
+	{
+		return;
+	}
+
+	bReady = bInReady;
+	ForceNetUpdate();
+
+	// OnRep only runs on members, so the leader reports its own change here.
+	OnRep_Ready();
+}
+
+void AEasySessionPartyBeaconPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AEasySessionPartyBeaconPlayerState, bReady);
+}
+
+void AEasySessionPartyBeaconPlayerState::OnRep_Ready()
+{
+	ReadyChangedEvent.Broadcast();
+}
 
 AEasySessionPartyBeaconState::AEasySessionPartyBeaconState()
 {
 	LobbyBeaconPlayerStateClass = AEasySessionPartyBeaconPlayerState::StaticClass();
 }
 
-TArray<const ALobbyBeaconPlayerState*> AEasySessionPartyBeaconState::GetMembers() const
+TArray<AEasySessionPartyBeaconPlayerState*> AEasySessionPartyBeaconState::GetMembers() const
 {
-	TArray<const ALobbyBeaconPlayerState*> Members;
+	TArray<AEasySessionPartyBeaconPlayerState*> Members;
 	for (const FLobbyPlayerStateActorInfo& Info : Players.GetAllPlayers())
 	{
 		// A member added on the host arrives in two steps on a client, and the first one carries no actor yet.
-		if (Info.LobbyPlayerState != nullptr)
+		if (AEasySessionPartyBeaconPlayerState* Member = Cast<AEasySessionPartyBeaconPlayerState>(Info.LobbyPlayerState))
 		{
-			Members.Add(Info.LobbyPlayerState);
+			Members.Add(Member);
 		}
 	}
 	return Members;
@@ -54,6 +81,15 @@ void AEasySessionPartyBeaconClient::ClientJoinRefused_Implementation(const FText
 void AEasySessionPartyBeaconClient::ClientLeftParty_Implementation(EEasyPartyLeaveReason Reason, const FText& ReasonText)
 {
 	LeftPartyDelegate.ExecuteIfBound(Reason, ReasonText);
+}
+
+void AEasySessionPartyBeaconClient::ServerSetReady_Implementation(bool bInReady)
+{
+	// The engine sets PlayerState at the login, so a connection that never logged in changes nothing.
+	if (AEasySessionPartyBeaconPlayerState* Member = Cast<AEasySessionPartyBeaconPlayerState>(PlayerState))
+	{
+		Member->SetReady(bInReady);
+	}
 }
 
 AEasySessionPartyBeaconHost::AEasySessionPartyBeaconHost()
@@ -107,7 +143,7 @@ void AEasySessionPartyBeaconHost::TellMembersPartyEnds(const FText& ReasonText)
 	}
 }
 
-const AEasySessionPartyBeaconState* AEasySessionPartyBeaconHost::GetPartyState() const
+AEasySessionPartyBeaconState* AEasySessionPartyBeaconHost::GetPartyState() const
 {
 	return Cast<AEasySessionPartyBeaconState>(LobbyState);
 }

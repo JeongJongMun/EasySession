@@ -27,6 +27,34 @@ UCLASS(Transient, NotPlaceable)
 class AEasySessionPartyBeaconPlayerState : public ALobbyBeaconPlayerState
 {
 	GENERATED_BODY()
+
+public:
+
+	/** Leader only: change whether this member is ready. */
+	void SetReady(bool bInReady);
+
+	/** @return Whether this member is ready. */
+	bool IsReady() const { return bReady; }
+
+	/** @return The event fired when the ready state changes, on the leader and on every member. */
+	FSimpleMulticastDelegate& OnReadyChanged() { return ReadyChangedEvent; }
+
+	//~ Begin AActor Interface
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	//~ End AActor Interface
+
+private:
+
+	/** The ready state arrived on a member. */
+	UFUNCTION()
+	void OnRep_Ready();
+
+	/** Is this member ready. Only the leader writes it. */
+	UPROPERTY(ReplicatedUsing = OnRep_Ready)
+	bool bReady = false;
+
+	/** Fired by OnRep_Ready, and by SetReady on the leader. */
+	FSimpleMulticastDelegate ReadyChangedEvent;
 };
 
 /**
@@ -44,7 +72,7 @@ public:
 	AEasySessionPartyBeaconState();
 
 	/** @return The player state of every member, the leader included. */
-	TArray<const ALobbyBeaconPlayerState*> GetMembers() const;
+	TArray<AEasySessionPartyBeaconPlayerState*> GetMembers() const;
 
 	/** Destroy the player state of every member. */
 	void DestroyMembers();
@@ -78,6 +106,10 @@ public:
 	/** Server: tell this member that the membership ends, and why. The leader closes the connection right after. */
 	UFUNCTION(Client, Reliable)
 	void ClientLeftParty(EEasyPartyLeaveReason Reason, const FText& ReasonText);
+
+	/** Client: the member asks the leader to change whether they are ready. */
+	UFUNCTION(Server, Reliable)
+	void ServerSetReady(bool bInReady);
 
 	/** @return The delegate fired when the leader refused the join. */
 	FEasyPartyJoinRefusedDelegate& OnJoinRefused() { return JoinRefusedDelegate; }
@@ -130,7 +162,7 @@ public:
 	void TellMembersPartyEnds(const FText& ReasonText);
 
 	/** @return The party beacon state, or null before StartParty. */
-	const AEasySessionPartyBeaconState* GetPartyState() const;
+	AEasySessionPartyBeaconState* GetPartyState() const;
 
 	/** @return The delegate this actor asks whether a player may join. Every join is refused while nothing is bound. */
 	FEasyPartyApproveMemberDelegate& OnApproveMember() { return ApproveMemberDelegate; }
