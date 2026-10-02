@@ -353,7 +353,8 @@ public:
 	 * Search for parties.
 	 * Find Easy Parties lists public parties, and a Join Code finds the party that advertises it.
 	 *
-	 * @param SearchParams Parameters describing what to search for. The game session filters do not apply to parties.
+	 * @param SearchParams Parameters describing what to search for. Region, Required Custom Settings and Include In Progress Sessions are ignored,
+	 *        because a party advertises none of them.
 	 * @param OnComplete Called with the parties found when the search completes.
 	 */
 	void FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete = FEasySessionFindCompleteDelegate());

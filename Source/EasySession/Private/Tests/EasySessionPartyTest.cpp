@@ -434,8 +434,12 @@ bool FEasySessionPartyAdmissionStep::Update()
 			CurrentTest->TestEqual(TEXT("A member cannot invite"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::RequiresPartyLeader);
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true, NAME_PartySession);
 
+			// The game session filters a game may pass along are ignored, because a party advertises none of them.
 			FEasySessionSearchParams Search;
 			Search.bLANQuery = true;
+			Search.Region = EEasySessionRegion::Europe;
+			Search.RequiredCustomSettings.Add(TEXT("GameMode"), TEXT("CTF"));
+			Search.bIncludeInProgressSessions = false;
 			Subsystem->FindParties(Search, MakeFindCallback(State));
 			NextPhase(State);
 			return false;

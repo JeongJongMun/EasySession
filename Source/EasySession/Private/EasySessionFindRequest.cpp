@@ -32,6 +32,15 @@ void FEasySessionFindRequest::Execute()
 		return;
 	}
 
+	// A party advertises no region, custom settings or match state, so these game session filters would leave every party out.
+	// Ignoring them lets a game pass the search params it uses for game sessions.
+	if (IsPartySearch())
+	{
+		SearchParams.Region = EEasySessionRegion::Any;
+		SearchParams.RequiredCustomSettings.Reset();
+		SearchParams.bIncludeInProgressSessions = true;
+	}
+
 	if (SearchParams.SearchMode == EEasySessionSearchMode::ByFriend)
 	{
 		FindFriendSession();

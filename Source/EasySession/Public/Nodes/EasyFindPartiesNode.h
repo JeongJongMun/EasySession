@@ -30,7 +30,8 @@ public:
 	 * Public parties are listed, and a Join Code finds the party that advertises it.
 	 * A result's Session Display Name is the leader's name.
 	 *
-	 * @param SearchParams Parameters describing what to search for. The game session filters do not apply to parties.
+	 * @param SearchParams Parameters describing what to search for. Region, Required Custom Settings and Include In Progress Sessions are ignored,
+	 *        because a party advertises none of them.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Find Easy Parties", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "SearchParams"))
 	static UEasyFindPartiesNode* FindEasyParties(UObject* WorldContextObject, const FEasySessionSearchParams& SearchParams);
