@@ -659,6 +659,11 @@ EEasySessionResult UEasySessionSubsystem::ShowProfileUIForPlayer(const FEasySess
 	return Social->ShowProfileUI(Player.PlayerId.GetUniqueNetId());
 }
 
+EEasySessionResult UEasySessionSubsystem::ShowProfileUIForPartyMember(const FEasyPartyMemberInfo& Member)
+{
+	return Social->ShowProfileUI(Member.PlayerId.GetUniqueNetId());
+}
+
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 {
 	// NULL has no friends list, and the failure is reported inside this call.

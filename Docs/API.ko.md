@@ -180,6 +180,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이. 결과 값을 돌려줍니다 |
+| Show Easy Profile UI For Party Member | `ShowProfileUIForPartyMember` | 파티 멤버의 프로필 오버레이. 결과 값을 돌려줍니다 |
 | Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | 파티로의 플랫폼 초대. 파티 리더 전용, 결과 값을 돌려줍니다 |
 | Show Easy Party Invite UI | `ShowPartyInviteUI` | 파티용 플랫폼 초대 오버레이. 파티 리더 전용, 결과 값을 돌려줍니다 |
 | Set Easy Session Ready | `SetSessionReady` | 로컬 플레이어의 준비 상태를 바꿉니다. 모든 플레이어가 Get Easy Session Player Infos에서 봅니다. 세션이 맵을 옮길 때마다 다시 풀립니다 |

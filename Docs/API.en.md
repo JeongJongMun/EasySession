@@ -186,6 +186,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay, returns a result |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend, returns a result |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session, returns a result |
+| Show Easy Profile UI For Party Member | `ShowProfileUIForPartyMember` | Profile overlay for a member of the party, returns a result |
 | Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | Platform invite to the party. Party leader only, returns a result |
 | Show Easy Party Invite UI | `ShowPartyInviteUI` | Platform invite overlay for the party. Party leader only, returns a result |
 | Set Easy Session Ready | `SetSessionReady` | Changes whether the local player is ready, which every player sees in Get Easy Session Player Infos. Unset again in every map the session travels to |

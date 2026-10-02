@@ -203,6 +203,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 			CurrentTest->TestEqual(TEXT("A join code party is hidden from plain searches"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
 			CurrentTest->TestEqual(TEXT("The party advertises a six character code"), Subsystem->GetPartyJoinCode().Len(), 6);
 			CurrentTest->TestEqual(TEXT("The party reads back its max members"), Subsystem->GetPartySettings().MaxMembers, 3);
+			CurrentTest->TestEqual(TEXT("The leader takes a slot"), FEasySessionSearchResult::FromNative(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession)).OpenSlots, 2);
 			CurrentTest->TestEqual(TEXT("The party reads back its privacy"), Subsystem->GetPartySettings().Privacy, EEasyPartyPrivacy::JoinCode);
 			CurrentTest->TestTrue(TEXT("The party code is not a game session code"), Subsystem->GetSessionJoinCode().IsEmpty());
 
@@ -428,6 +429,8 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 			CurrentTest->TestEqual(TEXT("An invite needs a friend Read Easy Friends returned"), Subsystem->SendPartyInviteToFriend(FEasySessionFriend()), EEasySessionResult::InvalidParams);
 			CurrentTest->TestEqual(TEXT("NULL has no invite overlay"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::NotSupportedByService);
+			CurrentTest->TestEqual(TEXT("NULL has no profile overlay for a member"), Subsystem->ShowProfileUIForPartyMember(Subsystem->GetPartyMembers()[0]), EEasySessionResult::NotSupportedByService);
+			CurrentTest->TestEqual(TEXT("A member without an id has no profile"), Subsystem->ShowProfileUIForPartyMember(FEasyPartyMemberInfo()), EEasySessionResult::InvalidParams);
 
 			// A member of someone else's party, which is what clearing the leader's host flag makes the local player.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false, NAME_PartySession);

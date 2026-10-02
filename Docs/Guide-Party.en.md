@@ -78,7 +78,7 @@ A failed join arrives on `OnSessionFailure`, because no node waits for it. With 
 
 ## Members, ready and kick
 
-`Get Easy Party Members` returns every member, the leader included, as `FEasyPartyMemberInfo`: name, whether it is the local player, whether it leads the party, whether it is ready, and the player id. `OnPartyMembersChanged` fires on the leader and on every member when someone joins, leaves or changes whether they are ready. The list is already updated when it fires, so a party panel reads it and redraws.
+`Get Easy Party Members` returns every member, the leader included, as `FEasyPartyMemberInfo`: name, whether it is the local player, whether it leads the party, whether it is ready, and the player id. `OnPartyMembersChanged` fires on the leader and on every member when someone joins, leaves or changes whether they are ready. The list is already updated when it fires, so a party panel reads it and redraws. `Show Easy Profile UI For Party Member` opens a member's platform profile, for example when the player clicks a member row.
 
 `Set Easy Party Ready` changes whether the local player is ready. The plugin only shares the value. The game decides what being ready allows, for example enabling the leader's Play button once everyone is ready.
 
@@ -145,4 +145,4 @@ In Project Settings -> Plugins -> EasySession, under Party:
 
 ## C++ API
 
-The same functions are on `UEasySessionSubsystem`: `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`, `KickPartyMember`, `SetPartyReady`, `IsInParty`, `IsPartyLeader`, `GetPartyMembers`, `GetPartySettings`, `GetPartyJoinCode`, `IsRestoringParty`, `SendPartyInviteToFriend` and `ShowPartyInviteUI`.
+The same functions are on `UEasySessionSubsystem`: `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`, `KickPartyMember`, `SetPartyReady`, `IsInParty`, `IsPartyLeader`, `GetPartyMembers`, `GetPartySettings`, `GetPartyJoinCode`, `IsRestoringParty`, `SendPartyInviteToFriend`, `ShowPartyInviteUI` and `ShowProfileUIForPartyMember`.

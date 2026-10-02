@@ -78,7 +78,7 @@ Join Code 파티는 자동으로 만든 6자리 코드를 광고합니다. 리�
 
 ## 멤버, 준비, 추방
 
-`Get Easy Party Members`는 리더를 포함한 모든 멤버를 `FEasyPartyMemberInfo`로 돌려줍니다. 이름, 로컬 플레이어인지, 리더인지, 준비했는지, 플레이어 id가 들어 있습니다. 누가 들어오거나, 나가거나, 준비 상태를 바꾸면 리더와 모든 멤버에게 `OnPartyMembersChanged`가 옵니다. 이벤트가 올 때 목록은 이미 바뀌어 있으므로, 파티 패널은 목록을 읽고 다시 그리면 됩니다.
+`Get Easy Party Members`는 리더를 포함한 모든 멤버를 `FEasyPartyMemberInfo`로 돌려줍니다. 이름, 로컬 플레이어인지, 리더인지, 준비했는지, 플레이어 id가 들어 있습니다. 누가 들어오거나, 나가거나, 준비 상태를 바꾸면 리더와 모든 멤버에게 `OnPartyMembersChanged`가 옵니다. 이벤트가 올 때 목록은 이미 바뀌어 있으므로, 파티 패널은 목록을 읽고 다시 그리면 됩니다. `Show Easy Profile UI For Party Member`는 멤버의 플랫폼 프로필을 엽니다. 예를 들어 멤버 행을 클릭했을 때 씁니다.
 
 `Set Easy Party Ready`는 로컬 플레이어의 준비 상태를 바꿉니다. 플러그인은 값을 공유하기만 합니다. 준비하면 무엇을 할 수 있는지는 게임이 정합니다. 예를 들어 모두 준비하면 리더의 Play 버튼을 켜는 식입니다.
 
@@ -145,4 +145,4 @@ Project Settings -> Plugins -> EasySession의 Party 항목입니다.
 
 ## C++ API
 
-같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`, `KickPartyMember`, `SetPartyReady`, `IsInParty`, `IsPartyLeader`, `GetPartyMembers`, `GetPartySettings`, `GetPartyJoinCode`, `IsRestoringParty`, `SendPartyInviteToFriend`, `ShowPartyInviteUI`입니다.
+같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`, `KickPartyMember`, `SetPartyReady`, `IsInParty`, `IsPartyLeader`, `GetPartyMembers`, `GetPartySettings`, `GetPartyJoinCode`, `IsRestoringParty`, `SendPartyInviteToFriend`, `ShowPartyInviteUI`, `ShowProfileUIForPartyMember`입니다.

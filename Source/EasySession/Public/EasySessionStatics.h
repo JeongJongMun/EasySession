@@ -298,4 +298,12 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player);
+
+	/**
+	 * Open the platform profile overlay (e.g. Steam) for a member of the party.
+	 *
+	 * @return Success, or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult ShowEasyProfileUIForPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member);
 };

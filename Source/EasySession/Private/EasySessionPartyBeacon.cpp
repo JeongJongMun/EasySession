@@ -9,6 +9,12 @@
 #include "Net/UnrealNetwork.h"
 #include "OnlineSubsystemUtils.h"
 
+namespace
+{
+	/** Characters a member name keeps, the same limit AGameModeBase::InitNewPlayer applies to player names in a game session. */
+	constexpr int32 MaxMemberNameLength = 20;
+}
+
 void AEasySessionPartyBeaconPlayerState::SetReady(bool bInReady)
 {
 	if (!HasAuthority() || bReady == bInReady)
@@ -112,7 +118,7 @@ bool AEasySessionPartyBeaconHost::StartParty(int32 MaxMembers, const FUniqueNetI
 	}
 
 	// The leader plays on this machine and has no beacon connection, so its entry is added here instead of at a login.
-	ALobbyBeaconPlayerState* Leader = LobbyState->AddPlayer(FText::FromString(LeaderName), InLeaderId);
+	ALobbyBeaconPlayerState* Leader = LobbyState->AddPlayer(FText::FromString(LeaderName.Left(MaxMemberNameLength)), InLeaderId);
 	if (Leader == nullptr)
 	{
 		return false;
@@ -120,6 +126,14 @@ bool AEasySessionPartyBeaconHost::StartParty(int32 MaxMembers, const FUniqueNetI
 
 	LeaderId = InLeaderId;
 	Leader->PartyOwnerUniqueId = LeaderId;
+
+	// NULL counts the open slots a search reports from the registered players, and the leader has no login that registers it.
+	// Registering again after a map change changes nothing, because a registered player is not counted twice.
+	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
+	if (Sessions.IsValid())
+	{
+		Sessions->RegisterPlayer(NAME_PartySession, *InLeaderId, false);
+	}
 	return true;
 }
 
@@ -235,7 +249,7 @@ ALobbyBeaconPlayerState* AEasySessionPartyBeaconHost::HandlePlayerLogin(ALobbyBe
 		Sessions->RegisterPlayer(NAME_PartySession, *InUniqueId, false);
 	}
 
-	FString MemberName = UGameplayStatics::ParseOption(Options, TEXT("Name")).Left(20);
+	FString MemberName = UGameplayStatics::ParseOption(Options, TEXT("Name")).Left(MaxMemberNameLength);
 	if (MemberName.IsEmpty())
 	{
 		MemberName = InUniqueId.ToString();

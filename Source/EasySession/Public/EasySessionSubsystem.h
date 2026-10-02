@@ -556,6 +556,13 @@ public:
 	EEasySessionResult ShowProfileUIForPlayer(const FEasySessionPlayerInfo& Player);
 
 	/**
+	 * Open the platform profile overlay (e.g. Steam) for a member of the party.
+	 *
+	 * @return Success, or why the overlay could not be opened.
+	 */
+	EEasySessionResult ShowProfileUIForPartyMember(const FEasyPartyMemberInfo& Member);
+
+	/**
 	 * Read the local player's friends list, in display order.
 	 * Not supported on the NULL (LAN) subsystem.
 	 * The read waits in the session queue like every other request.

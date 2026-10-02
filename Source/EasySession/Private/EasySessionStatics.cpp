@@ -269,3 +269,9 @@ EEasySessionResult UEasySessionStatics::ShowEasyProfileUIForPlayer(const UObject
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->ShowProfileUIForPlayer(Player) : EEasySessionResult::NoOnlineSubsystem;
 }
+
+EEasySessionResult UEasySessionStatics::ShowEasyProfileUIForPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->ShowProfileUIForPartyMember(Member) : EEasySessionResult::NoOnlineSubsystem;
+}
