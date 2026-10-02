@@ -53,6 +53,17 @@ bInitServerOnClient=true
 - 에디터 PIE로는 스팀 사용자 두 명을 표현할 수 없습니다. **PC 두 대에서 서로 다른 스팀 계정으로**, 패키지 빌드나 `-game`으로 실행해 테스트하세요.
 - AppId 480은 Spacewar로 테스트하는 모두와 로비 공간을 공유하지만, 엔진이 빌드 ID가 다른 세션을 버리므로 검색에는 보통 자기 세션만 나옵니다. 같은 빌드로 테스트하는 팀이 여럿이라면 Host Params에 커스텀 세팅(예: `GameName = MyGameDev`)을 넣고 Search Params의 `Required Custom Settings`에 같은 값을 넣어 필터링하세요.
 
+### 스팀에서 파티 확인하기
+
+파티는 게임 세션 옆에 따로 있는 스팀 로비이고, 리더는 예약 비콘과 같은 포트에서 파티 비콘을 엽니다. 초대 전용 검사를 확인하려면 두 계정이 스팀 친구여야 합니다. 두 PC에서 콘솔(`~`)을 열고 진행합니다.
+
+1. **초대.** A: `EasySession.CreateParty 4 invite`, 이어서 `EasySession.PartyInviteUI`로 B를 초대합니다. B가 오버레이에서 수락하면 참가합니다. B의 로그에 리더의 스팀 주소가 보입니다: `Connecting to the party leader at steam.<id>:...`
+2. **공개 파티.** A: `EasySession.CreateParty 4 public`. B: `EasySession.FindParties`, 이어서 `EasySession.JoinParty`.
+3. **참가 코드.** A: `EasySession.CreateParty 4 code`, 이어서 `EasySession.Party`가 코드를 출력합니다. B: `EasySession.FindParties <코드>`, 이어서 `EasySession.JoinParty`.
+4. **따라가기.** A: `EasySession.Host <맵>`. B가 A의 세션으로 따라오고, 둘 다 `MovedToGameSession`이 담긴 `OnPartyLeft`를 받습니다.
+5. **복원.** 둘 다 매치를 나갑니다. 메뉴에서 파티가 돌아오고 B가 다시 멤버가 됩니다.
+6. **매치 중 초대.** B가 게임 세션 안에서 파티 초대를 수락합니다. B는 참가하지 않고, 로그에 `Not joining the invited party during a game session.`이 남습니다.
+
 ## 자주 겪는 함정
 
 | 증상 | 원인 |
@@ -61,5 +72,7 @@ bInitServerOnClient=true
 | 두 PC 사이에서 세션이 안 보임 | 양쪽이 같은 스팀 계정이거나, AppId가 다르거나, 한쪽 빌드가 낡음 |
 | 초대/오버레이는 되는데 참가가 "connection to the host has been lost"로 실패 | 넷드라이버가 Steam Sockets가 아님. 플러그인이 꺼져 있거나, `ClearArray` 줄이 없거나, 설정이 아직 구형 `SteamNetDriver`를 가리킴. `EasySession.Diagnose`를 실행하세요 |
 | PIE에서는 다 되는데 패키지에서는 안 됨 | PIE가 조용히 NULL을 쓰고 있었음. 로그의 `EasySessionSubsystem initialized. Online subsystem: STEAM` 줄을 확인하세요 |
+| 초대를 수락해도 아무 일이 없고, 로그에 `search already in progress when accepting invite`가 남음 | 세션 검색이 도는 동안 수락한 초대는 엔진이 무시합니다. 검색이 끝난 뒤 다시 수락하세요([FAQ](FAQ.ko.md)) |
+| 초대 전용 파티가 초대한 플레이어를 "This party only admits players the leader invited."로 거절함 | 두 계정이 스팀 친구가 아니고, Send Easy Party Invite To Friend로 보낸 초대도 아님 |
 
 막히면 시작 로그에서 `===== EasySession diagnostics =====` 블록을 찾거나, 아무 때나 `EasySession.Diagnose`를 실행하세요. 활성 서브시스템, 위의 모든 ini 키, 설정한 넷드라이버 클래스가 실제로 로드되는지, 스팀 로그인 상태까지 확인해 줍니다.

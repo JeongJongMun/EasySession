@@ -20,9 +20,9 @@
 `UEasySessionStatics`의 함수로, 노드 이름에서 공백을 뺀 이름이며, 월드를 찾기 위해 액터나
 위젯 아무거나 첫 인자로 받습니다.
 
-1. [비동기 블루프린트 노드](#1-비동기-블루프린트-노드) - 만들기, 찾기, 참가, 퀵매치
-2. [조회 블루프린트 노드](#2-조회-블루프린트-노드) - 세션 상태, 참가자, 검색 결과
-3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - Travel, 취소, 초대
+1. [비동기 블루프린트 노드](#1-비동기-블루프린트-노드) - 만들기, 찾기, 참가, 퀵매치, 파티
+2. [조회 블루프린트 노드](#2-조회-블루프린트-노드) - 세션 상태, 참가자, 파티, 검색 결과
+3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - Travel, 취소, 준비, 추방, 초대
 4. [이벤트](#4-이벤트) | 5. [구조체](#5-구조체) | 6. [열거형](#6-열거형)
 7. [UEasyMatchmakingPolicy](#7-ueasymatchmakingpolicy) | 8. [UEasySessionConfig](#8-ueasysessionconfig-project-settings---plugins---easysession) | 9. [C++ 참고](#9-c-참고) | 10. [콘솔 명령](#10-콘솔-명령-개발-빌드-전용)
 
@@ -52,6 +52,10 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
 | **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다: 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 `NotSupportedByService`로 실패합니다 |
 | **Find Easy Friend Sessions** | - | 친구 목록을 읽은 뒤, 이 게임을 플레이 중인 친구마다 `FindFriendSession`을 호출합니다. `OnSuccess`가 `FEasyFriendSession` 배열을 넘깁니다. 모든 친구가 나열되고, 참가 가능한 세션에 있는 친구는 그 세션을 들고 맨 위로 정렬됩니다. NULL/LAN에서는 `NotSupportedByService`로 실패합니다 |
+| **Create Easy Party** | `PartySettings` | 로컬 플레이어를 리더로 파티를 만듭니다. 아무도 이동하지 않습니다 ([가이드](Guide-Party.ko.md)) |
+| **Find Easy Parties** | `SearchParams` | Public 파티를 나열합니다. Join Code가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 파티만 돌아옵니다 |
+| **Join Easy Party** | `SearchResult` | Find Easy Parties가 돌려준 파티에 참가합니다. 참가는 리더가 정하고, 거절되면 `JoinRefused`와 리더의 사유로 실패합니다 |
+| **Leave Easy Party** | - | 파티를 나갑니다. 리더가 나가면 모든 멤버의 파티가 끝납니다 |
 
 > **세션 권한 필요**는 그 세션을 만든 게임을 뜻합니다. 리슨 서버라면 호스트 플레이어의 게임,
 > 데디케이티드 서버라면 서버 자신입니다. 그 외에는 `RequiresSessionAuthority` 실패를 받습니다.
@@ -68,8 +72,21 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 | 노드 | 세션 안에서 부르면 |
 |---|---|
 | **Create Easy Session** | `SessionAlreadyExists`로 실패합니다. 세션을 먼저 나가세요. 호스트의 맵 이동은 `Server Travel Easy Session`으로 합니다 |
-| **Start Easy Matchmaking** | `SessionAlreadyExists`로 실패합니다. 세션을 먼저 나가거나, 직접 고른 세션에 Join하세요 |
-| **Join Easy Session** | 세션을 옮깁니다. 새 호스트가 참가를 승인한 뒤에야 현재 세션을 떠나므로, 거절되면 플레이어는 그 자리에 그대로 남습니다. 이미 들어가 있는 세션이거나, 진행 중인 매치의 호스트라면 `SessionAlreadyExists`로 실패합니다. 호스트가 떠나면 모두의 매치가 끝나기 때문입니다. 새 호스트에게 물을 수 없으면 현재 세션을 지킨 채 `JoinRefused`로 실패합니다 |
+| **Start Easy Matchmaking** | `SessionAlreadyExists`로 실패합니다. 세션을 먼저 나가거나, 직접 고른 세션에 Join하세요. 매치가 시작되지 않은 세션의 호스트는 예외로, 모든 플레이어를 데리고 갑니다 ([가이드](Guide-Sessions.ko.md#다른-플레이어-데려가기)) |
+| **Join Easy Session** | 세션을 옮깁니다. 새 호스트가 참가를 승인한 뒤에야 현재 세션을 떠나므로, 거절되면 플레이어는 그 자리에 그대로 남습니다. 매치가 시작되지 않은 세션의 호스트는 모든 플레이어를 데리고 갑니다. 이미 들어가 있는 세션이거나, 진행 중인 매치의 호스트라면 `SessionAlreadyExists`로 실패합니다. 호스트가 떠나면 모두의 매치가 끝나기 때문입니다. 새 호스트에게 물을 수 없으면 현재 세션을 지킨 채 `JoinRefused`로 실패합니다 |
+| **Create Easy Party**, **Join Easy Party** | 파티는 게임 세션 밖에서만 존재하므로 `SessionAlreadyExists`로 실패합니다 |
+
+**파티 안에서 요청을 부르면.** 행선지는 리더가 정하므로, 같은 요청이 리더와 멤버에게 다르게 동작합니다.
+
+| 노드 | 파티 리더 | 파티 멤버 |
+|---|---|---|
+| **Create Easy Session** | 파티를 데리고 갑니다. Max Players가 파티 인원보다 작으면 `InvalidParams` | `InParty` |
+| **Join Easy Session** | 파티 전체가 들어갈 자리를 요청하고 데리고 갑니다. 자리가 없으면 `JoinSessionFull` | `InParty` |
+| **Start Easy Matchmaking** | 파티 전체가 들어갈 자리가 있는 세션만 고르고 데리고 갑니다 | `InParty` |
+| **Create Easy Party**, **Join Easy Party** | `SessionAlreadyExists`. 먼저 파티를 나가세요 | `SessionAlreadyExists`. 먼저 파티를 나가세요 |
+| **Kick Easy Party Member**, 파티 초대 노드 | 가능 | `RequiresPartyLeader` |
+
+게임 세션에 들어가면 모두의 파티가 닫히고, `MovedToGameSession`이 담긴 `OnPartyLeft`가 옵니다. 자세한 내용은 [파티 가이드](Guide-Party.ko.md#행선지는-리더가-정합니다)에 있습니다.
 
 ## 2. 조회 블루프린트 노드
 
@@ -91,7 +108,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Activity | `GetActivity` | 지금 무엇이 도는지: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling. Is Easy Session Busy가 false일 때만 None. 메뉴가 시작하지 않은 초대 참가나 복구도 이름을 붙입니다 |
 | Get Easy Session Display Name | `GetSessionDisplayName` | 세션이 광고되는 이름 |
 | Get Easy Session Password | `GetSessionSettings().Password` | 이 게임이 호스팅 중인 세션의 비밀번호. 호스트에게 보여주기 위한 것으로, **클라이언트에서는 빈 값**입니다. 비밀번호는 호스트를 떠나지 않습니다 |
-| Get Easy Session Player Infos | `GetSessionPlayerInfos` | 같은 목록에 호스트/로컬 플레이어 여부까지. 참가자 목록 UI용 |
+| Get Easy Session Player Infos | `GetSessionPlayerInfos` | 세션의 모든 플레이어와 호스트/로컬 플레이어/준비 여부. 참가자 목록 UI용 |
 | Get Easy Session Player Count | `GetSessionPlayerCount` | 지금 세션에 있는 플레이어 수 |
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | 정원. 세션이 없으면 0 |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
@@ -100,8 +117,14 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Online Subsystem Name (EasySession) | - | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | - | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
 | Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용. 돌고 있는 요청이 뒤에 붙습니다. 예: `Idle; Matchmaking (Searching, 12s)` |
-| Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호만 호스트에서만 채워집니다 |
+| Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호와 친구 예외만 호스트에서만 채워집니다 |
 | Get Easy Session Join Code | `GetSessionJoinCode` | 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 세션에 있는 누구나 읽고 공유할 수 있습니다 |
+| Is In Easy Party | `IsInParty` | 로컬 플레이어가 파티에 있는가 |
+| Is Easy Party Leader | `IsPartyLeader` | 로컬 플레이어가 파티 리더인가. 파티 밖에서는 false |
+| Get Easy Party Members | `GetPartyMembers` | 리더를 포함한 모든 멤버와 리더/로컬 플레이어/준비 여부 |
+| Get Easy Party Settings | `GetPartySettings` | 파티의 Max Members와 Privacy. 리더와 모든 멤버에서 동작합니다. 파티 밖에서는 기본값 |
+| Get Easy Party Join Code | `GetPartyJoinCode` | Join Code 파티가 광고하는 코드. 없으면 빈 문자열 |
+| Is Easy Party Restoring | `IsRestoringParty` | 지난 매치의 파티를 다시 만들거나 찾는 중인가. true인 동안 대기 메시지를 띄우세요 |
 
 ### 2.2 서브시스템에서 호출하는 노드 (`UEasySessionSubsystem`)
 
@@ -111,11 +134,10 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 |---|---|
 | Get Active Easy Matchmaking Policy | 실행 중인 Matchmaking의 점수 정책 객체. 진행 상황은 정책이 아니라 서브시스템의 On Matchmaking 이벤트로 방송됩니다 |
 
-> **이 함수들은 어떤 세션에 대해 답하는가?** 플레이어가 찾고, 참가하고, 플레이하는 게임 세션입니다.
+> **이 함수들은 어떤 세션에 대해 답하는가?** Session 노드는 플레이어가 찾고, 참가하고, 플레이하는 게임 세션에 대해 답합니다.
 > 프로세스당 정확히 하나만 존재하므로(README의 제약 사항 참고) 세션을 인자로 받는 함수가 없습니다.
-> 나중에 매치와 나란히 존재하는 파티 같은 두 번째 종류의 세션이 추가되더라도, 이 함수들의 의미를
-> 바꾸는 대신 자체 노드를 함께 들여올 것입니다. `Is In Session`은 게임 세션이 존재하는 한 계속
-> 게임 세션에 대해 답합니다.
+> 파티는 그 옆에 따로 존재하고 자기 Party 노드를 가지므로, 플레이어가 파티에 있어도 여기는 바뀌지 않습니다.
+> `Is In Easy Session`은 계속 게임 세션에 대해서만 답합니다.
 >
 > 여기 있는 것 중 일부는 애초에 세션에 대한 질문이 아닙니다. `Is Easy Session Busy`와
 > `Get Easy Session Queue Status`는 요청 큐를, `Is Easy Matchmaking Running`,
@@ -158,14 +180,18 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이. 결과 값을 돌려줍니다 |
-
-> 넷 다 `EEasySessionResult`를 돌려줍니다. NULL/LAN처럼 그 기능이 없는 서비스에서는 `NotSupportedByService`입니다.
+| Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | 파티로의 플랫폼 초대. 파티 리더 전용, 결과 값을 돌려줍니다 |
+| Show Easy Party Invite UI | `ShowPartyInviteUI` | 파티용 플랫폼 초대 오버레이. 파티 리더 전용, 결과 값을 돌려줍니다 |
+| Set Easy Session Ready | `SetSessionReady` | 로컬 플레이어의 준비 상태를 바꿉니다. 모든 플레이어가 Get Easy Session Player Infos에서 봅니다. 세션이 맵을 옮길 때마다 다시 풀립니다 |
+| Set Easy Party Ready | `SetPartyReady` | 로컬 플레이어의 준비 상태를 바꿉니다. 모든 멤버가 Get Easy Party Members에서 봅니다 |
+| Kick Easy Session Player | `KickPlayer` | 플레이어를 내보내고 세션이 없어질 때까지 다시 들어오지 못하게 합니다. 내보내진 플레이어는 메뉴에서 `Kicked`와 사유를 읽습니다. 세션 권한 필요 |
+| Kick Easy Party Member | `KickPartyMember` | 멤버를 내보내고 이 파티에 다시 들어오지 못하게 합니다. 내보내진 멤버에게 `Kicked`가 담긴 `OnPartyLeft`가 옵니다. 파티 리더 전용 |
 | Server Travel Easy Session | `ServerTravel` | 세션 전체를 새 맵으로 옮깁니다. 세션 권한 필요 |
 | Destroy Easy Session For Everyone | `DestroySessionForEveryone` | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 세션 권한 필요 |
 
-초대와 프로필 노드는 플랫폼 서비스가 필요합니다. NULL/LAN에서는 false를 반환합니다.
+초대, 프로필, 준비, 추방 노드는 `EEasySessionResult`를 돌려줍니다. 초대와 프로필 노드는 플랫폼 서비스가 필요하므로 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
 
-마지막 두 노드는 세션 권한을 스스로 확인합니다. 클라이언트가 호출하면 아무것도 바뀌지 않고 로그에 경고만 남으므로, 호출이 무해하다는 데 기대지 말고 `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요.
+`Server Travel Easy Session`과 `Destroy Easy Session For Everyone`은 세션 권한을 스스로 확인합니다. 클라이언트가 호출하면 아무것도 바뀌지 않고 로그에 경고만 남으므로, 호출이 무해하다는 데 기대지 말고 `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요.
 
 ## 4. 이벤트
 
@@ -183,7 +209,10 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패한 경우입니다. `Reason`은 상태 표시나 로그에 쓰세요. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다 |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy가 바뀌었을 때. 한 번 바인딩해 두고 이 플래그로 세션 버튼을 켜고 끄면 매 틱 폴링이 필요 없습니다. true로 바뀐 순간 Get Easy Session Activity가 무엇이 시작됐는지 알려줍니다 |
-| `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행되고, 실행 중인 Matchmaking은 취소됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다 |
+| `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행되고, 실행 중인 Matchmaking은 취소됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다. 파티 초대면 `Session.bIsParty`가 true이고, Join Easy Party로 참가하며 게임 세션 중에는 참가하지 않습니다 ([가이드](Guide-Party.ko.md#초대)) |
+| `OnSessionPlayersChanged` | - | 플레이어가 세션에 들어오거나 나가거나 준비 상태를 바꿨을 때. 호스트와 모든 클라이언트에서 발생합니다. Get Easy Session Player Infos가 이미 새 목록을 돌려줍니다 |
+| `OnPartyMembersChanged` | - | 멤버가 파티에 들어오거나 나가거나 준비 상태를 바꿨을 때. 리더와 모든 멤버에서 발생합니다. Get Easy Party Members가 이미 새 목록을 돌려줍니다 |
+| `OnPartyLeft` | `Reason`(`EEasyPartyLeaveReason`), `ReasonText`(Text) | 로컬 플레이어가 더 이상 파티에 없을 때. 나갔거나, 추방됐거나, 리더가 나갔거나, 연결이 끊겼거나, 파티가 게임 세션에 들어간 경우입니다 |
 
 `Result`와 `ErrorMessage`는 해당 노드의 출력 핀으로 받았을 값과 같습니다.
 
@@ -193,13 +222,15 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 `SessionDisplayName`(String), `MaxPlayers`(int), `bShouldAdvertise`, `bHidden`, `Password`(String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `Region`(`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings`(Map String->String)
 
 세션이 자기 자신에 대해 광고하는 값들입니다. `Update Easy Session`이 받는 구조체가 정확히
-이것이라, 여기 있는 필드는 전부 살아있는 세션이 바꿀 수 있습니다.
+이것이라, 여기 있는 필드는 전부 살아있는 세션이 바꿀 수 있습니다. 클라이언트에서 `Get Easy Session Settings`를 읽으면 `Password`는 비어 있고 `bFriendsBypassPassword`는 false입니다. 두 값은 호스트만 갖고 있기 때문입니다.
 
 ### 5.2 FEasySessionHostParams *(FEasySessionSettings에 더해서)*
 `InitialMapName`(String, 필수), `bIsLANMatch`, `bUsePresence`, `AdditionalTravelOptions`(String)
 
 호스팅은 위 설정에 서버를 띄우는 방법을 더한 것입니다. 여기 더해진 필드들은 세션을 만들 때
 한 번만 읽히고, 그래서 Update가 바꿀 수 없습니다.
+두 이름의 규칙은 이렇습니다. Settings는 세션이나 파티가 광고하고 다시 읽을 수 있는 값이고, HostParams는 거기에 서버를 띄우는 데 필요한 값을 더한 것입니다.
+파티는 서버를 띄우지 않으므로 Settings만 있습니다 ([5.10](#510-feasypartysettings)).
 
 각 필드의 동작은 [세션 가이드](Guide-Sessions.ko.md)에 있습니다. `bHidden`은 세션을 광고하되
 Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Password`와 `bFriendsBypassPassword`는
@@ -214,11 +245,11 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 이 중 넷은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `SearchMode`는 서비스에 다른 호출을 하도록 바꾸고(By Friend), `SearchTargetId`가 어느 친구인지를 지정합니다. 이때 Max Results와 LAN Query는 무시되고, 필터는 그대로 적용됩니다. By Friend는 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 봅니다.
 
 ### 5.4 FEasySessionSearchResult *(읽기 전용)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `bIsParty`, `CustomSettings`
 
 두 노드를 잇는 구조체입니다. `Find Easy Sessions`가 돌려주고 `Join Easy Session`이 받습니다.
 구조체를 통째로 들고 계세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
-저장해야 합니다.
+저장해야 합니다. Find Easy Parties도 `bIsParty`가 켜진 같은 구조체를 돌려주고, Join Easy Party가 그것을 받습니다.
 
 ### 5.5 FEasyFriendSession
 `Friend`(`FEasySessionFriend`), `bHasSession`, `Session`(`FEasySessionSearchResult`)
@@ -232,7 +263,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `JoinPassword`(String), `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
 
 ### 5.7 FEasySessionPlayerInfo *(읽기 전용)*
-`PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)
+`PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `bIsReady`(세션이 맵을 옮길 때마다 다시 풀림), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)
 
 ### 5.8 FEasySessionFriend *(읽기 전용)*
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId`(Unique Net Id)
@@ -243,6 +274,16 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 ### 5.9 FEasyDisconnectInfo *(읽기 전용)*
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)
 
+### 5.10 FEasyPartySettings
+`MaxMembers`(int, 리더 포함 2 이상), `Privacy`(`EEasyPartyPrivacy`)
+
+`Create Easy Party`가 받고 `Get Easy Party Settings`가 돌려주는 구조체입니다. 파티에는 맵, 비밀번호, 지역, 커스텀 데이터가 없으므로 이 두 필드가 전부입니다 ([가이드](Guide-Party.ko.md#누가-들어올-수-있나)).
+
+### 5.11 FEasyPartyMemberInfo *(읽기 전용)*
+`PlayerName`, `bIsLocalPlayer`, `bIsLeader`, `bIsReady`, `PlayerId`
+
+`Get Easy Party Members`가 돌려주며, `Kick Easy Party Member`에 그대로 넘깁니다.
+
 ## 6. 열거형
 
 ### 6.1 EEasySessionResult
@@ -252,7 +293,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | 값 | 뜻 |
 |---|---|
 | `Success` | 성공 |
-| **`SessionAlreadyExists`** | Create 또는 Matchmaking: 이미 세션에 들어가 있으니 먼저 나가세요. Join: 참가하려는 그 세션에 이미 들어가 있거나, 진행 중인 매치의 호스트입니다 ([규칙](#1-비동기-블루프린트-노드)) |
+| **`SessionAlreadyExists`** | Create 또는 Matchmaking: 이미 세션에 들어가 있으니 먼저 나가세요. Join: 참가하려는 그 세션에 이미 들어가 있거나, 진행 중인 매치의 호스트입니다 ([규칙](#1-비동기-블루프린트-노드)). Create 또는 Join Easy Party: 이미 파티나 게임 세션에 들어가 있습니다 |
 | **`NoSessionExists`** | 대상이 될 세션이 없습니다 |
 | **`NoSessionsFound`** | 검색은 정상이었고 결과가 없었습니다. 오류가 아니므로 직접 호스팅을 권하면 됩니다 |
 | **`JoinSessionFull`** | 세션이 꽉 찼습니다. 트래블 전에는 호스트가, 그 뒤에는 온라인 서비스가 거절합니다. 호스트는 아직 로드 중인 플레이어의 예약까지 세므로, 빈자리가 보이던 검색 결과도 여기서 끝날 수 있습니다 |
@@ -263,6 +304,8 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |
 | **`Canceled`** | `Cancel Easy Matchmaking`가 Matchmaking를 중단시켰습니다 |
 | **`NotSupportedByService`** | 지금 쓰는 온라인 서비스에 그 기능이 없습니다. 친구와 초대는 스팀에만 있고 NULL/LAN에는 없습니다. 설정 문제가 아니므로 그 서비스에서는 버튼을 숨기세요 |
+| **`InParty`** | 파티 멤버가 Create, Join, Matchmaking을 불렀습니다. 행선지는 리더가 정하므로 멤버에게는 그 버튼을 꺼 두거나, 혼자 플레이하려면 Leave Easy Party를 부르세요 |
+| **`RequiresPartyLeader`** | 파티 리더만 할 수 있는 일입니다. `Is Easy Party Leader`가 true일 때만 버튼을 보여주세요 |
 | `NoOnlineSubsystem` | 온라인 서브시스템이 없습니다. `DefaultEngine.ini`를 확인하세요 |
 | `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Initial Map Name 없는 Matchmaking |
 | `MatchmakingAlreadyInProgress` | Matchmaking가 이미 돌고 있습니다 |
@@ -286,6 +329,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 돌려보냈습니다 |
 | `TravelFailure` | 세션의 맵을 로드하지 못했습니다 |
 | `Rejected` | 호스트가 도착한 접속을 사유와 함께 거절했습니다. 비밀번호 불일치, 더 이상 받지 않는 매치 등이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
+| `Kicked` | 호스트가 `Kick Easy Session Player`로 이 플레이어를 내보냈습니다. 세션이 없어질 때까지 다시 들어올 수 없습니다. `ReasonText`는 호스트의 사유입니다 |
 
 ### 6.4 EEasyMatchmakingState
 
@@ -303,6 +347,26 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - 플러그인이 지금 하고 있는 일. `Get Easy Session Activity`로 읽습니다. 누가 시작했든 그 일에 이름을 붙이므로, 상태 위젯이 메뉴가 요청한 적 없는 초대 참가나 연결 끊김 복구도 서술할 수 있습니다. `Get Activity Message`가 이를 문장으로 바꿉니다.
 
+### 6.8 EEasyPartyPrivacy
+
+| 값 | Find Easy Parties | 리더가 받는 사람 |
+|---|---|---|
+| `InviteOnly`(기본값) | 숨김 | 초대한 플레이어, 리더의 친구, 매치 전 파티의 멤버 |
+| `JoinCode` | 코드로만 찾음 | 코드를 가진 누구나 |
+| `Public` | 보임 | 누구나 |
+
+### 6.9 EEasyPartyLeaveReason
+
+`OnPartyLeft`의 `Reason`입니다.
+
+| 값 | 뜻 |
+|---|---|
+| `Left` | 로컬 플레이어가 Leave Easy Party를 불렀습니다 |
+| `Kicked` | 리더가 로컬 플레이어를 내보냈습니다. `ReasonText`는 리더의 사유입니다 |
+| `LeaderLeft` | 리더가 나가서 파티가 끝났습니다 |
+| `ConnectionLost` | 리더와의 연결이 끊겼거나, 매치가 끝난 뒤 리더가 돌아오지 않았습니다 |
+| `MovedToGameSession` | 파티가 게임 세션에 들어가 닫혔습니다. 매치를 하는 파티의 정상적인 끝이며 오류가 아닙니다 |
+
 ## 7. UEasyMatchmakingPolicy
 
 Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 패스, 참가, 호스트 대체 같은 실행 자체는 서브시스템이 맡습니다.
@@ -318,13 +382,16 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 |---|---|---|
 | `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 Travel이 실패하면 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끊긴 세션은 설정과 무관하게 파괴되고, 끄면 플레이어만 있던 맵에 남습니다 |
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
+| `bRestorePartyAfterMatch` | true | 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티를 되돌립니다. 리더가 다시 만들고 모든 멤버가 찾습니다 ([가이드](Guide-Party.ko.md#매치가-끝난-뒤)) |
+| `PartyRestoreWaitSeconds` | 120 | 매치가 끝난 뒤 멤버가 리더의 파티를 찾는 시간 |
+| `PartyReconnectSeconds` | 15 | 사유 없이 연결이 닫힌 뒤 멤버가 리더에게 계속 연결을 시도하는 시간. 예를 들어 리더의 다음 맵이 로드되는 동안입니다 |
 | `bAcceptInvitesWhileInSession` | false | 자동 참가가 지금 있는 세션을 파괴하고 초대받은 세션에 참가해도 되는지 정합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로, 먼저 물어본 뒤 `Join Easy Session`을 직접 부르면 됩니다. 이 호출은 새 호스트가 승인한 뒤에 지금 세션을 나갑니다 |
 
 ## 9. C++ 참고
 
 요청 함수들은 델리게이트 콜백과 함께 네이티브에서 호출할 수 있습니다. `CreateSession`,
 `FindSessions`, `JoinSession`, `DestroySession`, `UpdateSession`,
-`StartMatchmaking`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
+`StartMatchmaking`, `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
 
 세션 호출은 전부 큐에 요청 하나로 들어가고, 큐는 한 번에 하나씩 실행합니다. Matchmaking과
 `FindFriendSessions`는 검색, 참가, 호스트를 자기 요청 안의 하위 요청으로 실행하므로, 게임의
@@ -339,4 +406,10 @@ Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습
 
 ## 10. 콘솔 명령 *(개발 빌드 전용)*
 
-`EasySession.Host <Map>`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`, `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.Diagnose`
+세션: `EasySession.Host <Map>`, `EasySession.Find`, `EasySession.Join [Index] [Password]`, `EasySession.Matchmaking [Map]`, `EasySession.Travel <Map>`, `EasySession.Destroy`, `EasySession.Start`, `EasySession.End`, `EasySession.Cancel`, `EasySession.Status`
+
+플레이어: `EasySession.Players`(Kick용 번호 표시), `EasySession.Kick <Index> [Reason]`, `EasySession.Ready <0|1>`
+
+파티: `EasySession.CreateParty [MaxMembers] [invite|code|public]`, `EasySession.LeaveParty`, `EasySession.Party`(멤버와 참가 코드), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
+
+친구와 진단: `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.PartyInviteUI`, `EasySession.Diagnose`

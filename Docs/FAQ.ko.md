@@ -73,6 +73,20 @@ LogEasySession: Warning: Not joining the invited session: this player is already
 
 `OnSessionInviteAccepted`는 그대로 발생하므로, 여기에 바인딩해서 플레이어에게 먼저 물어본 뒤 `Join Easy Session`을 직접 부르세요. 바로 참가하게 하려면 Project Settings -> Plugins -> EasySession에서 **Accept Invites While In Session**을 켜세요.
 
+파티 초대는 이 설정과 상관없이 게임 세션 중에는 참가하지 않으며, 로그에 그 사실이 남습니다.
+
+```
+LogEasySession: Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Party with the invite's session.
+```
+
+스팀에서는 원인이 하나 더 있습니다. 세션 검색이 도는 동안 수락한 초대는 EasySession이 알기 전에 엔진이 무시합니다. 로그 줄은 엔진이 남깁니다.
+
+```
+LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
+```
+
+검색은 Find Easy Sessions, Find Easy Parties, Matchmaking, 리더를 따라가는 파티 멤버, 매치가 끝난 뒤 리더의 파티를 찾는 파티 멤버에서 돕니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
+
 ## "Travel 중에 Warning: Player ... is not part of session (GameSession)이 뜹니다"
 
 **클라이언트 Travel 중 한두 번 나오는 것은 정상이고, 엔진이 내는 것입니다.** 클라이언트가 이전 맵을 떠날 때 그 맵의 `APlayerState`마다 파괴되면서, 온라인 서비스가 그 플레이어를 찾을 수 없는 세션에서 빼내려 시도합니다. 무시하세요. `LogOnlineSession`의 로그 레벨을 낮추면 진짜 경고까지 같이 가려집니다.
@@ -98,6 +112,22 @@ EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스�
 ## "SessionAlreadyExists가 뜨는데, 저는 세션에 없는 것 같은데요?"
 
 들어가 있습니다. 대개 이전에 실패한 흐름이 남긴 것입니다. `Destroy Easy Session`을 먼저 부르고(상황이 꼬여 있어도 안전합니다) 다시 시도하세요. EasySession은 네트워크 연결이 끊기면 죽은 세션을 자동으로 파괴하므로, 이 문제는 주로 네트워크와 무관한 로직 버그(예: 이중 호스팅) 뒤에 생깁니다.
+
+## "파티에 있을 때 Create(또는 Join, Matchmaking)를 눌러도 아무 반응이 없어요"
+
+그 플레이어는 리더가 아니라 파티 멤버입니다. 행선지는 리더가 정하므로 요청이 `InParty`로 거절되고, 노드의 `OnFailure`에 사유가 담깁니다.
+
+```
+LogEasySession: Warning: The party leader decides where the party goes. Call Leave Easy Party to play alone.
+```
+
+메뉴에 실패 메시지를 띄우고, 멤버에게는 그 버튼들을 꺼 두세요. 조건은 `Is In Easy Party`가 true이면서 `Is Easy Party Leader`가 false일 때입니다. 혼자 플레이하려는 멤버는 먼저 `Leave Easy Party`를 부릅니다.
+
+## "파티 리더가 다른 맵을 열었는데 멤버는 그대로 남아 있어요"
+
+파티는 원래 그렇게 동작합니다. 파티에는 맵이 없어서, 각 멤버는 자기 맵에 그대로 있다가 리더의 맵이 로드되면 리더에게 다시 연결합니다. 파티가 따라가는 것은 게임 세션에 들어갈 때뿐입니다.
+
+매치 전 로비처럼 모두를 같은 맵에 모으려면, 리더가 `Create Easy Session`으로 게임 세션을 호스트하세요. 파티가 그 세션으로 따라옵니다([파티 가이드](Guide-Party.ko.md#매치-밖에서-맵-바꾸기)).
 
 ## "진행 중인 Matchmaking를 취소할 수 있나요?"
 

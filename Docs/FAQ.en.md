@@ -73,6 +73,20 @@ Accepting an invite is one click in the platform overlay, and joining would dest
 
 `OnSessionInviteAccepted` still fires, so bind it and ask the player first, then call `Join Easy Session` yourself. To go back to joining immediately, turn on **Accept Invites While In Session** in Project Settings -> Plugins -> EasySession.
 
+A party invite is never joined during a game session, whatever that setting says, and the log says so:
+
+```
+LogEasySession: Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Party with the invite's session.
+```
+
+On Steam there is one more cause: the engine ignores an invite accepted while a session search is running, before EasySession hears of it. The log line comes from the engine:
+
+```
+LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
+```
+
+A search runs during Find Easy Sessions, Find Easy Parties, Matchmaking, a party member following the leader, and a party member looking for the leader's party after a match. Accept the invite again once the search has finished.
+
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
 **One or two of these during client travel are normal, and they come from the engine.** When the client leaves its previous map, each `APlayerState` in that map is destroyed and tries to take the local player out of a session the online service cannot find them in. Ignore it - don't lower the `LogOnlineSession` verbosity, or you'll hide real warnings too.
@@ -98,6 +112,22 @@ Calling `Find Easy Sessions` several times in a row is not the problem - EasySes
 ## "SessionAlreadyExists - but I don't think I'm in a session?"
 
 You are - probably a leftover from a previous failed flow. Call `Destroy Easy Session` first (safe even mid-confusion), then retry. EasySession also auto-destroys dead sessions when the network connection fails, so this mostly happens after non-network logic bugs (e.g. double hosting).
+
+## "I press Create (or Join, or Matchmaking) in a party and nothing happens"
+
+The player is a party member, not the leader. The leader decides where the party goes, so the request is refused with `InParty` and the node's `OnFailure` carries the reason:
+
+```
+LogEasySession: Warning: The party leader decides where the party goes. Call Leave Easy Party to play alone.
+```
+
+Show the failure message in your menu, and disable those buttons for members: `Is In Easy Party` is true and `Is Easy Party Leader` is false. A member who wants to play alone calls `Leave Easy Party` first.
+
+## "The party leader opened another map, and the members stayed behind"
+
+That is how a party works. A party has no map: each member stays in their own map and reconnects to the leader once the leader's map has loaded. Only entering a game session brings the party along.
+
+To bring everyone into the same map, for example a lobby before the match, the leader hosts a game session with `Create Easy Session`. The party follows into it ([Party guide](Guide-Party.en.md#changing-maps-outside-a-match)).
 
 ## "Can I cancel a Matchmaking in progress?"
 

@@ -61,6 +61,13 @@ Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Cance
 
 After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
 
+### Matchmaking with a group
+
+Two players bring others along when they matchmake:
+
+- **A party leader.** The run only considers sessions with room for the whole party, and the party follows into the session the run joins or hosts. A party member who calls Start Easy Matchmaking is refused with `InParty` ([Party guide](Guide-Party.en.md)).
+- **The host of a session whose match has not started**, such as a lobby. The run only considers sessions with room for every player in it, and they follow. The host fallback is skipped, because the host is still in its own session, so a run that finds nothing completes with `NoSessionsFound` ([Sessions guide](Guide-Sessions.en.md#bringing-the-other-players)).
+
 ## How "the best session" is chosen
 
 The default policy narrows the search results down to candidates, then scores those and joins in score order.

@@ -6,6 +6,8 @@ Everything about creating, finding, joining, starting a match and leaving sessio
 
 All requests are **queued and executed one at a time** - you can call them in any order, even in the same frame, and they will never corrupt the online service.
 
+Players who stay together between matches, such as friends in the main menu, are a party. The [Party guide](Guide-Party.en.md) covers it, including how a party leader brings the party into a session.
+
 ## Create Session
 
 `Create Easy Session` with `FEasySessionHostParams`. The table follows the order the pins appear in on the Make node.
@@ -61,7 +63,7 @@ itself, it is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess`.
 
-Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, hidden flag, region, in-progress flag, and the custom settings map.
+Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, region, in-progress flag, party flag, and the custom settings map.
 
 ## Join Session
 
@@ -115,7 +117,7 @@ Event Construct
                                              Reason Text == "The match is already in progress."
 ```
 
-The information survives the travel precisely so the menu can show it. Check `Reason` rather than matching the text. There are four of them:
+The information survives the travel precisely so the menu can show it. Check `Reason` rather than matching the text. There are five of them:
 
 | Reason | When |
 |---|---|
@@ -123,8 +125,24 @@ The information survives the travel precisely so the menu can show it. Check `Re
 | `HostDestroyedSession` | The host sent everyone out with `Destroy Easy Session For Everyone` |
 | `TravelFailure` | Traveling to the session's map failed |
 | `Rejected` | The host refused the connection when it arrived - a closed match, or a password session reached without the reservation beacon. `Reason Text` says which |
+| `Kicked` | The host removed this player with `Kick Easy Session Player`. `Reason Text` is the host's reason |
 
 Keep this handler even with the beacon working: it is the safety net for every way a connection can end.
+
+### Bringing the other players
+
+The host of a session whose match has not started can take everyone along to another session, for example from a lobby session into a match:
+
+| Host calls | What happens |
+|---|---|
+| `Join Easy Session` | The host asks the new host for room for every player in its session. Without room the join fails with `JoinSessionFull`, and everyone stays |
+| `Start Easy Matchmaking` | The search only considers sessions with room for everyone. The host fallback is skipped, because the host is still in its own session, so a run that finds nothing completes with `NoSessionsFound` and everyone stays |
+
+The other players are told to follow, and each one keeps searching for the new session for up to 30 seconds. They need no password, because the host's reservation already holds them. The host waits up to 10 seconds for them to leave and then leaves too, so its session is not destroyed under them.
+
+Only a host brings players. A client that joins another session leaves alone, once the new host approved the join. The host of a match in progress is refused with `SessionAlreadyExists`, because leaving would end the match for every player.
+
+The players a host brings must be reachable over the reservation beacon. When the new host cannot be asked, the join fails with `JoinRefused` and everyone stays where they are.
 
 ## Password protected sessions
 
@@ -229,11 +247,20 @@ a friends-only session: no browser lists it, anyone with the code walks in.
 The code identifies the session but does not protect it. Protection is `Password`, and the
 two combine: the code finds the session, the password still gates the door.
 
+## Players: ready and kick
+
+`Get Easy Session Player Infos` lists everyone in the session with their name, whether they are the local player or the host, whether they are ready, and their player id. `OnSessionPlayersChanged` fires on the host and on every client when a player joins, leaves or changes whether they are ready, so a player list reads it again then.
+
+`Set Easy Session Ready` changes whether the local player is ready. The plugin only shares the value: the game decides what being ready allows, for example enabling the host's Start button. Ready is unset again in every map the session travels to.
+
+`Kick Easy Session Player` removes a player from the session and keeps them out until the session is destroyed. The player travels to the menu, where `Consume Pending Easy Disconnect Info` returns `Kicked` with the host's reason. Session authority only.
+
 ## Events and state queries
 
 The result of each request arrives on its node's output pins. For UI that watches the session as a whole,
 bind these on the subsystem (`Get Easy Session Subsystem`):
 
+- `OnSessionPlayersChanged` - a player joined, left or changed whether they are ready
 - `OnBusyChanged` - a request started or everything finished. `Get Easy Session Activity` names the activity, so a spinner can say what it waits for
 - `OnSessionFailure` - something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)
@@ -246,7 +273,7 @@ Everything above is a thin wrapper over `UEasySessionSubsystem` - C++ users call
 
 ```cpp
 UEasySessionSubsystem* Session = GetGameInstance()->GetSubsystem<UEasySessionSubsystem>();
-Session->CreateEasySession(HostParams,
+Session->CreateSession(HostParams,
 	FEasySessionCompleteDelegate::CreateUObject(this, &UMyClass::OnHosted));
 ```
 

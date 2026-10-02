@@ -6,6 +6,8 @@
 
 모든 요청은 **큐에 들어가 하나씩 실행됩니다.** 어떤 순서로 불러도, 심지어 같은 프레임에 불러도 온라인 서비스가 망가지지 않습니다.
 
+메인 메뉴의 친구들처럼 매치와 매치 사이를 함께 다니는 플레이어 묶음은 파티입니다. 파티 리더가 파티를 데리고 세션에 들어가는 방법까지 [파티 가이드](Guide-Party.ko.md)에 있습니다.
+
 ## Create Session
 
 `Create Easy Session`에 `FEasySessionHostParams`를 넘깁니다. 표의 순서는 Make 노드에 핀이 나오는 순서와 같습니다.
@@ -61,7 +63,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 결과는 `OnSuccess`로 옵니다.
 
-각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 숨김 여부, 지역, 매치 진행 중 여부, 커스텀 세팅 맵을 담고 있습니다.
+각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 지역, 매치 진행 중 여부, 파티 여부, 커스텀 세팅 맵을 담고 있습니다.
 
 ## Join Session
 
@@ -115,7 +117,7 @@ Event Construct
                                              Reason Text == "The match is already in progress."
 ```
 
-이 정보는 메뉴가 보여줄 수 있도록 Travel을 넘어 보존됩니다. 문자열을 비교하지 말고 `Reason`을 보세요. `Reason`은 네 가지입니다.
+이 정보는 메뉴가 보여줄 수 있도록 Travel을 넘어 보존됩니다. 문자열을 비교하지 말고 `Reason`을 보세요. `Reason`은 다섯 가지입니다.
 
 | Reason | 언제 |
 |---|---|
@@ -123,8 +125,24 @@ Event Construct
 | `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 내보냄 |
 | `TravelFailure` | 세션의 맵으로 이동하지 못함 |
 | `Rejected` | 호스트가 도착한 연결을 거절함. 매치가 닫혀 있거나, 예약 비콘을 거치지 않고 비밀번호 세션에 도착함. 사유는 `Reason Text`에 |
+| `Kicked` | 호스트가 `Kick Easy Session Player`로 이 플레이어를 내보냄. 호스트의 사유는 `Reason Text`에 |
 
 비콘이 잘 동작하더라도 이 핸들러는 남겨 두세요. 연결이 끊기는 모든 경우를 받아내는 안전망입니다.
+
+### 다른 플레이어 데려가기
+
+매치가 시작되지 않은 세션의 호스트는 모두를 데리고 다른 세션으로 갈 수 있습니다. 예를 들어 로비 세션에서 매치로 넘어가는 경우입니다.
+
+| 호스트가 부르는 노드 | 일어나는 일 |
+|---|---|
+| `Join Easy Session` | 호스트가 새 호스트에게 자기 세션의 모든 플레이어가 들어갈 자리를 요청합니다. 자리가 없으면 `JoinSessionFull`로 실패하고 모두 그대로 남습니다 |
+| `Start Easy Matchmaking` | 모두가 들어갈 자리가 있는 세션만 고릅니다. 호스트는 아직 자기 세션에 있으므로 호스트 폴백은 건너뜁니다. 그래서 아무것도 찾지 못하면 `NoSessionsFound`로 끝나고 모두 그대로 남습니다 |
+
+다른 플레이어는 따라오라는 알림을 받고, 각자 새 세션을 최대 30초 동안 찾습니다. 호스트의 예약이 이미 그들을 담고 있으므로 비밀번호는 필요 없습니다. 호스트는 그들이 떠나기를 최대 10초 기다린 뒤에 자기도 떠나므로, 그들이 떠나기 전에 세션이 없어지지 않습니다.
+
+플레이어를 데려가는 것은 호스트뿐입니다. 클라이언트가 다른 세션에 참가하면 새 호스트가 승인한 뒤 혼자 떠납니다. 진행 중인 매치의 호스트는 떠나면 모두의 매치가 끝나므로 `SessionAlreadyExists`로 거절됩니다.
+
+호스트가 데려가는 플레이어는 예약 비콘을 거쳐야 합니다. 새 호스트에게 물을 수 없으면 참가가 `JoinRefused`로 실패하고 모두 그대로 남습니다.
 
 ## 비밀번호로 잠근 세션
 
@@ -228,11 +246,20 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 코드는 검색 필터로도 동작합니다. `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도
 그 세션 하나가 결과로 오므로, 참가하기 전에 세션 정보를 보여주는 UI를 만들 수 있습니다.
 
+## 플레이어: 준비와 추방
+
+`Get Easy Session Player Infos`는 세션의 모든 플레이어를 이름, 로컬 플레이어인지, 호스트인지, 준비했는지, 플레이어 id와 함께 돌려줍니다. 플레이어가 들어오거나, 나가거나, 준비 상태를 바꾸면 호스트와 모든 클라이언트에게 `OnSessionPlayersChanged`가 오므로, 플레이어 목록은 그때 다시 읽으면 됩니다.
+
+`Set Easy Session Ready`는 로컬 플레이어의 준비 상태를 바꿉니다. 플러그인은 값을 공유하기만 하고, 준비하면 무엇을 할 수 있는지는 게임이 정합니다. 예를 들어 호스트의 Start 버튼을 켜는 식입니다. 세션이 다른 맵으로 이동할 때마다 준비 상태는 다시 풀립니다.
+
+`Kick Easy Session Player`는 플레이어를 세션에서 내보내고, 세션이 없어질 때까지 다시 들어오지 못하게 합니다. 내보내진 플레이어는 메뉴로 이동하고, 거기서 `Consume Pending Easy Disconnect Info`가 `Kicked`와 호스트의 사유를 돌려줍니다. 세션 권한이 있는 게임만 부를 수 있습니다.
+
 ## 이벤트와 상태 조회
 
 요청 하나의 결과는 그 노드의 출력 핀으로 옵니다. 세션 전체를 지켜보는 UI라면 서브시스템(`Get Easy Session Subsystem`)에서
 아래 이벤트를 바인딩하세요.
 
+- `OnSessionPlayersChanged` - 플레이어가 들어오거나, 나가거나, 준비 상태를 바꿨습니다
 - `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 무엇인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
 - `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패한 경우입니다. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
@@ -245,7 +272,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 ```cpp
 UEasySessionSubsystem* Session = GetGameInstance()->GetSubsystem<UEasySessionSubsystem>();
-Session->CreateEasySession(HostParams,
+Session->CreateSession(HostParams,
 	FEasySessionCompleteDelegate::CreateUObject(this, &UMyClass::OnHosted));
 ```
 
