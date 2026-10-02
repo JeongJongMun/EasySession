@@ -145,6 +145,8 @@ void UEasySessionSubsystem::Deinitialize()
 
 void UEasySessionSubsystem::CreateSession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete)
 {
+	Party->CancelRestore();
+
 	if (IsPartyMember())
 	{
 		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
@@ -161,6 +163,8 @@ void UEasySessionSubsystem::FindSessions(const FEasySessionSearchParams& SearchP
 
 void UEasySessionSubsystem::JoinSession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
+	Party->CancelRestore();
+
 	if (IsPartyMember())
 	{
 		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
@@ -289,6 +293,8 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 		return;
 	}
 
+	Party->CancelRestore();
+
 	if (IsPartyMember())
 	{
 		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
@@ -320,6 +326,7 @@ void UEasySessionSubsystem::CancelMatchmaking()
 
 void UEasySessionSubsystem::CreateParty(const FEasyPartyParams& PartyParams, FEasySessionCompleteDelegate OnComplete)
 {
+	Party->CancelRestore();
 	EnqueueRequest(MakeShared<FEasySessionCreatePartyRequest>(PartyParams, MoveTemp(OnComplete)), NAME_PartySession);
 }
 
@@ -330,11 +337,13 @@ void UEasySessionSubsystem::FindParties(const FEasySessionSearchParams& SearchPa
 
 void UEasySessionSubsystem::JoinParty(const FEasySessionSearchResult& SearchResult, FEasySessionCompleteDelegate OnComplete)
 {
+	Party->CancelRestore();
 	EnqueueRequest(MakeShared<FEasySessionJoinPartyRequest>(SearchResult, MoveTemp(OnComplete)), NAME_PartySession);
 }
 
 void UEasySessionSubsystem::LeaveParty(FEasySessionCompleteDelegate OnComplete)
 {
+	Party->CancelRestore();
 	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)), NAME_PartySession);
 }
 
@@ -361,6 +370,11 @@ bool UEasySessionSubsystem::IsPartyLeader() const
 TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
 {
 	return Party->GetMembers();
+}
+
+bool UEasySessionSubsystem::IsRestoringParty() const
+{
+	return Party->IsRestoring();
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const
@@ -759,6 +773,11 @@ void UEasySessionSubsystem::HandlePartyEnded(EEasyPartyLeaveReason Reason, const
 	}
 
 	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(Reason, ReasonText, FEasySessionCompleteDelegate()), NAME_PartySession);
+}
+
+void UEasySessionSubsystem::EnqueuePartyRequest(TSharedRef<FEasySessionRequest> Request)
+{
+	EnqueueRequest(Request, NAME_PartySession);
 }
 
 void UEasySessionSubsystem::HandleSessionPlayersChanged()

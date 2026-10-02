@@ -12,6 +12,7 @@ class AEasySessionPartyBeaconHost;
 class AEasySessionPartyBeaconState;
 class ALobbyBeaconPlayerState;
 class FEasySessionBeaconPort;
+class FEasySessionRequest;
 class FOnlineSessionSettings;
 class UEasySessionSubsystem;
 class UWorld;
@@ -26,6 +27,10 @@ DECLARE_DELEGATE_TwoParams(FEasyPartyConnectComplete, bool /** bSuccess */, cons
  * The leader hosts the party beacon on the shared beacon listener, next to the reservation beacon of a game session.
  * Each member connects to it with a party beacon client once the member joined the party session.
  * The party session requests call this object once the party session is created or joined, and before it is destroyed.
+ *
+ * A map change destroys the beacons but keeps the party session.
+ * In the new map the leader starts the party beacon again, and each member connects to it again.
+ * Entering a game session closes the party, and back in a map without a game session this object creates or joins it again.
  *
  * Owned by the subsystem and destroyed with it.
  */
@@ -104,7 +109,59 @@ public:
 	/** @return Whether these settings belong to a party session rather than a game session. */
 	static bool IsPartySession(const FOnlineSessionSettings& Settings);
 
+	/** @return Whether this player is getting the party of the last match back: creating it again, or waiting for the leader's. */
+	bool IsRestoring() const { return bRestoring; }
+
+	/** Stop getting the party of the last match back, because the player chose something else. Does nothing while no restore runs. */
+	void CancelRestore();
+
 private:
+
+	/** The party this player was in before it entered a game session. */
+	struct FLastParty
+	{
+		/** The leader, whose party the members look for. */
+		FUniqueNetIdRepl LeaderId;
+
+		/** The settings the leader creates the party with again. */
+		FEasyPartyParams Params;
+
+		/** Every member the leader admitted, so an invite-only party admits them again. */
+		TArray<FUniqueNetIdRepl> MemberIds;
+
+		/** Was the party a LAN session. */
+		bool bIsLANMatch = false;
+	};
+
+	/** A map finished loading. Starts the party beacon again, connects to the leader again, or gets the party of the last match back. */
+	void HandlePostLoadMap(UWorld* LoadedWorld);
+
+	/** Keep connecting to the leader, whose party beacon a map change destroyed, until the reconnect time runs out. */
+	void StartReconnect();
+
+	/** Connect to the leader's party beacon once. */
+	void TryReconnect();
+
+	/** A reconnect finished. Tries again after a second, until the reconnect time runs out. */
+	void HandleReconnectComplete(bool bSuccess, const FText& Reason);
+
+	/** Create the party of the last match again on the leader, or look for it on a member. */
+	void StartRestore();
+
+	/** Create the party of the last match once, on the leader. */
+	void TryRestoreCreate();
+
+	/** Look for the leader's party once, and join it when it is found. */
+	void TryRestoreJoin();
+
+	/** A step of the restore failed. Looks again after a moment, until the restore time runs out. */
+	void RetryRestore(const FText& Reason);
+
+	/** The restore ended, with the party back or without it. */
+	void FinishRestore();
+
+	/** Run a request of the restore in the queue, and remember it so a cancel can stop it. */
+	void RunRestoreRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/**
 	 * Decide whether a player may join the party this process leads.
@@ -159,8 +216,32 @@ private:
 	/** The party beacon state whose member list events are bound. */
 	TWeakObjectPtr<AEasySessionPartyBeaconState> BoundState;
 
-	/** Who may join the party this process leads. */
-	EEasyPartyPrivacy Privacy = EEasyPartyPrivacy::InviteOnly;
+	/** The settings of the party this process leads, which a map change starts the party beacon with again. */
+	FEasyPartyParams PartyParams;
+
+	/** The leader of the party this player is in. */
+	FUniqueNetIdRepl LeaderId;
+
+	/** Is the party this player is in a LAN session. */
+	bool bIsLANParty = false;
+
+	/** Every member the leader admitted to this party, kept when they leave so the party of the last match can admit them again. */
+	TArray<FUniqueNetIdRepl> AdmittedMembers;
+
+	/** The party before the last game session, which the next map without a game session gets back. */
+	TOptional<FLastParty> LastParty;
+
+	/** Is the party of the last match being got back. */
+	bool bRestoring = false;
+
+	/** When the restore started, in FPlatformTime seconds. */
+	double RestoreStartSeconds = 0.0;
+
+	/** The request of the restore that runs or waits in the queue. */
+	TWeakPtr<FEasySessionRequest> RestoreRequest;
+
+	/** When the reconnect started, in FPlatformTime seconds. Zero while no reconnect runs. */
+	double ReconnectStartSeconds = 0.0;
 
 	/** Players the leader kicked. They cannot join again while this party exists. */
 	TArray<FUniqueNetIdRepl> KickedPlayers;
@@ -182,4 +263,13 @@ private:
 
 	/** Ticker that broadcasts On Party Members Changed once for every change in a frame. */
 	FTSTicker::FDelegateHandle MembersChangedHandle;
+
+	/** Ticker that starts the next reconnect or restore attempt. */
+	FTSTicker::FDelegateHandle RetryHandle;
+
+	/** Handle for the map load notification. */
+	FDelegateHandle PostLoadMapHandle;
+
+	/** Reset when this object is destroyed, so a completion of a restore request that arrives later reaches nothing. */
+	TSharedRef<bool> Lifetime = MakeShared<bool>(true);
 };

@@ -673,4 +673,157 @@ bool FEasySessionPartyMoveTest::RunTest(const FString& Parameters)
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPartyMoveStep(State));
 	return true;
 }
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionPartyRestoreStep, TSharedPtr<EasySessionPartyTest::FTestState>, State);
+bool FEasySessionPartyRestoreStep::Update()
+{
+	using namespace EasySessionPartyTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	const FUniqueNetIdRepl Member = MakePlayerId(State, TEXT("EasySessionPartyReturner"));
+	FText Reason;
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::InviteOnly), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 1:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the invite-only party create"));
+			}
+
+			FEasySessionTestAccess::AddPartyMember(*Subsystem, Member);
+
+			// A map change destroys the beacon and keeps the party session.
+			FEasySessionTestAccess::DestroyPartyBeacon(*Subsystem);
+			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
+			CurrentTest->TestNotNull(TEXT("The leader starts the party beacon again in the new map"), FEasySessionTestAccess::GetPartyBeacon(*Subsystem));
+			CurrentTest->TestEqual(TEXT("The new member list holds the leader until the members log in again"), Subsystem->GetPartyMembers().Num(), 1);
+			CurrentTest->TestTrue(TEXT("An invite-only party admits its members again"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Member, Reason));
+
+			Subsystem->CreateSession(MakeHostParams(), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 2:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the leader's create"));
+			}
+
+			CurrentTest->TestFalse(TEXT("The game session closes the party"), Subsystem->IsInParty());
+			CurrentTest->TestEqual(TEXT("The party of the last match keeps the member"), FEasySessionTestAccess::GetLastPartyMemberCount(*Subsystem), 1);
+
+			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
+			CurrentTest->TestFalse(TEXT("A map with a game session gets no party back"), Subsystem->IsRestoringParty());
+
+			Subsystem->DestroySession(MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 3:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return TimedOut(State, TEXT("the end of the match"));
+			}
+
+			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
+			CurrentTest->TestTrue(TEXT("Back in a map without a game session the party comes back"), Subsystem->IsRestoringParty());
+			NextPhase(State);
+			return false;
+		}
+
+		case 4:
+		{
+			if (Subsystem->IsRestoringParty() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the party to come back"));
+			}
+
+			CurrentTest->TestTrue(TEXT("The leader leads the party again"), Subsystem->IsInParty() && Subsystem->IsPartyLeader());
+			CurrentTest->TestTrue(TEXT("The party of the last match admits its member again"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Member, Reason));
+			CurrentTest->TestEqual(TEXT("Nothing is left to get back"), FEasySessionTestAccess::GetLastPartyMemberCount(*Subsystem), -1);
+
+			Subsystem->LeaveParty(MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 5:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the restored party leave"));
+			}
+
+			// A member of a leader who stays in the match longer, which nothing in this world answers.
+			FEasySessionTestAccess::SetLastPartyLeader(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyAbsentLeader")));
+			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
+			CurrentTest->TestTrue(TEXT("A member looks for the leader's party"), Subsystem->IsRestoringParty());
+
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::Public), MakeCallback(State));
+			CurrentTest->TestFalse(TEXT("A party the player creates stops the restore"), Subsystem->IsRestoringParty());
+			NextPhase(State);
+			return false;
+		}
+
+		case 6:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the player's own party"));
+			}
+
+			CurrentTest->TestEqual(TEXT("The player's own party is created"), State->PendingResult.GetValue(), EEasySessionResult::Success);
+
+			Subsystem->LeaveParty(MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		default:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInParty())
+			{
+				return TimedOut(State, TEXT("the last party leave"));
+			}
+
+			End(State);
+			return true;
+		}
+	}
+}
+
+/**
+ * A map change destroys the party beacon, and the leader starts it again with the members it admitted.
+ * The party that entered a game session comes back in the next map without one, and an invite-only party admits its members again.
+ * A party the player creates while a member looks for the leader stops that restore.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyRestoreTest, "EasySession.Party.ThePartyComesBackAfterAMatch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionPartyRestoreTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionPartyTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPartyRestoreStep(State));
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

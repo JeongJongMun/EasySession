@@ -132,6 +132,14 @@ public:
 	static TArray<FEasyPartyMemberInfo> GetEasyPartyMembers(const UObject* WorldContextObject);
 
 	/**
+	 * Whether the party of the last match is being got back: created again on the leader, or looked for on a member.
+	 * True while a member waits for a leader who stays in the match longer, when Is In Easy Party is still false.
+	 * A menu can show a waiting message then, instead of the buttons that would stop the restore.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static bool IsEasyPartyRestoring(const UObject* WorldContextObject);
+
+	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 * The member receives On Party Left with Kicked and this reason.
 	 * Party leader only.

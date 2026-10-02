@@ -125,6 +125,12 @@ TArray<FEasyPartyMemberInfo> UEasySessionStatics::GetEasyPartyMembers(const UObj
 	return Subsystem != nullptr ? Subsystem->GetPartyMembers() : TArray<FEasyPartyMemberInfo>();
 }
 
+bool UEasySessionStatics::IsEasyPartyRestoring(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr && Subsystem->IsRestoringParty();
+}
+
 EEasySessionResult UEasySessionStatics::KickEasyPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member, FText Reason)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

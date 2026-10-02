@@ -349,6 +349,36 @@ public:
 		Subsystem.Party->KickedPlayers.AddUnique(PlayerId);
 	}
 
+	/** Destroy the leader's party beacon and release its listener, as a map change does. The party session stays. */
+	static void DestroyPartyBeacon(UEasySessionSubsystem& Subsystem)
+	{
+		if (AEasySessionPartyBeaconHost* Beacon = Subsystem.Party->BeaconHost.Get())
+		{
+			Subsystem.Party->BeaconPort.Unregister(*Beacon);
+			Beacon->Destroy();
+		}
+	}
+
+	/** Tell the party a map finished loading, as the engine does after every travel. */
+	static void FinishMapLoad(UEasySessionSubsystem& Subsystem)
+	{
+		Subsystem.Party->HandlePostLoadMap(Subsystem.GetGameInstance()->GetWorld());
+	}
+
+	/** @return How many members the party of the last match admitted, or -1 when there is none to get back. */
+	static int32 GetLastPartyMemberCount(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.Party->LastParty.IsSet() ? Subsystem.Party->LastParty->MemberIds.Num() : -1;
+	}
+
+	/** Pretend the local player was a member of this leader's party before the last match. */
+	static void SetLastPartyLeader(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& LeaderId)
+	{
+		FEasySessionParty::FLastParty& Last = Subsystem.Party->LastParty.Emplace();
+		Last.LeaderId = LeaderId;
+		Last.bIsLANMatch = true;
+	}
+
 	/** Let an invite-only party this process leads admit a player, as an invite does. */
 	static void AllowPartyPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{

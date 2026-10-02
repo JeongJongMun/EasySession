@@ -47,4 +47,23 @@ public:
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites", meta = (EditCondition = "bAutoJoinAcceptedInvites"))
 	bool bAcceptInvitesWhileInSession = false;
+
+	/**
+	 * Get the party back in the first map without a game session after the match it entered.
+	 * The leader creates the party again at once, and every member looks for it until Party Restore Wait Seconds runs out.
+	 * Calling Create, Join or Leave Easy Party, Create or Join Easy Session, or Start Easy Matchmaking stops it, because the player chose something else.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Party")
+	bool bRestorePartyAfterMatch = true;
+
+	/** Seconds a member looks for the leader's party after a match, because the leader may stay in the match longer. */
+	UPROPERTY(config, EditAnywhere, Category = "Party", meta = (ClampMin = "0", EditCondition = "bRestorePartyAfterMatch"))
+	float PartyRestoreWaitSeconds = 120.0f;
+
+	/**
+	 * Seconds a member keeps connecting to the leader after the connection closed without a reason.
+	 * A leader that changes maps closes every connection while its next map loads.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Party", meta = (ClampMin = "0"))
+	float PartyReconnectSeconds = 15.0f;
 };

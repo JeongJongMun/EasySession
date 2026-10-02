@@ -403,6 +403,12 @@ public:
 	/** @return Every member of the party, the leader included. Empty outside a party. */
 	TArray<FEasyPartyMemberInfo> GetPartyMembers() const;
 
+	/**
+	 * @return Whether the party of the last match is being got back: created again on the leader, or looked for on a member.
+	 *         True while a member waits for a leader who stays in the match longer, when Is In Party is still false.
+	 */
+	bool IsRestoringParty() const;
+
 public:
 
 	/** @return Whether matchmaking is running. */
@@ -618,6 +624,12 @@ public:
 	 * Destroys the party session, then broadcasts On Party Left with the reason.
 	 */
 	void HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText);
+
+	/**
+	 * Internal, called by the party to run the requests that get the party of the last match back.
+	 * They skip the public calls, which would stop that restore.
+	 */
+	void EnqueuePartyRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/**
 	 * Internal, called by a player component when its player appears, leaves or changes whether they are ready.
