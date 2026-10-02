@@ -344,10 +344,10 @@ public:
 	 * A party lives outside game sessions and needs no map, so nothing travels.
 	 * Needs a player logged in to the online subsystem, because members are told apart by their ids.
 	 *
-	 * @param PartyParams How many players the party holds, and who may join it.
+	 * @param PartySettings How many players the party holds, and who may join it.
 	 * @param OnComplete Called when the request completes.
 	 */
-	void CreateParty(const FEasyPartyParams& PartyParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void CreateParty(const FEasyPartySettings& PartySettings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Search for parties.
@@ -408,6 +408,18 @@ public:
 	 *         True while a member waits for a leader who stays in the match longer, when Is In Party is still false.
 	 */
 	bool IsRestoringParty() const;
+
+	/**
+	 * @return The settings the party advertises: how many players it holds and who may join it.
+	 *         Works for the leader and every member. Default settings outside a party.
+	 */
+	FEasyPartySettings GetPartySettings() const;
+
+	/**
+	 * @return The join code the party advertises, or empty when its privacy is not Join Code or there is no party.
+	 *         Works for the leader and every member, so any member can share the code.
+	 */
+	FString GetPartyJoinCode() const;
 
 public:
 

@@ -317,20 +317,20 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				FEasyPartyParams PartyParams;
+				FEasyPartySettings PartySettings;
 				if (Args.Num() > 0)
 				{
-					PartyParams.MaxMembers = FCString::Atoi(*Args[0]);
+					PartySettings.MaxMembers = FCString::Atoi(*Args[0]);
 				}
 				if (Args.Num() > 1)
 				{
-					PartyParams.Privacy = Args[1] == TEXT("public") ? EEasyPartyPrivacy::Public
+					PartySettings.Privacy = Args[1] == TEXT("public") ? EEasyPartyPrivacy::Public
 						: Args[1] == TEXT("code") ? EEasyPartyPrivacy::JoinCode
 						: EEasyPartyPrivacy::InviteOnly;
 				}
 
-				Print(FString::Printf(TEXT("Creating a party (max %d members)..."), PartyParams.MaxMembers));
-				Subsystem->CreateParty(PartyParams, MakePrintDelegate(TEXT("CreateParty")));
+				Print(FString::Printf(TEXT("Creating a party (max %d members)..."), PartySettings.MaxMembers));
+				Subsystem->CreateParty(PartySettings, MakePrintDelegate(TEXT("CreateParty")));
 			}
 		}));
 
@@ -360,6 +360,11 @@ namespace EasySessionConsole
 
 				const TArray<FEasyPartyMemberInfo> Members = Subsystem->GetPartyMembers();
 				Print(FString::Printf(TEXT("Party: %d member(s)."), Members.Num()));
+				const FString JoinCode = Subsystem->GetPartyJoinCode();
+				if (!JoinCode.IsEmpty())
+				{
+					Print(FString::Printf(TEXT("  Join code: %s"), *JoinCode));
+				}
 				for (int32 Index = 0; Index < Members.Num(); ++Index)
 				{
 					Print(FString::Printf(TEXT("  [%d] '%s'%s%s%s"), Index, *Members[Index].PlayerName,

@@ -53,7 +53,7 @@ FEasySessionParty::~FEasySessionParty()
 	FTSTicker::GetCoreTicker().RemoveTicker(RetryHandle);
 }
 
-bool FEasySessionParty::StartHosting(const FEasyPartyParams& Params)
+bool FEasySessionParty::StartHosting(const FEasyPartySettings& InPartySettings)
 {
 	UWorld* World = GetWorld();
 	const FUniqueNetIdRepl LocalId = GetLocalPlayerId();
@@ -86,7 +86,7 @@ bool FEasySessionParty::StartHosting(const FEasyPartyParams& Params)
 	}
 
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
-	if (!Beacon->StartParty(Params.MaxMembers, LocalId, Identity.IsValid() ? Identity->GetPlayerNickname(0) : FString()))
+	if (!Beacon->StartParty(InPartySettings.MaxMembers, LocalId, Identity.IsValid() ? Identity->GetPlayerNickname(0) : FString()))
 	{
 		BeaconPort.Unregister(*Beacon);
 		Beacon->Destroy();
@@ -94,7 +94,7 @@ bool FEasySessionParty::StartHosting(const FEasyPartyParams& Params)
 	}
 
 	BeaconHost = Beacon;
-	PartyParams = Params;
+	PartySettings = InPartySettings;
 	LeaderId = LocalId;
 
 	// A map change starts the beacon again, and the members it had log in again, an invite-only party too.
@@ -109,7 +109,7 @@ bool FEasySessionParty::StartHosting(const FEasyPartyParams& Params)
 
 	BindStateEvents();
 
-	UE_LOG(LogEasySession, Log, TEXT("Party beacon started for %d members."), Params.MaxMembers);
+	UE_LOG(LogEasySession, Log, TEXT("Party beacon started for %d members."), InPartySettings.MaxMembers);
 	return true;
 }
 
@@ -207,7 +207,7 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 	{
 		FLastParty& Last = LastParty.Emplace();
 		Last.LeaderId = LeaderId;
-		Last.Params = PartyParams;
+		Last.Settings = PartySettings;
 		Last.MemberIds = AdmittedMembers;
 		Last.bIsLANMatch = bIsLANParty;
 	}
@@ -220,7 +220,7 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 	AllowedPlayers.Reset();
 	AdmittedMembers.Reset();
 	PendingLeave.Reset();
-	PartyParams = FEasyPartyParams();
+	PartySettings = FEasyPartySettings();
 	LeaderId = FUniqueNetIdRepl();
 	bIsLANParty = false;
 	ReconnectStartSeconds = 0.0;
@@ -408,7 +408,7 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 		if (IsLeader() && !BeaconHost.IsValid())
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Starting the party beacon again after the map change."));
-			if (!StartHosting(PartyParams))
+			if (!StartHosting(PartySettings))
 			{
 				Owner.HandlePartyEnded(EEasyPartyLeaveReason::ConnectionLost, NSLOCTEXT("EasySession", "PartyBeaconRestartFailed", "The party could not continue after the map change."));
 			}
@@ -520,7 +520,7 @@ void FEasySessionParty::TryRestoreCreate()
 	AdmittedMembers = Last.MemberIds;
 
 	const TWeakPtr<bool> WeakLifetime = Lifetime;
-	RunRestoreRequest(MakeShared<FEasySessionCreatePartyRequest>(Last.Params, FEasySessionCompleteDelegate::CreateLambda(
+	RunRestoreRequest(MakeShared<FEasySessionCreatePartyRequest>(Last.Settings, FEasySessionCompleteDelegate::CreateLambda(
 		[this, WeakLifetime](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			if (!WeakLifetime.IsValid() || !bRestoring)
@@ -644,7 +644,7 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 		return false;
 	}
 
-	if (PartyParams.Privacy == EEasyPartyPrivacy::InviteOnly && !AllowedPlayers.Contains(PlayerId) && !IsFriendOfLeader(PlayerId))
+	if (PartySettings.Privacy == EEasyPartyPrivacy::InviteOnly && !AllowedPlayers.Contains(PlayerId) && !IsFriendOfLeader(PlayerId))
 	{
 		OutReason = NSLOCTEXT("EasySession", "PartyInviteOnly", "This party only admits players the leader invited.");
 		return false;

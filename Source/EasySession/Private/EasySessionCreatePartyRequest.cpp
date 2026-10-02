@@ -12,16 +12,16 @@
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
 
-FEasySessionCreatePartyRequest::FEasySessionCreatePartyRequest(const FEasyPartyParams& InPartyParams, FEasySessionCompleteDelegate InOnComplete)
+FEasySessionCreatePartyRequest::FEasySessionCreatePartyRequest(const FEasyPartySettings& InPartySettings, FEasySessionCompleteDelegate InOnComplete)
 	: FEasySessionRequest(EType::CreateParty)
-	, PartyParams(InPartyParams)
+	, PartySettings(InPartySettings)
 	, OnComplete(MoveTemp(InOnComplete))
 {
 }
 
 void FEasySessionCreatePartyRequest::Execute()
 {
-	if (!PartyParams.IsValid())
+	if (!PartySettings.IsValid())
 	{
 		Complete(EEasySessionResult::InvalidParams, TEXT("Max Members must be at least 2."));
 		return;
@@ -56,12 +56,12 @@ void FEasySessionCreatePartyRequest::Execute()
 		return;
 	}
 
-	const FOnlineSessionSettings Settings = MakePartySettings(PartyParams, ShouldForceLAN(), LeaderId, Identity->GetPlayerNickname(0));
+	const FOnlineSessionSettings Settings = MakeOnlineSettings(PartySettings, ShouldForceLAN(), LeaderId, Identity->GetPlayerNickname(0));
 
 	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateSP(this, &FEasySessionCreatePartyRequest::HandleCreateSessionComplete));
 
-	UE_LOG(LogEasySession, Log, TEXT("Creating a party (MaxMembers=%d, LAN=%d)"), PartyParams.MaxMembers, Settings.bIsLANMatch ? 1 : 0);
+	UE_LOG(LogEasySession, Log, TEXT("Creating a party (MaxMembers=%d, LAN=%d)"), PartySettings.MaxMembers, Settings.bIsLANMatch ? 1 : 0);
 
 	if (!Sessions->CreateSession(0, SessionName, Settings))
 	{
@@ -83,10 +83,10 @@ void FEasySessionCreatePartyRequest::Notify(EEasySessionResult Result, const FSt
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
 }
 
-FOnlineSessionSettings FEasySessionCreatePartyRequest::MakePartySettings(const FEasyPartyParams& Params, bool bForceLAN, const FUniqueNetIdRepl& LeaderId, const FString& LeaderName)
+FOnlineSessionSettings FEasySessionCreatePartyRequest::MakeOnlineSettings(const FEasyPartySettings& PartySettings, bool bForceLAN, const FUniqueNetIdRepl& LeaderId, const FString& LeaderName)
 {
 	FOnlineSessionSettings Settings;
-	Settings.NumPublicConnections = Params.MaxMembers;
+	Settings.NumPublicConnections = PartySettings.MaxMembers;
 	Settings.bIsLANMatch = bForceLAN;
 	Settings.bAllowJoinInProgress = true;
 	Settings.bAllowInvites = true;
@@ -98,14 +98,14 @@ FOnlineSessionSettings FEasySessionCreatePartyRequest::MakePartySettings(const F
 	// Every party is advertised, so a member can find the leader's party again after a match.
 	// The hidden key keeps the parties that are not public out of Find Easy Parties.
 	Settings.bShouldAdvertise = true;
-	Settings.bAllowJoinViaPresence = Settings.bUsesPresence && Params.Privacy == EEasyPartyPrivacy::Public;
+	Settings.bAllowJoinViaPresence = Settings.bUsesPresence && PartySettings.Privacy == EEasyPartyPrivacy::Public;
 
 	Settings.Set(EasySession::SettingKey_Party, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_DisplayName, LeaderName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	Settings.Set(EasySession::SettingKey_Hidden, Params.Privacy == EEasyPartyPrivacy::Public ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(EasySession::SettingKey_Hidden, PartySettings.Privacy == EEasyPartyPrivacy::Public ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_OwnerId, LeaderId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	if (Params.Privacy == EEasyPartyPrivacy::JoinCode)
+	if (PartySettings.Privacy == EEasyPartyPrivacy::JoinCode)
 	{
 		Settings.Set(EasySession::SettingKey_JoinCode, EasySession::GenerateJoinCode(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
@@ -136,7 +136,7 @@ void FEasySessionCreatePartyRequest::HandleCreateSessionComplete(FName InSession
 		NamedSession->bHosting = true;
 	}
 
-	if (!GetContext().Party.StartHosting(PartyParams))
+	if (!GetContext().Party.StartHosting(PartySettings))
 	{
 		// The party session would advertise a party that nobody can join, so it is destroyed again.
 		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,

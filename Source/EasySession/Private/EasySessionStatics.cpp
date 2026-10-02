@@ -131,6 +131,18 @@ bool UEasySessionStatics::IsEasyPartyRestoring(const UObject* WorldContextObject
 	return Subsystem != nullptr && Subsystem->IsRestoringParty();
 }
 
+FEasyPartySettings UEasySessionStatics::GetEasyPartySettings(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetPartySettings() : FEasyPartySettings();
+}
+
+FString UEasySessionStatics::GetEasyPartyJoinCode(const UObject* WorldContextObject)
+{
+	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->GetPartyJoinCode() : FString();
+}
+
 EEasySessionResult UEasySessionStatics::KickEasyPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member, FText Reason)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

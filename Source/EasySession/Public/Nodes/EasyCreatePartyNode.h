@@ -30,10 +30,10 @@ public:
 	 * A party lives outside game sessions and needs no map, so nothing travels.
 	 * It fails inside a game session, and in a party, which Leave Easy Party ends first.
 	 *
-	 * @param PartyParams How many players the party holds, and who may join it.
+	 * @param PartySettings How many players the party holds, and who may join it.
 	 */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Create Easy Party", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "PartyParams"))
-	static UEasyCreatePartyNode* CreateEasyParty(UObject* WorldContextObject, const FEasyPartyParams& PartyParams);
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Create Easy Party", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "PartySettings"))
+	static UEasyCreatePartyNode* CreateEasyParty(UObject* WorldContextObject, const FEasyPartySettings& PartySettings);
 
 	//~ Begin UBlueprintAsyncActionBase Interface
 	virtual void Activate() override;
@@ -45,5 +45,5 @@ private:
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** Parameters to create the party with. */
-	FEasyPartyParams PartyParams;
+	FEasyPartySettings PartySettings;
 };

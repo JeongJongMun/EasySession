@@ -327,6 +327,7 @@ struct EASYSESSION_API FEasySessionSettings
 	 * Without this, invited players would be refused because the invite flow never asks for a password.
 	 * The host checks the platform friends list.
 	 * No effect on NULL (LAN), which has no friends.
+	 * Get Easy Session Settings fills it only on the host, so a client always reads false.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bFriendsBypassPassword = true;
@@ -834,10 +835,11 @@ enum class EEasyPartyPrivacy : uint8
 };
 
 /**
- * Parameters for creating a party.
+ * The settings of a party: how many players it holds and who may join it.
+ * Create Easy Party takes them, and Get Easy Party Settings reads them back.
  */
 USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasyPartyParams
+struct EASYSESSION_API FEasyPartySettings
 {
 	GENERATED_BODY()
 
@@ -849,7 +851,7 @@ struct EASYSESSION_API FEasyPartyParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	EEasyPartyPrivacy Privacy = EEasyPartyPrivacy::InviteOnly;
 
-	/** @return Whether these params can create a party. */
+	/** @return Whether these settings can create a party. */
 	bool IsValid() const { return MaxMembers >= 2; }
 };
 

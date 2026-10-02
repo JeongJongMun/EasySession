@@ -52,7 +52,7 @@ public:
 	 *
 	 * @return Whether the party beacon runs. False when the listener could not start or no player is logged in.
 	 */
-	bool StartHosting(const FEasyPartyParams& Params);
+	bool StartHosting(const FEasyPartySettings& InPartySettings);
 
 	/**
 	 * The party session was joined.
@@ -127,7 +127,7 @@ private:
 		FUniqueNetIdRepl LeaderId;
 
 		/** The settings the leader creates the party with again. */
-		FEasyPartyParams Params;
+		FEasyPartySettings Settings;
 
 		/** Every member the leader admitted, so an invite-only party admits them again. */
 		TArray<FUniqueNetIdRepl> MemberIds;
@@ -225,7 +225,7 @@ private:
 	TWeakObjectPtr<AEasySessionPartyBeaconState> BoundState;
 
 	/** The settings of the party this process leads, which a map change starts the party beacon with again. */
-	FEasyPartyParams PartyParams;
+	FEasyPartySettings PartySettings;
 
 	/** The leader of the party this player is in. */
 	FUniqueNetIdRepl LeaderId;

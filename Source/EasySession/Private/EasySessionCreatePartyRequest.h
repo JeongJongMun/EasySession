@@ -18,7 +18,7 @@ class FEasySessionCreatePartyRequest final : public FEasySessionRequest
 {
 public:
 
-	FEasySessionCreatePartyRequest(const FEasyPartyParams& InPartyParams, FEasySessionCompleteDelegate InOnComplete);
+	FEasySessionCreatePartyRequest(const FEasyPartySettings& InPartySettings, FEasySessionCompleteDelegate InOnComplete);
 
 protected:
 
@@ -36,13 +36,13 @@ private:
 	 * @param LeaderId The logged in player who leads the party.
 	 * @param LeaderName The leader's name, which a search lists the party under.
 	 */
-	static FOnlineSessionSettings MakePartySettings(const FEasyPartyParams& Params, bool bForceLAN, const FUniqueNetIdRepl& LeaderId, const FString& LeaderName);
+	static FOnlineSessionSettings MakeOnlineSettings(const FEasyPartySettings& PartySettings, bool bForceLAN, const FUniqueNetIdRepl& LeaderId, const FString& LeaderName);
 
 	/** The online subsystem finished creating a session. Sessions with another name are ignored. */
 	void HandleCreateSessionComplete(FName InSessionName, bool bWasSuccessful);
 
 	/** The party to create. */
-	FEasyPartyParams PartyParams;
+	FEasyPartySettings PartySettings;
 
 	/** The requester's delegate. */
 	FEasySessionCompleteDelegate OnComplete;

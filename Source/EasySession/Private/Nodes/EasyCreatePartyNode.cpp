@@ -4,11 +4,11 @@
 
 #include "EasySessionMessages.h"
 
-UEasyCreatePartyNode* UEasyCreatePartyNode::CreateEasyParty(UObject* WorldContextObject, const FEasyPartyParams& PartyParams)
+UEasyCreatePartyNode* UEasyCreatePartyNode::CreateEasyParty(UObject* WorldContextObject, const FEasyPartySettings& PartySettings)
 {
 	UEasyCreatePartyNode* Node = NewObject<UEasyCreatePartyNode>();
 	Node->WorldContext = WorldContextObject;
-	Node->PartyParams = PartyParams;
+	Node->PartySettings = PartySettings;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
@@ -22,7 +22,7 @@ void UEasyCreatePartyNode::Activate()
 		return;
 	}
 
-	Subsystem->CreateParty(PartyParams, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyCreatePartyNode::HandleComplete));
+	Subsystem->CreateParty(PartySettings, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyCreatePartyNode::HandleComplete));
 }
 
 void UEasyCreatePartyNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

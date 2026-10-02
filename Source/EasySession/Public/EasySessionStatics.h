@@ -140,6 +140,17 @@ public:
 	static bool IsEasyPartyRestoring(const UObject* WorldContextObject);
 
 	/**
+	 * The settings of the party: how many players it holds and who may join it, as Create Easy Party set them.
+	 * Works for the leader and every member, for example to show the party as 2/4. Default settings outside a party.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static FEasyPartySettings GetEasyPartySettings(const UObject* WorldContextObject);
+
+	/** The join code the party advertises, for the leader to show and share. Empty when the party's privacy is not Join Code, or outside a party. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
+	static FString GetEasyPartyJoinCode(const UObject* WorldContextObject);
+
+	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 * The member receives On Party Left with Kicked and this reason.
 	 * Party leader only.

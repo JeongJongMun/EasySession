@@ -330,10 +330,10 @@ void UEasySessionSubsystem::CancelMatchmaking()
 	}
 }
 
-void UEasySessionSubsystem::CreateParty(const FEasyPartyParams& PartyParams, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::CreateParty(const FEasyPartySettings& PartySettings, FEasySessionCompleteDelegate OnComplete)
 {
 	Party->CancelRestore();
-	EnqueueRequest(MakeShared<FEasySessionCreatePartyRequest>(PartyParams, MoveTemp(OnComplete)), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionCreatePartyRequest>(PartySettings, MoveTemp(OnComplete)), NAME_PartySession);
 }
 
 void UEasySessionSubsystem::FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
@@ -381,6 +381,45 @@ TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
 bool UEasySessionSubsystem::IsRestoringParty() const
 {
 	return Party->IsRestoring();
+}
+
+FEasyPartySettings UEasySessionSubsystem::GetPartySettings() const
+{
+	FEasyPartySettings PartySettings;
+
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return PartySettings;
+	}
+
+	PartySettings.MaxMembers = NamedSession->SessionSettings.NumPublicConnections;
+
+	// Only the leader holds the settings it created the party with, so the privacy is read back from the advertised keys for every member.
+	int32 Hidden = 0;
+	FString JoinCode;
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_Hidden, Hidden);
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, JoinCode);
+	PartySettings.Privacy = Hidden == 0 ? EEasyPartyPrivacy::Public
+		: !JoinCode.IsEmpty() ? EEasyPartyPrivacy::JoinCode
+		: EEasyPartyPrivacy::InviteOnly;
+
+	return PartySettings;
+}
+
+FString UEasySessionSubsystem::GetPartyJoinCode() const
+{
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
+	if (NamedSession == nullptr)
+	{
+		return FString();
+	}
+
+	FString JoinCode;
+	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, JoinCode);
+	return JoinCode;
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const
