@@ -223,6 +223,16 @@ protected:
 	bool ShouldForceLAN() const;
 
 	/**
+	 * @return The players who move with the local player when it joins or creates a game session.
+	 *         The other party members on a party leader, and the other players of a lobby on its host, which never overlap.
+	 *         A party leader is never in a game session, because entering one closes the party.
+	 */
+	TArray<FUniqueNetIdRepl> GetGroupMembers() const;
+
+	/** Tell the group to follow into the session of this host: over the party beacon on a party leader, through the player components on a lobby host. */
+	void TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery) const;
+
+	/**
 	 * The session this request and its sub-requests act on.
 	 * Set by Initialize and constant afterwards.
 	 * It is the game session, except for the party requests, which act on the party session.

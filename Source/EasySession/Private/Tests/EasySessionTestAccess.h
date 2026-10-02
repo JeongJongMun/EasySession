@@ -41,13 +41,14 @@ public:
 
 	/**
 	 * Pretend this process did or did not create the active session, by writing the bHosting flag IsSessionAuthority reads.
+	 * With NAME_PartySession it pretends the same for the party, which makes the local player a member instead of the leader.
 	 * Creating normally sets it, and a headless test has no second process to join.
 	 * Does nothing while no session exists.
 	 */
-	static void SetCreatedActiveSession(UEasySessionSubsystem& Subsystem, bool bCreated)
+	static void SetCreatedActiveSession(UEasySessionSubsystem& Subsystem, bool bCreated, FName SessionName = NAME_GameSession)
 	{
 		const IOnlineSessionPtr Sessions = Subsystem.GetSessionInterface();
-		if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr)
+		if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr)
 		{
 			NamedSession->bHosting = bCreated;
 		}

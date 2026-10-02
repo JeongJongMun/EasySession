@@ -5,6 +5,7 @@
 #include "EasySession.h"
 #include "EasySessionHost.h"
 #include "EasySessionMessages.h"
+#include "EasySessionParty.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -40,9 +41,17 @@ void FEasySessionCreateRequest::Execute()
 		return;
 	}
 
+	// A party leader brings the party, and the host's reservation holds every member, so the session needs room for all of them.
+	GroupMembers = GetGroupMembers();
+	if (HostParams.MaxPlayers < GroupMembers.Num() + 1)
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("Max Players is smaller than the party."));
+		return;
+	}
+
 	// The session is created for local player 0 below, so that player is the owner a search for this host looks for.
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
-	const FUniqueNetIdRepl OwnerId(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
+	OwnerId = FUniqueNetIdRepl(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
 
 	const FOnlineSessionSettings Settings = MakeSessionSettings(HostParams, ShouldForceLAN(), OwnerId);
 
@@ -128,7 +137,19 @@ void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName,
 
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 
-	GetContext().Host.OnSessionCreated(HostParams);
+	GetContext().Host.OnSessionCreated(HostParams, GroupMembers);
+
+	// The members search for this host until its map is open, so they are told before the travel.
+	// A party lives outside game sessions, so it closes now.
+	if (GetContext().Party.IsInParty())
+	{
+		if (!GroupMembers.IsEmpty())
+		{
+			UE_LOG(LogEasySession, Log, TEXT("Bringing %d party members to this session."), GroupMembers.Num());
+			TellGroupToFollow(GroupMembers, OwnerId, HostParams.bIsLANMatch || ShouldForceLAN());
+		}
+		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
+	}
 
 	// Requested before the request completes, so Is Busy is already true for the travel when the completion delegate fires.
 	GetContext().Travel.TravelToOwnSession(HostParams);

@@ -83,6 +83,11 @@ void AEasySessionPartyBeaconClient::ClientLeftParty_Implementation(EEasyPartyLea
 	LeftPartyDelegate.ExecuteIfBound(Reason, ReasonText);
 }
 
+void AEasySessionPartyBeaconClient::ClientFollowHost_Implementation(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+{
+	FollowHostDelegate.ExecuteIfBound(HostId, bLANQuery);
+}
+
 void AEasySessionPartyBeaconClient::ServerSetReady_Implementation(bool bInReady)
 {
 	// The engine sets PlayerState at the login, so a connection that never logged in changes nothing.
@@ -139,6 +144,17 @@ void AEasySessionPartyBeaconHost::TellMembersPartyEnds(const FText& ReasonText)
 		if (AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ExistingClient))
 		{
 			Client->ClientLeftParty(EEasyPartyLeaveReason::LeaderLeft, ReasonText);
+		}
+	}
+}
+
+void AEasySessionPartyBeaconHost::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+{
+	for (AOnlineBeaconClient* ExistingClient : ClientActors)
+	{
+		if (AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ExistingClient))
+		{
+			Client->ClientFollowHost(HostId, bLANQuery);
 		}
 	}
 }

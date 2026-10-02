@@ -9,6 +9,7 @@
 #include "EasySessionReservations.h"
 #include "EasySessionReservationBeacon.h"
 #include "EasySessionMessages.h"
+#include "EasySessionParty.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
 #include "Engine/World.h"
@@ -68,8 +69,8 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
-	// A host whose match has not started takes the players of its session along, in the same reservation.
-	GroupMembers = GetContext().Host.GetGroupMembers();
+	// A party leader takes the party along, and a host whose match has not started the players of its session, in the same reservation.
+	GroupMembers = GetGroupMembers();
 
 	if (FEasySessionReservations::UsesReservationBeacon(Target.NativeResult.Session.SessionSettings))
 	{
@@ -189,7 +190,7 @@ void FEasySessionJoinRequest::JoinOnlineSessionWithGroup()
 
 	// The members search for the new host, which holds a reservation for each of them.
 	const FUniqueNetIdRepl NewHostId(Target.NativeResult.Session.OwningUserId);
-	GetContext().Host.TellGroupToFollow(GroupMembers, NewHostId, Target.NativeResult.Session.SessionSettings.bIsLANMatch);
+	TellGroupToFollow(GroupMembers, NewHostId, Target.NativeResult.Session.SessionSettings.bIsLANMatch);
 
 	GroupWaitStartSeconds = FPlatformTime::Seconds();
 	GroupWaitHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateSP(this, &FEasySessionJoinRequest::HandleGroupWaitTick), GroupWaitIntervalSeconds);
@@ -202,7 +203,7 @@ bool FEasySessionJoinRequest::HandleGroupWaitTick(float DeltaTime)
 		return false;
 	}
 
-	const TArray<FUniqueNetIdRepl> StillHere = GetContext().Host.GetGroupMembers();
+	const TArray<FUniqueNetIdRepl> StillHere = GetGroupMembers();
 	const bool bAnyStillHere = GroupMembers.ContainsByPredicate([&StillHere](const FUniqueNetIdRepl& Member) { return StillHere.Contains(Member); });
 	if (bAnyStillHere && FPlatformTime::Seconds() - GroupWaitStartSeconds < GroupWaitTimeoutSeconds)
 	{
@@ -226,6 +227,13 @@ void FEasySessionJoinRequest::JoinWithoutReservation()
 	if (Target.bPasswordProtected)
 	{
 		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to check the password."));
+		return;
+	}
+
+	// Only a reservation holds the group, so a host that cannot be asked would split it.
+	if (!GroupMembers.IsEmpty())
+	{
+		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to ask for room for the group, so the group stays together."));
 		return;
 	}
 
@@ -344,6 +352,12 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
+
+	// A party lives outside game sessions, so it closes now, and the leader waiting for this member sees them leave.
+	if (GetContext().Party.IsInParty())
+	{
+		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
+	}
 
 	// Requested before the request completes, so Is Busy is already true for the travel when the completion delegate fires.
 	GetContext().Travel.TravelToJoinedSession(ConnectString, TravelOptions);

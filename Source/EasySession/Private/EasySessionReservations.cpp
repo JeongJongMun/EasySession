@@ -46,10 +46,11 @@ FEasySessionReservations::~FEasySessionReservations()
 	FGameModeEvents::GameModeLogoutEvent.Remove(LogoutHandle);
 }
 
-void FEasySessionReservations::OnSessionCreated(const FEasySessionHostParams& Params)
+void FEasySessionReservations::OnSessionCreated(const FEasySessionHostParams& Params, const TArray<FUniqueNetIdRepl>& GroupMembers)
 {
 	SessionPassword = Params.Password.TrimStartAndEnd();
 	bFriendsBypassPassword = Params.bFriendsBypassPassword;
+	HostGroup = GroupMembers;
 }
 
 void FEasySessionReservations::OnSettingsUpdated(const FEasySessionSettings& Settings)
@@ -64,6 +65,7 @@ void FEasySessionReservations::OnSessionDestroyed()
 	SessionPassword.Empty();
 	bFriendsBypassPassword = false;
 	KickedPlayers.Reset();
+	HostGroup.Reset();
 
 	// A new session must never start on the reservations of the one before it.
 	KeptReservations.Reset();
@@ -355,7 +357,7 @@ void FEasySessionReservations::CheckAdvertisedPort(const FOnlineSessionSettings&
 		BoundPort, AdvertisedPort, AdvertisedPort);
 }
 
-void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession)
+void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession) const
 {
 	const FUniqueNetIdRepl HostId(NamedSession.OwningUserId);
 	if (!HostId.IsValid())
@@ -368,7 +370,8 @@ void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconH
 	Reservation.TeamNum = 0;
 	Reservation.PartyLeader = HostId;
 
-	Reservation.PartyMembers.Add(EasySessionReservation::MakeReservation(HostId));
+	// The members follow after the host, and a reservation holder is approved at once, so they need no password and no free slot of their own.
+	Reservation.PartyMembers = EasySessionReservation::MakeReservations(HostId, HostGroup);
 
 	// APartyBeaconHost::Tick never expires the owner of the session, so this reservation is kept for as long as the beacon runs.
 	const EPartyReservationResult::Type Result = Beacon.AddPartyReservation(Reservation);

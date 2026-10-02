@@ -4,6 +4,7 @@
 
 #include "EasySession.h"
 #include "EasySessionBeaconPort.h"
+#include "EasySessionMessages.h"
 #include "EasySessionPartyBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "Engine/GameInstance.h"
@@ -102,8 +103,13 @@ bool FEasySessionParty::ConnectToLeader(const FString& ConnectString, const FStr
 	Client->OnLeftParty().BindLambda([this](EEasyPartyLeaveReason Reason, const FText& ReasonText)
 	{
 		// The connection closes right after, and that failure reports this reason instead of a lost connection.
-		PendingLeave.Emplace(Reason, ReasonText);
+		// A member told to follow keeps Moved To Game Session, although the leader leaves the party right after.
+		if (!PendingLeave.IsSet())
+		{
+			PendingLeave.Emplace(Reason, ReasonText);
+		}
 	});
+	Client->OnFollowHost().BindRaw(this, &FEasySessionParty::HandleFollowHost);
 
 	ConnectComplete = MoveTemp(OnComplete);
 	JoinRefusal = FText::GetEmpty();
@@ -154,6 +160,7 @@ void FEasySessionParty::Close()
 		Client->OnLoginComplete().Unbind();
 		Client->OnJoinRefused().Unbind();
 		Client->OnLeftParty().Unbind();
+		Client->OnFollowHost().Unbind();
 		Client->DestroyBeacon();
 	}
 	BeaconClient.Reset();
@@ -169,6 +176,32 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 	UE_LOG(LogEasySession, Log, TEXT("Left the party: %s"), *UEnum::GetValueAsString(Reason));
 	Owner.OnPartyLeft.Broadcast(Reason, ReasonText);
 	Owner.OnPartyMembersChanged.Broadcast();
+}
+
+TArray<FUniqueNetIdRepl> FEasySessionParty::GetOtherMemberIds() const
+{
+	TArray<FUniqueNetIdRepl> MemberIds;
+	if (!IsLeader())
+	{
+		return MemberIds;
+	}
+
+	for (const FEasyPartyMemberInfo& Member : GetMembers())
+	{
+		if (!Member.bIsLocalPlayer)
+		{
+			MemberIds.Add(Member.PlayerId);
+		}
+	}
+	return MemberIds;
+}
+
+void FEasySessionParty::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+{
+	if (AEasySessionPartyBeaconHost* Beacon = BeaconHost.Get())
+	{
+		Beacon->TellMembersToFollow(HostId, bLANQuery);
+	}
 }
 
 EEasySessionResult FEasySessionParty::SetReady(bool bReady)
@@ -310,6 +343,17 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 	}
 
 	return true;
+}
+
+void FEasySessionParty::HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+{
+	if (!PendingLeave.IsSet())
+	{
+		PendingLeave.Emplace(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("The party leader takes the party to host '%s'."), *HostId.ToString());
+	Owner.FollowHost(HostId, bLANQuery);
 }
 
 void FEasySessionParty::HandleLoginComplete(bool bWasSuccessful)

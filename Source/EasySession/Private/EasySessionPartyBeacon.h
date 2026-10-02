@@ -16,6 +16,9 @@ DECLARE_DELEGATE_RetVal_TwoParams(bool, FEasyPartyApproveMemberDelegate, const F
 /** Delegate fired on a member when the leader refused the join, with the reason. */
 DECLARE_DELEGATE_OneParam(FEasyPartyJoinRefusedDelegate, const FText& /** Reason */);
 
+/** Delegate fired on a member when the leader takes the party into a game session. */
+DECLARE_DELEGATE_TwoParams(FEasyPartyFollowHostDelegate, const FUniqueNetIdRepl& /** HostId */, bool /** bLANQuery */);
+
 /** Delegate fired on a member when the leader ends their membership, before the connection closes. */
 DECLARE_DELEGATE_TwoParams(FEasyPartyLeftDelegate, EEasyPartyLeaveReason /** Reason */, const FText& /** ReasonText */);
 
@@ -107,6 +110,10 @@ public:
 	UFUNCTION(Client, Reliable)
 	void ClientLeftParty(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
+	/** Server: join the session of the host that holds a reservation for this member, because the leader takes the party there. */
+	UFUNCTION(Client, Reliable)
+	void ClientFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
+
 	/** Client: the member asks the leader to change whether they are ready. */
 	UFUNCTION(Server, Reliable)
 	void ServerSetReady(bool bInReady);
@@ -117,6 +124,9 @@ public:
 	/** @return The delegate fired when the leader ends this player's membership. */
 	FEasyPartyLeftDelegate& OnLeftParty() { return LeftPartyDelegate; }
 
+	/** @return The delegate fired when the leader takes the party into a game session. */
+	FEasyPartyFollowHostDelegate& OnFollowHost() { return FollowHostDelegate; }
+
 private:
 
 	/** Fired by ClientJoinRefused. */
@@ -124,6 +134,9 @@ private:
 
 	/** Fired by ClientLeftParty. */
 	FEasyPartyLeftDelegate LeftPartyDelegate;
+
+	/** Fired by ClientFollowHost. */
+	FEasyPartyFollowHostDelegate FollowHostDelegate;
 };
 
 /**
@@ -160,6 +173,9 @@ public:
 
 	/** Tell every connected member that the party ends, and why. The caller closes the beacon right after. */
 	void TellMembersPartyEnds(const FText& ReasonText);
+
+	/** Tell every connected member to follow the leader into the session of this host. */
+	void TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/** @return The party beacon state, or null before StartParty. */
 	AEasySessionPartyBeaconState* GetPartyState() const;

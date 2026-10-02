@@ -31,6 +31,7 @@ FText UEasySessionUIStatics::GetResultMessage(EEasySessionResult Result)
 		case EEasySessionResult::FriendSearchAlreadyInProgress: return LOCTEXT("Result_FriendSearchAlreadyInProgress", "A friend search is already running");
 		case EEasySessionResult::NotSupportedByService: return LOCTEXT("Result_NotSupportedByService", "This online service does not offer that");
 		case EEasySessionResult::RequiresPartyLeader: return LOCTEXT("Result_RequiresPartyLeader", "Only the party leader can do that");
+		case EEasySessionResult::InParty: return LOCTEXT("Result_InParty", "The party leader decides where the party goes");
 		case EEasySessionResult::UnknownFailure:
 		default:
 			return LOCTEXT("Result_UnknownFailure", "Something went wrong");

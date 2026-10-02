@@ -43,8 +43,12 @@ public:
 	/** Stops the beacon, and stops watching PreLogin and Logout. */
 	~FEasySessionReservations();
 
-	/** This process created the session. Remembers the password joining players must send. */
-	void OnSessionCreated(const FEasySessionHostParams& Params);
+	/**
+	 * This process created the session. Remembers the password joining players must send.
+	 *
+	 * @param GroupMembers The players the host brings, who follow after the host. The host's reservation holds them too.
+	 */
+	void OnSessionCreated(const FEasySessionHostParams& Params, const TArray<FUniqueNetIdRepl>& GroupMembers);
 
 	/** The session settings changed. Takes the new password, and resizes the reservations to the new Max Players. */
 	void OnSettingsUpdated(const FEasySessionSettings& Settings);
@@ -128,8 +132,8 @@ private:
 	/** Check the port the session advertises against the one the listener bound, and warn when joining players would reach no beacon. */
 	void CheckAdvertisedPort(const FOnlineSessionSettings& Settings) const;
 
-	/** Add a reservation for the host, because Max Players counts the host too. */
-	static void AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession);
+	/** Add a reservation for the host and the group it brings, because Max Players counts the host too. */
+	void AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession) const;
 
 	UEasySessionSubsystem& Owner;
 
@@ -154,6 +158,9 @@ private:
 
 	/** Players the host kicked. ApproveJoin refuses them until the session is destroyed. */
 	TArray<FUniqueNetIdRepl> KickedPlayers;
+
+	/** The players the host brought when it created the session. Its reservation holds them until the session is destroyed. */
+	TArray<FUniqueNetIdRepl> HostGroup;
 
 	FDelegateHandle PreLoginHandle;
 

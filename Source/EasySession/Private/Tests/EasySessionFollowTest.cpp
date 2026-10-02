@@ -131,7 +131,8 @@ bool FEasySessionFollowStep::Update()
 			{
 				const FEasyMatchmakingParams& Params = FEasySessionTestAccess::GetMatchmakingParams(*Run);
 				CurrentTest->TestTrue(TEXT("It searches for the host's session only"), Params.Search.OwnerId == State->HostResult.Session.OwningUserId);
-				CurrentTest->TestEqual(TEXT("It searches a few times"), Params.MaxSearchPasses, 5);
+				// A follow ends on its time limit rather than on a pass count, because the host's map load decides how many passes it needs.
+				CurrentTest->TestTrue(TEXT("It keeps searching until its time limit"), Params.MaxSearchPasses > 1);
 				CurrentTest->TestFalse(TEXT("It never hosts a session of its own"), Params.bAllowHostFallback);
 			}
 

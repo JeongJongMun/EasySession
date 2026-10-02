@@ -101,7 +101,10 @@ enum class EEasySessionResult : uint8
 	NotSupportedByService,
 
 	/** Only the party leader can do this. Show the button only when Is Easy Party Leader is true. */
-	RequiresPartyLeader
+	RequiresPartyLeader,
+
+	/** A party member cannot create, join or matchmake alone, because the leader decides where the party goes. Leave Easy Party first to play alone. */
+	InParty
 };
 
 /**
@@ -891,7 +894,10 @@ enum class EEasyPartyLeaveReason : uint8
 	LeaderLeft UMETA(DisplayName = "Leader Left"),
 
 	/** The connection to the leader was lost: the leader quit, crashed, or the network failed. */
-	ConnectionLost UMETA(DisplayName = "Connection Lost")
+	ConnectionLost UMETA(DisplayName = "Connection Lost"),
+
+	/** The party entered a game session, which closes the party. */
+	MovedToGameSession UMETA(DisplayName = "Moved To Game Session")
 };
 
 /**

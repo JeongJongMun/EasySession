@@ -145,6 +145,12 @@ void UEasySessionSubsystem::Deinitialize()
 
 void UEasySessionSubsystem::CreateSession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete)
 {
+	if (IsPartyMember())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
+		return;
+	}
+
 	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(HostParams, MoveTemp(OnComplete)));
 }
 
@@ -155,6 +161,12 @@ void UEasySessionSubsystem::FindSessions(const FEasySessionSearchParams& SearchP
 
 void UEasySessionSubsystem::JoinSession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
+	if (IsPartyMember())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
+		return;
+	}
+
 	EnqueueRequest(MakeShared<FEasySessionJoinRequest>(SearchResult, Password, AdditionalTravelOptions, MoveTemp(OnComplete)));
 }
 
@@ -274,6 +286,12 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	if (IsMatchmakingRunning())
 	{
 		OnComplete.ExecuteIfBound(EEasySessionResult::MatchmakingAlreadyInProgress, TEXT("Matchmaking is already running. Cancel it first."));
+		return;
+	}
+
+	if (IsPartyMember())
+	{
+		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
 		return;
 	}
 
@@ -758,6 +776,12 @@ void UEasySessionSubsystem::HandleSessionPlayersChanged()
 		OnSessionPlayersChanged.Broadcast();
 		return false;
 	}));
+}
+
+bool UEasySessionSubsystem::IsPartyMember() const
+{
+	// The party follows its leader, so only a member who is not the leader is held back.
+	return Party->IsInParty() && !Party->IsLeader();
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const

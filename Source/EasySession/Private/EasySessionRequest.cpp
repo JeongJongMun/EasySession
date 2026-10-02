@@ -3,6 +3,8 @@
 #include "EasySessionRequest.h"
 
 #include "EasySession.h"
+#include "EasySessionHost.h"
+#include "EasySessionParty.h"
 #include "EasySessionRequestQueue.h"
 #include "EasySessionSubsystem.h"
 #include "Engine/GameInstance.h"
@@ -216,6 +218,22 @@ bool FEasySessionRequest::ShouldForceLAN() const
 {
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
 	return OnlineSub != nullptr && OnlineSub->GetSubsystemName() == NULL_SUBSYSTEM;
+}
+
+TArray<FUniqueNetIdRepl> FEasySessionRequest::GetGroupMembers() const
+{
+	return GetContext().Party.IsLeader() ? GetContext().Party.GetOtherMemberIds() : GetContext().Host.GetGroupMembers();
+}
+
+void FEasySessionRequest::TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery) const
+{
+	if (GetContext().Party.IsLeader())
+	{
+		GetContext().Party.TellMembersToFollow(HostId, bLANQuery);
+		return;
+	}
+
+	GetContext().Host.TellGroupToFollow(Members, HostId, bLANQuery);
 }
 
 bool FEasySessionRequest::StartRunningSubRequest(float DeltaTime)

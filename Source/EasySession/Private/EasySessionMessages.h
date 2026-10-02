@@ -21,6 +21,9 @@ namespace EasySession
 	/** The message of every NotSupportedByService result that needs a friends list. */
 	inline constexpr const TCHAR* NoFriendsListMessage = TEXT("This online subsystem has no friends list, for example NULL, which only does LAN.");
 
+	/** The message of every InParty result. */
+	inline constexpr const TCHAR* InPartyMessage = TEXT("The party leader decides where the party goes. Call Leave Easy Party to play alone.");
+
 	/** The message of every Canceled result of a matchmaking run. */
 	inline constexpr const TCHAR* MatchmakingCanceledMessage = TEXT("Matchmaking was canceled.");
 
@@ -28,5 +31,11 @@ namespace EasySession
 	inline FText GetHostLeftSessionReason()
 	{
 		return NSLOCTEXT("EasySession", "HostLeftSession", "The host has left the game.");
+	}
+
+	/** The On Party Left text when the party entered a game session. */
+	inline FText GetPartyMovedReason()
+	{
+		return NSLOCTEXT("EasySession", "PartyMovedToGameSession", "The party moved to a game session.");
 	}
 }

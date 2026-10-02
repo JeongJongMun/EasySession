@@ -10,14 +10,18 @@
 #include "EasySessionHost.h"
 #include "EasySessionJoinRequest.h"
 #include "EasySessionMessages.h"
+#include "EasySessionParty.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTravel.h"
 #include "HAL/PlatformTime.h"
 
 namespace
 {
-	/** Search passes a follow runs. The host's session can appear a moment after the host approved the group, so one pass is not enough. */
-	constexpr int32 FollowSearchPasses = 5;
+	/**
+	 * Seconds a follow keeps searching for its host.
+	 * A host that created its session opens its map only after telling the group, so the session appears once that map has loaded.
+	 */
+	constexpr double FollowTimeLimitSeconds = 30.0;
 
 	/** Seconds between two search passes of a follow. */
 	constexpr float FollowPassDelaySeconds = 1.0f;
@@ -36,7 +40,7 @@ TSharedRef<FEasySessionMatchmakingRequest> FEasySessionMatchmakingRequest::MakeF
 	FEasyMatchmakingParams FollowParams;
 	FollowParams.Search.OwnerId = HostId;
 	FollowParams.Search.bLANQuery = bLANQuery;
-	FollowParams.MaxSearchPasses = FollowSearchPasses;
+	FollowParams.MaxSearchPasses = MAX_int32;
 	FollowParams.DelayBetweenPassesSeconds = FollowPassDelaySeconds;
 	FollowParams.bAllowHostFallback = false;
 
@@ -74,10 +78,11 @@ void FEasySessionMatchmakingRequest::Execute()
 	// A follow starts inside a session on purpose, because its join leaves that session only once the host approved.
 	// So does a host whose match has not started, because each of its joins takes the session's players along.
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
-	const bool bMovesGroup = GetContext().Subsystem.IsSessionAuthority() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
-	if (bMovesGroup)
+	// A party leader takes the party along too, and a party leader is never in a game session.
+	const bool bHostsLobby = GetContext().Subsystem.IsSessionAuthority() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
+	if (bHostsLobby || GetContext().Party.IsLeader())
 	{
-		Params.Search.MinOpenSlots = FMath::Max(Params.Search.MinOpenSlots, GetContext().Host.GetGroupMembers().Num() + 1);
+		Params.Search.MinOpenSlots = FMath::Max(Params.Search.MinOpenSlots, GetGroupMembers().Num() + 1);
 	}
 	else if (!bFollowsHost && GetContext().Subsystem.IsSessionAuthority())
 	{
@@ -152,7 +157,14 @@ FString FEasySessionMatchmakingRequest::GetProgressText() const
 
 void FEasySessionMatchmakingRequest::StartSearchPass()
 {
-	UE_LOG(LogEasySession, Log, TEXT("Matchmaking search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
+	if (bFollowsHost)
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Follow search pass %d (up to %.0f seconds)"), PassesCompleted + 1, FollowTimeLimitSeconds);
+	}
+	else
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Matchmaking search pass %d/%d"), PassesCompleted + 1, Params.MaxSearchPasses);
+	}
 	SetState(EEasyMatchmakingState::Searching);
 	RunSubRequest(MakeShared<FEasySessionFindRequest>(Params.Search,
 		FEasySessionFindCompleteDelegate::CreateSP(this, &FEasySessionMatchmakingRequest::HandleSearchComplete)));
@@ -278,7 +290,9 @@ void FEasySessionMatchmakingRequest::FinishSearchPass(EEasySessionResult SearchR
 {
 	++PassesCompleted;
 
-	if (PassesCompleted >= Params.MaxSearchPasses)
+	// A follow ends on its time limit, because a slow map load on the host decides how many passes it needs.
+	const bool bOutOfTime = bFollowsHost && FPlatformTime::Seconds() - RunStartTimeSeconds >= FollowTimeLimitSeconds;
+	if (PassesCompleted >= Params.MaxSearchPasses || bOutOfTime)
 	{
 		// A host that moves its players already has a session, so it stays in it rather than hosting another.
 		if (Params.bAllowHostFallback && !GetContext().Subsystem.IsInSession())

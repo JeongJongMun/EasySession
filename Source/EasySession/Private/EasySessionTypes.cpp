@@ -104,6 +104,7 @@ namespace EasySession
 			case EEasySessionResult::FriendSearchAlreadyInProgress:	return TEXT("FriendSearchAlreadyInProgress");
 			case EEasySessionResult::NotSupportedByService:		return TEXT("NotSupportedByService");
 			case EEasySessionResult::RequiresPartyLeader:		return TEXT("RequiresPartyLeader");
+			case EEasySessionResult::InParty:					return TEXT("InParty");
 			default:											return TEXT("UnknownFailure");
 		}
 	}

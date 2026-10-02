@@ -517,4 +517,160 @@ bool FEasySessionPartyAdmissionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionPartyMoveStep, TSharedPtr<EasySessionPartyTest::FTestState>, State);
+bool FEasySessionPartyMoveStep::Update()
+{
+	using namespace EasySessionPartyTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	const FUniqueNetIdRepl MemberA = MakePlayerId(State, TEXT("EasySessionPartyMoverA"));
+	const FUniqueNetIdRepl MemberB = MakePlayerId(State, TEXT("EasySessionPartyMoverB"));
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::Public), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 1:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the party create"));
+			}
+
+			FEasySessionTestAccess::AddPartyMember(*Subsystem, MemberA);
+			FEasySessionTestAccess::AddPartyMember(*Subsystem, MemberB);
+
+			// A member of someone else's party, which is what clearing the leader's host flag makes the local player.
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false, NAME_PartySession);
+			TOptional<EEasySessionResult> MemberResult;
+			const FEasySessionCompleteDelegate StoreMemberResult = FEasySessionCompleteDelegate::CreateLambda([&MemberResult](EEasySessionResult Result, const FString&) { MemberResult = Result; });
+
+			Subsystem->CreateSession(MakeHostParams(), StoreMemberResult);
+			CurrentTest->TestTrue(TEXT("A member cannot create a session alone"), MemberResult.IsSet() && MemberResult.GetValue() == EEasySessionResult::InParty);
+			MemberResult.Reset();
+
+			Subsystem->JoinSession(FEasySessionSearchResult(), FString(), FString(), StoreMemberResult);
+			CurrentTest->TestTrue(TEXT("A member cannot join a session alone"), MemberResult.IsSet() && MemberResult.GetValue() == EEasySessionResult::InParty);
+			MemberResult.Reset();
+
+			Subsystem->StartMatchmaking(FEasyMatchmakingParams(), nullptr, StoreMemberResult);
+			CurrentTest->TestTrue(TEXT("A member cannot matchmake alone"), MemberResult.IsSet() && MemberResult.GetValue() == EEasySessionResult::InParty);
+
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true, NAME_PartySession);
+
+			FEasySessionHostParams TooSmall = MakeHostParams();
+			TooSmall.MaxPlayers = 2;
+			Subsystem->CreateSession(TooSmall, MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 2:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the create that is too small"));
+			}
+
+			CurrentTest->TestEqual(TEXT("A session too small for the party is refused"), State->PendingResult.GetValue(), EEasySessionResult::InvalidParams);
+			CurrentTest->TestTrue(TEXT("The party stays"), Subsystem->IsInParty());
+
+			FEasyMatchmakingParams Params;
+			Params.Search.bLANQuery = true;
+			Params.MaxSearchPasses = 1;
+			Params.DelayBetweenPassesSeconds = 0.0f;
+			Params.bAllowHostFallback = false;
+			Subsystem->StartMatchmaking(Params, nullptr, MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 3:
+		{
+			if (!FEasySessionTestAccess::HasActiveSearch(*Subsystem))
+			{
+				return TimedOut(State, TEXT("the leader's search"));
+			}
+
+			if (const TSharedPtr<FEasySessionMatchmakingRequest> Run = FEasySessionTestAccess::GetMatchmakingRequest(*Subsystem))
+			{
+				CurrentTest->TestEqual(TEXT("The leader looks for room for the whole party"), FEasySessionTestAccess::GetMatchmakingParams(*Run).Search.MinOpenSlots, 3);
+			}
+
+			NextPhase(State);
+			Subsystem->CancelMatchmaking();
+			return false;
+		}
+
+		case 4:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the canceled run"));
+			}
+
+			Subsystem->CreateSession(MakeHostParams(), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 5:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the leader's create"));
+			}
+
+			CurrentTest->TestEqual(TEXT("The leader creates a session for the party"), State->PendingResult.GetValue(), EEasySessionResult::Success);
+			CurrentTest->TestFalse(TEXT("Entering the game session closes the party"), Subsystem->IsInParty());
+			CurrentTest->TestTrue(TEXT("The party ends as moved to a game session"), State->Listener->PartyLeftReasons.Contains(EEasyPartyLeaveReason::MovedToGameSession));
+
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
+			CurrentTest->TestTrue(TEXT("The host's reservation holds the first member"), FEasySessionTestAccess::PlayerHasReservation(*Subsystem, MemberA));
+			CurrentTest->TestTrue(TEXT("The host's reservation holds the second member"), FEasySessionTestAccess::PlayerHasReservation(*Subsystem, MemberB));
+
+			Subsystem->DestroySession(MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		default:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			{
+				return TimedOut(State, TEXT("the cleanup destroy"));
+			}
+
+			End(State);
+			return true;
+		}
+	}
+}
+
+/**
+ * A party member cannot create, join or matchmake alone, and the leader brings the whole party.
+ * The leader's matchmaking looks for room for every member, and a session too small for the party is refused.
+ * The session the leader creates reserves a place for every member and closes the party.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyMoveTest, "EasySession.Party.TheLeaderBringsTheParty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionPartyMoveTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionPartyTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPartyMoveStep(State));
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

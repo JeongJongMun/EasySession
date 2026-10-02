@@ -44,7 +44,7 @@ FEasySessionHost::~FEasySessionHost()
 	Reservations.Reset();
 }
 
-void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
+void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params, const TArray<FUniqueNetIdRepl>& GroupMembers)
 {
 	// This process created the session, so it is the host. NULL already sets bHosting in CreateSession, but Steam never does.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
@@ -53,7 +53,7 @@ void FEasySessionHost::OnSessionCreated(const FEasySessionHostParams& Params)
 		NamedSession->bHosting = true;
 	}
 
-	Reservations->OnSessionCreated(Params);
+	Reservations->OnSessionCreated(Params, GroupMembers);
 }
 
 void FEasySessionHost::OnSettingsUpdated(const FEasySessionSettings& Settings)

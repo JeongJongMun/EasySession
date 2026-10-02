@@ -43,6 +43,12 @@ private:
 	/** The session to advertise, and the map to open the listen server on. */
 	FEasySessionHostParams HostParams;
 
+	/** The party members the host brings. The host's reservation holds them too. */
+	TArray<FUniqueNetIdRepl> GroupMembers;
+
+	/** The local player the session is created for, whom the party members search for. */
+	FUniqueNetIdRepl OwnerId;
+
 	/** The requester's delegate. */
 	FEasySessionCompleteDelegate OnComplete;
 

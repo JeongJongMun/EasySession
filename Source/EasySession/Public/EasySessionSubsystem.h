@@ -202,6 +202,7 @@ public:
 	/**
 	 * Create a new session and optionally travel to the session map.
 	 * For listen servers the map is opened with the ?listen option automatically.
+	 * A party leader brings the party, whose members follow once the map is open, and a party member is refused with InParty.
 	 *
 	 * @param HostParams Parameters describing the session to create.
 	 * @param OnComplete Called when the request completes.
@@ -222,6 +223,7 @@ public:
 	 * A join that fails after leaving travels the player to the menu.
 	 * Joining the session this player is already in fails with SessionAlreadyExists, and so does a join by the host of a match in progress.
 	 * A player in a session stays in it when the host cannot be asked.
+	 * A party leader brings the party, which follows before the leader joins, and a party member is refused with InParty.
 	 *
 	 * @param SearchResult A search result returned by FindSessions.
 	 * @param Password Password for password protected sessions. Ignored otherwise.
@@ -319,6 +321,7 @@ public:
 	/**
 	 * Start Matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
 	 * The run holds the session queue until it ends, so session requests made meanwhile run after it.
+	 * A party leader looks for room for the whole party and brings it, and a party member is refused with InParty.
 	 *
 	 * @param MatchmakingParams Parameters describing the search and the fallback host session.
 	 * @param PolicyClass Optional custom matchmaking policy class. Uses the default policy when null.
@@ -610,7 +613,8 @@ public:
 	void FollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/**
-	 * Internal, called by the party when the leader ended this member's membership or the connection to the leader was lost.
+	 * Internal, called when the party ends for the local player without Leave Party.
+	 * That is when the leader ended the membership, the connection to the leader was lost, or this player entered a game session.
 	 * Destroys the party session, then broadcasts On Party Left with the reason.
 	 */
 	void HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText);
@@ -622,6 +626,9 @@ public:
 	void HandleSessionPlayersChanged();
 
 private:
+
+	/** @return Whether the local player is in a party they do not lead, so the leader decides where they go. */
+	bool IsPartyMember() const;
 
 	/** Resolve the session interface for the current world context. */
 	IOnlineSessionPtr GetSessionInterface() const;

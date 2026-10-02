@@ -72,6 +72,12 @@ public:
 	 */
 	void HandlePartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
+	/** @return The ids of every member but the local player, on the leader. Empty on a member and outside a party. */
+	TArray<FUniqueNetIdRepl> GetOtherMemberIds() const;
+
+	/** Leader only: tell every member to follow into the session of this host, which holds a reservation for each of them. */
+	void TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery);
+
 	/**
 	 * Change whether the local player is ready: directly on the leader, and through the leader on a member.
 	 *
@@ -105,6 +111,9 @@ private:
 	 * Refuses a member, a kicked player, a full party, and a player an invite-only party does not expect.
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
+
+	/** The leader takes the party into a game session. Starts following, and keeps Moved To Game Session as the reason the party ends. */
+	void HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/** The leader finished the login of the local player. */
 	void HandleLoginComplete(bool bWasSuccessful);
@@ -165,7 +174,7 @@ private:
 	/** Why the leader refused the join, when it said so. */
 	FText JoinRefusal;
 
-	/** Why the leader ended this member's membership, when it said so before the connection closed. */
+	/** Why this member's membership ends, when the leader said so before the connection closed. The first reason is kept. */
 	TOptional<TPair<EEasyPartyLeaveReason, FText>> PendingLeave;
 
 	/** Ticker that waits for the local player in the member list. */

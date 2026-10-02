@@ -51,10 +51,10 @@ public:
 
 	/**
 	 * This process created the session.
-	 * FNamedOnlineSession's bHosting is set and the reservations remember the password.
+	 * FNamedOnlineSession's bHosting is set and the reservations remember the password and the group the host brings.
 	 * The world actors are spawned later, in the map the host travels to.
 	 */
-	void OnSessionCreated(const FEasySessionHostParams& Params);
+	void OnSessionCreated(const FEasySessionHostParams& Params, const TArray<FUniqueNetIdRepl>& GroupMembers);
 
 	/**
 	 * The session settings changed.
