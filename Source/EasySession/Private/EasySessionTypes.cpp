@@ -313,6 +313,12 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		{
 			Result.JoinCode = Setting.Value.Data.ToString();
 		}
+		else if (Setting.Key == EasySession::SettingKey_Party)
+		{
+			int32 IsParty = 0;
+			Setting.Value.Data.GetValue(IsParty);
+			Result.bIsParty = IsParty != 0;
+		}
 		else if (Setting.Key == EasySession::SettingKey_MatchInProgress)
 		{
 			int32 MatchInProgress = 0;

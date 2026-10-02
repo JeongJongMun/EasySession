@@ -234,6 +234,18 @@ EEasySessionResult UEasySessionStatics::ShowEasyInviteUI(const UObject* WorldCon
 	return Subsystem != nullptr ? Subsystem->ShowInviteUI() : EEasySessionResult::NoOnlineSubsystem;
 }
 
+EEasySessionResult UEasySessionStatics::SendEasyPartyInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->SendPartyInviteToFriend(Friend) : EEasySessionResult::NoOnlineSubsystem;
+}
+
+EEasySessionResult UEasySessionStatics::ShowEasyPartyInviteUI(const UObject* WorldContextObject)
+{
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->ShowPartyInviteUI() : EEasySessionResult::NoOnlineSubsystem;
+}
+
 EEasySessionResult UEasySessionStatics::ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

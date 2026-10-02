@@ -25,6 +25,7 @@
 //   EasySession.KickParty <Index> [Reason]  Kick a member listed by EasySession.Party (leader only).
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
+//   EasySession.PartyInviteUI   Open the platform invite overlay for the party (leader only).
 //   EasySession.Diagnose        Run the online configuration diagnostics.
 
 // UE_BUILD_SHIPPING only exists after Misc/Build.h fills in the configuration macros UBT did not pass.
@@ -510,6 +511,17 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				Print(FString::Printf(TEXT("InviteUI: %s"), *EasySession::ResultToString(Subsystem->ShowInviteUI())));
+			}
+		}));
+
+	static FAutoConsoleCommandWithWorldAndArgs GPartyInviteUICommand(
+		TEXT("EasySession.PartyInviteUI"),
+		TEXT("Open the platform invite overlay for the party. Leader only."),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
+			{
+				Print(FString::Printf(TEXT("PartyInviteUI: %s"), *EasySession::ResultToString(Subsystem->ShowPartyInviteUI())));
 			}
 		}));
 

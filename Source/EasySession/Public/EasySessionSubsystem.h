@@ -511,6 +511,24 @@ public:
 	EEasySessionResult ShowInviteUI();
 
 	/**
+	 * Invite a friend to the party, which an invite-only party then admits.
+	 * Only the leader can do this.
+	 *
+	 * @return Success, or why not: NoSessionExists outside a party, RequiresPartyLeader on a member,
+	 *         NotSupportedByService on an online subsystem without invites such as NULL (LAN), or InvalidParams for a friend ReadFriends did not return.
+	 */
+	EEasySessionResult SendPartyInviteToFriend(const FEasySessionFriend& Friend);
+
+	/**
+	 * Open the platform invite overlay (e.g. Steam) for the party.
+	 * An invite-only party admits the leader's friends, because the overlay does not tell the game whom it invited.
+	 * Only the leader can do this.
+	 *
+	 * @return Success, or why the overlay could not be opened.
+	 */
+	EEasySessionResult ShowPartyInviteUI();
+
+	/**
 	 * Open the platform profile overlay (e.g. Steam) for the given friend.
 	 *
 	 * @return Success, or why the overlay could not be opened.

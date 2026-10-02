@@ -10,7 +10,7 @@ class UEasySessionSubsystem;
 /**
  * FEasySessionSocial is responsible for the platform's social features that need no request: accepted invites, sent invites and the overlays.
  * Reading the friends list and the friend session search are requests, see FEasySessionReadFriendsRequest.
- * An accepted invite is joined with Join Easy Session, the same request a game uses.
+ * An accepted invite is joined with Join Easy Session or Join Easy Party, the same requests a game uses.
  *
  * These use the identity and external UI interfaces, and no part of the session lifecycle depends on them.
  * A game with no social features never calls into this object at all.
@@ -41,18 +41,20 @@ public:
 	void Shutdown();
 
 	/**
-	 * Invite a friend to the current session.
+	 * Invite a friend to the game session or to the party.
 	 *
+	 * @param SessionName NAME_GameSession or NAME_PartySession.
 	 * @return Success, or why the invite could not be sent.
 	 */
-	EEasySessionResult SendInviteToFriend(const FEasySessionFriend& Friend);
+	EEasySessionResult SendInviteToFriend(const FEasySessionFriend& Friend, FName SessionName);
 
 	/**
-	 * Open the platform invite overlay for the current session.
+	 * Open the platform invite overlay for the game session or for the party.
 	 *
+	 * @param SessionName NAME_GameSession or NAME_PartySession.
 	 * @return Success, or why the overlay could not be opened.
 	 */
-	EEasySessionResult ShowInviteUI() const;
+	EEasySessionResult ShowInviteUI(FName SessionName) const;
 
 	/**
 	 * Open the platform profile overlay for a unique id.
@@ -65,10 +67,13 @@ private:
 
 	/**
 	 * Fires when the player accepts an invite from the platform overlay.
-	 * Joins the session when Auto Join Accepted Invites is on.
-	 * A player in another session joins only when Accept Invites While In Session is on.
+	 * Joins the session or the party when Auto Join Accepted Invites is on.
+	 * A player in another session joins a session only when Accept Invites While In Session is on, and never joins a party.
 	 */
 	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
+
+	/** Join the party of an accepted invite, leaving the party this player is in first. */
+	void JoinInvitedParty(const FEasySessionSearchResult& Party);
 
 	/** The world this subsystem runs in, or null before one exists. */
 	UWorld* GetWorld() const;

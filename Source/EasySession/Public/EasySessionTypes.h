@@ -515,7 +515,7 @@ struct EASYSESSION_API FEasySessionSearchParams
 
 /**
  * A single session found by a search.
- * Pass this to Join Easy Session to join it.
+ * Pass this to Join Easy Session to join it, or to Join Easy Party when Is Party is set.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasySessionSearchResult
@@ -560,6 +560,10 @@ struct EASYSESSION_API FEasySessionSearchResult
 	/** Whether the session's match is in progress right now. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bMatchInProgress = false;
+
+	/** Whether this is a party rather than a game session. An accepted invite can be either, and a party is joined with Join Easy Party. */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsParty = false;
 
 	/**
 	 * The session's join code.

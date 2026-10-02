@@ -80,6 +80,9 @@ public:
 	/** @return The ids of every member but the local player, on the leader. Empty on a member and outside a party. */
 	TArray<FUniqueNetIdRepl> GetOtherMemberIds() const;
 
+	/** Leader only: let an invite-only party admit this player, because the leader invited them. */
+	void AllowPlayer(const FUniqueNetIdRepl& PlayerId);
+
 	/** Leader only: tell every member to follow into the session of this host, which holds a reservation for each of them. */
 	void TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
@@ -166,8 +169,13 @@ private:
 	/**
 	 * Decide whether a player may join the party this process leads.
 	 * Refuses a member, a kicked player, a full party, and a player an invite-only party does not expect.
+	 * An invite-only party expects the players the leader invited, its members before a match, and the leader's friends.
+	 * The friends count because the platform overlay invites friends without telling the game which ones.
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
+
+	/** @return Whether this player is a friend of the local player, who leads the party. False on an online subsystem without friends, such as NULL. */
+	bool IsFriendOfLeader(const FUniqueNetIdRepl& PlayerId) const;
 
 	/** The leader takes the party into a game session. Starts following, and keeps Moved To Game Session as the reason the party ends. */
 	void HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);

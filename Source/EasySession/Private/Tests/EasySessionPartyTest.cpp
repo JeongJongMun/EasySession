@@ -377,6 +377,8 @@ bool FEasySessionPartyAdmissionStep::Update()
 			StrangerInfo.PlayerId = Stranger;
 			CurrentTest->TestEqual(TEXT("Outside a party nobody can kick"), Subsystem->KickPartyMember(StrangerInfo, FText::GetEmpty()), EEasySessionResult::RequiresPartyLeader);
 			CurrentTest->TestEqual(TEXT("Outside a party nobody is ready"), Subsystem->SetPartyReady(true), EEasySessionResult::NoSessionExists);
+			CurrentTest->TestEqual(TEXT("Outside a party nobody is invited"), Subsystem->SendPartyInviteToFriend(FEasySessionFriend()), EEasySessionResult::NoSessionExists);
+			CurrentTest->TestEqual(TEXT("Outside a party no invite overlay opens"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::NoSessionExists);
 
 			Subsystem->CreateParty(MakePartyParams(EEasyPartyPrivacy::Public, 3), MakeCallback(State));
 			NextPhase(State);
@@ -418,6 +420,14 @@ bool FEasySessionPartyAdmissionStep::Update()
 			LeaderInfo.PlayerId = LeaderId;
 			CurrentTest->TestEqual(TEXT("The leader cannot kick themselves"), Subsystem->KickPartyMember(LeaderInfo, FText::GetEmpty()), EEasySessionResult::InvalidParams);
 
+			CurrentTest->TestEqual(TEXT("An invite needs a friend Read Easy Friends returned"), Subsystem->SendPartyInviteToFriend(FEasySessionFriend()), EEasySessionResult::InvalidParams);
+			CurrentTest->TestEqual(TEXT("NULL has no invite overlay"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::NotSupportedByService);
+
+			// A member of someone else's party, which is what clearing the leader's host flag makes the local player.
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false, NAME_PartySession);
+			CurrentTest->TestEqual(TEXT("A member cannot invite"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::RequiresPartyLeader);
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true, NAME_PartySession);
+
 			FEasySessionSearchParams Search;
 			Search.bLANQuery = true;
 			Subsystem->FindParties(Search, MakeFindCallback(State));
@@ -436,6 +446,10 @@ bool FEasySessionPartyAdmissionStep::Update()
 			FOnlineSessionSearchResult Party = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession);
 			FOnlineSessionSearchResult GameSession = Party;
 			GameSession.Session.SessionSettings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineService);
+
+			// An accepted invite can be either kind, and the game reads which from the result.
+			CurrentTest->TestTrue(TEXT("A party result says it is a party"), FEasySessionSearchResult::FromNative(Party).bIsParty);
+			CurrentTest->TestFalse(TEXT("A game session result says it is not"), FEasySessionSearchResult::FromNative(GameSession).bIsParty);
 
 			NextPhase(State);
 			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { Party, GameSession });

@@ -14,6 +14,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
+#include "Interfaces/OnlineFriendsInterface.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
@@ -245,6 +246,14 @@ TArray<FUniqueNetIdRepl> FEasySessionParty::GetOtherMemberIds() const
 		}
 	}
 	return MemberIds;
+}
+
+void FEasySessionParty::AllowPlayer(const FUniqueNetIdRepl& PlayerId)
+{
+	if (PlayerId.IsValid())
+	{
+		AllowedPlayers.AddUnique(PlayerId);
+	}
 }
 
 void FEasySessionParty::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery)
@@ -635,13 +644,20 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 		return false;
 	}
 
-	if (PartyParams.Privacy == EEasyPartyPrivacy::InviteOnly && !AllowedPlayers.Contains(PlayerId))
+	if (PartyParams.Privacy == EEasyPartyPrivacy::InviteOnly && !AllowedPlayers.Contains(PlayerId) && !IsFriendOfLeader(PlayerId))
 	{
 		OutReason = NSLOCTEXT("EasySession", "PartyInviteOnly", "This party only admits players the leader invited.");
 		return false;
 	}
 
 	return true;
+}
+
+bool FEasySessionParty::IsFriendOfLeader(const FUniqueNetIdRepl& PlayerId) const
+{
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
+	const IOnlineFriendsPtr Friends = OnlineSub != nullptr ? OnlineSub->GetFriendsInterface() : nullptr;
+	return Friends.IsValid() && PlayerId.IsValid() && Friends->IsFriend(0, *PlayerId, EFriendsLists::ToString(EFriendsLists::Default));
 }
 
 void FEasySessionParty::HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery)

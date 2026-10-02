@@ -252,6 +252,27 @@ public:
 	static EEasySessionResult ShowEasyInviteUI(const UObject* WorldContextObject);
 
 	/**
+	 * Invite a friend to the party, which an invite-only party then admits.
+	 * Party leader only.
+	 *
+	 * @return Success, or why not: No Session Exists outside a party, Requires Party Leader on a member,
+	 *         Not Supported By Service on an online subsystem without invites such as NULL (LAN), or Invalid Params for a friend Read Easy Friends did not return.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult SendEasyPartyInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
+
+	/**
+	 * Open the platform invite overlay (e.g. Steam) for the party.
+	 * An invite-only party admits the leader's friends, because the overlay does not tell the game whom it invited.
+	 * Party leader only.
+	 *
+	 * @return Success, or why the overlay could not be opened: No Session Exists outside a party, Requires Party Leader on a member,
+	 *         or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
+	static EEasySessionResult ShowEasyPartyInviteUI(const UObject* WorldContextObject);
+
+	/**
 	 * Open the platform profile overlay (e.g. Steam) for the given friend.
 	 *
 	 * @return Success, or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).

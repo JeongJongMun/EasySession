@@ -149,6 +149,7 @@ void UEasySessionSubsystem::CreateSession(const FEasySessionHostParams& HostPara
 
 	if (IsPartyMember())
 	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::InPartyMessage);
 		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
 		return;
 	}
@@ -167,6 +168,7 @@ void UEasySessionSubsystem::JoinSession(const FEasySessionSearchResult& SearchRe
 
 	if (IsPartyMember())
 	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::InPartyMessage);
 		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
 		return;
 	}
@@ -289,7 +291,9 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 {
 	if (IsMatchmakingRunning())
 	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::MatchmakingAlreadyInProgress, TEXT("Matchmaking is already running. Cancel it first."));
+		const TCHAR* AlreadyRunningMessage = TEXT("Matchmaking is already running. Cancel it first.");
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), AlreadyRunningMessage);
+		OnComplete.ExecuteIfBound(EEasySessionResult::MatchmakingAlreadyInProgress, AlreadyRunningMessage);
 		return;
 	}
 
@@ -297,6 +301,7 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 
 	if (IsPartyMember())
 	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::InPartyMessage);
 		OnComplete.ExecuteIfBound(EEasySessionResult::InParty, EasySession::InPartyMessage);
 		return;
 	}
@@ -304,6 +309,7 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	// The host fallback could only fail after the last search pass, so the params are refused before the first one.
 	if (MatchmakingParams.bAllowHostFallback && !MatchmakingParams.Host.IsValid())
 	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::InvalidHostParamsMessage);
 		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, EasySession::InvalidHostParamsMessage);
 		return;
 	}
@@ -561,12 +567,47 @@ FString UEasySessionSubsystem::GetQueueStatus() const
 
 EEasySessionResult UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
 {
-	return Social->SendInviteToFriend(Friend);
+	return Social->SendInviteToFriend(Friend, NAME_GameSession);
 }
 
 EEasySessionResult UEasySessionSubsystem::ShowInviteUI()
 {
-	return Social->ShowInviteUI();
+	return Social->ShowInviteUI(NAME_GameSession);
+}
+
+EEasySessionResult UEasySessionSubsystem::SendPartyInviteToFriend(const FEasySessionFriend& Friend)
+{
+	if (!IsInParty())
+	{
+		return EEasySessionResult::NoSessionExists;
+	}
+
+	if (!IsPartyLeader())
+	{
+		return EEasySessionResult::RequiresPartyLeader;
+	}
+
+	const EEasySessionResult Result = Social->SendInviteToFriend(Friend, NAME_PartySession);
+	if (Result == EEasySessionResult::Success)
+	{
+		Party->AllowPlayer(Friend.NativeId);
+	}
+	return Result;
+}
+
+EEasySessionResult UEasySessionSubsystem::ShowPartyInviteUI()
+{
+	if (!IsInParty())
+	{
+		return EEasySessionResult::NoSessionExists;
+	}
+
+	if (!IsPartyLeader())
+	{
+		return EEasySessionResult::RequiresPartyLeader;
+	}
+
+	return Social->ShowInviteUI(NAME_PartySession);
 }
 
 EEasySessionResult UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)
@@ -584,6 +625,7 @@ void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 	// NULL has no friends list, and the failure is reported inside this call.
 	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
 	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::NoFriendsListMessage);
 		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
 		return;
 	}
@@ -595,13 +637,16 @@ void UEasySessionSubsystem::FindFriendSessions(FEasyFriendSessionsCompleteDelega
 {
 	if (RequestQueue->Find(FEasySessionRequest::EType::FriendSessions).IsValid())
 	{
-		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, TEXT("A friend session search is already running."), {});
+		const TCHAR* AlreadyRunningMessage = TEXT("A friend session search is already running.");
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), AlreadyRunningMessage);
+		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, AlreadyRunningMessage, {});
 		return;
 	}
 
 	// NULL has no friends list, and the failure is reported inside this call.
 	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
 	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::NoFriendsListMessage);
 		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
 		return;
 	}
