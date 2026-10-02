@@ -80,9 +80,6 @@ public:
 	/** @return The ids of every member but the local player, on the leader. Empty on a member and outside a party. */
 	TArray<FUniqueNetIdRepl> GetOtherMemberIds() const;
 
-	/** Leader only: let an invite-only party admit this player, because the leader invited them. */
-	void AllowPlayer(const FUniqueNetIdRepl& PlayerId);
-
 	/** Leader only: tell every member to follow into the session of this host, which holds a reservation for each of them. */
 	void TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
@@ -129,9 +126,6 @@ private:
 		/** The settings the leader creates the party with again. */
 		FEasyPartySettings Settings;
 
-		/** Every member the leader admitted, so an invite-only party admits them again. */
-		TArray<FUniqueNetIdRepl> MemberIds;
-
 		/** Was the party a LAN session. */
 		bool bIsLANMatch = false;
 	};
@@ -168,14 +162,10 @@ private:
 
 	/**
 	 * Decide whether a player may join the party this process leads.
-	 * Refuses a member, a kicked player, a full party, and a player an invite-only party does not expect.
-	 * An invite-only party expects the players the leader invited, its members before a match, and the leader's friends.
-	 * The friends count because the platform overlay invites friends without telling the game which ones.
+	 * Refuses a member, a kicked player, and any player while the party is full.
+	 * The privacy only decides who finds the party, so it refuses nobody here.
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
-
-	/** @return Whether this player is a friend of the local player, who leads the party. False on an online subsystem without friends, such as NULL. */
-	bool IsFriendOfLeader(const FUniqueNetIdRepl& PlayerId) const;
 
 	/** The leader takes the party into a game session. Starts following, and keeps Moved To Game Session as the reason the party ends. */
 	void HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
@@ -233,9 +223,6 @@ private:
 	/** Is the party this player is in a LAN session. */
 	bool bIsLANParty = false;
 
-	/** Every member the leader admitted to this party, kept when they leave so the party of the last match can admit them again. */
-	TArray<FUniqueNetIdRepl> AdmittedMembers;
-
 	/** The party before the last game session, which the next map without a game session gets back. */
 	TOptional<FLastParty> LastParty;
 
@@ -253,9 +240,6 @@ private:
 
 	/** Players the leader kicked. They cannot join again while this party exists. */
 	TArray<FUniqueNetIdRepl> KickedPlayers;
-
-	/** Players an invite-only party admits: the ones the leader invited, and the members before a match. */
-	TArray<FUniqueNetIdRepl> AllowedPlayers;
 
 	/** The completion of the running ConnectToLeader. Unbound while none runs. */
 	FEasyPartyConnectComplete ConnectComplete;

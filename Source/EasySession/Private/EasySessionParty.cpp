@@ -14,7 +14,6 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
-#include "Interfaces/OnlineFriendsInterface.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystemUtils.h"
@@ -96,12 +95,6 @@ bool FEasySessionParty::StartHosting(const FEasyPartySettings& InPartySettings)
 	BeaconHost = Beacon;
 	PartySettings = InPartySettings;
 	LeaderId = LocalId;
-
-	// A map change starts the beacon again, and the members it had log in again, an invite-only party too.
-	for (const FUniqueNetIdRepl& Member : AdmittedMembers)
-	{
-		AllowedPlayers.AddUnique(Member);
-	}
 
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
@@ -208,7 +201,6 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 		FLastParty& Last = LastParty.Emplace();
 		Last.LeaderId = LeaderId;
 		Last.Settings = PartySettings;
-		Last.MemberIds = AdmittedMembers;
 		Last.bIsLANMatch = bIsLANParty;
 	}
 	else
@@ -217,8 +209,6 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 	}
 
 	KickedPlayers.Reset();
-	AllowedPlayers.Reset();
-	AdmittedMembers.Reset();
 	PendingLeave.Reset();
 	PartySettings = FEasyPartySettings();
 	LeaderId = FUniqueNetIdRepl();
@@ -246,14 +236,6 @@ TArray<FUniqueNetIdRepl> FEasySessionParty::GetOtherMemberIds() const
 		}
 	}
 	return MemberIds;
-}
-
-void FEasySessionParty::AllowPlayer(const FUniqueNetIdRepl& PlayerId)
-{
-	if (PlayerId.IsValid())
-	{
-		AllowedPlayers.AddUnique(PlayerId);
-	}
 }
 
 void FEasySessionParty::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery)
@@ -309,9 +291,8 @@ EEasySessionResult FEasySessionParty::KickMember(const FUniqueNetIdRepl& PlayerI
 		return EEasySessionResult::InvalidParams;
 	}
 
-	// Kept out before the connection closes, so a quick rejoin is refused too, and the party of the last match does not admit them again.
+	// Kept out before the connection closes, so a quick rejoin is refused too.
 	KickedPlayers.AddUnique(PlayerId);
-	AdmittedMembers.Remove(PlayerId);
 	if (!Beacon->RemoveMember(PlayerId, EEasyPartyLeaveReason::Kicked, Reason))
 	{
 		return EEasySessionResult::InvalidParams;
@@ -515,10 +496,6 @@ void FEasySessionParty::TryRestoreCreate()
 {
 	const FLastParty& Last = LastParty.GetValue();
 
-	// Admitted before the create, so a member who finds the party at once is let in.
-	AllowedPlayers = Last.MemberIds;
-	AdmittedMembers = Last.MemberIds;
-
 	const TWeakPtr<bool> WeakLifetime = Lifetime;
 	RunRestoreRequest(MakeShared<FEasySessionCreatePartyRequest>(Last.Settings, FEasySessionCompleteDelegate::CreateLambda(
 		[this, WeakLifetime](EEasySessionResult Result, const FString& ErrorMessage)
@@ -644,20 +621,7 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 		return false;
 	}
 
-	if (PartySettings.Privacy == EEasyPartyPrivacy::InviteOnly && !AllowedPlayers.Contains(PlayerId) && !IsFriendOfLeader(PlayerId))
-	{
-		OutReason = NSLOCTEXT("EasySession", "PartyInviteOnly", "This party only admits players the leader invited.");
-		return false;
-	}
-
 	return true;
-}
-
-bool FEasySessionParty::IsFriendOfLeader(const FUniqueNetIdRepl& PlayerId) const
-{
-	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
-	const IOnlineFriendsPtr Friends = OnlineSub != nullptr ? OnlineSub->GetFriendsInterface() : nullptr;
-	return Friends.IsValid() && PlayerId.IsValid() && Friends->IsFriend(0, *PlayerId, EFriendsLists::ToString(EFriendsLists::Default));
 }
 
 void FEasySessionParty::HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery)
@@ -764,12 +728,6 @@ void FEasySessionParty::HandleMemberListChanged(ALobbyBeaconPlayerState* Member)
 	if (PartyMember != nullptr && !PartyMember->OnReadyChanged().IsBoundToObject(this))
 	{
 		PartyMember->OnReadyChanged().AddRaw(this, &FEasySessionParty::HandleMemberListChanged, static_cast<ALobbyBeaconPlayerState*>(nullptr));
-	}
-
-	// Kept when the member leaves again, because a member who left to follow the leader comes back with the party after the match.
-	if (PartyMember != nullptr && BeaconHost.IsValid() && PartyMember->UniqueId.IsValid() && PartyMember->UniqueId != LeaderId)
-	{
-		AdmittedMembers.AddUnique(PartyMember->UniqueId);
 	}
 
 	if (MembersChangedHandle.IsValid())

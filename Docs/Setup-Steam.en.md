@@ -63,7 +63,7 @@ uses a beacon.
 
 ### Parties on Steam
 
-A party is a Steam lobby next to the game session, and the leader runs the party beacon on the same port as the reservation beacon. The two accounts must be Steam friends for the invite-only checks. With the console (`~`) on both machines:
+A party is a Steam lobby next to the game session, and the leader runs the party beacon on the same port as the reservation beacon. The two accounts must be Steam friends, because the invite overlay lists only friends. With the console (`~`) on both machines:
 
 1. **Invite.** A: `EasySession.CreateParty 4 invite`, then `EasySession.PartyInviteUI` and invite B. B accepts in the overlay and joins. B's log shows the leader's Steam address: `Connecting to the party leader at steam.<id>:...`.
 2. **Public party.** A: `EasySession.CreateParty 4 public`. B: `EasySession.FindParties`, then `EasySession.JoinParty`.
@@ -81,6 +81,5 @@ A party is a Steam lobby next to the game session, and the leader runs the party
 | Invite/overlay works but join fails with "connection to the host has been lost" | Net driver is not Steam Sockets - plugin disabled, `ClearArray` line missing, or config still names the legacy `SteamNetDriver`. Run `EasySession.Diagnose` |
 | Everything works in PIE but not packaged | PIE was silently using NULL - check the log line `EasySessionSubsystem initialized. Online subsystem: STEAM` |
 | An accepted invite does nothing, and the log says `search already in progress when accepting invite` | The engine ignores an invite accepted while a session search runs. Accept again once the search has finished ([FAQ](FAQ.en.md)) |
-| An invite-only party refuses an invited player with "This party only admits players the leader invited." | The two accounts are not Steam friends, and the invite was not sent with Send Easy Party Invite To Friend |
 
 When in doubt: check the startup log for the `===== EasySession diagnostics =====` block, or run `EasySession.Diagnose` at any time. It verifies the active subsystem, every ini key above, that the configured net driver class actually loads, and the Steam login state.

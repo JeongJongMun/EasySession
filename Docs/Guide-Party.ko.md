@@ -30,17 +30,15 @@
 
 ## 누가 들어올 수 있나
 
-`Privacy`는 두 가지를 함께 정합니다. 검색에 파티가 보이는지, 그리고 리더가 누구를 받는지입니다.
+`Privacy`는 검색에 파티가 보이는지를 정합니다. 어떤 Privacy든 파티에 닿은 플레이어를 받습니다. 리더가 내보낸 플레이어와 파티가 가득 찬 경우만 거절합니다.
 
-| Privacy | Find Easy Parties | 리더가 받는 사람 |
+| Privacy | Find Easy Parties | 들어오는 길 |
 |---|---|---|
-| Invite Only | 숨김 | 리더가 초대한 플레이어, 리더의 친구, 매치 전 파티의 멤버 |
-| Join Code | 숨김, 코드로만 찾음 | 코드를 가진 누구나 |
-| Public | 보임 | 누구나 |
+| Invite Only | 숨김 | 초대 |
+| Join Code | 숨김, 코드로만 찾음 | 코드나 초대 |
+| Public | 보임 | 검색이나 초대 |
 
-Invite Only는 숨기기만 하는 것이 아닙니다. 리더가 접속하는 모든 플레이어를 검사하므로, 다른 경로로 파티를 찾아낸 플레이어도 거절됩니다. 그래서 `Privacy`는 게임 세션처럼 `Hidden`과 `Use Join Code` 두 플래그가 아니라 값 하나입니다. 숨긴 게임 세션은 검색 결과를 가진 사람이면 누구나 들어올 수 있고, 막는 수단은 비밀번호뿐입니다.
-
-플랫폼 초대 오버레이는 누구를 초대했는지 게임에 알려 주지 않습니다. 그래서 Invite Only 파티는 리더의 친구를 모두 받습니다. `Send Easy Party Invite To Friend`로 초대한 친구도 같은 방식으로 받습니다.
+Invite Only는 게임 세션의 `Hidden`처럼 파티를 숨깁니다. 파티를 잠그지는 않으므로, 리더의 ID처럼 다른 경로로 파티를 찾은 플레이어도 받습니다. `Privacy`가 게임 세션처럼 `Hidden`과 `Use Join Code` 두 플래그가 아니라 값 하나인 이유는 세 방식이 서로 배타적이기 때문입니다. 보이는 파티에는 코드가 필요 없고, 코드 없이 숨긴 파티는 초대로만 들어옵니다. 파티에는 비밀번호가 없습니다.
 
 Join Code 파티는 자동으로 만든 6자리 코드를 광고합니다. 리더는 `Get Easy Party Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다.
 
@@ -55,18 +53,18 @@ Join Code 파티는 자동으로 만든 6자리 코드를 광고합니다. 리�
 - 결과의 `Session Display Name`과 `Host Name`은 리더 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
 - 파티는 지역, 커스텀 세팅, 매치 상태를 광고하지 않으므로 `Region`, `Required Custom Settings`, `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
 
-`Join Easy Party`에 그 결과 하나를 넘깁니다. 참가는 리더가 정하고, 거절되면 노드가 `JoinRefused`와 리더의 사유로 실패합니다. 예를 들어 "The party is full."이나 "This party only admits players the leader invited."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
+`Join Easy Party`에 그 결과 하나를 넘깁니다. 참가는 리더가 정하고, 거절되면 노드가 `JoinRefused`와 리더의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party leader removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
 
 이미 파티에 있거나 게임 세션 안에 있는 플레이어는 `SessionAlreadyExists`로 실패합니다. 먼저 `Leave Easy Party`나 `Leave Easy Session`을 부르세요.
 
 ## 초대
 
-초대는 리더만 합니다.
+초대는 리더뿐 아니라 모든 멤버가 할 수 있습니다.
 
 - `Send Easy Party Invite To Friend`는 `Read Easy Friends`가 돌려준 친구 한 명을 초대합니다.
 - `Show Easy Party Invite UI`는 파티용 플랫폼 초대 오버레이를 엽니다.
 
-멤버가 부르면 `RequiresPartyLeader`, 초대가 없는 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
+둘 다 파티 밖에서는 `NoSessionExists`, 초대가 없는 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
 
 플레이어가 파티 초대를 수락하면 `OnSessionInviteAccepted`가 `Is Party`가 true인 결과와 함께 옵니다. **Auto Join Accepted Invites**가 켜져 있으면(기본값) 이벤트 직후 플러그인이 파티에 참가합니다.
 
@@ -122,7 +120,7 @@ Is Enabled = NOT (Is In Easy Party AND NOT Is Easy Party Leader)
 
 **Restore Party After Match**가 켜져 있으면(기본값), 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티가 돌아옵니다.
 
-- 리더는 같은 설정으로 즉시 파티를 다시 만듭니다. 지난 파티의 멤버는 Invite Only 파티라도 다시 받습니다.
+- 리더는 같은 설정으로 즉시 파티를 다시 만듭니다. 멤버는 리더의 ID로 파티를 찾으므로 Invite Only 파티도 돌아옵니다.
 - 리더가 매치에 더 오래 남아 있을 수 있으므로, 멤버는 리더의 파티를 2초마다 최대 **Party Restore Wait Seconds**(기본 120초) 동안 찾습니다. 그 안에 리더가 돌아오지 않으면 멤버에게 `ConnectionLost`가 담긴 `OnPartyLeft`가 옵니다.
 
 이 동안 `Is Easy Party Restoring`은 true이고, 멤버의 `Is In Easy Party`는 파티를 찾을 때까지 false입니다. 이때 대기 메시지를 띄우세요. `Create Easy Party`, `Join Easy Party`, `Leave Easy Party`, `Create Easy Session`, `Join Easy Session`, `Start Easy Matchmaking`을 부르면 복원이 멈춥니다. 플레이어가 다른 것을 골랐기 때문입니다.

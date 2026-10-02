@@ -365,10 +365,10 @@ public:
 		Subsystem.Party->HandlePostLoadMap(Subsystem.GetGameInstance()->GetWorld());
 	}
 
-	/** @return How many members the party of the last match admitted, or -1 when there is none to get back. */
-	static int32 GetLastPartyMemberCount(const UEasySessionSubsystem& Subsystem)
+	/** @return Whether a party of the last match is kept to get back. */
+	static bool HasLastParty(const UEasySessionSubsystem& Subsystem)
 	{
-		return Subsystem.Party->LastParty.IsSet() ? Subsystem.Party->LastParty->MemberIds.Num() : -1;
+		return Subsystem.Party->LastParty.IsSet();
 	}
 
 	/** Pretend the local player was a member of this leader's party before the last match. */
@@ -377,12 +377,6 @@ public:
 		FEasySessionParty::FLastParty& Last = Subsystem.Party->LastParty.Emplace();
 		Last.LeaderId = LeaderId;
 		Last.bIsLANMatch = true;
-	}
-
-	/** Let an invite-only party this process leads admit a player, as an invite does. */
-	static void AllowPartyPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
-	{
-		Subsystem.Party->AllowedPlayers.AddUnique(PlayerId);
 	}
 
 	/** Ask the reservations directly whether a player may join. The reservation beacon and PreLogin both call this. */

@@ -55,7 +55,7 @@ bInitServerOnClient=true
 
 ### 스팀에서 파티 확인하기
 
-파티는 게임 세션 옆에 따로 있는 스팀 로비이고, 리더는 예약 비콘과 같은 포트에서 파티 비콘을 엽니다. 초대 전용 검사를 확인하려면 두 계정이 스팀 친구여야 합니다. 두 PC에서 콘솔(`~`)을 열고 진행합니다.
+파티는 게임 세션 옆에 따로 있는 스팀 로비이고, 리더는 예약 비콘과 같은 포트에서 파티 비콘을 엽니다. 초대 오버레이에는 친구만 나오므로 두 계정이 스팀 친구여야 합니다. 두 PC에서 콘솔(`~`)을 열고 진행합니다.
 
 1. **초대.** A: `EasySession.CreateParty 4 invite`, 이어서 `EasySession.PartyInviteUI`로 B를 초대합니다. B가 오버레이에서 수락하면 참가합니다. B의 로그에 리더의 스팀 주소가 보입니다: `Connecting to the party leader at steam.<id>:...`
 2. **공개 파티.** A: `EasySession.CreateParty 4 public`. B: `EasySession.FindParties`, 이어서 `EasySession.JoinParty`.
@@ -73,6 +73,5 @@ bInitServerOnClient=true
 | 초대/오버레이는 되는데 참가가 "connection to the host has been lost"로 실패 | 넷드라이버가 Steam Sockets가 아님. 플러그인이 꺼져 있거나, `ClearArray` 줄이 없거나, 설정이 아직 구형 `SteamNetDriver`를 가리킴. `EasySession.Diagnose`를 실행하세요 |
 | PIE에서는 다 되는데 패키지에서는 안 됨 | PIE가 조용히 NULL을 쓰고 있었음. 로그의 `EasySessionSubsystem initialized. Online subsystem: STEAM` 줄을 확인하세요 |
 | 초대를 수락해도 아무 일이 없고, 로그에 `search already in progress when accepting invite`가 남음 | 세션 검색이 도는 동안 수락한 초대는 엔진이 무시합니다. 검색이 끝난 뒤 다시 수락하세요([FAQ](FAQ.ko.md)) |
-| 초대 전용 파티가 초대한 플레이어를 "This party only admits players the leader invited."로 거절함 | 두 계정이 스팀 친구가 아니고, Send Easy Party Invite To Friend로 보낸 초대도 아님 |
 
 막히면 시작 로그에서 `===== EasySession diagnostics =====` 블록을 찾거나, 아무 때나 `EasySession.Diagnose`를 실행하세요. 활성 서브시스템, 위의 모든 ini 키, 설정한 넷드라이버 클래스가 실제로 로드되는지, 스팀 로그인 상태까지 확인해 줍니다.

@@ -621,17 +621,7 @@ EEasySessionResult UEasySessionSubsystem::SendPartyInviteToFriend(const FEasySes
 		return EEasySessionResult::NoSessionExists;
 	}
 
-	if (!IsPartyLeader())
-	{
-		return EEasySessionResult::RequiresPartyLeader;
-	}
-
-	const EEasySessionResult Result = Social->SendInviteToFriend(Friend, NAME_PartySession);
-	if (Result == EEasySessionResult::Success)
-	{
-		Party->AllowPlayer(Friend.NativeId);
-	}
-	return Result;
+	return Social->SendInviteToFriend(Friend, NAME_PartySession);
 }
 
 EEasySessionResult UEasySessionSubsystem::ShowPartyInviteUI()
@@ -639,11 +629,6 @@ EEasySessionResult UEasySessionSubsystem::ShowPartyInviteUI()
 	if (!IsInParty())
 	{
 		return EEasySessionResult::NoSessionExists;
-	}
-
-	if (!IsPartyLeader())
-	{
-		return EEasySessionResult::RequiresPartyLeader;
 	}
 
 	return Social->ShowInviteUI(NAME_PartySession);

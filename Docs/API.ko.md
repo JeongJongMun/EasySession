@@ -84,7 +84,8 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 | **Join Easy Session** | 파티 전체가 들어갈 자리를 요청하고 데리고 갑니다. 자리가 없으면 `JoinSessionFull` | `InParty` |
 | **Start Easy Matchmaking** | 파티 전체가 들어갈 자리가 있는 세션만 고르고 데리고 갑니다 | `InParty` |
 | **Create Easy Party**, **Join Easy Party** | `SessionAlreadyExists`. 먼저 파티를 나가세요 | `SessionAlreadyExists`. 먼저 파티를 나가세요 |
-| **Kick Easy Party Member**, 파티 초대 노드 | 가능 | `RequiresPartyLeader` |
+| **Kick Easy Party Member** | 가능 | `RequiresPartyLeader` |
+| 파티 초대 노드 | 가능 | 가능 |
 
 게임 세션에 들어가면 모두의 파티가 닫히고, `MovedToGameSession`이 담긴 `OnPartyLeft`가 옵니다. 자세한 내용은 [파티 가이드](Guide-Party.ko.md#행선지는-리더가-정합니다)에 있습니다.
 
@@ -181,8 +182,8 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | 세션에 있는 사람의 프로필 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI For Party Member | `ShowProfileUIForPartyMember` | 파티 멤버의 프로필 오버레이. 결과 값을 돌려줍니다 |
-| Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | 파티로의 플랫폼 초대. 파티 리더 전용, 결과 값을 돌려줍니다 |
-| Show Easy Party Invite UI | `ShowPartyInviteUI` | 파티용 플랫폼 초대 오버레이. 파티 리더 전용, 결과 값을 돌려줍니다 |
+| Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | 파티로의 플랫폼 초대. 멤버 누구나, 결과 값을 돌려줍니다 |
+| Show Easy Party Invite UI | `ShowPartyInviteUI` | 파티용 플랫폼 초대 오버레이. 멤버 누구나, 결과 값을 돌려줍니다 |
 | Set Easy Session Ready | `SetSessionReady` | 로컬 플레이어의 준비 상태를 바꿉니다. 모든 플레이어가 Get Easy Session Player Infos에서 봅니다. 세션이 맵을 옮길 때마다 다시 풀립니다 |
 | Set Easy Party Ready | `SetPartyReady` | 로컬 플레이어의 준비 상태를 바꿉니다. 모든 멤버가 Get Easy Party Members에서 봅니다 |
 | Kick Easy Session Player | `KickPlayer` | 플레이어를 내보내고 세션이 없어질 때까지 다시 들어오지 못하게 합니다. 내보내진 플레이어는 메뉴에서 `Kicked`와 사유를 읽습니다. 세션 권한 필요 |
@@ -350,11 +351,13 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ### 6.8 EEasyPartyPrivacy
 
-| 값 | Find Easy Parties | 리더가 받는 사람 |
+| 값 | Find Easy Parties | 들어오는 길 |
 |---|---|---|
-| `InviteOnly`(기본값) | 숨김 | 초대한 플레이어, 리더의 친구, 매치 전 파티의 멤버 |
-| `JoinCode` | 코드로만 찾음 | 코드를 가진 누구나 |
-| `Public` | 보임 | 누구나 |
+| `InviteOnly`(기본값) | 숨김 | 초대 |
+| `JoinCode` | 코드로만 찾음 | 코드나 초대 |
+| `Public` | 보임 | 검색이나 초대 |
+
+어떤 Privacy도 파티에 닿은 플레이어를 거절하지 않습니다. 리더는 내보낸 플레이어와, 파티가 가득 찼을 때만 거절합니다.
 
 ### 6.9 EEasyPartyLeaveReason
 

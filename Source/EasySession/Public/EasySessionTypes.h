@@ -818,13 +818,14 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 };
 
 /**
- * Who may join a party.
+ * Who finds a party with Find Easy Parties.
  * Every party is advertised, so a member can find the leader's party again after a match.
+ * A player who reaches the party another way, such as through an invite, can join it whatever the privacy.
  */
 UENUM(BlueprintType)
 enum class EEasyPartyPrivacy : uint8
 {
-	/** Only the players the leader invited, and the members of the party before a match. Hidden from Find Easy Parties. */
+	/** Hidden from Find Easy Parties. Players join through an invite. */
 	InviteOnly UMETA(DisplayName = "Invite Only"),
 
 	/** Anyone who searches with the party's join code. Hidden from Find Easy Parties without the code. */
@@ -847,7 +848,7 @@ struct EASYSESSION_API FEasyPartySettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = "2", UIMin = "2"))
 	int32 MaxMembers = 4;
 
-	/** Who may join the party. */
+	/** Who finds the party with Find Easy Parties. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	EEasyPartyPrivacy Privacy = EEasyPartyPrivacy::InviteOnly;
 

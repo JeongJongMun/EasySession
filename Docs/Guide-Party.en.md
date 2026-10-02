@@ -30,17 +30,15 @@ On Steam a party is a Steam lobby, so it needs presence and works across the int
 
 ## Who may join
 
-`Privacy` decides two things together: whether searches list the party, and whom the leader admits.
+`Privacy` decides whether searches list the party. Every privacy admits a player who reaches the party, unless the leader kicked them or the party is full.
 
-| Privacy | Find Easy Parties | The leader admits |
+| Privacy | Find Easy Parties | Players join through |
 |---|---|---|
-| Invite Only | Hidden | Players the leader invited, the leader's friends, and the members of the party before a match |
-| Join Code | Hidden, found only with the code | Anyone who has the code |
-| Public | Listed | Anyone |
+| Invite Only | Hidden | An invite |
+| Join Code | Hidden, found only with the code | The code, or an invite |
+| Public | Listed | A search, or an invite |
 
-Invite Only is not only hidden. The leader checks every player as they connect, so a player who found the party some other way is still refused. This is why `Privacy` is one value instead of the `Hidden` and `Use Join Code` flags a game session has: a hidden game session lets in anyone who has its search result, and only a password keeps players out.
-
-The platform invite overlay does not tell the game whom it invited, so an Invite Only party admits every friend of the leader. A friend invited with `Send Easy Party Invite To Friend` is admitted the same way.
+Invite Only hides the party the way `Hidden` hides a game session. It does not lock the party: a player who finds it another way, for example by the leader's id, is admitted. `Privacy` is one value instead of the `Hidden` and `Use Join Code` flags of a game session, because the three are exclusive: a listed party needs no code, and a hidden party without a code is reached only through an invite. A party has no password.
 
 A Join Code party advertises a generated six character code. `Get Easy Party Join Code` reads it, for the leader to show and share. Every member can read it too.
 
@@ -55,18 +53,18 @@ A Join Code party advertises a generated six character code. `Get Easy Party Joi
 - Each result's `Session Display Name` and `Host Name` are the leader's name. `Max Players` and `Open Slots` count members.
 - Parties advertise no region, custom settings or match state, so `Region`, `Required Custom Settings` and `Include In Progress Sessions` are ignored. The search params a game uses for game sessions work here too.
 
-`Join Easy Party` takes one of those results. The leader decides the join, and a refusal fails the node with `JoinRefused` and the leader's reason, for example "The party is full." or "This party only admits players the leader invited.". On success `Get Easy Party Members` already lists the local player.
+`Join Easy Party` takes one of those results. The leader decides the join, and a refusal fails the node with `JoinRefused` and the leader's reason, for example "The party is full." or "The party leader removed you from this party.". On success `Get Easy Party Members` already lists the local player.
 
 The join fails with `SessionAlreadyExists` for a player who is already in a party or in a game session. Call `Leave Easy Party` or `Leave Easy Session` first.
 
 ## Invites
 
-Only the leader invites:
+Every member invites, not only the leader:
 
 - `Send Easy Party Invite To Friend` invites one friend that `Read Easy Friends` returned.
 - `Show Easy Party Invite UI` opens the platform invite overlay for the party.
 
-Both return `RequiresPartyLeader` on a member and `NotSupportedByService` on NULL/LAN, which has no invites.
+Both return `NoSessionExists` outside a party and `NotSupportedByService` on NULL/LAN, which has no invites.
 
 When a player accepts a party invite, `OnSessionInviteAccepted` fires with a result whose `Is Party` is true. With **Auto Join Accepted Invites** on, the default, the plugin joins the party right after the event:
 
@@ -122,7 +120,7 @@ Entering the game session closes the party. Every member, and the leader, receiv
 
 With **Restore Party After Match** on, the default, the party comes back in the first map without a game session after the match:
 
-- The leader creates the party again at once, with the same settings. The members of the last party are admitted again, even into an Invite Only party.
+- The leader creates the party again at once, with the same settings. The members find it by the leader's id, so an Invite Only party comes back too.
 - Every member looks for the leader's party every two seconds, for up to **Party Restore Wait Seconds** (120 by default), because the leader may stay in the match longer. A member whose leader does not come back in time receives `OnPartyLeft` with `ConnectionLost`.
 
 While this runs, `Is Easy Party Restoring` is true, and `Is In Easy Party` stays false on a member until the party is found. Show a waiting message then. Calling `Create Easy Party`, `Join Easy Party`, `Leave Easy Party`, `Create Easy Session`, `Join Easy Session` or `Start Easy Matchmaking` stops the restore, because the player chose something else.

@@ -87,7 +87,8 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Join Easy Session** | Asks for room for the whole party and brings it. No room is `JoinSessionFull` | `InParty` |
 | **Start Easy Matchmaking** | Only considers sessions with room for the whole party, and brings it | `InParty` |
 | **Create Easy Party**, **Join Easy Party** | `SessionAlreadyExists`. Leave the party first | `SessionAlreadyExists`. Leave the party first |
-| **Kick Easy Party Member**, the party invite nodes | Allowed | `RequiresPartyLeader` |
+| **Kick Easy Party Member** | Allowed | `RequiresPartyLeader` |
+| The party invite nodes | Allowed | Allowed |
 
 Entering the game session closes the party for everyone, with `OnPartyLeft` and `MovedToGameSession`. The [Party guide](Guide-Party.en.md#the-leader-decides-where-the-party-goes) has the details.
 
@@ -187,8 +188,8 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend, returns a result |
 | Show Easy Profile UI For Player | `ShowProfileUIForPlayer` | Profile overlay for someone in the session, returns a result |
 | Show Easy Profile UI For Party Member | `ShowProfileUIForPartyMember` | Profile overlay for a member of the party, returns a result |
-| Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | Platform invite to the party. Party leader only, returns a result |
-| Show Easy Party Invite UI | `ShowPartyInviteUI` | Platform invite overlay for the party. Party leader only, returns a result |
+| Send Easy Party Invite To Friend | `SendPartyInviteToFriend` | Platform invite to the party. Any member, returns a result |
+| Show Easy Party Invite UI | `ShowPartyInviteUI` | Platform invite overlay for the party. Any member, returns a result |
 | Set Easy Session Ready | `SetSessionReady` | Changes whether the local player is ready, which every player sees in Get Easy Session Player Infos. Unset again in every map the session travels to |
 | Set Easy Party Ready | `SetPartyReady` | Changes whether the local player is ready, which every member sees in Get Easy Party Members |
 | Kick Easy Session Player | `KickPlayer` | Removes a player and keeps them out until the session is destroyed. They read `Kicked` with your reason in the menu. Session authority only |
@@ -361,11 +362,13 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 ### 6.8 EEasyPartyPrivacy
 
-| Value | Find Easy Parties | The leader admits |
+| Value | Find Easy Parties | Players join through |
 |---|---|---|
-| `InviteOnly` (default) | Hidden | Invited players, the leader's friends, and the members of the party before a match |
-| `JoinCode` | Found only with the code | Anyone who has the code |
-| `Public` | Listed | Anyone |
+| `InviteOnly` (default) | Hidden | An invite |
+| `JoinCode` | Found only with the code | The code, or an invite |
+| `Public` | Listed | A search, or an invite |
+
+No privacy refuses a player who reaches the party. The leader refuses only a kicked player, and anyone while the party is full.
 
 ### 6.9 EEasyPartyLeaveReason
 

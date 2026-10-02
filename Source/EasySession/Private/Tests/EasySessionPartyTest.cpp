@@ -434,7 +434,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 			// A member of someone else's party, which is what clearing the leader's host flag makes the local player.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false, NAME_PartySession);
-			CurrentTest->TestEqual(TEXT("A member cannot invite"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::RequiresPartyLeader);
+			CurrentTest->TestEqual(TEXT("A member can invite too"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::NotSupportedByService);
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true, NAME_PartySession);
 
 			// The game session filters a game may pass along are ignored, because a party advertises none of them.
@@ -502,9 +502,8 @@ bool FEasySessionPartyAdmissionStep::Update()
 				return TimedOut(State, TEXT("the invite-only party create"));
 			}
 
-			CurrentTest->TestFalse(TEXT("An invite-only party refuses a player it does not expect"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
-			FEasySessionTestAccess::AllowPartyPlayer(*Subsystem, Stranger);
-			CurrentTest->TestTrue(TEXT("An invite-only party admits an invited player"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
+			// The privacy only hides the party, so a player who reached it through an invite is let in.
+			CurrentTest->TestTrue(TEXT("An invite-only party admits a player who reached it"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
 
 			Subsystem->LeaveParty(MakeCallback(State));
 			NextPhase(State);
@@ -525,8 +524,8 @@ bool FEasySessionPartyAdmissionStep::Update()
 }
 
 /**
- * The leader admits a player unless they are a member already, were kicked, would overfill the party, or were not invited to an invite-only party.
- * Only the leader kicks, and only a connected member.
+ * The leader admits a player unless they are a member already, were kicked, or would overfill the party.
+ * Only the leader kicks, and only a connected member, while any member can invite.
  * A search for parties skips game sessions even when the online subsystem returns them.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyAdmissionTest, "EasySession.Party.LeaderDecidesWhoJoins", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -734,7 +733,7 @@ bool FEasySessionPartyRestoreStep::Update()
 			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
 			CurrentTest->TestNotNull(TEXT("The leader starts the party beacon again in the new map"), FEasySessionTestAccess::GetPartyBeacon(*Subsystem));
 			CurrentTest->TestEqual(TEXT("The new member list holds the leader until the members log in again"), Subsystem->GetPartyMembers().Num(), 1);
-			CurrentTest->TestTrue(TEXT("An invite-only party admits its members again"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Member, Reason));
+			CurrentTest->TestTrue(TEXT("The new party beacon admits its members again"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Member, Reason));
 
 			Subsystem->CreateSession(MakeHostParams(), MakeCallback(State));
 			NextPhase(State);
@@ -749,7 +748,7 @@ bool FEasySessionPartyRestoreStep::Update()
 			}
 
 			CurrentTest->TestFalse(TEXT("The game session closes the party"), Subsystem->IsInParty());
-			CurrentTest->TestEqual(TEXT("The party of the last match keeps the member"), FEasySessionTestAccess::GetLastPartyMemberCount(*Subsystem), 1);
+			CurrentTest->TestTrue(TEXT("The party of the last match is kept"), FEasySessionTestAccess::HasLastParty(*Subsystem));
 
 			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
 			CurrentTest->TestFalse(TEXT("A map with a game session gets no party back"), Subsystem->IsRestoringParty());
@@ -781,7 +780,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 			CurrentTest->TestTrue(TEXT("The leader leads the party again"), Subsystem->IsInParty() && Subsystem->IsPartyLeader());
 			CurrentTest->TestTrue(TEXT("The party of the last match admits its member again"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Member, Reason));
-			CurrentTest->TestEqual(TEXT("Nothing is left to get back"), FEasySessionTestAccess::GetLastPartyMemberCount(*Subsystem), -1);
+			CurrentTest->TestFalse(TEXT("Nothing is left to get back"), FEasySessionTestAccess::HasLastParty(*Subsystem));
 
 			Subsystem->LeaveParty(MakeCallback(State));
 			NextPhase(State);
@@ -834,8 +833,8 @@ bool FEasySessionPartyRestoreStep::Update()
 }
 
 /**
- * A map change destroys the party beacon, and the leader starts it again with the members it admitted.
- * The party that entered a game session comes back in the next map without one, and an invite-only party admits its members again.
+ * A map change destroys the party beacon, and the leader starts it again for the members to log in again.
+ * The party that entered a game session comes back in the next map without one, and admits its members again.
  * A party the player creates while a member looks for the leader stops that restore.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyRestoreTest, "EasySession.Party.ThePartyComesBackAfterAMatch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
