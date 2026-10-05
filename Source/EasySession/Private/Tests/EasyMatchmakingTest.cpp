@@ -888,7 +888,13 @@ bool FEasyMatchmakingWaitEvents::Update()
 			CurrentTest->TestTrue(TEXT("The Complete state is broadcast before Completed"),
 				Listener->MatchmakingJournal.Num() >= 2 && Listener->MatchmakingJournal[Listener->MatchmakingJournal.Num() - 2].EndsWith(TEXT(">Complete")));
 
-			CurrentTest->TestTrue(TEXT("The once-a-second update fired"), Listener->MatchmakingElapsedSeen.Num() >= 2);
+			// Every state change broadcasts one update, so an update beyond those came from the once-a-second ticker.
+			int32 StateChanges = 0;
+			for (const FString& Entry : Listener->MatchmakingJournal)
+			{
+				StateChanges += Entry.StartsWith(TEXT("State=")) ? 1 : 0;
+			}
+			CurrentTest->TestTrue(TEXT("The once-a-second update fired"), Listener->MatchmakingElapsedSeen.Num() > StateChanges);
 			bool bNonDecreasing = true;
 			for (int32 Index = 1; Index < Listener->MatchmakingElapsedSeen.Num(); ++Index)
 			{

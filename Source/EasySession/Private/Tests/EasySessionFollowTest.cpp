@@ -107,6 +107,10 @@ bool FEasySessionFollowStep::Update()
 				return TimedOut(State, TEXT("the current create"));
 			}
 
+			// The player joined this session rather than hosting it, so only the follow may start a run from inside it.
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
+			CurrentTest->TestFalse(TEXT("The player does not host the session it is in"), Subsystem->IsSessionAuthority());
+
 			Subsystem->FollowHost(State->HostResult.Session.OwningUserId, true);
 			MoveTo(State, FTestState::EStep::AwaitingSearch);
 			return false;
