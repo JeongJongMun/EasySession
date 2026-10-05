@@ -10,31 +10,14 @@
 
 namespace EasySession
 {
-	/** Custom session setting key holding the session display name. */
 	const FName SettingKey_DisplayName = TEXT("EASYDISPLAYNAME");
-
-	/** Custom session setting key marking a hidden session. */
 	const FName SettingKey_Hidden = TEXT("EASYHIDDEN");
-
-	/** Custom session setting key marking a password protected session. */
 	const FName SettingKey_PasswordProtected = TEXT("EASYPASSWORDPROTECTED");
-
-	/** Custom session setting key holding the advertised region. */
 	const FName SettingKey_Region = TEXT("EASYREGION");
-
-	/** Custom session setting key marking a session whose match is in progress. */
 	const FName SettingKey_MatchInProgress = TEXT("EASYINPROGRESS");
-
-	/** Custom session setting key holding the shareable join code. */
 	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
-
-	/** Custom session setting key marking a session whose host runs the reservation beacon. */
 	const FName SettingKey_Reservations = TEXT("EASYRESERVATIONS");
-
-	/** Custom session setting key holding the host's unique id as a string. */
 	const FName SettingKey_OwnerId = TEXT("EASYOWNERID");
-
-	/** Custom session setting key marking a party session. */
 	const FName SettingKey_Party = TEXT("EASYPARTY");
 
 	int32 GetReservationBeaconPort()
@@ -165,10 +148,11 @@ void FEasySessionSettings::ApplyTo(FOnlineSessionSettings& OutSettings) const
 	OutSettings.Set(EasySession::SettingKey_Hidden, bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	OutSettings.Set(EasySession::SettingKey_Region, static_cast<int32>(Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// Only the flag is advertised, and the host keeps the password. A whitespace-only password counts as none in both.
+	// Only the flag is advertised, and the host keeps the password.
+	// A whitespace-only password counts as none in both.
 	OutSettings.Set(EasySession::SettingKey_PasswordProtected, Password.TrimStartAndEnd().IsEmpty() ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// A join code stays once generated, so players who already have it can still join.
+	// An advertised join code stays while bUseJoinCode is on, so players who already have it can still join.
 	FString ExistingJoinCode;
 	OutSettings.Get(EasySession::SettingKey_JoinCode, ExistingJoinCode);
 	if (bUseJoinCode)
@@ -180,7 +164,8 @@ void FEasySessionSettings::ApplyTo(FOnlineSessionSettings& OutSettings) const
 		OutSettings.Set(EasySession::SettingKey_JoinCode, FString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 
-	// A custom setting left out of CustomSettings is removed. Reserved keys are not custom settings.
+	// A custom setting left out of CustomSettings is removed.
+	// Reserved keys are not custom settings.
 	TArray<FName> DroppedKeys;
 	for (const TPair<FName, FOnlineSessionSetting>& Existing : OutSettings.Settings)
 	{

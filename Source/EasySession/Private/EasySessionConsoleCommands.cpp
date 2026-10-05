@@ -67,7 +67,7 @@ namespace EasySessionConsole
 		return Subsystem;
 	}
 
-	/** The results of the last EasySession.Find, which EasySession.Join picks from by index. */
+	// The results of the last EasySession.Find, which EasySession.Join picks from by index.
 	static TArray<FEasySessionSearchResult> LastFoundSessions;
 
 	static FEasySessionCompleteDelegate MakePrintDelegate(const FString& Operation)
@@ -380,7 +380,7 @@ namespace EasySessionConsole
 			}
 		}));
 
-	/** The results of the last EasySession.FindParties, which EasySession.JoinParty picks from by index. */
+	// The results of the last EasySession.FindParties, which EasySession.JoinParty picks from by index.
 	static TArray<FEasySessionSearchResult> LastFoundParties;
 
 	static FAutoConsoleCommandWithWorldAndArgs GFindPartiesCommand(

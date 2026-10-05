@@ -18,7 +18,7 @@ namespace
 	using EasySessionDiagnostics::FFinding;
 	using EasySessionDiagnostics::FReport;
 
-	/** Append a problem plus the exact ini lines that fix it. */
+	// Append a problem plus the exact ini lines that fix it.
 	void AddFix(FReport& Report, FString Problem, TArray<FString> IniLines = {}, FString Postscript = FString())
 	{
 		FFinding Finding;
@@ -28,7 +28,7 @@ namespace
 		Report.Findings.Add(MoveTemp(Finding));
 	}
 
-	/** Append an informational line. */
+	// Append an informational line.
 	void AddInfo(FReport& Report, EFindingKind Kind, FString Message)
 	{
 		FFinding Finding;

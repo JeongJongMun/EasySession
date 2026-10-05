@@ -11,7 +11,7 @@
 
 namespace
 {
-	/** Characters a member name keeps, the same limit AGameModeBase::InitNewPlayer applies to player names in a game session. */
+	// Characters a member name keeps, the same limit AGameModeBase::InitNewPlayer applies to player names in a game session.
 	constexpr int32 MaxMemberNameLength = 20;
 }
 

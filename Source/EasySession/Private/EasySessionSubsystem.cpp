@@ -221,7 +221,7 @@ void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySession
 
 	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
 
-	// Tell every remote client to leave with the reason before the session is destroyed.
+	// Send every remote client the reason before the session is destroyed.
 	Host->TellEveryoneToReturnToMenu(Reason);
 
 	DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
@@ -317,7 +317,7 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this, PolicyClass != nullptr ? PolicyClass.Get() : UEasyMatchmakingPolicy::StaticClass());
 	EnqueueRequest(MakeShared<FEasySessionMatchmakingRequest>(MatchmakingParams, *Policy, MoveTemp(OnComplete)));
 
-	// Broadcast after the request is queued, so Get Active Easy Matchmaking Policy already returns the run's policy here.
+	// Broadcast after the request is queued, so GetActiveMatchmakingPolicy already returns the run's policy here.
 	// The run broadcasts every later event itself.
 	OnMatchmakingStarted.Broadcast();
 }
@@ -705,10 +705,8 @@ void UEasySessionSubsystem::HandleDisconnect(EEasyDisconnectReason Reason, const
 		return;
 	}
 
-	// First reason wins, because destroying the session can fail on its own (the connection dropping while we leave).
-	// Those later failures would replace the real cause with a symptom.
-	// Only the reason is protected.
-	// Reading it is optional, so a reason the game never read must never stop a later disconnect from being cleaned up.
+	// The first reason is kept, because the destroy that follows can fail on its own, for example when the connection drops during it.
+	// Only the reason is kept, so a reason the game never read with ConsumePendingDisconnectInfo never stops a later disconnect from destroying the session.
 	if (!PendingDisconnectInfo.IsSet())
 	{
 		FEasyDisconnectInfo& Info = PendingDisconnectInfo.Emplace();
@@ -755,7 +753,7 @@ void UEasySessionSubsystem::ClearReplicatedSessionState()
 void UEasySessionSubsystem::HandleReplicatedSessionState(EEasySessionState HostState)
 {
 	// Record what the host reports, which is all a client does with it.
-	// Get Session State returns this value.
+	// GetSessionState returns this value.
 	// The client's own session copy is left alone on purpose, because nothing reads its state on a client and destroying works from any state.
 	ReplicatedSessionState = HostState;
 
@@ -765,13 +763,14 @@ void UEasySessionSubsystem::HandleReplicatedSessionState(EEasySessionState HostS
 
 void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings)
 {
-	// A default payload means the host has not written one yet; the authority already holds the real values.
+	// A default payload means the host has not written one yet.
+	// The authority already holds the real values.
 	if (!Settings.bValid || IsSessionAuthority())
 	{
 		return;
 	}
 
-	// PostNetInit and the OnRep can both deliver the same payload, so it is applied once.
+	// PostNetInit and the OnRep can both pass the same payload, so it is applied once.
 	if (AppliedReplicatedSessionSettings == Settings)
 	{
 		return;
@@ -839,7 +838,7 @@ void UEasySessionSubsystem::FollowHost(const FUniqueNetIdRepl& HostId, bool bLAN
 
 void UEasySessionSubsystem::HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText)
 {
-	// A leave already on the queue destroys the party session, and its own reason is the one the player asked for.
+	// A LeaveParty request already on the queue destroys the party session, and its own reason is the one the player asked for.
 	if (RequestQueue->Find(FEasySessionRequest::EType::LeaveParty).IsValid())
 	{
 		return;
@@ -861,7 +860,7 @@ void UEasySessionSubsystem::HandleSessionPlayersChanged()
 		return;
 	}
 
-	// A leaving player's PlayerState is still listed while its component ends, so the list is read on the next tick.
+	// The PlayerState of a player who logs out is still listed while its component ends, so the list is read on the next tick.
 	SessionPlayersChangedHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float)
 	{
 		SessionPlayersChangedHandle.Reset();
@@ -885,7 +884,7 @@ void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Reque
 {
 	// Where a request's target session is decided.
 	// Every sub-request of the request reads it from the request.
-	// Queries and gates are game session only and read the constant.
+	// Queries such as IsInSession only look at the game session and read NAME_GameSession.
 	Request->Initialize(*RequestContext, SessionName);
 
 	RequestQueue->Enqueue(Request);
@@ -965,7 +964,7 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 			return;
 		}
 
-		// A connection this plugin did not start, such as the open console command, leaves no session to clean up.
+		// A connection this plugin did not start, such as the open console command, leaves no session to destroy.
 		if (!IsInSession())
 		{
 			return;
@@ -986,7 +985,8 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	EEasyDisconnectReason DisconnectReason = EEasyDisconnectReason::ConnectionLost;
 	FText ReasonText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
 
-	// Only these two types carry a message written for the player. Every other type carries debug text, which belongs in the log.
+	// Only these two types carry a message written for the player.
+	// Every other type carries debug text, which belongs in the log.
 	const bool bHasMessage =
 		(FailureType == ENetworkFailure::PendingConnectionFailure ||
 			FailureType == ENetworkFailure::FailureReceived) &&
@@ -1022,7 +1022,8 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
 
-	// A failed server travel leaves the host's world, session and players untouched. Only the map change failed, which OnSessionFailure just reported.
+	// A failed server travel leaves the host's world, session and players untouched.
+	// Only the map change failed, which OnSessionFailure just reported.
 	if (IsSessionAuthority())
 	{
 		Host->OnServerTravelFailed();

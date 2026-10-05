@@ -21,16 +21,16 @@
 
 namespace
 {
-	/** Seconds between two checks whether the member list holds the local player. */
+	// Seconds between two checks whether the member list holds the local player.
 	constexpr float ConnectTickIntervalSeconds = 0.1f;
 
-	/** Seconds between two attempts to connect to the leader again. */
+	// Seconds between two attempts to connect to the leader again.
 	constexpr float ReconnectIntervalSeconds = 1.0f;
 
-	/** Seconds between two attempts to restore the party of the last match. */
+	// Seconds between two attempts to restore the party of the last match.
 	constexpr float RestoreIntervalSeconds = 2.0f;
 
-	/** The On Party Left text when the connection to the leader was lost. */
+	// The OnPartyLeft text when the connection to the leader was lost.
 	FText GetLostConnectionReason()
 	{
 		return NSLOCTEXT("EasySession", "LostConnectionToParty", "Lost connection to the party.");
