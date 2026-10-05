@@ -96,9 +96,10 @@ FOnlineSessionSettings FEasySessionCreatePartyRequest::MakeOnlineSettings(const 
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
 	// Every party is advertised, so a member can find the leader's party again after a match.
-	// The hidden key keeps hidden parties out of Find Easy Parties.
+	// The hidden key keeps hidden parties out of FindParties, and join via presence stays on for them too.
+	// Without join via presence Steam makes the lobby private, and a Steam search never returns a private lobby.
 	Settings.bShouldAdvertise = true;
-	Settings.bAllowJoinViaPresence = Settings.bUsesPresence && !PartySettings.bHidden;
+	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
 
 	Settings.Set(EasySession::SettingKey_Party, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_DisplayName, LeaderName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
