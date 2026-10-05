@@ -117,7 +117,7 @@ node name without spaces.
 | Get Easy Session Player Count | `GetSessionPlayerCount` | How many players are in the session right now |
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | How many it holds. 0 when there is no session |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Is a Matchmaking run in progress |
-| Get Easy Matchmaking State | `GetMatchmakingState` | Which state it is in: Searching, Joining, Hosting, Canceling, Complete |
+| Get Easy Matchmaking State | `GetMatchmakingState` | Which state it is in: Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name (EasySession) | - | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | - | Is a subsystem loaded with a valid session interface |
@@ -170,9 +170,8 @@ Pure functions for the text a session UI shows. None of them touch session state
 
 Not async - these return right away. They change state and have execution pins.
 
-What they return means the request was accepted, not that it finished. `Cancel Easy
-Matchmaking` ends a search at once but waits for a join or host already running to come
-back so it can undo it, and `Server Travel Easy Session` returns before the new map has loaded.
+What they return means the request was accepted, not that it finished. `Server Travel Easy
+Session` returns before the new map has loaded.
 
 ### 3.1 Standalone nodes (`UEasySessionStatics`)
 
@@ -181,7 +180,7 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Node | C++ | Does |
 |---|---|---|
 | Consume Pending Easy Disconnect Info | `ConsumePendingDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
-| Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled`. A search stops at once; a join or host in flight finishes first and is undone |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled` while it is `Searching`. Does nothing while the run is `Joining` or `Hosting`, because a join or a host moves the group and cannot be undone |
 | Cancel Easy Friend Search | `CancelFriendSearch` | Ends Find Easy Friend Sessions with `Canceled`. The running search for a friend's session is ignored |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite, returns a result |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay, returns a result |
@@ -214,12 +213,12 @@ the result of Create, Find, Join, Update, Start, End or Destroy goes to the node
 | `OnSessionSettingsChanged` | - | The advertised settings changed: on the host when it updates them, on a client when the host's values arrive. The regular getters already return the new values - refresh the UI from them |
 | `OnSessionStateChanged` | `OldState`, `NewState` (`EEasySessionState`) | The session's lifecycle state changed, on the host and on every client. Creating a session and leaving one count, from and to `NoSession`. A client sees the host starting or ending the match here |
 | `OnMatchmakingStarted` | - | A Matchmaking run was accepted and its policy registered. Always the first event of a run |
-| `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Canceling`, `Complete`) |
+| `OnMatchmakingStateChanged` | `OldState`, `NewState` | The Matchmaking state moved (`Searching`, `Joining`, `Hosting`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Session Host` which |
 | `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed. Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which activity began |
-| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own and cancels a running Matchmaking - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession`. `Session.bIsParty` is true for a party invite, which is joined with Join Easy Party and never during a game session ([guide](Guide-Party.en.md#invites)) |
+| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own and cancels a running Matchmaking - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession`. A Matchmaking that is already `Joining` or `Hosting` is not canceled, and the invite is not joined. `Session.bIsParty` is true for a party invite, which is joined with Join Easy Party and never during a game session ([guide](Guide-Party.en.md#invites)) |
 | `OnSessionPlayersChanged` | - | A player joined or left the session, or changed whether they are ready, on the host and on every client. Get Easy Session Player Infos already returns the new list |
 | `OnPartyMembersChanged` | - | A member joined or left the party, or changed whether they are ready, on the leader and on every member. Get Easy Party Members already returns the new list |
 | `OnPartyLeft` | `Reason` (`EEasyPartyLeaveReason`), `ReasonText` (Text) | The local player is no longer in the party: they left, were kicked, the leader left, the connection was lost, or the party entered a game session |
@@ -346,7 +345,7 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 ### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - the phases of one Matchmaking run, reported through `OnMatchmakingStateChanged`. `Canceling` lasts while a join or host that was in flight at the cancel finishes.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - the phases of one Matchmaking run, reported through `OnMatchmakingStateChanged`. `Cancel Easy Matchmaking` works while the run is `Searching`.
 
 ### 6.5 EEasySessionRegion
 

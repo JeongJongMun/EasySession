@@ -113,7 +113,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Player Count | `GetSessionPlayerCount` | 지금 세션에 있는 플레이어 수 |
 | Get Easy Session Max Players | `GetSessionMaxPlayers` | 정원. 세션이 없으면 0 |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
-| Get Easy Matchmaking State | `GetMatchmakingState` | 어느 상태인가. Searching, Joining, Hosting, Canceling, Complete |
+| Get Easy Matchmaking State | `GetMatchmakingState` | 어느 상태인가. Searching, Joining, Hosting, Complete |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | - | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | - | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
@@ -164,8 +164,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 
 비동기가 아니라 즉시 반환합니다. 상태를 바꾸고 실행 핀이 있습니다.
 
-돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Cancel Easy Matchmaking`는
-검색은 즉시 멈추지만 진행 중이던 참가나 생성은 되돌리기 위해 끝날 때까지 기다리고, `Server Travel Easy Session`은
+돌려주는 값은 "요청을 받았다"는 뜻이지 "끝났다"는 뜻이 아닙니다. `Server Travel Easy Session`은
 맵이 로드되기 전에 돌아옵니다.
 
 ### 3.1 바로 쓰는 노드 (`UEasySessionStatics`)
@@ -175,7 +174,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 하는 일 |
 |---|---|---|
 | Consume Pending Easy Disconnect Info | `ConsumePendingDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
-| Cancel Easy Matchmaking | `CancelMatchmaking` | 진행 중인 Matchmaking를 `Canceled`로 끝냅니다. 검색은 즉시 멈추고, 진행 중이던 참가나 생성은 끝난 뒤 되돌려집니다 |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | `Searching` 상태인 Matchmaking를 `Canceled`로 끝냅니다. `Joining`이나 `Hosting` 상태에서는 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다 |
 | Cancel Easy Friend Search | `CancelFriendSearch` | 진행 중인 `Find Easy Friend Sessions`를 `Canceled`로 끝냅니다. 실행 중이던 친구 한 명의 세션 검색 결과는 버립니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대. 결과 값을 돌려줍니다 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이. 결과 값을 돌려줍니다 |
@@ -206,12 +205,12 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 | `OnSessionSettingsChanged` | - | 광고 중인 설정이 바뀌었을 때. 호스트는 자기가 Update할 때, 클라이언트는 호스트의 값이 도착할 때 발생합니다. 이미 일반 게터가 새 값을 돌려주는 상태이니, 게터로 UI만 갱신하면 됩니다 |
 | `OnSessionStateChanged` | `OldState`, `NewState`(`EEasySessionState`) | 세션의 상태가 바뀌었을 때. 호스트와 모든 클라이언트에서 발생합니다. 세션을 만들고 나가는 것도 `NoSession`과의 전환으로 포함됩니다. 클라이언트는 호스트가 매치를 시작하거나 끝낸 것을 여기서 알 수 있습니다 |
 | `OnMatchmakingStarted` | - | Matchmaking 실행이 받아들여지고 정책이 등록됐을 때. 한 실행의 이벤트 중 언제나 첫 번째입니다 |
-| `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Canceling`, `Complete`) |
+| `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Matchmaking 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
 | `OnSessionFailure` | `Reason`(String) | 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패한 경우입니다. `Reason`은 상태 표시나 로그에 쓰세요. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다 |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy가 바뀌었을 때. 한 번 바인딩해 두고 이 플래그로 세션 버튼을 켜고 끄면 매 틱 폴링이 필요 없습니다. true로 바뀐 순간 Get Easy Session Activity가 무엇이 시작됐는지 알려줍니다 |
-| `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행되고, 실행 중인 Matchmaking은 취소됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다. 파티 초대면 `Session.bIsParty`가 true이고, Join Easy Party로 참가하며 게임 세션 중에는 참가하지 않습니다 ([가이드](Guide-Party.ko.md#초대)) |
+| `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행되고, 실행 중인 Matchmaking은 취소됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다. Matchmaking이 이미 `Joining`이나 `Hosting` 상태면 취소되지 않고, 초대에도 참가하지 않습니다. 파티 초대면 `Session.bIsParty`가 true이고, Join Easy Party로 참가하며 게임 세션 중에는 참가하지 않습니다 ([가이드](Guide-Party.ko.md#초대)) |
 | `OnSessionPlayersChanged` | - | 플레이어가 세션에 들어오거나 나가거나 준비 상태를 바꿨을 때. 호스트와 모든 클라이언트에서 발생합니다. Get Easy Session Player Infos가 이미 새 목록을 돌려줍니다 |
 | `OnPartyMembersChanged` | - | 멤버가 파티에 들어오거나 나가거나 준비 상태를 바꿨을 때. 리더와 모든 멤버에서 발생합니다. Get Easy Party Members가 이미 새 목록을 돌려줍니다 |
 | `OnPartyLeft` | `Reason`(`EEasyPartyLeaveReason`), `ReasonText`(Text) | 로컬 플레이어가 더 이상 파티에 없을 때. 나갔거나, 추방됐거나, 리더가 나갔거나, 연결이 끊겼거나, 파티가 게임 세션에 들어간 경우입니다 |
@@ -335,7 +334,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnMatchmakingStateChanged`로 알려줍니다. `Canceling`은 취소 시점에 진행 중이던 참가나 생성이 끝날 때까지 이어집니다.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnMatchmakingStateChanged`로 알려줍니다. `Cancel Easy Matchmaking`는 `Searching` 상태에서만 동작합니다.
 
 ### 6.5 EEasySessionRegion
 

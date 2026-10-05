@@ -242,8 +242,14 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
+				if (!Subsystem->IsMatchmakingRunning())
+				{
+					Print(TEXT("No matchmaking is running."));
+					return;
+				}
+
 				Subsystem->CancelMatchmaking();
-				Print(TEXT("Cancel requested."));
+				Print(Subsystem->IsMatchmakingRunning() ? TEXT("Not canceled: matchmaking is joining or hosting a session.") : TEXT("Matchmaking canceled."));
 			}
 		}));
 

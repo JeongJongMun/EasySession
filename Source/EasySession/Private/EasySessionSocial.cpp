@@ -143,8 +143,10 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 		return;
 	}
 
-	// A running matchmaking holds the queue until it ends, so it is canceled and the invited join runs next.
-	Owner.CancelMatchmaking();
+	if (!CancelMatchmakingForInvite())
+	{
+		return;
+	}
 
 	// No node waits for this join, so a failure is broadcast.
 	UEasySessionSubsystem* OwnerSub = &Owner;
@@ -167,8 +169,10 @@ void FEasySessionSocial::JoinInvitedParty(const FEasySessionSearchResult& Party)
 		return;
 	}
 
-	// A running matchmaking holds the queue until it ends, so it is canceled and the invited join runs next.
-	Owner.CancelMatchmaking();
+	if (!CancelMatchmakingForInvite())
+	{
+		return;
+	}
 
 	// The queue runs the LeaveParty request first, so the join finds this player in no party.
 	if (Owner.IsInParty())
@@ -186,6 +190,21 @@ void FEasySessionSocial::JoinInvitedParty(const FEasySessionSearchResult& Party)
 				OwnerSub->OnSessionFailure.Broadcast(FString::Printf(TEXT("Joining the invited party failed: %s"), *ErrorMessage));
 			}
 		}));
+}
+
+bool FEasySessionSocial::CancelMatchmakingForInvite()
+{
+	Owner.CancelMatchmaking();
+	if (!Owner.IsMatchmakingRunning())
+	{
+		return true;
+	}
+
+	// The run ignored the cancel, and it ends with this player in the session it joins or hosts.
+	const FString Reason = TEXT("Matchmaking is already joining or hosting a session, so the invite was not joined. Accept the invite again to join it.");
+	UE_LOG(LogEasySession, Warning, TEXT("%s"), *Reason);
+	Owner.OnSessionFailure.Broadcast(Reason);
+	return false;
 }
 
 UWorld* FEasySessionSocial::GetWorld() const

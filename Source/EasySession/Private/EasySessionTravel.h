@@ -62,12 +62,6 @@ public:
 	/** @return Whether a travel this plugin started has not loaded its map yet. */
 	bool IsTraveling() const { return bTravelInFlight; }
 
-	/**
-	 * Cancel a travel that was requested but has not started loading its map.
-	 * Travel URLs load on the engine tick after they are requested, so this works within the same frame as the request.
-	 */
-	void CancelPendingTravel();
-
 	/** The travel is over even though no map was loaded. */
 	void NotifyTravelFailed();
 

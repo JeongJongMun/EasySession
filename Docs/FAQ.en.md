@@ -131,4 +131,4 @@ To bring everyone into the same map, for example a lobby before the match, the l
 
 ## "Can I cancel a Matchmaking in progress?"
 
-Yes: `Cancel Easy Matchmaking`. The Matchmaking node fires `OnFailure` with `Canceled`. A request already at the online subsystem finishes first (it cannot be canceled mid-call), so cancellation may take a moment.
+Yes, while it is `Searching`: `Cancel Easy Matchmaking`. The Matchmaking node fires `OnFailure` with `Canceled`. Once the run is `Joining` or `Hosting` the call does nothing, because a join or a host moves the group and cannot be undone. Turn your cancel button off in those two states.

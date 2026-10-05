@@ -84,7 +84,7 @@ Both return `NoSessionExists` outside a party and `NotSupportedByService` on NUL
 
 When a player accepts a party invite, `OnSessionInviteAccepted` fires with a result whose `Is Party` is true. With **Auto Join Accepted Invites** on, the default, the plugin joins the party right after the event:
 
-- A running Matchmaking is canceled first.
+- A running Matchmaking is canceled first. One that is already `Joining` or `Hosting` is not canceled, and the invite is not joined.
 - A player who is already in a party leaves it first.
 - A player in a game session does not join, because one click in the overlay must not end their match. The log says so, and the game can call `Leave Easy Session` and then `Join Easy Party` with the event's result.
 

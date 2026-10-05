@@ -174,6 +174,7 @@ public:
 	/**
 	 * Fired when the player accepts an invite from the platform overlay.
 	 * With Auto Join Accepted Invites on, a running matchmaking is canceled and the join of the invited session is queued after this event fires.
+	 * A matchmaking that is already Joining or Hosting is not canceled, and the invite is not joined.
 	 * A player who is already in a session joins only when Accept Invites While In Session is on.
 	 * Their current session is destroyed first, which disconnects everyone if they were hosting it.
 	 * With Auto Join Accepted Invites off, call Join Easy Session yourself, for example after asking the player.
@@ -339,9 +340,8 @@ public:
 	void StartMatchmaking(const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass = nullptr, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Cancel the running matchmaking.
-	 * A search ends inside this call.
-	 * A join or host that completes after the cancel is undone.
+	 * Cancel the running matchmaking while it searches, which ends the run with Canceled inside this call.
+	 * Does nothing while the run is Joining or Hosting, because a join or a host moves the group and cannot be undone.
 	 * Does nothing when no matchmaking is running.
 	 */
 	void CancelMatchmaking();

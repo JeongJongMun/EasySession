@@ -131,4 +131,4 @@ LogEasySession: Warning: The party leader decides where the party goes. Call Lea
 
 ## "진행 중인 Matchmaking를 취소할 수 있나요?"
 
-가능합니다. `Cancel Easy Matchmaking`를 부르세요. Matchmaking 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 온라인 서브시스템에 이미 들어간 요청은 먼저 끝나야 하므로(호출 도중에는 취소할 수 없습니다) 취소에 잠시 걸릴 수 있습니다.
+`Searching` 상태일 때 가능합니다. `Cancel Easy Matchmaking`를 부르세요. Matchmaking 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 실행이 `Joining`이나 `Hosting` 상태가 되면 이 호출은 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다. 이 두 상태에서는 취소 버튼을 꺼 두세요.

@@ -5,7 +5,6 @@
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionSubsystem.h"
-#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -109,28 +108,6 @@ void FEasySessionTravel::ReturnToMenu()
 	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
 	GameInstance->ReturnToMainMenu();
 	MarkStarted(TEXT("return to menu"));
-}
-
-void FEasySessionTravel::CancelPendingTravel()
-{
-	UWorld* World = Owner.GetGameInstance() ? Owner.GetGameInstance()->GetWorld() : nullptr;
-	if (World == nullptr)
-	{
-		return;
-	}
-
-	// The engine reads both URLs in TickWorldTravel on the next tick, so emptying them now cancels the travel.
-	if (FWorldContext* Context = GEngine->GetWorldContextFromWorld(World))
-	{
-		Context->TravelURL.Empty();
-	}
-	World->NextURL.Empty();
-
-	if (bTravelInFlight)
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Canceled a travel that had not started loading its map yet."));
-	}
-	bTravelInFlight = false;
 }
 
 void FEasySessionTravel::NotifyTravelFailed()

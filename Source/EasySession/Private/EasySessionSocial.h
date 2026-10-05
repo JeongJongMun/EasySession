@@ -75,6 +75,13 @@ private:
 	/** Join the party of an accepted invite, after a LeaveParty request for the party this player is in. */
 	void JoinInvitedParty(const FEasySessionSearchResult& Party);
 
+	/**
+	 * Cancel a running matchmaking, which holds the queue until it ends, so the join of the invite runs next.
+	 *
+	 * @return Whether the invite can be joined. False when the run is already joining or hosting a session, which broadcasts OnSessionFailure.
+	 */
+	bool CancelMatchmakingForInvite();
+
 	/** The world this subsystem runs in, or null before one exists. */
 	UWorld* GetWorld() const;
 

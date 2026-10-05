@@ -5,14 +5,12 @@
 #include "EasyMatchmakingPolicy.h"
 #include "EasySession.h"
 #include "EasySessionCreateRequest.h"
-#include "EasySessionDestroyRequest.h"
 #include "EasySessionFindRequest.h"
 #include "EasySessionHost.h"
 #include "EasySessionJoinRequest.h"
 #include "EasySessionMessages.h"
 #include "EasySessionParty.h"
 #include "EasySessionSubsystem.h"
-#include "EasySessionTravel.h"
 #include "HAL/PlatformTime.h"
 
 namespace
@@ -124,20 +122,14 @@ void FEasySessionMatchmakingRequest::Notify(EEasySessionResult Result, const FSt
 
 void FEasySessionMatchmakingRequest::HandleCancel()
 {
-	if (State == EEasyMatchmakingState::Canceling)
+	// A join or a host tells the group to follow and destroys the session this player was in, which cannot be undone.
+	if (State != EEasyMatchmakingState::Searching)
 	{
-		return;
-	}
-	SetState(EEasyMatchmakingState::Canceling);
-
-	// A join or a host cannot stop and may still succeed. Its completion handler undoes a success and completes the run.
-	const TSharedPtr<FEasySessionRequest>& SubRequest = GetRunningSubRequest();
-	if (SubRequest.IsValid() && (SubRequest->Type == EType::Join || SubRequest->Type == EType::Create))
-	{
+		UE_LOG(LogEasySession, Warning, TEXT("Matchmaking is not canceled, because it is already joining or hosting a session."));
 		return;
 	}
 
-	// Searching or waiting for the next pass: nothing needs undoing, so the run completes inside this call.
+	// Searching or waiting for the next pass: nothing changed yet, so the run completes inside this call.
 	Complete(EEasySessionResult::Canceled, EasySession::MatchmakingCanceledMessage);
 }
 
@@ -267,12 +259,6 @@ void FEasySessionMatchmakingRequest::JoinNextCandidate()
 
 void FEasySessionMatchmakingRequest::HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	if (State == EEasyMatchmakingState::Canceling)
-	{
-		CompleteAsCanceled(Result);
-		return;
-	}
-
 	if (Result == EEasySessionResult::Success)
 	{
 		Complete(EEasySessionResult::Success);
@@ -332,7 +318,6 @@ void FEasySessionMatchmakingRequest::HostFallbackSession()
 {
 	UE_LOG(LogEasySession, Log, TEXT("Matchmaking found no session, so it hosts one."));
 
-	// The Create sub-request is requested before the Hosting broadcast, so a cancel from that broadcast finds it and undoes it.
 	RunSubRequest(MakeShared<FEasySessionCreateRequest>(MakeFallbackHostParams(),
 		FEasySessionCompleteDelegate::CreateSP(this, &FEasySessionMatchmakingRequest::HandleHostComplete)));
 	SetState(EEasyMatchmakingState::Hosting);
@@ -358,32 +343,7 @@ FEasySessionHostParams FEasySessionMatchmakingRequest::MakeFallbackHostParams() 
 
 void FEasySessionMatchmakingRequest::HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	if (State == EEasyMatchmakingState::Canceling)
-	{
-		CompleteAsCanceled(Result);
-		return;
-	}
-
 	Complete(Result, ErrorMessage);
-}
-
-void FEasySessionMatchmakingRequest::CompleteAsCanceled(EEasySessionResult SubRequestResult)
-{
-	if (SubRequestResult != EEasySessionResult::Success)
-	{
-		Complete(EEasySessionResult::Canceled, EasySession::MatchmakingCanceledMessage);
-		return;
-	}
-
-	// Still the same frame as the travel request, so the map has not started loading.
-	GetContext().Travel.CancelPendingTravel();
-
-	// The run joined or hosted a session before the cancel arrived, so that session is destroyed first.
-	RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,
-		[this](EEasySessionResult /*DestroyResult*/, const FString& /*DestroyError*/)
-		{
-			Complete(EEasySessionResult::Canceled, EasySession::MatchmakingCanceledMessage);
-		})));
 }
 
 void FEasySessionMatchmakingRequest::SetState(EEasyMatchmakingState NewState)

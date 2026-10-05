@@ -406,8 +406,8 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitCanceledUndo, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
-bool FEasyMatchmakingWaitCanceledUndo::Update()
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitCancelIgnored, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
+bool FEasyMatchmakingWaitCancelIgnored::Update()
 {
 	using namespace EasyMatchmakingTest;
 
@@ -427,10 +427,11 @@ bool FEasyMatchmakingWaitCanceledUndo::Update()
 
 	if (!State->bCleanupIssued)
 	{
-		CurrentTest->TestEqual(TEXT("Matchmaking result"), State->MatchmakingResult.GetValue(), EEasySessionResult::Canceled);
+		CurrentTest->TestEqual(TEXT("The run ignored the cancel and hosted"), State->MatchmakingResult.GetValue(), EEasySessionResult::Success);
+		CurrentTest->TestTrue(TEXT("The hosted session exists"), Subsystem->IsInSession());
 		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
 
-		// No destroy of our own: the run's undo destroy is what we wait for below.
+		Subsystem->DestroySession();
 		State->bCleanupIssued = true;
 		State->StartTime = FPlatformTime::Seconds();
 		return false;
@@ -440,7 +441,7 @@ bool FEasyMatchmakingWaitCanceledUndo::Update()
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
-			CurrentTest->AddError(FString::Printf(TEXT("The canceled run left state behind: %s"), *Subsystem->GetQueueStatus()));
+			CurrentTest->AddError(FString::Printf(TEXT("The hosted session was not destroyed: %s"), *Subsystem->GetQueueStatus()));
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -452,12 +453,12 @@ bool FEasyMatchmakingWaitCanceledUndo::Update()
 }
 
 /**
- * A cancel that arrives while the fallback create is running.
- * The create still succeeds, so honoring the cancel means undoing it: the session is destroyed and the run ends Canceled, never Success.
- * The listener cancels on the Hosting transition, which fires after the create was sent and before its completion arrives.
+ * A cancel that arrives while the fallback create is running is ignored.
+ * A host that already runs cannot be undone, so the run ends with Success and the hosted session exists.
+ * The listener calls CancelMatchmaking on the Hosting transition.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingCancelUndoTest, "EasySession.Matchmaking.CancelUndoesTheFallbackHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingCancelUndoTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingCancelWhileHostingTest, "EasySession.Matchmaking.CancelIsIgnoredWhileHosting", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyMatchmakingCancelWhileHostingTest::RunTest(const FString& Parameters)
 {
 	using namespace EasyMatchmakingTest;
 
@@ -477,7 +478,7 @@ bool FEasyMatchmakingCancelUndoTest::RunTest(const FString& Parameters)
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;
-	Params.Host.SessionDisplayName = TEXT("EasySession Cancel Undo Test");
+	Params.Host.SessionDisplayName = TEXT("EasySession Cancel While Hosting Test");
 	Params.bAllowHostFallback = true;
 	Params.Host.bIsLANMatch = true;
 	Params.Host.InitialMapName = EasySessionTest::SessionMapName;
@@ -493,7 +494,7 @@ bool FEasyMatchmakingCancelUndoTest::RunTest(const FString& Parameters)
 	Subsystem->OnMatchmakingStateChanged.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleMatchmakingState);
 
 	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitCanceledUndo(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitCancelIgnored(State));
 	return true;
 }
 
@@ -754,6 +755,12 @@ bool FEasySessionWaitForCandidateRun::Update()
 			Crafted.Add(MakeCandidate(TEXT("Near"), 20, false));
 			Crafted.Add(MakeCandidate(TEXT("Mid"), 90, false));
 			FEasySessionTestAccess::DriveMatchmakingSearch(*Subsystem, Crafted);
+
+			// A join that already runs cannot be undone, so the cancel is ignored and every candidate below is still tried.
+			CurrentTest->TestEqual(TEXT("The run is joining"), Subsystem->GetMatchmakingState(), EEasyMatchmakingState::Joining);
+			Subsystem->CancelMatchmaking();
+			CurrentTest->TestTrue(TEXT("A cancel during a join is ignored"), Subsystem->IsMatchmakingRunning());
+			CurrentTest->TestFalse(TEXT("And the requester hears nothing yet"), State->MatchmakingResult.IsSet());
 
 			const TArray<FEasySessionSearchResult> Candidates = FEasySessionTestAccess::GetMatchmakingCandidates(*Subsystem);
 			CurrentTest->TestEqual(TEXT("The locked session is not a candidate"), Candidates.Num(), 3);
@@ -1226,8 +1233,7 @@ bool FEasyMatchmakingCancelSearching::Update()
 	CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
 	CurrentTest->TestFalse(TEXT("The queue is idle"), Subsystem->IsBusy());
 	CurrentTest->TestFalse(TEXT("The search object is released"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
-	CurrentTest->TestTrue(TEXT("Cancel moved to Canceling first"), State->Listener->MatchmakingJournal.Contains(TEXT("State=Searching>Canceling")));
-	CurrentTest->TestTrue(TEXT("And ended from there"), State->Listener->MatchmakingJournal.Contains(TEXT("State=Canceling>Complete")));
+	CurrentTest->TestTrue(TEXT("The run went from Searching to Complete"), State->Listener->MatchmakingJournal.Contains(TEXT("State=Searching>Complete")));
 	CurrentTest->TestEqual(TEXT("Completed is the last entry"),
 		State->Listener->MatchmakingJournal.Num() > 0 ? State->Listener->MatchmakingJournal.Last() : FString(), FString(TEXT("Completed=Canceled")));
 

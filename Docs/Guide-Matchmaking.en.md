@@ -42,7 +42,7 @@ my friends' session" in one call.
 
 A run holds the session queue from its first search to its last sub-request. A Create, Join or
 Find the game asks for meanwhile runs after the run ends, and an accepted invite cancels
-the run instead of waiting for it.
+a run that is still searching instead of waiting for it.
 
 Progress comes from four events on the subsystem itself, so a widget can bind once,
 before any run exists:
@@ -55,9 +55,11 @@ before any run exists:
 They always arrive as Started first and Complete last, a run refused at the door
 included. The policy object has no events of its own; these four are the only ones.
 
-The states are `Searching`, `Joining`, `Hosting`, `Canceling` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
+The states are `Searching`, `Joining`, `Hosting` and `Complete`. They are not a straight line: finding candidates moves to `Joining`, and having them all refuse comes back to `Searching` for the next pass. `Hosting` only shows up once the passes run out and this player creates the session.
 
-Cancel anytime with `Cancel Easy Matchmaking` - the run finishes with the `Canceled` result. A search stops at once; if the online service cannot stop it, it finishes in the background and a new search queues behind it. A join or host already in flight cannot be stopped, so the state shows `Canceling` until it comes back, and if it succeeded it is undone.
+Cancel with `Cancel Easy Matchmaking` while the run is `Searching` - the run finishes with the `Canceled` result. The search stops at once; if the online service cannot stop it, it finishes in the background and a new search queues behind it. While the run is `Joining` or `Hosting` the call does nothing: a join or a host tells the group to follow and destroys the session this player was in, which cannot be undone. Turn your cancel button off in those two states. A run whose joins all fail returns to `Searching`, where it can be canceled again.
+
+An invite the player accepts during a run follows the same rule. While the run is `Searching` it is canceled and the invite is joined. While it is `Joining` or `Hosting` the invite is not joined, and `OnSessionFailure` tells the player to accept it again. To decide this yourself, for example with a confirm dialog, turn **Auto Join Accepted Invites** off, read `Get Easy Matchmaking State` in `OnSessionInviteAccepted`, and call `Cancel Easy Matchmaking` and `Join Easy Session` with the event's result.
 
 After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
 

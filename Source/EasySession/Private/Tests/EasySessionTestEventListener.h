@@ -57,7 +57,7 @@ public:
 		FailureReasons.Add(Reason);
 	}
 
-	/** When set, entering Hosting cancels this subsystem's matchmaking, after the create was sent and before its completion arrives. */
+	/** When set, entering Hosting calls CancelMatchmaking on this subsystem, which the run ignores in that state. */
 	UPROPERTY()
 	TObjectPtr<UEasySessionSubsystem> CancelMatchmakingOnHosting;
 

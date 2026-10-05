@@ -66,7 +66,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Matchmaking", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasyMatchmakingRunning(const UObject* WorldContextObject);
 
-	/** The state of the running matchmaking: Searching, Joining, Hosting, Canceling or Complete. Idle when none is running. */
+	/** The state of the running matchmaking: Searching, Joining, Hosting or Complete. Idle when none is running. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Matchmaking", meta = (WorldContext = "WorldContextObject"))
 	static EEasyMatchmakingState GetEasyMatchmakingState(const UObject* WorldContextObject);
 
@@ -215,9 +215,8 @@ public:
 	static FString GetEasySessionJoinCode(const UObject* WorldContextObject);
 
 	/**
-	 * Cancel the running matchmaking.
-	 * A search ends inside this call.
-	 * A join or host that completes after the cancel is undone.
+	 * Cancel the running matchmaking while it searches, which ends the run with Canceled inside this call.
+	 * Does nothing while the run is Joining or Hosting, because a join or a host moves the group and cannot be undone.
 	 * Does nothing when no matchmaking is running.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Matchmaking", meta = (WorldContext = "WorldContextObject"))

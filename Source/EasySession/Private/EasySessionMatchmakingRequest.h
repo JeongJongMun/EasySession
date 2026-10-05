@@ -21,7 +21,7 @@ class UEasyMatchmakingPolicy;
  * The run broadcasts its progress on the subsystem's OnMatchmakingStateChanged, OnMatchmakingUpdated and OnMatchmakingComplete events.
  *
  * A cancel during a search ends the run inside the Cancel call.
- * A join or a host that is running finishes first, and a success is undone, so after Canceled this player is in no session the run joined or hosted.
+ * A cancel during a join or a host is ignored, because those tell the group to follow and destroy the session this player was in.
  *
  * @see UEasyMatchmakingPolicy
  */
@@ -103,12 +103,6 @@ private:
 	/** The fallback host completed. */
 	void HandleHostComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
-	/**
-	 * Complete the run as Canceled after the join or host sub-request that ran during the cancel.
-	 * A sub-request that succeeded is undone first: its travel is canceled and its session is destroyed.
-	 */
-	void CompleteAsCanceled(EEasySessionResult SubRequestResult);
-
 	/** Move to a new state and broadcast OnMatchmakingStateChanged and OnMatchmakingUpdated. */
 	void SetState(EEasyMatchmakingState NewState);
 
@@ -130,7 +124,7 @@ private:
 	/** The requester's delegate. */
 	FEasySessionCompleteDelegate OnComplete;
 
-	/** Current state of the run. Canceling from the requester's cancel until the run completes. */
+	/** Current state of the run. */
 	EEasyMatchmakingState State = EEasyMatchmakingState::Idle;
 
 	/** Search passes completed so far. */

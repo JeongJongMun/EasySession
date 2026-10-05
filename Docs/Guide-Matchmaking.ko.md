@@ -40,7 +40,7 @@ Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필
 `Allow Host Fallback`을 꺼두면 "친구 세션에 들어갈 때까지 재시도"가 호출 한 번이 됩니다.
 
 실행은 첫 검색부터 마지막 하위 요청까지 세션 큐를 붙잡고 있습니다. 그동안 게임이 요청한
-Create, Join, Find는 실행이 끝난 뒤에 돌고, 수락한 초대는 기다리지 않고 실행을 취소합니다.
+Create, Join, Find는 실행이 끝난 뒤에 돌고, 수락한 초대는 기다리지 않고 아직 검색 중인 실행을 취소합니다.
 
 진행 상황은 서브시스템의 이벤트 넷으로 알 수 있습니다. 실행이 시작되기 전에, 위젯이 한
 번만 바인딩하면 됩니다.
@@ -53,9 +53,11 @@ Create, Join, Find는 실행이 끝난 뒤에 돌고, 수락한 초대는 기다
 순서는 언제나 Started가 처음, Complete가 마지막입니다. 문전에서 거절된 실행도 이 짝을
 지킵니다. 정책 객체에는 자체 이벤트가 없고, 이 넷이 전부입니다.
 
-상태는 `Searching`, `Joining`, `Hosting`, `Canceling`, `Complete` 다섯입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 세션을 만들 때만 나옵니다.
+상태는 `Searching`, `Joining`, `Hosting`, `Complete` 넷입니다. 한 줄로 흘러가지는 않습니다. 후보를 찾으면 `Joining`으로 갔다가, 전부 거절당하면 `Searching`으로 돌아와 다음 검색을 돌립니다. `Hosting`은 검색을 다 쓰고 직접 세션을 만들 때만 나옵니다.
 
-언제든 `Cancel Easy Matchmaking`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 검색은 즉시 멈춥니다. 온라인 서비스가 검색을 멈출 수 없으면 뒤에서 조용히 끝나고, 새 검색은 그 뒤에 줄을 섭니다. 이미 진행 중인 참가나 생성은 중간에 끊을 수 없어서 돌아올 때까지 `Canceling` 상태로 보이고, 성사됐다면 되돌려집니다.
+실행이 `Searching` 상태일 때 `Cancel Easy Matchmaking`로 멈출 수 있고, 그 판은 `Canceled` 결과로 끝납니다. 검색은 즉시 멈춥니다. 온라인 서비스가 검색을 멈출 수 없으면 뒤에서 조용히 끝나고, 새 검색은 그 뒤에 줄을 섭니다. `Joining`이나 `Hosting` 상태에서는 이 호출이 아무 일도 하지 않습니다. 참가와 생성은 그룹에게 따라오라고 알리고 있던 세션을 파괴하기 때문에 되돌릴 수 없습니다. 이 두 상태에서는 취소 버튼을 꺼 두세요. 참가가 모두 실패하면 실행이 `Searching`으로 돌아오고, 그때는 다시 취소할 수 있습니다.
+
+실행 도중 플레이어가 수락한 초대도 같은 규칙을 따릅니다. 실행이 `Searching` 상태면 실행을 취소하고 초대에 참가합니다. `Joining`이나 `Hosting` 상태면 초대에 참가하지 않고, `OnSessionFailure`가 초대를 다시 수락하라고 알려 줍니다. 이 판단을 직접 하고 싶다면(예: 확인 창) **Auto Join Accepted Invites**를 끄고, `OnSessionInviteAccepted`에서 `Get Easy Matchmaking State`를 본 뒤 `Cancel Easy Matchmaking`와 이벤트의 결과로 `Join Easy Session`을 부르세요.
 
 `OnSuccess` 뒤에는 `Is Easy Session Host`로 남의 세션에 들어간 건지 자기가 호스트가 된 건지 알 수 있습니다.
 
