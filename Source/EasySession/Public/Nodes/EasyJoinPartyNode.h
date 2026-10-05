@@ -21,14 +21,14 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnSuccess;
 
-	/** Called when the party could not be joined. A refusal comes with the leader's reason. */
+	/** Called when the party could not be joined. */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnFailure;
 
 	/**
 	 * Join a party found by Find Easy Parties.
 	 * The leader decides the join, and a refusal fails with Join Refused and the leader's reason.
-	 * A player in a party or in a game session is refused with Session Already Exists.
+	 * A player in a party or in a game session fails with Session Already Exists.
 	 *
 	 * @param SearchResult A party returned by Find Easy Parties.
 	 */

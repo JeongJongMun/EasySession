@@ -24,7 +24,6 @@ public:
 	/**
 	 * Travel to the project's Game Default Map when the connection to a session is lost or traveling to a session fails.
 	 * The lost session is destroyed either way, because it is gone for this player already.
-	 * This setting only decides whether the travel follows.
 	 * Turn it off to keep the player in the map they are in and travel them yourself.
 	 * The reason is kept and can be read on the menu with Consume Pending Easy Disconnect Info.
 	 */
@@ -32,31 +31,34 @@ public:
 	bool bAutoReturnToMenuOnDisconnect = true;
 
 	/**
-	 * Automatically join the session when the player accepts an invite from the platform overlay (e.g. Steam).
-	 * Turn it off to only receive the On Session Invite Accepted event and join with Join Easy Session yourself.
+	 * Automatically join the session or party when the player accepts an invite from the platform overlay (e.g. Steam).
+	 * Turn it off to only receive the On Session Invite Accepted event and call Join Easy Session or Join Easy Party yourself.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites")
 	bool bAutoJoinAcceptedInvites = true;
 
 	/**
-	 * Whether an accepted invite is joined automatically while this player is already in a session.
-	 * With this on, one click in the platform overlay destroys the session they are in before joining the invited one.
-	 * A host that leaves this way takes its session with it, and its players are told why before their connection closes.
-	 * This decides the automatic join only.
-	 * A Join Easy Session the game calls itself leaves the current session once the new host approved the join.
+	 * Whether an accepted session invite is joined automatically while this player is already in a game session.
+	 * The join runs as Join Easy Session does, so the current session is destroyed once the new host approved the join.
+	 * A host whose match has not started brings its players along, and the host of a match in progress fails with Session Already Exists.
+	 * An accepted party invite is never joined automatically during a game session.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites", meta = (EditCondition = "bAutoJoinAcceptedInvites"))
 	bool bAcceptInvitesWhileInSession = false;
 
 	/**
-	 * Get the party back in the first map without a game session after the match it entered.
-	 * The leader creates the party again at once, and every member looks for it until Party Restore Wait Seconds runs out.
+	 * Restore the party in the first map without a game session that this player reaches after the match the party entered.
+	 * The leader creates the party again when that map loads, and every member searches for it until Party Restore Wait Seconds runs out.
 	 * Calling Create, Join or Leave Easy Party, Create or Join Easy Session, or Start Easy Matchmaking stops it, because the player chose something else.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Party")
 	bool bRestorePartyAfterMatch = true;
 
-	/** Seconds a member looks for the leader's party after a match, because the leader may stay in the match longer. */
+	/**
+	 * Seconds the restore after a match keeps trying before On Party Left fires with Connection Lost.
+	 * A member searches for the leader's party this long, because the leader may stay in the match longer.
+	 * A leader whose create failed retries for the same time.
+	 */
 	UPROPERTY(config, EditAnywhere, Category = "Party", meta = (ClampMin = "0", EditCondition = "bRestorePartyAfterMatch"))
 	float PartyRestoreWaitSeconds = 120.0f;
 

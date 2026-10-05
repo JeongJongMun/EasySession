@@ -11,10 +11,10 @@ class UEasyMatchmakingPolicy;
 class UEasySessionSubsystem;
 
 /**
- * Blueprint function library for reading EasySession state and for the calls that answer inside the call.
- * A call that changes the session is an async node instead, such as Create Easy Session or Join Easy Session.
+ * Blueprint function library for reading EasySession state and for the calls that complete inside this call.
+ * A call that completes later is an async node instead, such as Create Easy Session or Join Easy Session.
  *
- * Every function here is about the game session, the one players find, join and play in, except the Party ones.
+ * Every function here is about the game session, the one players find, join and play in, except those in the Party category.
  * There is one of each per process, so none of them take a session argument.
  */
 UCLASS()
@@ -48,7 +48,8 @@ public:
 	static bool IsEasySessionAuthority(const UObject* WorldContextObject);
 
 	/**
-	 * The lifecycle state of the current session (Pending, InProgress, Ended, ...). The host reports its own state.
+	 * The lifecycle state of the current session (Pending, InProgress, Ended, ...).
+	 * The host reports its own state.
 	 * A client reports the host's replicated state once it has arrived, and its own until then.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
@@ -104,7 +105,7 @@ public:
 	/**
 	 * Change whether the local player is ready, which every player in the session sees in Get Easy Session Player Infos.
 	 * The plugin only shares the value, and the game decides what being ready allows, such as starting the match.
-	 * Unset again in every map the session travels to.
+	 * Every travel of the session sets it back to false.
 	 *
 	 * @return Success, or No Session Exists outside a session.
 	 */
@@ -127,12 +128,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static bool IsEasyPartyLeader(const UObject* WorldContextObject);
 
-	/** Every member of the party, the leader included: name, whether it is the local player, and whether it leads the party. */
+	/**
+	 * Every member of the party, the leader included: name, whether it is the local player, whether it leads the party, and whether it is ready.
+	 * Empty outside a party.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasyPartyMemberInfo> GetEasyPartyMembers(const UObject* WorldContextObject);
 
 	/**
-	 * Whether the party of the last match is being got back: created again on the leader, or looked for on a member.
+	 * Whether the party of the last match is being restored: created again on the leader, or searched for and joined on a member.
 	 * True while a member waits for a leader who stays in the match longer, when Is In Easy Party is still false.
 	 * A menu can show a waiting message then, instead of the buttons that would stop the restore.
 	 */
@@ -140,13 +144,18 @@ public:
 	static bool IsEasyPartyRestoring(const UObject* WorldContextObject);
 
 	/**
-	 * The settings of the party: how many players it holds and who may join it, as Create Easy Party set them.
-	 * Works for the leader and every member, for example to show the party as 2/4. Default settings outside a party.
+	 * The settings the party advertises, as Create Easy Party set them: how many players it holds, whether it is hidden, and whether it uses a join code.
+	 * Works for the leader and every member, for example to show the party as 2/4.
+	 * Default settings outside a party.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static FEasyPartySettings GetEasyPartySettings(const UObject* WorldContextObject);
 
-	/** The join code the party advertises, for the leader to show and share. Empty when the party does not use a join code, or outside a party. */
+	/**
+	 * The join code the party advertises.
+	 * Works for the leader and every member, so any member can share the code.
+	 * Empty when the party does not use a join code, or outside a party.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasyPartyJoinCode(const UObject* WorldContextObject);
 
@@ -193,7 +202,7 @@ public:
 	 * The settings the current session is advertising, so one field can be changed and passed to Update Easy Session.
 	 * Building new settings instead resets every field you did not fill in.
 	 * Works for every player in the session.
-	 * The password and its friends exception are only filled on the host, the one game that holds them.
+	 * The password and its friends exception are only filled on the host, because only the host holds them.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static FEasySessionSettings GetEasySessionSettings(const UObject* WorldContextObject);
@@ -263,7 +272,8 @@ public:
 	static EEasySessionResult ShowEasyInviteUI(const UObject* WorldContextObject);
 
 	/**
-	 * Invite a friend to the party. Any member can do this.
+	 * Invite a friend to the party.
+	 * Any member can do this.
 	 *
 	 * @return Success, or why not: No Session Exists outside a party,
 	 *         Not Supported By Service on an online subsystem without invites such as NULL (LAN), or Invalid Params for a friend Read Easy Friends did not return.
@@ -272,7 +282,8 @@ public:
 	static EEasySessionResult SendEasyPartyInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
 
 	/**
-	 * Open the platform invite overlay (e.g. Steam) for the party. Any member can do this.
+	 * Open the platform invite overlay (e.g. Steam) for the party.
+	 * Any member can do this.
 	 *
 	 * @return Success, or why the overlay could not be opened: No Session Exists outside a party,
 	 *         or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
@@ -283,7 +294,8 @@ public:
 	/**
 	 * Open the platform profile overlay (e.g. Steam) for the given friend.
 	 *
-	 * @return Success, or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
+	 * @return Success, or why not: Invalid Params for a friend without an online id,
+	 *         or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend);
@@ -291,7 +303,8 @@ public:
 	/**
 	 * Open the platform profile overlay (e.g. Steam) for a player in the session.
 	 *
-	 * @return Success, or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
+	 * @return Success, or why not: Invalid Params for a player without an online id,
+	 *         or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult ShowEasyProfileUIForPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player);
@@ -299,7 +312,8 @@ public:
 	/**
 	 * Open the platform profile overlay (e.g. Steam) for a member of the party.
 	 *
-	 * @return Success, or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
+	 * @return Success, or why not: Invalid Params for a member without an online id,
+	 *         or Not Supported By Service on an online subsystem without an overlay such as NULL (LAN).
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Invites", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult ShowEasyProfileUIForPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member);

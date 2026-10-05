@@ -40,7 +40,10 @@ enum class EEasySessionResult : uint8
 	/** The given parameters were invalid. */
 	InvalidParams,
 
-	/** This player is already in a session. Leave it first; Join Easy Session switches sessions on its own, except for the host of a match in progress. */
+	/**
+	 * This player is already in a game session or a party, so call Leave Easy Session or Leave Easy Party first.
+	 * Join Easy Session switches game sessions on its own, except for the host of a match in progress.
+	 */
 	SessionAlreadyExists,
 
 	/** There is no session to act upon. */
@@ -141,7 +144,7 @@ enum class EEasySessionState : uint8
 /**
  * What keeps Is Easy Session Busy true, including requests the game did not start itself.
  * Is Easy Session Busy only says whether something runs.
- * This says what runs, so a status line can name a join from an invite or a cleanup the game did not ask for.
+ * This says what runs, so a status line can name a join from an invite or a session destroyed without the game asking.
  */
 UENUM(BlueprintType)
 enum class EEasySessionActivity : uint8
@@ -205,14 +208,14 @@ namespace EasySession
 
 	/**
 	 * Custom session setting key marking a session whose host runs the reservation beacon.
-	 * A joining player that finds it asks the host first, which checks the password, whether the session is full and the joinable state.
-	 * It is written for every session this plugin hosts, so there is no per-session switch.
+	 * A joining player that finds it asks the reservation beacon first, which refuses a wrong password, a full session and a match in progress that allows no join.
+	 * It is written for every game session this plugin hosts, so there is no per-session switch.
 	 */
 	EASYSESSION_API extern const FName SettingKey_Reservations;
 
 	/**
 	 * Custom session setting key holding the host's unique id as a string.
-	 * A search for one host filters on it on the online service, so that host's session is found however many other sessions exist.
+	 * A search for one host filters on it in the online subsystem, so that host's session is found however many other sessions exist.
 	 */
 	EASYSESSION_API extern const FName SettingKey_OwnerId;
 
@@ -225,7 +228,7 @@ namespace EasySession
 	/**
 	 * The port the reservation beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
-	 * A listener that ends up on another port is reported rather than corrected.
+	 * A listener that ends up on another port is logged as a warning, and the advertised port is not changed.
 	 * Joining players then reach no beacon, so PreLogin checks them on arrival and a password-protected session cannot be joined.
 	 */
 	EASYSESSION_API int32 GetReservationBeaconPort();
@@ -305,8 +308,8 @@ struct EASYSESSION_API FEasySessionSettings
 	bool bShouldAdvertise = true;
 
 	/**
-	 * Hidden sessions are advertised to the online subsystem but excluded from Find Easy Sessions results.
-	 * They can only be joined through an invite or a targeted search: a join code, an owner or a friend.
+	 * Whether the session is left out of the Find Easy Sessions results, while it stays advertised to the online subsystem.
+	 * Players reach a hidden session through an invite or a search with a Join Code, an Owner Id or a friend.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bHidden = false;
@@ -322,10 +325,9 @@ struct EASYSESSION_API FEasySessionSettings
 	FString Password;
 
 	/**
-	 * Lets platform friends of the host join a password protected session without the password.
-	 * Invites can only be sent to friends, so an accepted invite always comes from a friend and is allowed in.
-	 * Without this, invited players would be refused because the invite flow never asks for a password.
-	 * The host checks the platform friends list.
+	 * Whether platform friends of the host join a password protected session without the password.
+	 * The invite flow never asks for a password, so with this off an invited player is refused.
+	 * Only friends of the host get through, so a player invited by another member still needs the password.
 	 * No effect on NULL (LAN), which has no friends.
 	 * Get Easy Session Settings fills it only on the host, so a client always reads false.
 	 */
@@ -350,12 +352,9 @@ struct EASYSESSION_API FEasySessionSettings
 	EEasySessionRegion Region = EEasySessionRegion::Any;
 
 	/**
-	 * Advertise a generated six character join code with the session, readable with Get Easy Session Join Code.
-	 * Players reach it with the code in a search's Join Code filter.
-	 * Find Easy Sessions previews the session and matchmaking joins it, hidden sessions included.
-	 * Hidden plus a code makes a session only players with the code can find.
-	 * The code identifies the session but does not protect it.
-	 * Password protects it, and the two can be combined.
+	 * Whether the session advertises a generated six character join code, readable with Get Easy Session Join Code.
+	 * A search with the code in Join Code returns the session, hidden or not, so Find Easy Sessions lists it and matchmaking joins it.
+	 * Anyone with the code can find the session, so set Password as well to keep others out.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bUseJoinCode = false;
@@ -370,19 +369,19 @@ struct EASYSESSION_API FEasySessionSettings
 	/**
 	 * Apply these settings to the online subsystem's settings.
 	 * Create applies them to empty settings, and Update applies them over the advertised ones.
-	 * A join code is kept once generated, and a custom setting left out of CustomSettings is removed.
+	 * An advertised join code is kept while bUseJoinCode stays on, and a custom setting left out of CustomSettings is removed.
 	 */
 	void ApplyTo(FOnlineSessionSettings& OutSettings) const;
 
 	/**
 	 * Read these settings from the online subsystem's settings, the other direction of ApplyTo.
-	 * Password and Friends Bypass Password are not advertised, so they stay untouched and the host fills them from the password it holds.
+	 * Password and bFriendsBypassPassword are not advertised, so they stay untouched and GetSessionSettings fills them from the reservations on the host.
 	 */
 	void ReadFrom(const FOnlineSessionSettings& Settings);
 };
 
 /**
- * Parameters for hosting a session: the settings above, plus how to open the server that runs it.
+ * Parameters for hosting a session: the settings above, plus how to open the listen server that runs it.
  * Every value has a default except Initial Map Name.
  * With a map name alone, FEasySessionHostParams hosts a public 4 player listen server session.
  * The fields added here are read once, while the session is created.
@@ -418,7 +417,8 @@ struct EASYSESSION_API FEasySessionHostParams : public FEasySessionSettings
 	bool bUsePresence = true;
 
 	/**
-	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1"). Read them on the server with Parse Option.
+	 * Extra options appended to the travel URL when hosting (e.g. "GameMode=Deathmatch?MyOption=1").
+	 * Read them on the host with Parse Option.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString AdditionalTravelOptions;
@@ -494,7 +494,7 @@ struct EASYSESSION_API FEasySessionSearchParams
 
 	/**
 	 * Only return sessions hosted by this player.
-	 * The online service filters on it, so the host's session is found however many other sessions exist.
+	 * The online subsystem filters on it, so the host's session is found however many other sessions exist.
 	 * NULL (LAN) filters the returned results instead.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -636,7 +636,7 @@ struct EASYSESSION_API FEasyMatchmakingParams
 
 	/**
 	 * Whether to host a session when no session is found.
-	 * With this on and an empty Host Initial Map Name, the session is hosted on the map this player is already on.
+	 * With this on, matchmaking fails with Invalid Params before the first search while Host has no Initial Map Name.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bAllowHostFallback = false;
@@ -730,7 +730,6 @@ struct EASYSESSION_API FEasySessionReplicatedSetting
  * The settings a session member is allowed to see, replicated to every client after an update.
  * That includes the join code, so any session member can share it.
  * Only the password and its friends exception stay on the host.
- * Not exposed to Blueprint.
  * Clients read the values through the regular session getters.
  */
 USTRUCT()
@@ -808,7 +807,10 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsHost = false;
 
-	/** Whether this player is ready, as Set Easy Session Ready set it. Unset again in every map the session travels to. */
+	/**
+	 * Is this player ready, as Set Easy Session Ready last set it.
+	 * Every travel of the session sets it back to false.
+	 */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsReady = false;
 
@@ -827,21 +829,21 @@ struct EASYSESSION_API FEasyPartySettings
 {
 	GENERATED_BODY()
 
-	/** How many players the party holds, the leader included. */
+	/** The most players the party holds, the leader included. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = "2", UIMin = "2"))
 	int32 MaxMembers = 4;
 
 	/**
-	 * Hidden parties are advertised but left out of the Find Easy Parties list.
-	 * Players reach them through an invite or the join code.
-	 * Hiding does not lock the party: the leader admits a player who reaches it another way.
+	 * Whether the party is left out of the Find Easy Parties results, while it stays advertised.
+	 * Players reach a hidden party through an invite or a search with a Join Code, an Owner Id or a friend.
+	 * A hidden party still admits every player who reaches it, unless it is full or the leader kicked that player.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bHidden = true;
 
 	/**
-	 * Advertise a generated six character join code with the party, readable with Get Easy Party Join Code.
-	 * Find Easy Parties with the code returns the party, hidden or not.
+	 * Whether the party advertises a generated six character join code, readable with Get Easy Party Join Code.
+	 * Find Easy Parties with the code in Join Code returns the party, hidden or not.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
 	bool bUseJoinCode = false;
@@ -894,7 +896,11 @@ enum class EEasyPartyLeaveReason : uint8
 	/** The leader left, which ends the party for every member. */
 	LeaderLeft UMETA(DisplayName = "Leader Left"),
 
-	/** The connection to the leader was lost: the leader quit, crashed, or the network failed. */
+	/**
+	 * The party could not continue, and Reason Text says why.
+	 * A member gets it when the connection to the leader is lost, and the leader when the party beacon cannot start again after a map change.
+	 * Either gets it when the restore after a match still fails once Party Restore Wait Seconds runs out.
+	 */
 	ConnectionLost UMETA(DisplayName = "Connection Lost"),
 
 	/** The party entered a game session, which closes the party. */
@@ -919,10 +925,16 @@ enum class EEasyDisconnectReason : uint8
 	/** Traveling to the session's map failed. */
 	TravelFailure,
 
-	/** The host refused the connection when it arrived (not joinable, or a password session joined without the reservation beacon). Reason Text is the refusal message. */
+	/**
+	 * PreLogin on the host refused this player when the connection arrived, and Reason Text is the refusal message.
+	 * It refuses a kicked player, a full session, a match in progress that allows no join, and a password session joined without the reservation beacon.
+	 */
 	Rejected,
 
-	/** The host removed this player from the session, which keeps them out until it is destroyed. Reason Text is the host's reason. */
+	/**
+	 * The host removed this player from the session, and Reason Text is the host's reason.
+	 * The host refuses this player again until the session is destroyed.
+	 */
 	Kicked
 };
 

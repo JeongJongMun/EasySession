@@ -28,6 +28,7 @@ public:
 	/**
 	 * Leave the party.
 	 * A leader who leaves ends the party for every member.
+	 * On Party Left fires with Left once the party is left.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Leave Easy Party", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyLeavePartyNode* LeaveEasyParty(UObject* WorldContextObject);

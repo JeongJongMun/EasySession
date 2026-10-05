@@ -25,7 +25,7 @@ public:
 
 	/**
 	 * A player facing name for a session state, e.g. "In Match".
-	 * Feed it Get Easy Session State.
+	 * Pass it the result of Get Easy Session State.
 	 * Pending and Ended both read "Waiting", because both mean the match can be started.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|UI")

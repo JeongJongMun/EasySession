@@ -28,6 +28,7 @@ public:
 	/**
 	 * Create a new session and travel to Initial Map Name.
 	 * The map is opened with the ?listen option, which is what starts the listen server.
+	 * A party leader brings the party, whose members follow once the map is open, and a party member fails with In Party.
 	 *
 	 * @param HostParams Parameters describing the session to create.
 	 */

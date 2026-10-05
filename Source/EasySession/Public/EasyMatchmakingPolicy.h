@@ -33,7 +33,8 @@ public:
 
 	/**
 	 * How many of the best scoring sessions are shuffled before the join attempts start.
-	 * Players searching at the same time then do not all try the same session first. 1 always tries the best scoring session first.
+	 * Players searching at the same time then do not all try the same session first.
+	 * 1 always tries the best scoring session first.
 	 */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "EasySession|Scoring", meta = (ClampMin = 1))
 	int32 TopCandidatesToShuffle = 3;

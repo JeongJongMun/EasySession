@@ -27,7 +27,7 @@ public:
 
 	/**
 	 * Search for parties.
-	 * Public parties are listed, and a Join Code finds the party that advertises it.
+	 * Without a Join Code this lists the parties that are not hidden, and with one it finds the party that advertises it, hidden or not.
 	 * A result's Session Display Name is the leader's name.
 	 *
 	 * @param SearchParams Parameters describing what to search for. Region, Required Custom Settings and Include In Progress Sessions are ignored,

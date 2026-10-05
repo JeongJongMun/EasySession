@@ -28,7 +28,7 @@ public:
 	/**
 	 * Destroy the named session: the host closes the session, a client removes its own copy and stays on the current map.
 	 * A client leaving for the menu is Leave Easy Session.
-	 * Destroying it for everyone with a reason is Destroy Easy Session For Everyone on the subsystem.
+	 * Destroying it for everyone with a reason is Destroy Easy Session For Everyone.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Destroy Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyDestroySessionNode* DestroyEasySession(UObject* WorldContextObject);

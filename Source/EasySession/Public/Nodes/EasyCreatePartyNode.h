@@ -28,9 +28,9 @@ public:
 	/**
 	 * Create a party, with the local player as its leader.
 	 * A party lives outside game sessions and needs no map, so nothing travels.
-	 * It fails inside a game session, and in a party, which Leave Easy Party ends first.
+	 * It fails with Session Already Exists in a game session or a party, so call Leave Easy Session or Leave Easy Party first.
 	 *
-	 * @param PartySettings How many players the party holds, and who may join it.
+	 * @param PartySettings How many players the party holds, whether Find Easy Parties lists it, and whether it advertises a join code.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Create Easy Party", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "PartySettings"))
 	static UEasyCreatePartyNode* CreateEasyParty(UObject* WorldContextObject, const FEasyPartySettings& PartySettings);

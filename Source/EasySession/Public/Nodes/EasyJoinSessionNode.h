@@ -27,10 +27,12 @@ public:
 
 	/**
 	 * Join the given session and travel to the host.
-	 * A player in another session leaves it first, once the host approved the join.
-	 * A join that fails after leaving travels the player to the menu.
-	 * Joining the session this player is already in fails with SessionAlreadyExists, and so does a join by the host of a match in progress.
-	 * A player in a session stays in it when the host cannot be asked.
+	 * A player in another session destroys it first, once the new host approved the join.
+	 * A join that fails after that destroy travels the player to the menu.
+	 * Joining the session this player is already in fails with Session Already Exists, and so does a join by the host of a match in progress.
+	 * A player in a session stays in it when the reservation beacon cannot reach the new host.
+	 * A party leader, or the host of a match that has not started, brings the group, which follows before this player joins.
+	 * A party member fails with In Party.
 	 *
 	 * @param SearchResult A search result returned by Find Easy Sessions.
 	 * @param Password Password for password protected sessions (see Password Protected on the search result).
