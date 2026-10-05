@@ -31,6 +31,19 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 - **바로 돌려보는 예제** - 메인 메뉴 -> 로비 -> 매치 순환이 완성된 맵과 위젯이 들어 있습니다.
 - **확장 가능한 매치메이킹** - `ScoreSession` 하나만 오버라이드하면 원하는 기준으로 세션을 고를 수 있습니다.
 
+## 예제
+
+메인 메뉴 -> 로비 -> 매치 순환이 완성된 예제 맵과 위젯이 들어 있습니다. 위젯마다 한 가지 일을 맡으므로, 필요한 부분만 복사해 가면 됩니다.
+
+| 화면 | 위젯 |
+|---|---|
+| 메인 메뉴 | `WBP_MainMenu`, 그리고 `WBP_SessionBrowser`, `WBP_SessionSettingsForm`, `WBP_PartyCard`, `WBP_CreatePartyForm` |
+| 로비 | `WBP_Lobby`, 그리고 `WBP_PlayerList`, `WBP_SessionInfo`, `WBP_UpdateSessionPopup` |
+| 매치 | `WBP_InGame`, 그리고 `WBP_EscPopup` |
+| 아무 화면 | `WBP_SessionStatus`. 지금 도는 요청을 서술하는 상태 줄 |
+
+[빠른 시작](Docs/QuickStart.ko.md#2-먼저-예제를-실행해보기)에 실행 방법과 위젯마다 부르는 노드가 있습니다.
+
 ## 제약 사항
 
 - **게임 세션은 한 번에 하나, 파티는 선택.** 게임 세션은 엔진의 `NAME_GameSession` 슬롯을, 파티는 `NAME_PartySession`을 사용하므로 게임 세션 여러 개를 동시에 두는 구성은 지원하지 않습니다.

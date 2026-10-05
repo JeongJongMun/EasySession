@@ -59,6 +59,20 @@
 
 이미 파티에 있거나 게임 세션 안에 있는 플레이어는 `SessionAlreadyExists`로 실패합니다. 먼저 `Leave Easy Party`나 `Leave Easy Session`을 부르세요.
 
+## 공개 파티에 자동 참가
+
+"아무나와 플레이" 버튼에는 별도 노드가 필요 없습니다. 위의 두 노드를 이어 붙입니다.
+
+```
+[Find Easy Parties]  (Join Code 비움: 목록에 보이는 파티만)
+  OnSuccess (Results) -> Open Slots > 0인 첫 결과
+    있음 -> [Join Easy Party]
+              OnFailure -> 다음 결과로. 그사이 파티가 찼을 수 있습니다
+    없음 -> [Create Easy Party]  (Hidden 끔. 다음 플레이어가 찾을 수 있게)
+```
+
+파티에는 맞춰 볼 지역이나 커스텀 세팅이 없으므로, 목록에 보이는 파티는 모두 후보입니다. 게임 세션 매치메이킹은 별도 노드인 `Start Easy Matchmaking`이 맡고, 파티가 모이면 리더가 부르면 됩니다.
+
 ## 초대
 
 초대는 리더뿐 아니라 모든 멤버가 할 수 있습니다.

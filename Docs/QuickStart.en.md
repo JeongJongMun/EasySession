@@ -23,12 +23,33 @@ wiring your first node, and it shows what the finished flow looks like.
    applies to your own game later: its menu map belongs here.
 3. Open `/EasySession/Examples/Maps/L_Example_MainMenu`.
 4. Set up two players as described in [step 6](#6-test-in-pie), then press Play.
-5. Host in one window, Find and Join in the other.
+5. Press **CREATE SESSION** and create in one window. In the other, press **FIND SESSIONS**, **SEARCH**, then **JOIN**.
 
-The widgets behind it live in `/EasySession/Examples/UI/`. `WBP_MainMenu` is the one to
-read first - it uses every node in the steps below. The status line at its bottom is
+The widgets behind it live in `/EasySession/Examples/UI/`. Each one does one job and calls the
+nodes for that job, so you can read one on its own or copy it into your game. `WBP_MainMenu`
+only lays out the screens and switches between them. The status line at its bottom is
 `Modules/WBP_SessionStatus`, a widget that binds the plugin's events once and narrates
 whatever runs, whoever started it. Drop it on any screen that should show session progress.
+
+| Widget | What it does | Main nodes |
+|---|---|---|
+| `WBP_MainMenu` | Home, Create Session, Find Sessions, Create Party and Find Parties screens. Joins whatever the browser asks for | Start Easy Matchmaking, Create Easy Session, Join Easy Session, Create Easy Party, Join Easy Party |
+| `Modules/WBP_SessionSettingsForm` | The session settings inputs, shared by Create Session and the update popup | Make / Break Easy Session Settings |
+| `Modules/WBP_SessionBrowser` | Find Sessions with Public, Friends and Code tabs, and Find Parties | Find Easy Sessions, Find Easy Friend Sessions, Find Easy Parties |
+| `Modules/WBP_PartyCard` | The local party: create, join by code, find, ready and leave | Join Easy Party, Set Easy Party Ready, Leave Easy Party, Get Easy Party Settings, Get Easy Party Join Code |
+| `Modules/WBP_CreatePartyForm` | Max members, hidden and join code of a new party | Make Easy Party Settings |
+| `Modules/WBP_PartyMemberList` | The party members. An open slot opens the invite overlay, a member opens their profile | Get Easy Party Members, Show Easy Party Invite UI, Show Easy Profile UI For Party Member, Kick Easy Party Member |
+| `WBP_Lobby` | The lobby: ready, start the match, session settings, leave | Set Easy Session Ready, Start Easy Session, Server Travel Easy Session, Leave Easy Session |
+| `Modules/WBP_PlayerList` | The session players, with the same open slot and profile clicks | Get Easy Session Player Infos, Show Easy Invite UI, Show Easy Profile UI For Player, Kick Easy Session Player |
+| `Modules/WBP_SessionInfo` | The session settings at a glance | Get Easy Session Settings, Get Easy Session Join Code, Get Easy Session State |
+| `Modules/WBP_SessionStatus` | The status line | Get Easy Session Activity, Get Activity Message, On Session Failure |
+| `WBP_InGame`, `Popups/WBP_EscPopup` | The match and its Esc menu: leave, return to the lobby, end the session | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone |
+| `Popups/WBP_UpdateSessionPopup` | Changes the session settings from the lobby | Update Easy Session |
+| `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | The password prompt, and why the last session or party ended | Join Easy Session, Consume Pending Easy Disconnect Info (called by the main menu) |
+
+The rest of `Modules/` are shared parts with no plugin nodes: `WBP_MenuButton`, `WBP_TabBar`,
+`WBP_InfoRow`, `WBP_PopupFrame`, `WBP_PlayerRow` and the input widgets. A game without parties
+can drop `WBP_PartyCard` from the main menu, and everything else keeps working.
 
 ## 3. Host a session
 

@@ -59,6 +59,20 @@ A party with `Use Join Code` advertises a generated six character code. `Get Eas
 
 The join fails with `SessionAlreadyExists` for a player who is already in a party or in a game session. Call `Leave Easy Party` or `Leave Easy Session` first.
 
+## Join a public party automatically
+
+A "play with anyone" button needs no extra node. Chain the two nodes above:
+
+```
+[Find Easy Parties]  (empty Join Code: listed parties only)
+  OnSuccess (Results) -> first result with Open Slots > 0
+    found     -> [Join Easy Party]
+                   OnFailure -> try the next result, the party may have filled up meanwhile
+    not found -> [Create Easy Party]  (Hidden off, so the next player finds it)
+```
+
+A party has no region or custom settings to match on, so every listed party is a candidate. Matchmaking for game sessions is a separate node, `Start Easy Matchmaking`, which the leader can run once the party is together.
+
 ## Invites
 
 Every member invites, not only the leader:

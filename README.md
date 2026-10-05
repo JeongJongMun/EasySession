@@ -31,6 +31,19 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **A working example** - example maps and widgets with the full main menu -> lobby -> match cycle.
 - **Extensible matchmaking** - override one `ScoreSession` function to pick sessions your way.
 
+## Example
+
+The plugin ships example maps and widgets with the full main menu -> lobby -> match cycle. Each widget does one job, so you can copy just the part you need.
+
+| Screen | Widgets |
+|---|---|
+| Main menu | `WBP_MainMenu`, with `WBP_SessionBrowser`, `WBP_SessionSettingsForm`, `WBP_PartyCard` and `WBP_CreatePartyForm` |
+| Lobby | `WBP_Lobby`, with `WBP_PlayerList`, `WBP_SessionInfo` and `WBP_UpdateSessionPopup` |
+| Match | `WBP_InGame`, with `WBP_EscPopup` |
+| Any screen | `WBP_SessionStatus`, the status line that narrates whatever runs |
+
+[Quick Start](Docs/QuickStart.en.md#2-play-the-example-first) shows how to run it and lists the nodes each widget calls.
+
 ## Limitations
 
 - **One game session at a time, plus an optional party.** Game sessions use the engine's `NAME_GameSession` slot and the party uses `NAME_PartySession`, so running more than one game session side by side is not supported.
