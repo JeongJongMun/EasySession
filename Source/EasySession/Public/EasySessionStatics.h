@@ -146,7 +146,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static FEasyPartySettings GetEasyPartySettings(const UObject* WorldContextObject);
 
-	/** The join code the party advertises, for the leader to show and share. Empty when the party's privacy is not Join Code, or outside a party. */
+	/** The join code the party advertises, for the leader to show and share. Empty when the party does not use a join code, or outside a party. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasyPartyJoinCode(const UObject* WorldContextObject);
 

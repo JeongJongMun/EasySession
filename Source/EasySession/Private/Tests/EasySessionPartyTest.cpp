@@ -100,11 +100,12 @@ namespace EasySessionPartyTest
 		return HostParams;
 	}
 
-	FEasyPartySettings MakePartySettings(EEasyPartyPrivacy Privacy, int32 MaxMembers = 4)
+	FEasyPartySettings MakePartySettings(bool bHidden, bool bUseJoinCode, int32 MaxMembers = 4)
 	{
 		FEasyPartySettings Settings;
 		Settings.MaxMembers = MaxMembers;
-		Settings.Privacy = Privacy;
+		Settings.bHidden = bHidden;
+		Settings.bUseJoinCode = bUseJoinCode;
 		return Settings;
 	}
 
@@ -174,7 +175,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 	{
 		case 0:
 		{
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::JoinCode, 3), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(true, true, 3), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -204,7 +205,8 @@ bool FEasySessionPartyLifecycleStep::Update()
 			CurrentTest->TestEqual(TEXT("The party advertises a six character code"), Subsystem->GetPartyJoinCode().Len(), 6);
 			CurrentTest->TestEqual(TEXT("The party reads back its max members"), Subsystem->GetPartySettings().MaxMembers, 3);
 			CurrentTest->TestEqual(TEXT("The leader takes a slot"), FEasySessionSearchResult::FromNative(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession)).OpenSlots, 2);
-			CurrentTest->TestEqual(TEXT("The party reads back its privacy"), Subsystem->GetPartySettings().Privacy, EEasyPartyPrivacy::JoinCode);
+			CurrentTest->TestTrue(TEXT("The party reads back as hidden"), Subsystem->GetPartySettings().bHidden);
+			CurrentTest->TestTrue(TEXT("The party reads back its join code"), Subsystem->GetPartySettings().bUseJoinCode);
 			CurrentTest->TestTrue(TEXT("The party code is not a game session code"), Subsystem->GetSessionJoinCode().IsEmpty());
 
 			Subsystem->CreateParty(FEasyPartySettings(), MakeCallback(State));
@@ -284,7 +286,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 			CurrentTest->TestEqual(TEXT("Leaving without a party fails"), State->PendingResult.GetValue(), EEasySessionResult::NoSessionExists);
 			CurrentTest->TestEqual(TEXT("A leave that found no party reports nothing"), State->Listener->PartyLeftReasons.Num(), 1);
 
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::Public, 1), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(false, false, 1), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -386,7 +388,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 			CurrentTest->TestEqual(TEXT("Outside a party nobody is invited"), Subsystem->SendPartyInviteToFriend(FEasySessionFriend()), EEasySessionResult::NoSessionExists);
 			CurrentTest->TestEqual(TEXT("Outside a party no invite overlay opens"), Subsystem->ShowPartyInviteUI(), EEasySessionResult::NoSessionExists);
 
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::Public, 3), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(false, true, 3), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -402,7 +404,9 @@ bool FEasySessionPartyAdmissionStep::Update()
 			const FUniqueNetIdRepl LeaderId(Identity->GetUniquePlayerId(0));
 			const FUniqueNetIdRepl Kicked = MakePlayerId(State, TEXT("EasySessionPartyKicked"));
 
-			CurrentTest->TestEqual(TEXT("A public party reads back as public"), Subsystem->GetPartySettings().Privacy, EEasyPartyPrivacy::Public);
+			CurrentTest->TestFalse(TEXT("A listed party reads back as not hidden"), Subsystem->GetPartySettings().bHidden);
+			CurrentTest->TestEqual(TEXT("A listed party is in plain searches"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Hidden), 0);
+			CurrentTest->TestEqual(TEXT("A listed party can advertise a code too"), Subsystem->GetPartyJoinCode().Len(), 6);
 			CurrentTest->TestTrue(TEXT("A public party admits anyone"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
 			CurrentTest->TestFalse(TEXT("A member cannot join twice"), FEasySessionTestAccess::AskApproveMember(*Subsystem, LeaderId, Reason));
 
@@ -490,7 +494,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 				return TimedOut(State, TEXT("the public party leave"));
 			}
 
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::InviteOnly), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(true, false), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -499,11 +503,11 @@ bool FEasySessionPartyAdmissionStep::Update()
 		{
 			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
 			{
-				return TimedOut(State, TEXT("the invite-only party create"));
+				return TimedOut(State, TEXT("the hidden party create"));
 			}
 
-			// The privacy only hides the party, so a player who reached it through an invite is let in.
-			CurrentTest->TestTrue(TEXT("An invite-only party admits a player who reached it"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
+			// Hidden only keeps the party out of the list, so a player who reached it through an invite is let in.
+			CurrentTest->TestTrue(TEXT("A hidden party admits a player who reached it"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Stranger, Reason));
 
 			Subsystem->LeaveParty(MakeCallback(State));
 			NextPhase(State);
@@ -514,7 +518,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 		{
 			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInParty())
 			{
-				return TimedOut(State, TEXT("the invite-only party leave"));
+				return TimedOut(State, TEXT("the hidden party leave"));
 			}
 
 			End(State);
@@ -558,7 +562,7 @@ bool FEasySessionPartyMoveStep::Update()
 	{
 		case 0:
 		{
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::Public), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(false, false), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -714,7 +718,7 @@ bool FEasySessionPartyRestoreStep::Update()
 	{
 		case 0:
 		{
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::InviteOnly), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(true, false), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -723,7 +727,7 @@ bool FEasySessionPartyRestoreStep::Update()
 		{
 			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
 			{
-				return TimedOut(State, TEXT("the invite-only party create"));
+				return TimedOut(State, TEXT("the hidden party create"));
 			}
 
 			FEasySessionTestAccess::AddPartyMember(*Subsystem, Member);
@@ -799,7 +803,7 @@ bool FEasySessionPartyRestoreStep::Update()
 			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
 			CurrentTest->TestTrue(TEXT("A member looks for the leader's party"), Subsystem->IsRestoringParty());
 
-			Subsystem->CreateParty(MakePartySettings(EEasyPartyPrivacy::Public), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(false, false), MakeCallback(State));
 			CurrentTest->TestFalse(TEXT("A party the player creates stops the restore"), Subsystem->IsRestoringParty());
 			NextPhase(State);
 			return false;

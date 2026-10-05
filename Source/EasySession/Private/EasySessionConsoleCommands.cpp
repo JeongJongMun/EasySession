@@ -16,7 +16,7 @@
 //   EasySession.Players         List the players in the session, numbered for EasySession.Kick.
 //   EasySession.Kick <Index> [Reason]  Kick a player listed by EasySession.Players (host only).
 //   EasySession.Ready <0|1>     Change whether the local player is ready in the session.
-//   EasySession.CreateParty [MaxMembers] [invite|code|public]  Create a party.
+//   EasySession.CreateParty [MaxMembers] [public] [code]  Create a party, hidden unless public.
 //   EasySession.LeaveParty      Leave the party.
 //   EasySession.Party           List the members of the party.
 //   EasySession.PartyReady <0|1>  Change whether the local player is ready in the party.
@@ -312,7 +312,7 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GCreatePartyCommand(
 		TEXT("EasySession.CreateParty"),
-		TEXT("Create a party. Args: optional max members, then optional privacy (invite, code or public)."),
+		TEXT("Create a party. Args: optional max members, then optional words: public to list it, code to advertise a join code."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
@@ -322,11 +322,16 @@ namespace EasySessionConsole
 				{
 					PartySettings.MaxMembers = FCString::Atoi(*Args[0]);
 				}
-				if (Args.Num() > 1)
+				for (int32 Index = 1; Index < Args.Num(); ++Index)
 				{
-					PartySettings.Privacy = Args[1] == TEXT("public") ? EEasyPartyPrivacy::Public
-						: Args[1] == TEXT("code") ? EEasyPartyPrivacy::JoinCode
-						: EEasyPartyPrivacy::InviteOnly;
+					if (Args[Index] == TEXT("public"))
+					{
+						PartySettings.bHidden = false;
+					}
+					else if (Args[Index] == TEXT("code"))
+					{
+						PartySettings.bUseJoinCode = true;
+					}
 				}
 
 				Print(FString::Printf(TEXT("Creating a party (max %d members)..."), PartySettings.MaxMembers));

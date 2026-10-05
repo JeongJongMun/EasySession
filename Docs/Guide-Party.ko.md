@@ -20,7 +20,8 @@
 | 필드 | 기본값 | 설명 |
 |---|---|---|
 | Max Members | 4 | 리더를 포함해 파티가 담을 인원. 2 이상 |
-| Privacy | Invite Only | 누가 들어올 수 있는지. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
+| Hidden | true | `Find Easy Parties` 목록에서 뺍니다. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
+| Use Join Code | false | 파티를 찾을 수 있는 6자리 코드를 광고합니다 |
 
 로컬 플레이어가 리더가 됩니다. 멤버를 id로 구분하기 때문에, 온라인 서브시스템에 로그인한 플레이어가 있어야 만들 수 있습니다. NULL은 알아서 로그인하고, 스팀은 스팀 사용자로 로그인합니다.
 
@@ -30,26 +31,27 @@
 
 ## 누가 들어올 수 있나
 
-`Privacy`는 검색에 파티가 보이는지를 정합니다. 어떤 Privacy든 파티에 닿은 플레이어를 받습니다. 리더가 내보낸 플레이어와 파티가 가득 찬 경우만 거절합니다.
+`Hidden`과 `Use Join Code`는 플레이어가 파티를 찾는 방법을 정합니다. 게임 세션의 두 플래그와 같습니다. 둘 다 파티에 닿은 플레이어를 거절하지 않습니다. 리더는 내보낸 플레이어와, 파티가 가득 찼을 때만 거절합니다.
 
-| Privacy | Find Easy Parties | 들어오는 길 |
-|---|---|---|
-| Invite Only | 숨김 | 초대 |
-| Join Code | 숨김, 코드로만 찾음 | 코드나 초대 |
-| Public | 보임 | 검색이나 초대 |
+| Hidden | Use Join Code | Find Easy Parties | 들어오는 길 |
+|---|---|---|---|
+| true(기본값) | false(기본값) | 목록에 없음 | 초대 |
+| true | true | 목록에 없음, 코드로 찾음 | 코드나 초대 |
+| false | false | 목록에 보임 | 검색이나 초대 |
+| false | true | 목록에 보이고, 코드로도 찾음 | 검색, 코드, 초대 |
 
-Invite Only는 게임 세션의 `Hidden`처럼 파티를 숨깁니다. 파티를 잠그지는 않으므로, 리더의 ID처럼 다른 경로로 파티를 찾은 플레이어도 받습니다. `Privacy`가 게임 세션처럼 `Hidden`과 `Use Join Code` 두 플래그가 아니라 값 하나인 이유는 세 방식이 서로 배타적이기 때문입니다. 보이는 파티에는 코드가 필요 없고, 코드 없이 숨긴 파티는 초대로만 들어옵니다. 파티에는 비밀번호가 없습니다.
+`Hidden`은 파티를 잠그지 않습니다. 리더의 ID처럼 다른 경로로 파티를 찾은 플레이어도 받습니다. 파티에는 비밀번호가 없습니다.
 
-Join Code 파티는 자동으로 만든 6자리 코드를 광고합니다. 리더는 `Get Easy Party Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다.
+`Use Join Code`를 켠 파티는 자동으로 만든 6자리 코드를 광고합니다. 리더는 `Get Easy Party Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다.
 
-`Get Easy Party Settings`는 파티를 만들 때 쓴 설정을 돌려줍니다. 리더와 모든 멤버에서 동작합니다. 파티를 "2/4"로 보여 주거나 "Invite Only"라고 표시할 때 씁니다.
+`Get Easy Party Settings`는 파티를 만들 때 쓴 설정을 돌려줍니다. 리더와 모든 멤버에서 동작합니다. 파티를 "2/4"로 보여 주거나, 숨긴 파티라고 표시할 때 씁니다.
 
 ## 파티 찾기와 참가
 
 `Find Easy Parties`는 `Find Easy Sessions`와 같은 `FEasySessionSearchParams`를 받고, 파티만 돌려줍니다.
 
-- `Join Code`가 비어 있으면 Public 파티를 나열합니다.
-- `Join Code`가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다.
+- `Join Code`가 비어 있으면 숨기지 않은 파티를 나열합니다.
+- `Join Code`가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 숨긴 파티도 찾습니다.
 - 결과의 `Session Display Name`과 `Host Name`은 리더 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
 - 파티는 지역, 커스텀 세팅, 매치 상태를 광고하지 않으므로 `Region`, `Required Custom Settings`, `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
 
@@ -120,7 +122,7 @@ Is Enabled = NOT (Is In Easy Party AND NOT Is Easy Party Leader)
 
 **Restore Party After Match**가 켜져 있으면(기본값), 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티가 돌아옵니다.
 
-- 리더는 같은 설정으로 즉시 파티를 다시 만듭니다. 멤버는 리더의 ID로 파티를 찾으므로 Invite Only 파티도 돌아옵니다.
+- 리더는 같은 설정으로 즉시 파티를 다시 만듭니다. 멤버는 리더의 ID로 파티를 찾으므로 숨긴 파티도 돌아옵니다.
 - 리더가 매치에 더 오래 남아 있을 수 있으므로, 멤버는 리더의 파티를 2초마다 최대 **Party Restore Wait Seconds**(기본 120초) 동안 찾습니다. 그 안에 리더가 돌아오지 않으면 멤버에게 `ConnectionLost`가 담긴 `OnPartyLeft`가 옵니다.
 
 이 동안 `Is Easy Party Restoring`은 true이고, 멤버의 `Is In Easy Party`는 파티를 찾을 때까지 false입니다. 이때 대기 메시지를 띄우세요. `Create Easy Party`, `Join Easy Party`, `Leave Easy Party`, `Create Easy Session`, `Join Easy Session`, `Start Easy Matchmaking`을 부르면 복원이 멈춥니다. 플레이어가 다른 것을 골랐기 때문입니다.

@@ -396,14 +396,13 @@ FEasyPartySettings UEasySessionSubsystem::GetPartySettings() const
 
 	PartySettings.MaxMembers = NamedSession->SessionSettings.NumPublicConnections;
 
-	// Only the leader holds the settings it created the party with, so the privacy is read back from the advertised keys for every member.
+	// Only the leader holds the settings it created the party with, so every member reads them back from the advertised keys.
 	int32 Hidden = 0;
 	FString JoinCode;
 	NamedSession->SessionSettings.Get(EasySession::SettingKey_Hidden, Hidden);
 	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, JoinCode);
-	PartySettings.Privacy = Hidden == 0 ? EEasyPartyPrivacy::Public
-		: !JoinCode.IsEmpty() ? EEasyPartyPrivacy::JoinCode
-		: EEasyPartyPrivacy::InviteOnly;
+	PartySettings.bHidden = Hidden != 0;
+	PartySettings.bUseJoinCode = !JoinCode.IsEmpty();
 
 	return PartySettings;
 }

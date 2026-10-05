@@ -96,16 +96,16 @@ FOnlineSessionSettings FEasySessionCreatePartyRequest::MakeOnlineSettings(const 
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
 	// Every party is advertised, so a member can find the leader's party again after a match.
-	// The hidden key keeps the parties that are not public out of Find Easy Parties.
+	// The hidden key keeps hidden parties out of Find Easy Parties.
 	Settings.bShouldAdvertise = true;
-	Settings.bAllowJoinViaPresence = Settings.bUsesPresence && PartySettings.Privacy == EEasyPartyPrivacy::Public;
+	Settings.bAllowJoinViaPresence = Settings.bUsesPresence && !PartySettings.bHidden;
 
 	Settings.Set(EasySession::SettingKey_Party, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_DisplayName, LeaderName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	Settings.Set(EasySession::SettingKey_Hidden, PartySettings.Privacy == EEasyPartyPrivacy::Public ? 0 : 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(EasySession::SettingKey_Hidden, PartySettings.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_OwnerId, LeaderId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	if (PartySettings.Privacy == EEasyPartyPrivacy::JoinCode)
+	if (PartySettings.bUseJoinCode)
 	{
 		Settings.Set(EasySession::SettingKey_JoinCode, EasySession::GenerateJoinCode(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}

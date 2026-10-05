@@ -127,7 +127,7 @@ node name without spaces.
 | Is In Easy Party | `IsInParty` | Is the local player in a party |
 | Is Easy Party Leader | `IsPartyLeader` | Does the local player lead the party. False outside a party |
 | Get Easy Party Members | `GetPartyMembers` | Every member, the leader included, with leader, local-player and ready flags |
-| Get Easy Party Settings | `GetPartySettings` | Max Members and Privacy of the party, on the leader and on every member. Default settings outside a party |
+| Get Easy Party Settings | `GetPartySettings` | Max Members, Hidden and Use Join Code of the party, on the leader and on every member. Default settings outside a party |
 | Get Easy Party Join Code | `GetPartyJoinCode` | The code a Join Code party advertises, or empty |
 | Is Easy Party Restoring | `IsRestoringParty` | Is the party of the last match being created again or looked for. Show a waiting message while it is true |
 
@@ -288,9 +288,9 @@ Returned by `Read Easy Friends`; pass one back to the invite and profile functio
 `Reason` (`EEasyDisconnectReason`), `ReasonText` (Text)
 
 ### 5.10 FEasyPartySettings
-`MaxMembers` (int, at least 2, the leader included), `Privacy` (`EEasyPartyPrivacy`)
+`MaxMembers` (int, at least 2, the leader included), `bHidden` (bool, default true: left out of the Find Easy Parties list), `bUseJoinCode` (bool, default false: advertise a join code)
 
-What `Create Easy Party` takes and `Get Easy Party Settings` returns. A party has no map, password, region or custom data, so these two fields are all of it ([guide](Guide-Party.en.md#who-may-join)).
+What `Create Easy Party` takes and `Get Easy Party Settings` returns. A party has no map, password, region or custom data, so these three fields are all of it. `bHidden` and `bUseJoinCode` work like the same fields of a game session, and neither refuses a player ([guide](Guide-Party.en.md#who-may-join)).
 
 ### 5.11 FEasyPartyMemberInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsLeader`, `bIsReady`, `PlayerId`
@@ -360,17 +360,7 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
 
-### 6.8 EEasyPartyPrivacy
-
-| Value | Find Easy Parties | Players join through |
-|---|---|---|
-| `InviteOnly` (default) | Hidden | An invite |
-| `JoinCode` | Found only with the code | The code, or an invite |
-| `Public` | Listed | A search, or an invite |
-
-No privacy refuses a player who reaches the party. The leader refuses only a kicked player, and anyone while the party is full.
-
-### 6.9 EEasyPartyLeaveReason
+### 6.8 EEasyPartyLeaveReason
 
 The `Reason` of `OnPartyLeft`.
 
@@ -424,6 +414,6 @@ Sessions: `EasySession.Host <Map>`, `EasySession.Find`, `EasySession.Join [Index
 
 Players: `EasySession.Players` (numbered for Kick), `EasySession.Kick <Index> [Reason]`, `EasySession.Ready <0|1>`
 
-Party: `EasySession.CreateParty [MaxMembers] [invite|code|public]`, `EasySession.LeaveParty`, `EasySession.Party` (members and join code), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
+Party: `EasySession.CreateParty [MaxMembers] [public] [code]`, `EasySession.LeaveParty`, `EasySession.Party` (members and join code), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
 
 Friends and diagnostics: `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.PartyInviteUI`, `EasySession.Diagnose`

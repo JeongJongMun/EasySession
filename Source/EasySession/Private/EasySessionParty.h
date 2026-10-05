@@ -163,7 +163,7 @@ private:
 	/**
 	 * Decide whether a player may join the party this process leads.
 	 * Refuses a member, a kicked player, and any player while the party is full.
-	 * The privacy only decides who finds the party, so it refuses nobody here.
+	 * Hidden and the join code only decide who finds the party, so they refuse nobody here.
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
 

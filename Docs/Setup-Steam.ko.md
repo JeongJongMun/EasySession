@@ -57,7 +57,7 @@ bInitServerOnClient=true
 
 파티는 게임 세션 옆에 따로 있는 스팀 로비이고, 리더는 예약 비콘과 같은 포트에서 파티 비콘을 엽니다. 초대 오버레이에는 친구만 나오므로 두 계정이 스팀 친구여야 합니다. 두 PC에서 콘솔(`~`)을 열고 진행합니다.
 
-1. **초대.** A: `EasySession.CreateParty 4 invite`, 이어서 `EasySession.PartyInviteUI`로 B를 초대합니다. B가 오버레이에서 수락하면 참가합니다. B의 로그에 리더의 스팀 주소가 보입니다: `Connecting to the party leader at steam.<id>:...`
+1. **초대.** A: `EasySession.CreateParty 4`(숨긴 파티), 이어서 `EasySession.PartyInviteUI`로 B를 초대합니다. B가 오버레이에서 수락하면 참가합니다. B의 로그에 리더의 스팀 주소가 보입니다: `Connecting to the party leader at steam.<id>:...`
 2. **공개 파티.** A: `EasySession.CreateParty 4 public`. B: `EasySession.FindParties`, 이어서 `EasySession.JoinParty`.
 3. **참가 코드.** A: `EasySession.CreateParty 4 code`, 이어서 `EasySession.Party`가 코드를 출력합니다. B: `EasySession.FindParties <코드>`, 이어서 `EasySession.JoinParty`.
 4. **따라가기.** A: `EasySession.Host <맵>`. B가 A의 세션으로 따라오고, 둘 다 `MovedToGameSession`이 담긴 `OnPartyLeft`를 받습니다.

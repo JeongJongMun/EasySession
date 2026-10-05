@@ -18,7 +18,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 
 - **Drops into an existing project** - no custom `GameInstance`, no required parent classes. Enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Keep the game mode and widgets you already have and add the nodes.
 - **Matchmaking in one node** - `Start Easy Matchmaking` searches, joins the best session it finds, and with Allow Host Fallback on hosts one when it finds none.
-- **Parties** - friends gather in a party before they play: invite-only, join code or public, with invites, ready state and kick. When the leader hosts, joins or matchmakes, the whole party follows, and after the match the party comes back on its own.
+- **Parties** - friends gather in a party before they play: hidden or listed, with an optional join code, invites, ready state and kick. When the leader hosts, joins or matchmakes, the whole party follows, and after the match the party comes back on its own.
 - **Moving together** - the host of a lobby session that joins or matchmakes into another session brings every player along, with room reserved for all of them.
 - **The whole session lifecycle in Blueprint** - create, find, join, start the match, end it, leave and update settings, all as async nodes. Session state, the player list and open slots are one node away, and the same API is available from C++.
 - **Ready and kick** - every player and party member shares whether they are ready, and the host or party leader can remove a player with a reason they see.

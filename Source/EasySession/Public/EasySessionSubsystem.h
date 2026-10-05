@@ -417,7 +417,7 @@ public:
 	FEasyPartySettings GetPartySettings() const;
 
 	/**
-	 * @return The join code the party advertises, or empty when its privacy is not Join Code or there is no party.
+	 * @return The join code the party advertises, or empty when it uses none or there is no party.
 	 *         Works for the leader and every member, so any member can share the code.
 	 */
 	FString GetPartyJoinCode() const;

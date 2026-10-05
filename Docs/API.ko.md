@@ -123,7 +123,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Is In Easy Party | `IsInParty` | 로컬 플레이어가 파티에 있는가 |
 | Is Easy Party Leader | `IsPartyLeader` | 로컬 플레이어가 파티 리더인가. 파티 밖에서는 false |
 | Get Easy Party Members | `GetPartyMembers` | 리더를 포함한 모든 멤버와 리더/로컬 플레이어/준비 여부 |
-| Get Easy Party Settings | `GetPartySettings` | 파티의 Max Members와 Privacy. 리더와 모든 멤버에서 동작합니다. 파티 밖에서는 기본값 |
+| Get Easy Party Settings | `GetPartySettings` | 파티의 Max Members, Hidden, Use Join Code. 리더와 모든 멤버에서 동작합니다. 파티 밖에서는 기본값 |
 | Get Easy Party Join Code | `GetPartyJoinCode` | Join Code 파티가 광고하는 코드. 없으면 빈 문자열 |
 | Is Easy Party Restoring | `IsRestoringParty` | 지난 매치의 파티를 다시 만들거나 찾는 중인가. true인 동안 대기 메시지를 띄우세요 |
 
@@ -277,9 +277,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)
 
 ### 5.10 FEasyPartySettings
-`MaxMembers`(int, 리더 포함 2 이상), `Privacy`(`EEasyPartyPrivacy`)
+`MaxMembers`(int, 리더 포함 2 이상), `bHidden`(bool, 기본 true: Find Easy Parties 목록에서 뺌), `bUseJoinCode`(bool, 기본 false: 참가 코드 광고)
 
-`Create Easy Party`가 받고 `Get Easy Party Settings`가 돌려주는 구조체입니다. 파티에는 맵, 비밀번호, 지역, 커스텀 데이터가 없으므로 이 두 필드가 전부입니다 ([가이드](Guide-Party.ko.md#누가-들어올-수-있나)).
+`Create Easy Party`가 받고 `Get Easy Party Settings`가 돌려주는 구조체입니다. 파티에는 맵, 비밀번호, 지역, 커스텀 데이터가 없으므로 이 세 필드가 전부입니다. `bHidden`과 `bUseJoinCode`는 게임 세션의 같은 필드처럼 동작하고, 둘 다 플레이어를 거절하지 않습니다 ([가이드](Guide-Party.ko.md#누가-들어올-수-있나)).
 
 ### 5.11 FEasyPartyMemberInfo *(읽기 전용)*
 `PlayerName`, `bIsLocalPlayer`, `bIsLeader`, `bIsReady`, `PlayerId`
@@ -349,17 +349,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - 플러그인이 지금 하고 있는 일. `Get Easy Session Activity`로 읽습니다. 누가 시작했든 그 일에 이름을 붙이므로, 상태 위젯이 메뉴가 요청한 적 없는 초대 참가나 연결 끊김 복구도 서술할 수 있습니다. `Get Activity Message`가 이를 문장으로 바꿉니다.
 
-### 6.8 EEasyPartyPrivacy
-
-| 값 | Find Easy Parties | 들어오는 길 |
-|---|---|---|
-| `InviteOnly`(기본값) | 숨김 | 초대 |
-| `JoinCode` | 코드로만 찾음 | 코드나 초대 |
-| `Public` | 보임 | 검색이나 초대 |
-
-어떤 Privacy도 파티에 닿은 플레이어를 거절하지 않습니다. 리더는 내보낸 플레이어와, 파티가 가득 찼을 때만 거절합니다.
-
-### 6.9 EEasyPartyLeaveReason
+### 6.8 EEasyPartyLeaveReason
 
 `OnPartyLeft`의 `Reason`입니다.
 
@@ -414,6 +404,6 @@ Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습
 
 플레이어: `EasySession.Players`(Kick용 번호 표시), `EasySession.Kick <Index> [Reason]`, `EasySession.Ready <0|1>`
 
-파티: `EasySession.CreateParty [MaxMembers] [invite|code|public]`, `EasySession.LeaveParty`, `EasySession.Party`(멤버와 참가 코드), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
+파티: `EasySession.CreateParty [MaxMembers] [public] [code]`, `EasySession.LeaveParty`, `EasySession.Party`(멤버와 참가 코드), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
 
 친구와 진단: `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.PartyInviteUI`, `EasySession.Diagnose`

@@ -818,26 +818,9 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 };
 
 /**
- * Who finds a party with Find Easy Parties.
- * Every party is advertised, so a member can find the leader's party again after a match.
- * A player who reaches the party another way, such as through an invite, can join it whatever the privacy.
- */
-UENUM(BlueprintType)
-enum class EEasyPartyPrivacy : uint8
-{
-	/** Hidden from Find Easy Parties. Players join through an invite. */
-	InviteOnly UMETA(DisplayName = "Invite Only"),
-
-	/** Anyone who searches with the party's join code. Hidden from Find Easy Parties without the code. */
-	JoinCode UMETA(DisplayName = "Join Code"),
-
-	/** Anyone. Listed by Find Easy Parties. */
-	Public
-};
-
-/**
- * The settings of a party: how many players it holds and who may join it.
+ * The settings of a party: how many players it holds and who finds it.
  * Create Easy Party takes them, and Get Easy Party Settings reads them back.
+ * Every party is advertised, so a member can find the leader's party again after a match.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasyPartySettings
@@ -848,9 +831,20 @@ struct EASYSESSION_API FEasyPartySettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = "2", UIMin = "2"))
 	int32 MaxMembers = 4;
 
-	/** Who finds the party with Find Easy Parties. */
+	/**
+	 * Hidden parties are advertised but left out of the Find Easy Parties list.
+	 * Players reach them through an invite or the join code.
+	 * Hiding does not lock the party: the leader admits a player who reaches it another way.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	EEasyPartyPrivacy Privacy = EEasyPartyPrivacy::InviteOnly;
+	bool bHidden = true;
+
+	/**
+	 * Advertise a generated six character join code with the party, readable with Get Easy Party Join Code.
+	 * Find Easy Parties with the code returns the party, hidden or not.
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
+	bool bUseJoinCode = false;
 
 	/** @return Whether these settings can create a party. */
 	bool IsValid() const { return MaxMembers >= 2; }
