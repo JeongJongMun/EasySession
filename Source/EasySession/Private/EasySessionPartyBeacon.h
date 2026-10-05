@@ -71,7 +71,7 @@ class AEasySessionPartyBeaconState : public ALobbyBeaconState
 
 public:
 
-	/** Spawns AEasySessionPartyBeaconPlayerState for each member. */
+	/** Makes the state spawn AEasySessionPartyBeaconPlayerState for each member. */
 	AEasySessionPartyBeaconState();
 
 	/** @return The player state of every member, the leader included. */
@@ -83,7 +83,7 @@ public:
 
 /**
  * AEasySessionPartyBeaconClient is a member's connection to the party beacon of the leader.
- * FEasySessionParty spawns it once the member joined the party session, and destroys it when the member leaves.
+ * FEasySessionParty spawns it in ConnectToLeader and destroys it in Close.
  *
  * The leader sends the reason for a refusal or for the end of a membership on this connection, before it closes it.
  * The engine's own kick sends a fixed text and its client handler does nothing, so these RPCs carry the reason instead.
@@ -143,8 +143,8 @@ private:
  * AEasySessionPartyBeaconHost is the leader's side of the party beacon.
  * It holds the party beacon state, and the leader's own entry in it, which needs no connection.
  *
- * FEasySessionParty spawns it when the party session is created, and registers it on the shared beacon listener.
- * The engine's lobby beacon assumes the game session in places, and this class works on NAME_PartySession instead.
+ * FEasySessionParty spawns it in StartHosting, when the party session is created and again after a map change, and registers it on the shared beacon listener.
+ * The engine's lobby beacon needs a game mode and logs players out of the game session, and this class works on NAME_PartySession instead.
  */
 UCLASS(Transient, NotPlaceable)
 class AEasySessionPartyBeaconHost : public ALobbyBeaconHost

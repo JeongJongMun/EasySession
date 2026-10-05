@@ -27,7 +27,7 @@ namespace
 	/** Seconds between two attempts to connect to the leader again. */
 	constexpr float ReconnectIntervalSeconds = 1.0f;
 
-	/** Seconds between two attempts to get the party of the last match back. */
+	/** Seconds between two attempts to restore the party of the last match. */
 	constexpr float RestoreIntervalSeconds = 2.0f;
 
 	/** The On Party Left text when the connection to the leader was lost. */
@@ -130,7 +130,7 @@ bool FEasySessionParty::ConnectToLeader(const FString& ConnectString, const FStr
 	Client->OnLeftParty().BindLambda([this](EEasyPartyLeaveReason Reason, const FText& ReasonText)
 	{
 		// The connection closes right after, and that failure reports this reason instead of a lost connection.
-		// A member told to follow keeps Moved To Game Session, although the leader leaves the party right after.
+		// A member told to follow keeps MovedToGameSession, although the leader closes the party right after.
 		if (!PendingLeave.IsSet())
 		{
 			PendingLeave.Emplace(Reason, ReasonText);
@@ -401,7 +401,7 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 		return;
 	}
 
-	// A map without a game session is where a match ended, so the party of that match comes back here.
+	// A map without a game session is where a match ended, so the party of that match is restored here.
 	if (LastParty.IsSet() && !bRestoring && !Owner.IsInSession() && GetDefault<UEasySessionConfig>()->bRestorePartyAfterMatch)
 	{
 		StartRestore();
@@ -457,7 +457,7 @@ void FEasySessionParty::HandleReconnectComplete(bool bSuccess, const FText& Reas
 	const bool bOutOfTime = FPlatformTime::Seconds() - ReconnectStartSeconds >= GetDefault<UEasySessionConfig>()->PartyReconnectSeconds;
 	const FText EndReason = bRefused ? Reason : GetLostConnectionReason();
 
-	// The next step runs on the next tick, because this completion can run inside the connection that failed.
+	// The next attempt, or the end of the party, runs on the next tick, because this completion can run inside the connection that failed.
 	FTSTicker::GetCoreTicker().RemoveTicker(RetryHandle);
 	RetryHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this, bGiveUp = bRefused || bOutOfTime, EndReason](float)
 	{
@@ -674,7 +674,7 @@ bool FEasySessionParty::HandleConnectTick(float DeltaTime)
 
 void FEasySessionParty::FinishConnect(bool bSuccess, const FText& Reason)
 {
-	// Moved out first, because the requester may close this party inside the call.
+	// Moved out first, because the callback may call Close, which unbinds ConnectComplete.
 	FEasyPartyConnectComplete Complete = MoveTemp(ConnectComplete);
 	ConnectComplete.Unbind();
 	Complete.ExecuteIfBound(bSuccess, Reason);
@@ -682,7 +682,7 @@ void FEasySessionParty::FinishConnect(bool bSuccess, const FText& Reason)
 
 void FEasySessionParty::HandleConnectionFailure()
 {
-	// A failure during the join belongs to the join request, which leaves the party session itself.
+	// A failure while ConnectToLeader runs goes to its OnComplete: the join request, or the reconnect.
 	if (ConnectComplete.IsBound())
 	{
 		FinishConnect(false, JoinRefusal.IsEmpty() ? NSLOCTEXT("EasySession", "PartyUnreachable", "Could not reach the party leader.") : JoinRefusal);

@@ -17,7 +17,7 @@ class FOnlineSessionSettings;
 class UEasySessionSubsystem;
 class UWorld;
 
-/** Fired once per ConnectToLeader: with true when the member list holds the local player, with false and the reason otherwise. */
+/** Delegate fired once per ConnectToLeader: with true when the member list holds the local player, with false and the reason otherwise. */
 DECLARE_DELEGATE_TwoParams(FEasyPartyConnectComplete, bool /** bSuccess */, const FText& /** Reason */);
 
 /**
@@ -30,7 +30,7 @@ DECLARE_DELEGATE_TwoParams(FEasyPartyConnectComplete, bool /** bSuccess */, cons
  *
  * A map change destroys the beacons but keeps the party session.
  * In the new map the leader starts the party beacon again, and each member connects to it again.
- * Entering a game session closes the party, and back in a map without a game session this object creates or joins it again.
+ * Entering a game session closes the party, and with bRestorePartyAfterMatch on, the next map without a game session creates or joins it again.
  *
  * Owned by the subsystem and destroyed with it.
  */
@@ -47,16 +47,16 @@ public:
 	~FEasySessionParty();
 
 	/**
-	 * The party session was created by this process, which leads the party.
+	 * Start the party beacon of the party this process leads, after the party session is created and again after a map change.
 	 * Spawns the party beacon in the current world and adds the leader to it.
 	 *
-	 * @return Whether the party beacon runs. False when the listener could not start or no player is logged in.
+	 * @return Whether the party beacon runs. False when no player is logged in or the beacon could not start.
 	 */
 	bool StartHosting(const FEasyPartySettings& InPartySettings);
 
 	/**
-	 * The party session was joined.
-	 * Connects to the leader's party beacon, which logs the local player in to the party.
+	 * Connect to the leader's party beacon, after the party session is joined and again after a map change.
+	 * The login on that beacon adds the local player to the party.
 	 *
 	 * @param ConnectString The address of the leader's party beacon.
 	 * @param PartySessionId The id of the party session, which the leader checks at the login.
@@ -72,8 +72,8 @@ public:
 	void Close();
 
 	/**
-	 * The party session was destroyed, or the party ended for this player.
-	 * Forgets this party and broadcasts On Party Left with the reason.
+	 * The party is over for this player, and the party session is destroyed.
+	 * Keeps the party for the restore when it entered a game session, forgets it otherwise, and broadcasts OnPartyLeft and OnPartyMembersChanged.
 	 */
 	void HandlePartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
@@ -93,7 +93,7 @@ public:
 	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 *
-	 * @return Success, RequiresPartyLeader, or InvalidParams for a player who is not a connected member.
+	 * @return Success, RequiresPartyLeader, or InvalidParams for the local player or a player who is not a connected member.
 	 */
 	EEasySessionResult KickMember(const FUniqueNetIdRepl& PlayerId, const FText& Reason);
 
@@ -109,10 +109,13 @@ public:
 	/** @return Whether these settings belong to a party session rather than a game session. */
 	static bool IsPartySession(const FOnlineSessionSettings& Settings);
 
-	/** @return Whether this player is getting the party of the last match back: creating it again, or waiting for the leader's. */
+	/** @return Whether the party of the last match is being restored: created again on the leader, or searched for on a member. */
 	bool IsRestoring() const { return bRestoring; }
 
-	/** Stop getting the party of the last match back, because the player chose something else. Does nothing while no restore runs. */
+	/**
+	 * Stop restoring the party of the last match, because the player chose something else.
+	 * It also forgets a party that waits for its restore, so the next map without a game session does not restore it.
+	 */
 	void CancelRestore();
 
 private:
@@ -120,7 +123,7 @@ private:
 	/** The party this player was in before it entered a game session. */
 	struct FLastParty
 	{
-		/** The leader, whose party the members look for. */
+		/** The leader, whose party the members search for. */
 		FUniqueNetIdRepl LeaderId;
 
 		/** The settings the leader creates the party with again. */
@@ -130,7 +133,7 @@ private:
 		bool bIsLANMatch = false;
 	};
 
-	/** A map finished loading. Starts the party beacon again, connects to the leader again, or gets the party of the last match back. */
+	/** A map finished loading. Starts the party beacon again, connects to the leader again, or restores the party of the last match. */
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 
 	/** Keep connecting to the leader, whose party beacon a map change destroyed, until the reconnect time runs out. */
@@ -142,7 +145,7 @@ private:
 	/** A reconnect finished. Tries again after a second, until the reconnect time runs out. */
 	void HandleReconnectComplete(bool bSuccess, const FText& Reason);
 
-	/** Create the party of the last match again on the leader, or look for it on a member. */
+	/** Create the party of the last match again on the leader, or search for it and join it on a member. */
 	void StartRestore();
 
 	/** Create the party of the last match once, on the leader. */
@@ -151,7 +154,10 @@ private:
 	/** Look for the leader's party once, and join it when it is found. */
 	void TryRestoreJoin();
 
-	/** A step of the restore failed. Looks again after a moment, until the restore time runs out. */
+	/**
+	 * A create, search or join of the restore failed.
+	 * Tries again after a pause, until PartyRestoreWaitSeconds runs out, then broadcasts OnPartyLeft with ConnectionLost.
+	 */
 	void RetryRestore(const FText& Reason);
 
 	/** The restore ended, with the party back or without it. */
@@ -167,7 +173,7 @@ private:
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
 
-	/** The leader takes the party into a game session. Starts following, and keeps Moved To Game Session as the reason the party ends. */
+	/** The leader takes the party into a game session. Calls FollowHost on the subsystem, and keeps MovedToGameSession as the reason the party ends. */
 	void HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/** The leader finished the login of the local player. */
@@ -187,7 +193,7 @@ private:
 
 	/**
 	 * A member was added to or removed from the member list, or changed whether they are ready.
-	 * Broadcasts On Party Members Changed on the next tick, after the list changed.
+	 * Broadcasts OnPartyMembersChanged on the next tick, once per frame however many changes arrived.
 	 */
 	void HandleMemberListChanged(ALobbyBeaconPlayerState* Member);
 
@@ -197,9 +203,10 @@ private:
 	/** @return The id of the local player, or an invalid id while nobody is logged in. */
 	FUniqueNetIdRepl GetLocalPlayerId() const;
 
-	/** The world this subsystem runs in, or null before one exists. */
+	/** The world of the subsystem's game instance, or null before one exists. */
 	UWorld* GetWorld() const;
 
+	/** The subsystem that owns this object. */
 	UEasySessionSubsystem& Owner;
 
 	/** The shared beacon port the party beacon registers on. */
@@ -223,10 +230,10 @@ private:
 	/** Is the party this player is in a LAN session. */
 	bool bIsLANParty = false;
 
-	/** The party before the last game session, which the next map without a game session gets back. */
+	/** The party before the last game session, which the next map without a game session restores. */
 	TOptional<FLastParty> LastParty;
 
-	/** Is the party of the last match being got back. */
+	/** Is the party of the last match being restored. */
 	bool bRestoring = false;
 
 	/** When the restore started, in FPlatformTime seconds. */
@@ -253,7 +260,7 @@ private:
 	/** Ticker that waits for the local player in the member list. */
 	FTSTicker::FDelegateHandle ConnectTickHandle;
 
-	/** Ticker that broadcasts On Party Members Changed once for every change in a frame. */
+	/** Ticker that broadcasts OnPartyMembersChanged once per frame however many changes arrived. */
 	FTSTicker::FDelegateHandle MembersChangedHandle;
 
 	/** Ticker that starts the next reconnect or restore attempt. */

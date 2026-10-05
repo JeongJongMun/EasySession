@@ -12,7 +12,7 @@ class FOnlineSessionSettings;
  * A party needs no map, so nothing travels.
  * A party beacon that cannot start destroys the party session again, so a party never exists without its member list.
  *
- * The subsystem creates it for Create Easy Party.
+ * The subsystem creates it for CreateParty, and FEasySessionParty creates it to restore the party after a match.
  */
 class FEasySessionCreatePartyRequest final : public FEasySessionRequest
 {
@@ -44,7 +44,7 @@ private:
 	/** The party to create. */
 	FEasyPartySettings PartySettings;
 
-	/** The requester's delegate. */
+	/** Called when the request completes. */
 	FEasySessionCompleteDelegate OnComplete;
 
 	/** Handle for the online subsystem's create completion, bound while the request runs. */

@@ -12,9 +12,9 @@
  * A party needs no map, so nothing travels.
  *
  * The leader decides the join at the login, and a refusal arrives with its reason.
- * A refused or unreachable join leaves the party session again, so the player is in no party afterwards.
+ * A refused, unreachable or timed out join destroys the party session again, so the player is in no party afterwards.
  *
- * The subsystem creates it for Join Easy Party.
+ * The subsystem creates it for JoinParty, and FEasySessionParty creates it to restore the party after a match.
  */
 class FEasySessionJoinPartyRequest final : public FEasySessionRequest
 {
@@ -38,21 +38,21 @@ private:
 	/** The leader's party beacon admitted the local player, or did not. */
 	void HandleConnectComplete(bool bSuccess, const FText& Reason);
 
-	/** The leader did not answer in time. */
+	/** The leader did not complete the login in time. */
 	bool HandleTimeout(float DeltaTime);
 
-	/** Close the party beacon, leave the party session again, then complete with this result. */
+	/** Close the party beacon, destroy the party session again, then complete with this result. */
 	void LeaveAndComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** The party to join, as returned by a search. */
 	FEasySessionSearchResult Target;
 
-	/** The requester's delegate. */
+	/** Called when the request completes. */
 	FEasySessionCompleteDelegate OnComplete;
 
 	/** Handle for the online subsystem's join completion, bound while the request runs. */
 	FDelegateHandle JoinCompleteHandle;
 
-	/** Ticker that ends a login the leader never answers. */
+	/** Ticker that ends the join when the leader does not complete the login in time. */
 	FTSTicker::FDelegateHandle TimeoutHandle;
 };

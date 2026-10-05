@@ -13,7 +13,7 @@
 
 namespace
 {
-	/** Seconds the leader gets to answer the login, from the connection to the member list holding the local player. */
+	/** Seconds the leader gets to complete the login, from the start of the connection until the member list holds the local player. */
 	constexpr float LoginTimeoutSeconds = 10.0f;
 }
 
