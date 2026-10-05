@@ -12,15 +12,16 @@ class UEasyMatchmakingPolicy;
 /**
  * FEasySessionMatchmakingRequest is responsible for one matchmaking run.
  * The run searches for sessions, joins the best one, and hosts a session of its own when no search pass found one to join.
- * The subsystem creates it for Start Easy Matchmaking, and the queue runs it like any other request.
+ * The subsystem creates it for StartMatchmaking, and FollowHost creates one with MakeFollow.
+ * The queue runs it like any other request.
  *
  * The searches, the joins and the host are its sub-requests, so no other request runs between two of them.
  * A host whose match has not started may run one from its session: each join takes the session's players along, and no session is hosted.
  * UEasyMatchmakingPolicy decides which session is joined first.
- * The run broadcasts its progress on the subsystem's On Matchmaking events.
+ * The run broadcasts its progress on the subsystem's OnMatchmakingStateChanged, OnMatchmakingUpdated and OnMatchmakingComplete events.
  *
  * A cancel during a search ends the run inside the Cancel call.
- * A join or a host that is running finishes first, and a success is undone, so Canceled always means that this player is not in a session.
+ * A join or a host that is running finishes first, and a success is undone, so after Canceled this player is in no session the run joined or hosted.
  *
  * @see UEasyMatchmakingPolicy
  */
@@ -70,22 +71,22 @@ private:
 	/** Run one search pass as a sub-request. */
 	void StartSearchPass();
 
-	/** A search pass completed. Joins the best candidate, or finishes the pass when there is none. */
+	/** A search pass completed. Joins the best search result, or finishes the pass when there is none. */
 	void HandleSearchComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results);
 
 	/** Fill Candidates with the joinable results, best score first, and shuffle the best few. */
 	void BuildCandidates(const TArray<FEasySessionSearchResult>& Results);
 
-	/** Join the next candidate as a sub-request, or finish the pass when every candidate was tried. */
+	/** Join the next search result as a sub-request, or finish the pass when every one was tried. */
 	void JoinNextCandidate();
 
-	/** A join completed. Completes the run, or moves on to the next candidate. */
+	/** A join completed. Completes the run, or moves on to the next search result. */
 	void HandleJoinComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/**
 	 * Start the next search pass, or host or complete the run when no pass is left.
 	 *
-	 * @param SearchResult The result of this pass's search. A failure other than Success ends the run with it when no pass is left.
+	 * @param SearchResult The result of this pass's search. When no pass is left and no fallback session is hosted, a failure ends the run with it.
 	 * @param SearchError The message that came with SearchResult.
 	 */
 	void FinishSearchPass(EEasySessionResult SearchResult = EEasySessionResult::Success, const FString& SearchError = FString());
@@ -96,7 +97,7 @@ private:
 	/** Host a session as a sub-request, because no session could be joined. */
 	void HostFallbackSession();
 
-	/** @return The run's host params with the search's LAN flag and required custom settings copied in. */
+	/** @return The run's host params with the search's LAN flag, region and required custom settings copied in, and the password and hidden flag cleared. */
 	FEasySessionHostParams MakeFallbackHostParams() const;
 
 	/** The fallback host completed. */
@@ -108,10 +109,10 @@ private:
 	 */
 	void CompleteAsCanceled(EEasySessionResult SubRequestResult);
 
-	/** Move to a new state and broadcast On Matchmaking State Changed and On Matchmaking Updated. */
+	/** Move to a new state and broadcast OnMatchmakingStateChanged and OnMatchmakingUpdated. */
 	void SetState(EEasyMatchmakingState NewState);
 
-	/** Broadcast On Matchmaking Updated once a second, so elapsed time UI needs no timer of its own. */
+	/** Broadcast OnMatchmakingUpdated once a second, so elapsed time UI needs no timer of its own. */
 	bool BroadcastUpdate(float DeltaTime);
 
 	/** Remove the pass delay and update tickers. */
@@ -138,16 +139,16 @@ private:
 	/** Candidates of the current pass, best first. */
 	TArray<FEasySessionSearchResult> Candidates;
 
-	/** Index of the candidate the running join sub-request tries. */
+	/** Index of the search result the running join sub-request tries. */
 	int32 NextCandidateIndex = 0;
 
-	/** Sessions that refused this player during this run. They are never tried again. */
+	/** Sessions whose join failed during this run, for any reason. They are never tried again. */
 	TSet<FString> FailedSessionKeys;
 
 	/** Ticker handle for the delay between search passes. */
 	FTSTicker::FDelegateHandle PassDelayTickerHandle;
 
-	/** Ticker handle for the once-a-second On Matchmaking Updated broadcast. */
+	/** Ticker handle for the once-a-second OnMatchmakingUpdated broadcast. */
 	FTSTicker::FDelegateHandle UpdateTickerHandle;
 
 	/** When the run started, in FPlatformTime seconds. Zero before the start. */
@@ -156,6 +157,6 @@ private:
 	/** When the run completed, in FPlatformTime seconds. Elapsed time stops here. */
 	double RunEndTimeSeconds = 0.0;
 
-	/** Does this run follow a host who holds a reservation for this player. */
+	/** Is this run a follow of a host who holds a reservation for this player. */
 	bool bFollowsHost = false;
 };

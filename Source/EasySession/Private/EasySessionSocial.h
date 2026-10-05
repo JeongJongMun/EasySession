@@ -9,8 +9,8 @@ class UEasySessionSubsystem;
 
 /**
  * FEasySessionSocial is responsible for the platform's social features that need no request: accepted invites, sent invites and the overlays.
- * Reading the friends list and the friend session search are requests, see FEasySessionReadFriendsRequest.
- * An accepted invite is joined with Join Easy Session or Join Easy Party, the same requests a game uses.
+ * Reading the friends list and the friend session search are requests, see FEasySessionReadFriendsRequest and FEasySessionFriendSessionsRequest.
+ * An accepted invite is joined with JoinSession or JoinParty, the same calls a game uses.
  *
  * These use the identity and external UI interfaces, and no part of the session lifecycle depends on them.
  * A game with no social features never calls into this object at all.
@@ -67,12 +67,12 @@ private:
 
 	/**
 	 * Fires when the player accepts an invite from the platform overlay.
-	 * Joins the session or the party when Auto Join Accepted Invites is on.
-	 * A player in another session joins a session only when Accept Invites While In Session is on, and never joins a party.
+	 * Joins the session or the party when bAutoJoinAcceptedInvites is on.
+	 * A player in a game session joins a session only when bAcceptInvitesWhileInSession is on, and never joins a party.
 	 */
 	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
-	/** Join the party of an accepted invite, leaving the party this player is in first. */
+	/** Join the party of an accepted invite, after a LeaveParty request for the party this player is in. */
 	void JoinInvitedParty(const FEasySessionSearchResult& Party);
 
 	/** The world this subsystem runs in, or null before one exists. */

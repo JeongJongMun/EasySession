@@ -170,7 +170,7 @@ void FEasySessionSocial::JoinInvitedParty(const FEasySessionSearchResult& Party)
 	// A running matchmaking holds the queue until it ends, so it is canceled and the invited join runs next.
 	Owner.CancelMatchmaking();
 
-	// The queue runs the leave first, so the join finds this player in no party.
+	// The queue runs the LeaveParty request first, so the join finds this player in no party.
 	if (Owner.IsInParty())
 	{
 		Owner.LeaveParty();

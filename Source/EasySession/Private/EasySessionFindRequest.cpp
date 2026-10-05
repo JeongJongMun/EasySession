@@ -32,7 +32,7 @@ void FEasySessionFindRequest::Execute()
 		return;
 	}
 
-	// A party advertises no region, custom settings or match state, so these game session filters would leave every party out.
+	// A party advertises no region, custom settings or match state, so these game session filters would exclude every party.
 	// Ignoring them lets a game pass the search params it uses for game sessions.
 	if (IsPartySearch())
 	{
@@ -94,7 +94,7 @@ void FEasySessionFindRequest::Notify(EEasySessionResult Result, const FString& E
 
 void FEasySessionFindRequest::HandleCancel()
 {
-	// A LAN search can be stopped, so the request completes now and Cleanup tells the online subsystem.
+	// A LAN search can be stopped, so the request completes inside this call and Cleanup calls CancelFindSessions.
 	if (Search.IsValid() && Search->bIsLanQuery)
 	{
 		Complete(EEasySessionResult::Canceled, TEXT("The search was canceled."));
@@ -164,10 +164,10 @@ void FEasySessionFindRequest::FindSessions()
 		Search->QuerySettings.Set(SEARCH_LOBBIES, true, EOnlineComparisonOp::Equals);
 	}
 
-	// Parties and game sessions are both advertised, so the search asks for the kind this request looks for.
+	// Parties and game sessions are both advertised, so the query asks for the kind of session this request searches for.
 	Search->QuerySettings.Set(EasySession::SettingKey_Party, IsPartySearch() ? 1 : 0, EOnlineComparisonOp::Equals);
 
-	// A search for one session filters on the online service, so that session is found however many others exist.
+	// A search for one session filters inside the online subsystem, so that session is found however many others exist.
 	// The filter on the returned results still runs, because NULL (LAN) ignores these query settings.
 	if (SearchParams.OwnerId.IsValid())
 	{
@@ -175,7 +175,7 @@ void FEasySessionFindRequest::FindSessions()
 	}
 	if (!SearchParams.JoinCode.IsEmpty())
 	{
-		// Codes are advertised in upper case, and the online service compares them as written.
+		// Codes are advertised in upper case, and the online subsystem compares them as written.
 		Search->QuerySettings.Set(EasySession::SettingKey_JoinCode, SearchParams.JoinCode.ToUpper(), EOnlineComparisonOp::Equals);
 	}
 

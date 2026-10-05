@@ -37,7 +37,7 @@ public:
 	/** @return The settings payload this actor replicates. For the subsystem and tests. */
 	const FEasySessionReplicatedSettings& GetReplicatedSessionSettings() const { return ReplicatedSessionSettings; }
 
-	/** Server: travel every remote player back to the menu with a reason. */
+	/** Server: pass the reason to HandleDisconnect on every remote player, which travels them to the menu when bAutoReturnToMenuOnDisconnect is on. */
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastReturnToMenu(const FText& Reason);
 
@@ -49,14 +49,14 @@ public:
 private:
 
 	/**
-	 * Runs on clients whenever the host's state changes.
+	 * Runs on clients whenever the host's state changes, and once from PostNetInit when the actor arrives.
 	 * Passes the state to the local subsystem, which returns it from its session state query.
 	 */
 	UFUNCTION()
 	void OnRep_HostSessionState();
 
 	/**
-	 * Runs on clients whenever the host changes the session settings.
+	 * Runs on clients whenever the host changes the session settings, and once from PostNetInit when the actor arrives.
 	 * Passes the settings to the local subsystem, which writes them into its session copy.
 	 */
 	UFUNCTION()

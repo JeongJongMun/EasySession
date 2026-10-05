@@ -10,9 +10,10 @@ class FOnlineSessionSearchResult;
 
 /**
  * FEasySessionFindRequest searches for sessions and filters what the online subsystem returns.
- * Search Mode By Friend asks for the one session a friend is in, which the online subsystem completes through its own delegate.
+ * EEasySessionSearchMode::ByFriend asks for the one session a friend is in, which the online subsystem completes through its own delegate.
  *
- * The subsystem creates it for Find Easy Sessions.
+ * The subsystem creates it for FindSessions and FindParties.
+ * FEasySessionParty creates it to search for the leader's party when it restores the party.
  * Matchmaking runs it as a sub-request for each search pass, and the friend session search runs it for each friend.
  *
  * The request owns the native search object while it runs.
@@ -56,7 +57,7 @@ private:
 	/** Filter what the online subsystem returned and complete with Success. */
 	void CompleteWithResults(const TArray<FOnlineSessionSearchResult>& NativeResults);
 
-	/** @return Whether this request looks for parties rather than game sessions. */
+	/** @return Whether this request searches for parties rather than game sessions. */
 	bool IsPartySearch() const;
 
 	/** The filters to search with, including the targeted-query ids. */

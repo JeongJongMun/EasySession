@@ -50,7 +50,10 @@ struct FEasyReservationResponse
 	static FEasyReservationResponse NotAnswering();
 };
 
-/** Fires exactly once per RequestJoin, with Unreachable when the host never responded. */
+/**
+ * Delegate fired once per RequestJoin, with Unreachable when the host never responded.
+ * It never fires after DestroyBeacon, which cancels the request.
+ */
 DECLARE_DELEGATE_OneParam(FEasyReservationRequestComplete, const FEasyReservationResponse&);
 
 /** Delegate the beacon host calls to decide whether a player may join. */
@@ -67,7 +70,7 @@ namespace EasySessionReservation
 
 	/**
 	 * Make the reservations for a leader and the group that travels with them, the leader first.
-	 * Invalid ids and a second entry for the same player are left out, because the parent refuses a reservation that holds either.
+	 * Invalid ids in GroupMembers and a second entry for the same player are left out, because the parent refuses a reservation that holds either.
 	 */
 	TArray<FPlayerReservation> MakeReservations(const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers);
 }
@@ -92,7 +95,8 @@ public:
 
 	/**
 	 * Resolve Target's beacon address, connect, and ask to join.
-	 * OnComplete fires exactly once, with Unreachable when the address does not resolve, the connection fails, or the host never responds.
+	 * OnComplete fires once, with Unreachable when the address does not resolve, the connection fails, or the host never responds.
+	 * It never fires after DestroyBeacon, which cancels the request.
 	 * A failure inside this call is reported the same way, so the caller only has one path to handle.
 	 *
 	 * @param GroupMembers The players who travel with the local player, without the local player. One reservation holds them all, or none of them.
@@ -107,7 +111,7 @@ public:
 	UFUNCTION(Server, Reliable)
 	void ServerSendPassword(const FString& Password);
 
-	/** Sends the joining player a refusal the parent's results have no value for, such as a wrong password. */
+	/** Sends the joining player any refusal from OnApproveJoin, including the ones the parent's results have no value for, such as a wrong password. */
 	UFUNCTION(Client, Reliable)
 	void ClientReceiveRefusal(EEasyReservationResult Result, const FString& Reason);
 
@@ -158,7 +162,7 @@ private:
 
 /**
  * AEasySessionReservationBeaconHost is the host side of the reservation beacon, and holds the reservations of the session.
- * It adds a reservation only for a player OnApproveJoin approves.
+ * It adds a reservation for a joining player only when OnApproveJoin approves the request.
  * FEasySessionReservations binds that delegate, and its PreLogin lets in the players this beacon holds a reservation for.
  *
  * The parent APartyBeaconHost keeps the reservations, and removes one when its player never arrives.
@@ -177,7 +181,8 @@ public:
 
 	/**
 	 * Wait for every player holding a reservation to arrive again, because a map change makes them all travel.
-	 * Each wait starts over on the parent's TravelSessionTimeoutSecs, rather than on the shorter SessionTimeoutSecs meant for a player who left the session.
+	 * Each wait starts over on the parent's TravelSessionTimeoutSecs.
+	 * The shorter SessionTimeoutSecs is meant for a player no longer registered in the session.
 	 */
 	void WaitForEveryoneToArrive();
 

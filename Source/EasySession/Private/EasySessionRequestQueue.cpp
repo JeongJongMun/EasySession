@@ -79,7 +79,7 @@ TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::Find(FEasySessionReque
 
 FString FEasySessionRequestQueue::GetStatusText(bool bTraveling) const
 {
-	// A travel keeps Is Busy true while no request runs, so the status line names it instead of reporting only Idle.
+	// A travel keeps IsBusy true while no request runs, so the status line names it instead of reporting only Idle.
 	FString Status = ActiveRequest.IsValid() ? ActiveRequest->GetStatusText() : FString(bTraveling ? TEXT("Idle, traveling") : TEXT("Idle"));
 
 	if (!Pending.IsEmpty())
@@ -101,7 +101,6 @@ void FEasySessionRequestQueue::ScheduleNext()
 	// Never start inside the caller's callstack.
 	// A completion callback can enqueue just as the active request stops running.
 	// The online subsystem call still returning would then run against the new active request.
-	// One pending call is enough for any number of requests.
 	if (NextRequestHandle.IsValid())
 	{
 		return;

@@ -6,11 +6,12 @@
 #include "EasySessionRequest.h"
 
 /**
- * FEasySessionDestroyRequest destroys this game's session.
- * On success the host side of the session and the state a client received through replication are cleared.
+ * FEasySessionDestroyRequest destroys the session named by SessionName: the game session, or the party session for a party request.
+ * On success for the game session, the host side of the session and the state a client received through replication are cleared.
  *
- * The subsystem creates it for Destroy Easy Session, Leave Easy Session and a lost connection.
- * Create, Join and matchmaking run it as a sub-request to destroy a session they created or joined.
+ * The subsystem creates it for DestroySession, which LeaveSession, DestroySessionForEveryone and HandleDisconnect call.
+ * Join and matchmaking run it as a sub-request to destroy the current game session, or the one they joined or hosted.
+ * CreateParty, JoinParty and LeaveParty run it as a sub-request to destroy the party session.
  */
 class FEasySessionDestroyRequest final : public FEasySessionRequest
 {

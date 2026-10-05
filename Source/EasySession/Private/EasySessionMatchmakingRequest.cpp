@@ -17,13 +17,11 @@
 
 namespace
 {
-	/**
-	 * Seconds a follow keeps searching for its host.
-	 * A host that created its session opens its map only after telling the group, so the session appears once that map has loaded.
-	 */
+	// Seconds a follow keeps searching for its host.
+	// A host that created its session opens its map only after telling the group, so the session appears once that map has loaded.
 	constexpr double FollowTimeLimitSeconds = 30.0;
 
-	/** Seconds between two search passes of a follow. */
+	// Seconds between two search passes of a follow.
 	constexpr float FollowPassDelaySeconds = 1.0f;
 }
 
@@ -74,8 +72,8 @@ void FEasySessionMatchmakingRequest::Execute()
 {
 	RunStartTimeSeconds = FPlatformTime::Seconds();
 
-	// An accepted invite or the game's own Create or Join ran before this run started, and every sub-request would fail against that session.
-	// A follow starts inside a session on purpose, because its join leaves that session only once the host approved.
+	// A run is meant for a player in no session, so a session the game's own Create or Join or an accepted invite made refuses the run instead of being destroyed.
+	// A follow starts inside a session on purpose, because its join destroys that session only after the reservation beacon approved the join.
 	// So does a host whose match has not started, because each of its joins takes the session's players along.
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
 	// A party leader takes the party along too, and a party leader is never in a game session.
@@ -139,7 +137,7 @@ void FEasySessionMatchmakingRequest::HandleCancel()
 		return;
 	}
 
-	// Searching or waiting for the next pass: nothing needs undoing, so the run completes now.
+	// Searching or waiting for the next pass: nothing needs undoing, so the run completes inside this call.
 	Complete(EEasySessionResult::Canceled, EasySession::MatchmakingCanceledMessage);
 }
 
@@ -209,7 +207,7 @@ void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSe
 			continue;
 		}
 
-		// A password-protected session is only a candidate when this run carries a password to offer, or a reservation that needs none.
+		// A password-protected session is only tried when this run carries a password to offer, or a reservation that needs none.
 		if (!bFollowsHost && Result.bPasswordProtected && Params.JoinPassword.TrimStartAndEnd().IsEmpty())
 		{
 			continue;
@@ -221,7 +219,7 @@ void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSe
 		}
 	}
 
-	// A Blueprint policy runs its ScoreSession in the Blueprint VM, so every candidate is scored once and the sort reads the score it got.
+	// A Blueprint policy runs its ScoreSession in the Blueprint VM, so every search result is scored once and the sort reads the score it got.
 	UEasyMatchmakingPolicy* ScoringPolicy = Policy.Get();
 	TArray<TPair<float, FEasySessionSearchResult>> ScoredCandidates;
 	ScoredCandidates.Reserve(Candidates.Num());

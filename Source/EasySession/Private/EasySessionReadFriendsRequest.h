@@ -8,7 +8,7 @@
 /**
  * FEasySessionReadFriendsRequest reads the local player's friends list and orders it for display.
  *
- * The subsystem creates it for Read Easy Friends.
+ * The subsystem creates it for ReadFriends.
  * The friend session search runs it as its first sub-request.
  *
  * Keep in mind that NULL has no friends list, so callers check HasFriendsList first and refuse inside the call.
@@ -22,7 +22,7 @@ public:
 	/** @return Whether the online subsystem of this world has a friends list. NULL has none. */
 	static bool HasFriendsList(const UWorld* World);
 
-	/** @return Whether A comes before B in display order: playing this game first, then online, then offline, each group by name. */
+	/** @return Whether A comes before B in display order: playing this game first, then online, then offline, and by name inside each rank. */
 	static bool FriendComesFirst(const FEasySessionFriend& A, const FEasySessionFriend& B);
 
 	/** Order friends for display, see FriendComesFirst. */

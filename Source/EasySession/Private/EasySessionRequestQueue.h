@@ -28,7 +28,7 @@ public:
 	/** Tickers bound to a raw class do not expire with it, so they are removed here. */
 	~FEasySessionRequestQueue();
 
-	/** Add a request. It starts on the next tick, never inside this call. */
+	/** Add a request. It starts on a later tick, after the requests ahead of it stop running, never inside this call. */
 	void Enqueue(TSharedRef<FEasySessionRequest> Request);
 
 	/**
@@ -54,6 +54,7 @@ public:
 
 	/**
 	 * @return The running or waiting request of this type whose requester was not notified yet, running first. Null when there is none.
+	 *         Sub-requests are not searched, only the requests the queue runs.
 	 *         A canceled request that still waits for its online subsystem call is skipped, because its requester already has the result.
 	 */
 	TSharedPtr<FEasySessionRequest> Find(FEasySessionRequest::EType Type) const;

@@ -7,13 +7,13 @@
 
 /**
  * FEasySessionMatchStateRequest starts or ends the match of the session this game hosts.
- * Start and End differ only in the online subsystem call, the advertised value and the event, so one class runs both.
+ * Start and End differ only in the online subsystem call, the advertised value and the messages, so one class runs both.
  *
- * The subsystem creates it for Start Easy Session and End Easy Session.
+ * The subsystem creates it for StartSession and EndSession.
  *
  * The request has two phases.
  * The first changes the session state with StartSession or EndSession.
- * The second advertises the Match In Progress key with UpdateSession, because the session state never leaves the host.
+ * The second advertises SettingKey_MatchInProgress with UpdateSession, because search results do not carry the session state.
  * A refused second phase still completes with Success, because the match state itself already changed.
  */
 class FEasySessionMatchStateRequest final : public FEasySessionRequest

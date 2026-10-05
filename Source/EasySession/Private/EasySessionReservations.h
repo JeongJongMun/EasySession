@@ -75,7 +75,7 @@ public:
 	/**
 	 * Decide whether a player may join.
 	 * Refuses a player the host removed, and a group with such a player in it, because the group moves together.
-	 * Approves a player holding a reservation at once, so the members of a group need no password and no free slot of their own.
+	 * Approves a player holding a reservation without further checks, so the players of a group need no password and no free slot of their own.
 	 * Checks any other player against the join-in-progress policy first, then whether the session is full, then the password, which friends of the host may skip.
 	 * Never returns Unreachable, which only the beacon client produces.
 	 *
@@ -113,7 +113,7 @@ private:
 
 	/**
 	 * Remove a player's reservation.
-	 * Only the beacon of the current world is told, so the logouts a map change causes leave the kept reservations alone.
+	 * Only the beacon of the current world is told, so the logouts a map change causes never remove the kept reservations.
 	 */
 	void RemovePlayerReservation(const FUniqueNetIdRepl& PlayerId);
 
@@ -135,6 +135,7 @@ private:
 	/** Add a reservation for the host and the group it brings, because Max Players counts the host too. */
 	void AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession) const;
 
+	/** The subsystem whose world and session this object checks joins against. */
 	UEasySessionSubsystem& Owner;
 
 	/**
@@ -148,7 +149,7 @@ private:
 
 	/**
 	 * The reservations between a server travel and the beacon of the next world.
-	 * Held strongly, because the beacon host that owned it is destroyed with its world and nothing else keeps it alive.
+	 * Held strongly, because StopBeacon destroys the beacon host that owned this state, and nothing else keeps it alive.
 	 * Empty at every other time.
 	 */
 	TStrongObjectPtr<UPartyBeaconState> KeptReservations;
@@ -159,13 +160,15 @@ private:
 	/** Players the host kicked. ApproveJoin refuses them until the session is destroyed. */
 	TArray<FUniqueNetIdRepl> KickedPlayers;
 
-	/** The players the host brought when it created the session. Its reservation holds them until the session is destroyed. */
+	/** The players the host brought when it created the session. AddHostReservation adds them to the host's reservation. */
 	TArray<FUniqueNetIdRepl> HostGroup;
 
+	/** Handle for HandlePreLogin on GameModePreLoginEvent. */
 	FDelegateHandle PreLoginHandle;
 
+	/** Handle for HandleLogout on GameModeLogoutEvent. */
 	FDelegateHandle LogoutHandle;
 
-	/** Whether friends of the host may join a password session without it. */
+	/** Can friends of the host join a password-protected session without the password. */
 	bool bFriendsBypassPassword = false;
 };

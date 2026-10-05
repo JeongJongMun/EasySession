@@ -13,24 +13,26 @@ struct FEasyReservationResponse;
 /**
  * FEasySessionJoinRequest joins a session a search returned and travels the local player to the host.
  *
- * The subsystem creates it for Join Easy Session and for an accepted invite.
- * Matchmaking runs it as a sub-request to join each candidate.
+ * The subsystem creates it for JoinSession, which an accepted invite also calls.
+ * Matchmaking runs it as a sub-request to join each search result.
  *
  * The request first asks the host for a reservation over the reservation beacon, when the session advertises one.
  * A refusal then adds no reservation, starts no travel and keeps the session this player is in.
  *
- * A player in another session leaves it once the join is approved, with a Destroy sub-request, and a host tells its clients why first.
- * A join that fails after leaving travels the player to the menu, because the session they left is destroyed.
+ * A player in another session destroys it with a Destroy sub-request once the join is approved, and a host tells its clients why first.
+ * A join that fails after that destroy travels the player to the menu, because the session they were in no longer exists.
  * The beacon client actor exists for this request only, from the reservation request to its response or to Cleanup.
  * An unreachable beacon fails the join of a password-protected session, because PreLogin admits no player without a reservation there.
  * It also fails the join of a player in a session, who would otherwise leave it before any host approved the join.
+ * The same happens for a party leader with a group, because only a reservation holds the group.
  * Any other join continues, and PreLogin runs ApproveJoin when the joining player arrives.
  *
- * A host whose match has not started brings every other player: the reservation holds them too, and they are told to follow before the host leaves.
+ * A party leader brings the other party members, and a host whose match has not started brings every other player of its session.
+ * The reservation holds this group too, and the group is told to follow before JoinOnlineSession runs.
  */
 class FEasySessionJoinRequest final : public FEasySessionRequest
 {
-	//~ FEasySessionTestAccess delivers the reservation beacon's approval for the tests.
+	//~ FEasySessionTestAccess passes the reservation beacon's approval to this request for the tests.
 	friend class FEasySessionTestAccess;
 
 public:
@@ -53,25 +55,25 @@ private:
 	/** Spawn the beacon client actor and ask the host for a reservation. */
 	void RequestReservation();
 
-	/** The beacon's response: join the session, or complete with the reason for the refusal. */
+	/** Handle the beacon's response: join on approval, join without a reservation when the beacon is unreachable, or complete with the refusal reason. */
 	void HandleReservationResponse(const FEasyReservationResponse& Response);
 
 	/** Destroy the beacon client actor, so a late response cannot reach a completed request. */
 	void DestroyReservationClient();
 
-	/** Tell the group to follow, and join once every member left this session or the wait is over. */
+	/** Tell the group to follow, and join once GetGroupMembers lists none of them or the wait timed out. */
 	void JoinOnlineSessionWithGroup();
 
-	/** Check whether the group left this session, and join when it did or the wait is over. */
+	/** Check whether GetGroupMembers still lists a player of the group, and join when it lists none or the wait timed out. */
 	bool HandleGroupWaitTick(float DeltaTime);
 
-	/** Join without a reservation, or complete with JoinRefused when the session is password-protected or this player is in a session. */
+	/** Join without a reservation, or complete with JoinRefused when the session is password-protected, this player has a group, or this player is in a session. */
 	void JoinWithoutReservation();
 
-	/** Ask the online subsystem to join. Every join path ends here. A player in another session leaves it first. */
+	/** Ask the online subsystem to join. Every join path ends here. A player in another session destroys it first with a Destroy sub-request. */
 	void JoinOnlineSession();
 
-	/** Leaving the session this player was in completed. Joins on success. */
+	/** The Destroy sub-request for the session this player was in completed. Joins on success. */
 	void HandleDestroyComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
 	/** The online subsystem finished joining a session. Sessions with another name are ignored. */
@@ -86,7 +88,10 @@ private:
 	/** Extra options appended to the client travel URL. */
 	FString TravelOptions;
 
-	/** The players who travel with this one, read from the host when the request starts. The reservation holds each of them too. */
+	/**
+	 * The group, read by GetGroupMembers in Execute: the party members on a party leader, the other players on a host.
+	 * The reservation holds each of them too.
+	 */
 	TArray<FUniqueNetIdRepl> GroupMembers;
 
 	/** The requester's delegate. */
@@ -104,6 +109,6 @@ private:
 	/** When the wait for the group started, in FPlatformTime seconds. */
 	double GroupWaitStartSeconds = 0.0;
 
-	/** Did this player leave a session to join this one. */
+	/** Has this player destroyed the session they were in to join this one. */
 	bool bLeftSession = false;
 };

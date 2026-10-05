@@ -21,7 +21,7 @@ bool FEasySessionBeaconPort::Register(AOnlineBeaconHostObject& HostObject)
 		return false;
 	}
 
-	// A travel destroyed the previous listener together with everything registered on it.
+	// No listener yet, or a travel destroyed the previous one together with everything registered on it.
 	if (!Listener.IsValid() || Listener->GetWorld() != World)
 	{
 		Listener = FindOrSpawnListener(*World);

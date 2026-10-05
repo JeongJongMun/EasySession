@@ -9,7 +9,7 @@
  * FEasySessionUpdateRequest advertises new settings for the session this game hosts.
  * The host side gets the new settings only after the online subsystem accepted the update, so a refused update leaves both unchanged.
  *
- * The subsystem creates it for Update Easy Session.
+ * The subsystem creates it for UpdateSession.
  */
 class FEasySessionUpdateRequest final : public FEasySessionRequest
 {

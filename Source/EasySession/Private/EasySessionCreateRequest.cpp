@@ -41,7 +41,7 @@ void FEasySessionCreateRequest::Execute()
 		return;
 	}
 
-	// A party leader brings the party, and the host's reservation holds every member, so the session needs room for all of them.
+	// A party leader brings the party, and the host's reservation holds every member, so MaxPlayers must count every member and the host.
 	GroupMembers = GetGroupMembers();
 	if (HostParams.MaxPlayers < GroupMembers.Num() + 1)
 	{
@@ -49,7 +49,7 @@ void FEasySessionCreateRequest::Execute()
 		return;
 	}
 
-	// The session is created for local player 0 below, so that player is the owner a search for this host looks for.
+	// The session is created for local player 0 below, so a search for this host filters on that player's id.
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
 	OwnerId = FUniqueNetIdRepl(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
 
@@ -94,13 +94,12 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
 	// Whether the match is running.
-	// The session state never leaves the host, so searches read this key instead.
+	// Search results do not carry the session state, so searches read this key instead.
 	// Start and End update it.
 	Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// The port joining players reach the reservation beacon on.
-	// Read from config rather than from a running beacon, because none exists yet.
-	// One is created per world, after each travel.
+	// Read from config rather than from a running beacon, because the host creates one per world after each travel.
 	// GetResolvedConnectString reads this key to build the beacon address.
 	Settings.Set(SETTING_BEACONPORT, EasySession::GetReservationBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
@@ -112,7 +111,7 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	// A game session, so a search for parties never returns it.
 	Settings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// The host's id, so a search for this host filters on the online service rather than on the results it returned.
+	// The host's id, so a search for this host filters inside the online subsystem rather than on the results it returned.
 	// Without a logged in player there is no id to advertise.
 	if (OwnerId.IsValid())
 	{
@@ -140,7 +139,7 @@ void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName,
 	GetContext().Host.OnSessionCreated(HostParams, GroupMembers);
 
 	// The members search for this host until its map is open, so they are told before the travel.
-	// A party lives outside game sessions, so it closes now.
+	// A party exists only outside game sessions, so HandlePartyEnded queues a LeaveParty request that destroys the party session.
 	if (GetContext().Party.IsInParty())
 	{
 		if (!GroupMembers.IsEmpty())
@@ -151,7 +150,7 @@ void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName,
 		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
 	}
 
-	// Requested before the request completes, so Is Busy is already true for the travel when the completion delegate fires.
+	// Requested before the request completes, so IsBusy is already true for the travel when the completion delegate fires.
 	GetContext().Travel.TravelToOwnSession(HostParams);
 
 	Complete(EEasySessionResult::Success);

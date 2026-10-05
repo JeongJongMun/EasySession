@@ -59,8 +59,7 @@ namespace
 		}
 
 		// The game net driver must be a Steam one, or joins resolve steam.<id> hosts as DNS names and fail.
-		// Mirror the engine's lookup exactly: it takes the FIRST definition named GameNetDriver.
-		// It then silently falls back to the IP driver when that class fails to load.
+		// The engine takes the first definition named GameNetDriver and falls back to the IP driver when that class fails to load, so this check does the same.
 		// The legacy SteamNetDriver is one such class, because it no longer exists in newer engine versions.
 		if (GEngine != nullptr)
 		{

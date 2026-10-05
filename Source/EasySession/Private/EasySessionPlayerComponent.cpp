@@ -24,7 +24,7 @@ void UEasySessionPlayerComponent::ClientFollowHost_Implementation(const FUniqueN
 
 void UEasySessionPlayerComponent::ClientKicked_Implementation(const FText& Reason)
 {
-	// The lost connection that follows is ignored, because the first reason recorded is the one the menu shows.
+	// The reason of the lost connection that follows is dropped, because the first reason recorded is the one the menu shows.
 	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
 		Subsystem->HandleDisconnect(EEasyDisconnectReason::Kicked, Reason);
@@ -52,7 +52,7 @@ void UEasySessionPlayerComponent::SetReady(bool bInReady)
 
 	bReady = bInReady;
 
-	// A PlayerState sends its properties about once a second, and a ready button should answer sooner.
+	// A PlayerState sends its properties about once a second, and a ready button should update the player list sooner.
 	Owner->ForceNetUpdate();
 
 	// OnRep only runs on clients, so the host reports its own change here.

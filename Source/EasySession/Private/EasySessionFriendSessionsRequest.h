@@ -8,7 +8,7 @@
 /**
  * FEasySessionFriendSessionsRequest is responsible for the friend session search.
  * It reads the friends list, then searches for the session of each friend playing this game, one friend at a time.
- * The subsystem creates it for Find Easy Friend Sessions.
+ * The subsystem creates it for FindFriendSessions.
  *
  * Reading the friends list and the searches for each friend's session are its sub-requests, so no other request runs between two of them.
  * A search that fails only means no session for that friend, and the friend session search goes on.

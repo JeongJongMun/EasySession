@@ -14,8 +14,8 @@ class UWorld;
  * It keeps the one beacon listener that binds the port, and counts the host objects registered on it.
  *
  * A beacon listener (AOnlineBeaconHost) binds one port, and each beacon family registers a host object on it.
- * The reservation beacon is the only family today.
- * The party beacon registers on the same listener later, so neither family spawns a listener of its own.
+ * The reservation beacon and the party beacon are the two families today.
+ * Both register on the same listener, so neither family spawns a listener of its own.
  * A project that already runs a listener keeps it.
  * Host objects register on the project's listener, and this object never pauses, resumes or destroys it.
  *
@@ -33,7 +33,7 @@ public:
 	/**
 	 * Register a host object in its own world, spawning the listener when that world has none.
 	 *
-	 * @return Whether the host object now receives requests. False when the listener could not start.
+	 * @return Whether the host object is registered on a listener. False when the listener could not start.
 	 */
 	bool Register(AOnlineBeaconHostObject& HostObject);
 
@@ -67,7 +67,7 @@ private:
 	TWeakObjectPtr<AOnlineBeaconHost> Listener;
 
 	/**
-	 * Whether this object spawned Listener and may unpause or destroy it.
+	 * Did this object spawn Listener, so it may unpause and destroy it.
 	 * A listener the project spawned is only registered on.
 	 */
 	bool bOwnsListener = false;

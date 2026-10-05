@@ -34,7 +34,7 @@ public:
 public:
 
 	/**
-	 * Travel the host to Initial Map Name after the session is created.
+	 * Travel the host to InitialMapName after the session is created.
 	 * The ?listen option is added unless the map name already has it.
 	 * The current world is destroyed, so players who were connected before the session existed are disconnected.
 	 */
@@ -48,7 +48,7 @@ public:
 
 	/**
 	 * Travel the session to another map with a server travel, so the connected players travel with the host.
-	 * The URL gets the current Max Players of the session, because an update may have changed it since the last travel.
+	 * The URL gets the session's current NumPublicConnections as MaxPlayers, because an Update request may have changed it since the last travel.
 	 *
 	 * @return Whether the engine accepted the travel.
 	 */
@@ -80,7 +80,7 @@ private:
 
 	/**
 	 * Build the URL for TravelToOwnSession and ServerTravelToMap.
-	 * Adds the ?listen option unless the map name has it or this game is a dedicated server, then the additional travel options and Max Players.
+	 * Adds the ?listen option unless the map name has it or this game is a dedicated server, then the additional travel options and MaxPlayers.
 	 * OnModifyServerTravelURL is broadcast last, so a bound delegate receives the complete URL.
 	 */
 	FString MakeServerTravelURL(const FString& MapName, const FString& AdditionalTravelOptions, int32 MaxPlayers) const;
@@ -102,7 +102,7 @@ private:
 	bool bTravelInFlight = false;
 
 	/**
-	 * Whether TravelToOwnSession returns without starting the travel.
+	 * Is the host travel skipped, so TravelToOwnSession returns without starting it.
 	 * Only the automation tests set it, because their world has no player controller to travel with.
 	 */
 	bool bSkipHostTravel = false;

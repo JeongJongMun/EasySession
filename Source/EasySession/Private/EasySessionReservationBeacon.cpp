@@ -12,10 +12,8 @@
 
 namespace
 {
-	/**
-	 * How long the whole request gets before it completes as Unreachable: reaching the host's beacon and its response.
-	 * A host that advertises a beacon port nothing listens on never refuses the connection, so the joining player would wait for the engine's own retries.
-	 */
+	// How long the whole request runs before it completes as Unreachable: reaching the host's beacon and its response.
+	// A host that advertises a beacon port nothing listens on never refuses the connection, so the joining player would wait for the engine's own retries.
 	constexpr float RequestTimeoutSeconds = 5.0f;
 }
 
@@ -164,7 +162,8 @@ void AEasySessionReservationBeaconClient::OnFailure()
 
 void AEasySessionReservationBeaconClient::DestroyBeacon()
 {
-	// A destroyed request must not respond. Dropping the delegate here means that destroying the beacon cancels the request.
+	// A destroyed beacon must not complete the request.
+	// Unbinding CompleteDelegate here makes destroying the beacon cancel the request.
 	CompleteDelegate.Unbind();
 	GetWorldTimerManager().ClearTimer(RequestTimeoutHandle);
 
@@ -230,8 +229,8 @@ void AEasySessionReservationBeaconHost::WaitForEveryoneToArrive()
 
 void AEasySessionReservationBeaconHost::RemovePlayerReservation(const FUniqueNetIdRepl& PlayerId)
 {
-	// The same two calls the parent's Tick makes when a player times out.
-	// A player who leaves in the frame they arrived is still in PlayersPendingJoin, and left there their next join is refused.
+	// The parent's Tick does the same when a player times out: it removes the player from PlayersPendingJoin and calls HandlePlayerLogout.
+	// A player who logs out in the frame they arrived is still in PlayersPendingJoin, and the parent refuses their next join while they stay there.
 	FPlayerReservation LeavingPlayer;
 	LeavingPlayer.UniqueId = PlayerId;
 	PlayerRemoved(LeavingPlayer);
@@ -268,6 +267,6 @@ void AEasySessionReservationBeaconHost::ProcessReservationRequest(APartyBeaconCl
 		return;
 	}
 
-	// The parent checks that the session has room, adds the reservation, and sends the result.
+	// The parent checks that the session has reservations left, adds the reservation, and sends the result.
 	Super::ProcessReservationRequest(Client, SessionId, ReservationRequest);
 }

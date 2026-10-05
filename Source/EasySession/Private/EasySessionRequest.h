@@ -24,7 +24,7 @@ struct FEasySessionRequestContext
 	/** The subsystem, for its public API and the events a request broadcasts. */
 	UEasySessionSubsystem& Subsystem;
 
-	/** The queue the request runs in, which it leaves when it stops running. */
+	/** The queue that runs the request, whose active request StopRunning clears. */
 	FEasySessionRequestQueue& Queue;
 
 	/** Starts the travels a request needs. */
@@ -49,7 +49,7 @@ enum class EEasySessionRequestType : uint8
 	/** Join a session and travel to its host. */
 	Join,
 
-	/** Destroy this game's session. */
+	/** Destroy the game session, or the party session for a party request. */
 	Destroy,
 
 	/** Advertise new session settings. */
@@ -91,7 +91,9 @@ enum class EEasySessionRequestType : uint8
  * A request makes one online subsystem call, or runs other requests one after another as its sub-requests.
  * A sub-request runs while the request that started it keeps running, so no other request runs between two sub-requests.
  *
- * A request class implements Execute, Cleanup and Notify, and Complete always calls them in the same order.
+ * A request class implements Execute, Cleanup and Notify.
+ * Start calls Execute, and Complete calls Cleanup and then Notify.
+ * Notify runs before Cleanup when the requester was notified while the request kept running, as after a cancel the online subsystem cannot stop.
  * Execute starts the work and binds the delegate that completes it.
  * Cleanup unbinds that delegate and releases what the request still holds.
  * Notify fires the requester's delegate, which is the only place the result goes.
@@ -145,13 +147,13 @@ public:
 	 */
 	bool HasNotified() const { return bNotified; }
 
-	/** @return Whether Is Busy counts this request. A request that already notified its requester does not count. */
+	/** @return Whether UEasySessionSubsystem::IsBusy counts this request. A request that already notified its requester does not count. */
 	bool CountsAsBusy() const { return !bNotified; }
 
 	/** @return The sub-request this request runs, or null. */
 	const TSharedPtr<FEasySessionRequest>& GetRunningSubRequest() const { return RunningSubRequest; }
 
-	/** @return What Get Easy Session Activity reports while this request runs. */
+	/** @return What UEasySessionSubsystem::GetActivity reports while this request runs. */
 	EEasySessionActivity GetActivity() const;
 
 	/** @return The human readable name of the request type, for logs and the status line. */
@@ -185,7 +187,8 @@ protected:
 
 	/**
 	 * Fire the requester's delegate.
-	 * Runs once, after the request stopped running, so the delegate may queue the next request.
+	 * Runs once, usually after the request stopped running, so the delegate may queue the next request.
+	 * A cancel the online subsystem cannot stop, or a Complete that waits for a running sub-request, runs it while the request still runs.
 	 */
 	virtual void Notify(EEasySessionResult Result, const FString& ErrorMessage) = 0;
 
@@ -274,7 +277,7 @@ private:
 	/** Has the request started. */
 	bool bStarted = false;
 
-	/** Has Complete been called. */
+	/** Has Complete been called, or has Cancel removed the request before it started. */
 	bool bCompleting = false;
 
 	/** Has Notify run. */

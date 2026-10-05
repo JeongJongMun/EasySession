@@ -8,10 +8,10 @@
 class FOnlineSessionSettings;
 
 /**
- * FEasySessionCreateRequest creates the session and travels the host to Initial Map Name.
+ * FEasySessionCreateRequest creates the session and travels the host to InitialMapName.
  * On success the host side of the session gets the params before the travel is requested.
  *
- * The subsystem creates it for Create Easy Session.
+ * The subsystem creates it for CreateSession.
  * Matchmaking runs it as a sub-request to host a session when no session could be joined.
  */
 class FEasySessionCreateRequest final : public FEasySessionRequest

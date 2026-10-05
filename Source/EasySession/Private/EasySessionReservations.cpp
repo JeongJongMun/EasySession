@@ -20,7 +20,7 @@
 
 namespace
 {
-	/** A response with this result, and the message a refused player sees. */
+	// A response with this result, and the message a refused player sees.
 	FEasyReservationResponse MakeResponse(EEasyReservationResult Result, const FText& Reason = FText::GetEmpty())
 	{
 		FEasyReservationResponse Response;
@@ -115,7 +115,7 @@ void FEasySessionReservations::StartBeacon()
 	KeptReservations.Reset();
 
 	// One team, because this plugin never splits a session into sides.
-	// Max Players counts the host too, so the same number is the team size and the reservation count.
+	// MaxPlayers counts the host too, so the same number is the team size and the reservation count.
 	const int32 MaxPlayers = NamedSession->SessionSettings.NumPublicConnections;
 	if (bRestoredReservations)
 	{
@@ -170,7 +170,7 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 		return MakeResponse(EEasyReservationResult::Refused, NSLOCTEXT("EasySession", "RemovedFromSession", "The host removed you from this session."));
 	}
 
-	// The requester waits for every member to leave before joining, so approving the rest would leave the removed player behind.
+	// The whole group travels on this one reservation, so approving it would let every player in except the removed one.
 	const FUniqueNetIdRepl* KickedMember = GroupMembers.FindByPredicate([this](const FUniqueNetIdRepl& Member) { return KickedPlayers.Contains(Member); });
 	if (KickedMember != nullptr)
 	{
@@ -178,7 +178,7 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 		return MakeResponse(EEasyReservationResult::Refused, NSLOCTEXT("EasySession", "GroupMemberRemoved", "The host removed a player who travels with you from this session."));
 	}
 
-	// This player was approved before: over this beacon, or as a member of the group whose leader asked for the reservation.
+	// This player was approved before: over this beacon, or as a player of the group whose leader asked for the reservation.
 	// Reservations are kept across a map change, so this also lets in the players a hard travel reconnects.
 	if (PlayerHasReservation(Requester))
 	{
@@ -370,10 +370,10 @@ void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconH
 	Reservation.TeamNum = 0;
 	Reservation.PartyLeader = HostId;
 
-	// The members follow after the host, and a reservation holder is approved at once, so they need no password and no free slot of their own.
+	// The group follows after the host, and ApproveJoin skips the password and free slot checks for a reservation holder.
 	Reservation.PartyMembers = EasySessionReservation::MakeReservations(HostId, HostGroup);
 
-	// APartyBeaconHost::Tick never expires the owner of the session, so this reservation is kept for as long as the beacon runs.
+	// APartyBeaconHost::Tick never expires the owner of the session, so the host stays in this reservation for as long as the beacon runs.
 	const EPartyReservationResult::Type Result = Beacon.AddPartyReservation(Reservation);
 	if (Result != EPartyReservationResult::ReservationAccepted)
 	{

@@ -24,19 +24,20 @@ struct FEasySessionSettings;
 
 /**
  * FEasySessionHost is responsible for the host side of the session.
- * That is the session's bHosting flag, the replicated state actor, FEasySessionReservations, which decides who may join,
- * and a UEasySessionPlayerComponent on every PlayerState, which carries what one player receives or sends.
+ * That is the session's bHosting flag, the replicated state actor, and FEasySessionReservations, which decides who may join.
+ * It also adds a UEasySessionPlayerComponent to every PlayerState, which carries what one player receives or sends.
  *
- * The session requests call this object when the session is created, updated or destroyed, when the match state changes, and around a server travel.
+ * The session requests call this object when the session is created, updated or destroyed, and when the match state changes.
+ * The subsystem calls it before a server travel and when one fails.
  * The state actor and the reservation beacon are actors, so they are destroyed with their world.
  * This object spawns both again in every world the session reaches, when the host initializes the game mode of that world.
  *
  * Owned by the subsystem and destroyed with it.
- * Delegates are bound raw because this object cannot outlive the owner that destroys it.
+ * Delegates are bound raw because the destructor removes every one of them.
  */
 class FEasySessionHost
 {
-	//~ FEasySessionTestAccess reads the state actor for the tests, as it reads the subsystem.
+	//~ FEasySessionTestAccess reads the state actor and the reservations, and calls SpawnWorldActors, for the tests.
 	friend class FEasySessionTestAccess;
 
 public:
@@ -99,7 +100,7 @@ public:
 	 */
 	TArray<FUniqueNetIdRepl> GetGroupMembers() const;
 
-	/** Tell each member of the group to follow the host into another session, through the member's player component. */
+	/** Tell each player in Members to follow HostId into its session, through that player's player component. */
 	void TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/**
@@ -158,19 +159,20 @@ private:
 	void EnsureStateActor();
 
 	/**
-	 * Write the current session state and the settings a session member may see into the state actor.
+	 * Write the current session state and the settings a player in the session may see into the state actor.
 	 * Writing a value that did not change replicates nothing, so every caller updates both.
 	 */
 	void UpdateStateActor();
 
-	/** The world this subsystem runs in, or null before one exists. */
+	/** @return The world of the owner's game instance, or null before one exists. */
 	UWorld* GetWorld() const;
 
-	/** @return The settings a session member may see, read from the advertised session settings. */
+	/** @return The settings a player in the session may see, read from the advertised session settings. */
 	static FEasySessionReplicatedSettings MakeReplicatedSettings(const FOnlineSessionSettings& Settings);
 
 private:
 
+	/** The subsystem that owns this object. */
 	UEasySessionSubsystem& Owner;
 
 	/** The shared beacon port, released before a server travel so the next world can bind it. */

@@ -59,7 +59,8 @@ void FEasySessionRequest::Complete(EEasySessionResult Result, const FString& Err
 		SubRequest->Cancel();
 	}
 
-	// The sub-request could not stop. The requester is notified now, and this request stops running when the sub-request ends.
+	// The sub-request could not stop.
+	// The requester is notified inside this call, and this request stops running when the sub-request ends.
 	if (RunningSubRequest.IsValid())
 	{
 		NotifyOnce(Result, ErrorMessage);
@@ -69,7 +70,7 @@ void FEasySessionRequest::Complete(EEasySessionResult Result, const FString& Err
 	StopRunning();
 	NotifyOnce(Result, ErrorMessage);
 
-	// Create, Join, Start, End and Destroy all leave a new session state behind, and the requester may read it in the delegate above.
+	// Create, Join, Start, End and Destroy change the session state, and the requester may read it in the Notify call above.
 	GetContext().Subsystem.RefreshSessionState();
 }
 
@@ -86,8 +87,8 @@ void FEasySessionRequest::Cancel()
 		return;
 	}
 
-	// Nothing runs yet, so the request only has to leave the place it waits in.
-	// That place may hold the only other reference to this request.
+	// Nothing runs yet, so the request is only removed from the queue's pending list or from its parent.
+	// The pending list or the parent may hold the only other reference to this request.
 	const TSharedRef<FEasySessionRequest> KeepAlive = AsShared();
 	bCompleting = true;
 	if (const TSharedPtr<FEasySessionRequest> Parent = ParentRequest.Pin(); Parent.IsValid() && Parent->RunningSubRequest.Get() == this)

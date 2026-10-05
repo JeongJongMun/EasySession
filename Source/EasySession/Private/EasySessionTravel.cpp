@@ -75,7 +75,7 @@ bool FEasySessionTravel::ServerTravelToMap(const FString& MapName)
 		return false;
 	}
 
-	// The URL of the host's first travel carried Max Players, but an Update request may have changed it since.
+	// The URL of the host's first travel carried MaxPlayers, but an Update request may have changed it since.
 	int32 MaxPlayers = 0;
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
 	if (const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr)
@@ -163,7 +163,7 @@ FString FEasySessionTravel::MakeServerTravelURL(const FString& MapName, const FS
 
 	AppendTravelOptions(TravelURL, AdditionalTravelOptions);
 
-	// The engine copies this option into AGameSession::MaxPlayers, so its "Server full" refusal matches the advertised Max Players.
+	// The engine copies this option into AGameSession::MaxPlayers, so its "Server full" refusal matches the advertised NumPublicConnections.
 	if (MaxPlayers > 0)
 	{
 		EasySessionAddress::AppendMaxPlayersOption(TravelURL, MaxPlayers);

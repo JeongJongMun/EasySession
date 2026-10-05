@@ -54,7 +54,7 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerSetReady(bool bInReady);
 
-	/** The ready state arrived on a client. */
+	/** The ready state changed: replicated to a client, or set on the host by SetReady. */
 	UFUNCTION()
 	void OnRep_Ready();
 

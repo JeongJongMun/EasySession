@@ -17,10 +17,10 @@
 
 namespace
 {
-	/** Seconds between two checks whether the group left this session. */
+	// Seconds between two checks whether GetGroupMembers still lists a player of the group.
 	constexpr float GroupWaitIntervalSeconds = 0.1f;
 
-	/** Seconds the host waits for its group before it leaves anyway. */
+	// Seconds a party leader or a host waits for the group before it joins without the rest.
 	constexpr double GroupWaitTimeoutSeconds = 10.0;
 }
 
@@ -53,7 +53,7 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
-	// Leaving the session to join it again would only disconnect this player.
+	// Destroying the session to join it again would only disconnect this player.
 	const FNamedOnlineSession* CurrentSession = Sessions->GetNamedSession(SessionName);
 	if (CurrentSession != nullptr && CurrentSession->SessionInfo.IsValid() && CurrentSession->SessionInfo->GetSessionId().ToString() == Target.NativeResult.GetSessionIdStr())
 	{
@@ -61,7 +61,7 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
-	// A leaving host takes its session with it, so leaving a match in progress would end it for every player.
+	// A host that destroys its session to join another would end a match in progress for every player.
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
 	if (GetContext().Subsystem.IsSessionAuthority() && (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress))
 	{
@@ -98,7 +98,7 @@ void FEasySessionJoinRequest::Cleanup()
 
 void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	// The session this player left is destroyed, so a failed join would leave them in its map with no session.
+	// The session this player was in is destroyed, so a failed join would keep them in its map with no session.
 	// Requested before the completion below, the same order every travel in this plugin uses.
 	if (Result != EEasySessionResult::Success && bLeftSession)
 	{
@@ -188,7 +188,7 @@ void FEasySessionJoinRequest::JoinOnlineSessionWithGroup()
 {
 	UE_LOG(LogEasySession, Log, TEXT("Moving %d players to '%s' before this host leaves."), GroupMembers.Num(), *Target.SessionDisplayName);
 
-	// The members search for the new host, which holds a reservation for each of them.
+	// The group searches for the new host, which holds a reservation for each of its players.
 	const FUniqueNetIdRepl NewHostId(Target.NativeResult.Session.OwningUserId);
 	TellGroupToFollow(GroupMembers, NewHostId, Target.NativeResult.Session.SessionSettings.bIsLANMatch);
 
@@ -210,7 +210,8 @@ bool FEasySessionJoinRequest::HandleGroupWaitTick(float DeltaTime)
 		return true;
 	}
 
-	// Leaving takes the session with it, so a member who did not follow in time is sent to the menu with the reason.
+	// A host destroys its session in JoinOnlineSession, so a player who did not follow in time is sent to the menu with the reason.
+	// A party leader closes the party with a LeaveParty request after the join succeeds, which also ends the party for a member who did not follow.
 	if (bAnyStillHere)
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Not every player left to follow within %.0f seconds. The rest return to the menu when this host leaves."), GroupWaitTimeoutSeconds);
@@ -237,7 +238,7 @@ void FEasySessionJoinRequest::JoinWithoutReservation()
 		return;
 	}
 
-	// Leaving is safe only once the host approved the join, so a player in a session stays in it.
+	// Destroying the current session is safe only once the host approved the join, so a player in a session stays in it.
 	if (GetContext().Subsystem.IsInSession())
 	{
 		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to ask for a reservation, so this player stays in the current session."));
@@ -258,10 +259,10 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 		return;
 	}
 
-	// Joining refuses while a session exists, so this player leaves theirs first.
+	// JoinSession fails while a session with this name exists, so this player destroys theirs first.
 	if (Sessions->GetNamedSession(SessionName) != nullptr)
 	{
-		// A leaving host takes the session with it, so its clients are told why before their connection closes.
+		// The Destroy sub-request destroys the session of a host, so its clients are told why before their connection closes.
 		if (GetContext().Subsystem.IsSessionAuthority())
 		{
 			GetContext().Host.TellEveryoneToReturnToMenu(EasySession::GetHostLeftSessionReason());
@@ -342,7 +343,7 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 			TEXT("The host address '%s' is not connectable. The host is not running as a listen server, because its travel to Initial Map Name did not open one. Check the map path on the host."),
 			*ConnectString);
 
-		// The joined session stays until it is destroyed, and a retry or the next matchmaking candidate would fail against it.
+		// The joined session stays until it is destroyed, and a retry or the next matchmaking search result would fail against it.
 		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,
 			[this, Message](EEasySessionResult /*DestroyResult*/, const FString& /*DestroyError*/)
 			{
@@ -353,13 +354,14 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
-	// A party lives outside game sessions, so it closes now, and the leader waiting for this member sees them leave.
+	// A party lives outside game sessions, so HandlePartyEnded queues a LeaveParty request.
+	// The leader waiting for this player then no longer lists them in GetGroupMembers.
 	if (GetContext().Party.IsInParty())
 	{
 		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
 	}
 
-	// Requested before the request completes, so Is Busy is already true for the travel when the completion delegate fires.
+	// Requested before the request completes, so IsBusy is already true for the travel when the completion delegate fires.
 	GetContext().Travel.TravelToJoinedSession(ConnectString, TravelOptions);
 
 	Complete(EEasySessionResult::Success);

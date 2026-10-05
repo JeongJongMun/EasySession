@@ -27,13 +27,13 @@ namespace EasySession
 	/** The message of every Canceled result of a matchmaking run. */
 	inline constexpr const TCHAR* MatchmakingCanceledMessage = TEXT("Matchmaking was canceled.");
 
-	/** The reason every client receives when its host leaves the session, by Leave Easy Session or by joining another one. */
+	/** The reason every client receives when its host destroys the session, by LeaveSession or by joining another session. */
 	inline FText GetHostLeftSessionReason()
 	{
 		return NSLOCTEXT("EasySession", "HostLeftSession", "The host has left the game.");
 	}
 
-	/** The On Party Left text when the party entered a game session. */
+	/** The OnPartyLeft text when the party entered a game session. */
 	inline FText GetPartyMovedReason()
 	{
 		return NSLOCTEXT("EasySession", "PartyMovedToGameSession", "The party moved to a game session.");

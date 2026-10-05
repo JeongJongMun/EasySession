@@ -109,7 +109,7 @@ void FEasySessionHost::OnServerTravelStarted()
 
 void FEasySessionHost::OnServerTravelFailed()
 {
-	// The travel never left this world, and OnServerTravelStarted already took its actors down.
+	// The travel never loaded a new world, and OnServerTravelStarted already destroyed the state actor and stopped the reservation beacon.
 	SpawnWorldActors();
 }
 
@@ -217,7 +217,7 @@ TArray<FUniqueNetIdRepl> FEasySessionHost::GetGroupMembers() const
 {
 	TArray<FUniqueNetIdRepl> Members;
 
-	// A leaving host takes its session with it, so the host of a match in progress moves nobody.
+	// A host that joins another session destroys its own, so the host of a match in progress moves nobody.
 	const EEasySessionState State = Owner.GetSessionState();
 	if (!Owner.IsSessionAuthority() || State == EEasySessionState::Starting || State == EEasySessionState::InProgress)
 	{
@@ -247,7 +247,7 @@ TArray<FUniqueNetIdRepl> FEasySessionHost::GetGroupMembers() const
 
 void FEasySessionHost::TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery)
 {
-	// Only the members the reservation holds, so a player who arrived after the group was counted stays.
+	// Only the players the reservation holds, so a player who arrived after the group was counted stays.
 	for (const FUniqueNetIdRepl& Member : Members)
 	{
 		APlayerController* Controller = FindRemoteController(Member);
@@ -287,7 +287,7 @@ bool FEasySessionHost::KickPlayer(const FUniqueNetIdRepl& PlayerId, const FText&
 
 void FEasySessionHost::HandleGameModeInitialized(AGameModeBase* GameMode)
 {
-	// Fires on the server for every world, ours or another PIE instance's.
+	// Fires in every process that has a game mode, for every world, ours or another PIE instance's.
 	const UWorld* InitializedWorld = GameMode != nullptr ? GameMode->GetWorld() : nullptr;
 	if (InitializedWorld == nullptr || InitializedWorld->GetGameInstance() != Owner.GetGameInstance())
 	{
@@ -305,7 +305,7 @@ void FEasySessionHost::HandleGameModeInitialized(AGameModeBase* GameMode)
 	{
 		DeferredSetUpHandle.Reset();
 
-		// Every travel creates a new world, so the state actor of the previous world is destroyed.
+		// Every travel creates a new world, and the state actor of the previous world was destroyed with it.
 		StateActor.Reset();
 		SpawnWorldActors();
 		return false;
