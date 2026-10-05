@@ -94,7 +94,7 @@ bool FEasySessionWaitForReplicatedState::Update()
 		FEasySessionTestAccess::GetReplicatedSessionState(*Subsystem), EEasySessionState::InProgress);
 
 	// And then the host ended it.
-	// A client that never saw InProgress locally used to replay the whole history here, raising a started and an ended event back to back.
+	// A client that never saw InProgress locally records Ended directly, without replaying the states in between.
 	Subsystem->HandleReplicatedSessionState(EEasySessionState::Ended);
 
 	CurrentTest->TestEqual(TEXT("A replicated match end is cached for the client to read"),
@@ -118,11 +118,11 @@ bool FEasySessionWaitForReplicatedState::Update()
 /**
  * A client only reads the host's match state.
  * It never acts on it.
- * Feeding the replicated state back into Start/End would put a request on the queue that the client has no authority to run.
- * The failure would leave through the public match events, telling a game its match failed to start when the game asked for none.
+ * Passing the replicated state to StartSession or EndSession would queue a request the client has no authority to run.
+ * That request would fail with RequiresSessionAuthority, although the game asked for no match change.
  *
- * What this can and cannot show: the handler ignores anything that is not an actual client (net mode NM_Client), and a headless test world is standalone.
- * So this guards the contract rather than reproducing the failure: the host's state is recorded, and recording it raises no match events.
+ * HandleReplicatedSessionState records the host's state in any net mode, and only GetSessionState checks for NM_Client.
+ * A headless test world is standalone, so this test only checks the recorded value through FEasySessionTestAccess::GetReplicatedSessionState.
  * The failure itself needs two connected games and is checked by hand.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReplicatedStateTest, "EasySession.Replication.ClientDoesNotActOnTheHostsMatchState", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

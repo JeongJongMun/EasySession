@@ -132,9 +132,9 @@ bool FEasySessionJoinRetryStep::Update()
 }
 
 /**
- * A join that fails on address resolve leaves a half-joined session for one queued cleanup.
- * That cleanup has to enter the queue before the failure callback runs.
- * Otherwise a retry the callback starts runs in front of it and fails with SessionAlreadyExists, against the guide's promise that the player can retry.
+ * A join that fails on address resolve destroys the joined session in a Destroy sub-request, and only then completes with ResolveFailure.
+ * A retry started inside the failure callback therefore finds no session and does not fail with SessionAlreadyExists.
+ * The guide promises that the player can retry.
  *
  * The unreachable session is real.
  * Created without listening, it advertises this process's address with port 0.
@@ -159,7 +159,7 @@ bool FEasySessionJoinRetryTest::RunTest(const FString& Parameters)
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Join Retry Test");
 	HostParams.bIsLANMatch = true;
-	// No map and no listening: the session advertises this process's address with port 0, the form of an unreachable host.
+	// The test skips the travel to InitialMapName, so nothing listens and the session advertises this process's address with port 0.
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 	Subsystem->CreateSession(HostParams);
 

@@ -152,8 +152,9 @@ bool FEasySessionRunPinCases::Update()
 /**
  * Every async node routes a failure to its On Failure pin.
  *
- * Nothing is hosted, so each node hits its own guard clause.
- * That is the cheapest way to reach the failure pin of six nodes without a second machine or a real online subsystem.
+ * No session exists, so the session nodes fail their own checks, and Join Easy Session gets an empty search result.
+ * Start Easy Matchmaking finds nothing on the LAN, and the two friend nodes fail because the NULL subsystem has no friends interface.
+ * That reaches the failure pin of eight nodes without a second machine or a real online subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeFailurePinsTest, "EasySession.Nodes.FailurePinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
@@ -218,8 +219,7 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 		}, EExpectedPin::Failure, EEasySessionResult::InvalidParams });
 
 	// Host fallback off and nothing on the LAN to join, so the run ends with nothing found.
-	// This case must not leave a session behind.
-	// The success test that follows creates its own.
+	// This case must end without a session, because the success test that follows creates its own.
 	State->Cases.Add({ TEXT("Start Easy Matchmaking"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
@@ -261,8 +261,8 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 /**
  * Every async node routes a success to its On Success pin.
  *
- * The cases run in order and each one needs the session the previous one left behind.
- * This is the session lifecycle a game walks: create, start the match, change it, end it, leave.
+ * The cases run in order, and every case after Create Easy Session runs while the session it created exists.
+ * This is the session lifecycle of a game: create, search, start the match, update it, end it, destroy it.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeSuccessPinsTest, "EasySession.Nodes.SuccessPinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
@@ -414,8 +414,8 @@ bool FEasySessionWaitForLeaveNode::Update()
 }
 
 /**
- * Leave Easy Session is the whole exit: the named session is destroyed and the menu map load is requested, in one node.
- * Destroy Easy Session covers only the named session, which left a client's leave button leaving the player on the host's map.
+ * Leave Easy Session destroys the named session and requests the travel to the Game Default Map, both in one node.
+ * Destroy Easy Session only destroys the named session, so a client that called it from an exit button stayed on the host's map.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLeaveNodeTest, "EasySession.Nodes.LeaveReturnsToTheMenu", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)

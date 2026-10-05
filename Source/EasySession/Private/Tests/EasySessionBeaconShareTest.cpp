@@ -114,9 +114,9 @@ bool FEasySessionBeaconShareStep::Update()
 }
 
 /**
- * A beacon host is one shared listener per process, so a project that already runs one keeps it.
+ * A beacon listener (AOnlineBeaconHost) binds one port per process, so a project that already runs one keeps it.
  * The reservation beacon must register its beacon host there instead of spawning a second listener.
- * It must also take only its own type off again when the session ends.
+ * It must also unregister only its own beacon type when the session is destroyed.
  *
  * Before this behavior, the second listener bound a different port than the session advertised and every reservation request ended Unreachable.
  * The reservation beacon was silently off for the whole session, whichever side spawned first.
@@ -200,7 +200,7 @@ namespace EasySessionBeaconPortTest
 
 /**
  * The listener is shared by every beacon family, so it has to outlive any one of them.
- * The party beacon will depend on this: a game session ending unregisters the reservation beacon, and the party's connection must stay up.
+ * The party beacon depends on this, because destroying the game session unregisters the reservation beacon and the party beacon must stay registered.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionBeaconPortSharedTest, "EasySession.Beacon.ListenerOutlivesOneOfTwoHostObjects", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionBeaconPortSharedTest::RunTest(const FString& Parameters)

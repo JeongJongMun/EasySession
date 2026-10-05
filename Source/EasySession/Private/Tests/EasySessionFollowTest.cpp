@@ -15,7 +15,7 @@
 
 namespace EasySessionFollowTest
 {
-	/** Maximum time to wait for each step before failing the test. */
+	// Maximum time to wait for each step before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
 	struct FTestState
@@ -30,7 +30,7 @@ namespace EasySessionFollowTest
 		double StartTime = 0.0;
 	};
 
-	/** @return Whether the step timed out, reporting it and taking the game instance down when it did. */
+	// Whether the step timed out. Reports the error and destroys the game instance when it did.
 	bool TimedOut(TSharedPtr<FTestState> State, const TCHAR* What)
 	{
 		if (FPlatformTime::Seconds() - State->StartTime <= TimeoutSeconds)
@@ -43,7 +43,7 @@ namespace EasySessionFollowTest
 		return true;
 	}
 
-	/** Move to the next step and restart its timeout. */
+	// Move to the next step and restart its timeout.
 	void MoveTo(TSharedPtr<FTestState> State, FTestState::EStep Step)
 	{
 		State->Step = Step;
@@ -78,7 +78,7 @@ bool FEasySessionFollowStep::Update()
 				return TimedOut(State, TEXT("the host's create"));
 			}
 
-			// A password-protected host, which a follow still joins because the host holds a reservation for this player.
+			// A password-protected host, which a follow still tries to join because the host holds a reservation for this player.
 			State->HostResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);
 			State->HostResult.Session.SessionSettings.Set(EasySession::SettingKey_PasswordProtected, 1, EOnlineDataAdvertisementType::ViaOnlineService);
 
@@ -94,7 +94,7 @@ bool FEasySessionFollowStep::Update()
 				return TimedOut(State, TEXT("the host's destroy"));
 			}
 
-			// The session the player is in when the leader moves them along.
+			// The session the player is in when it is told to follow the host.
 			CreateSession(*Subsystem, TEXT("EasySession Follow Current"));
 			MoveTo(State, FTestState::EStep::AwaitingCurrentCreate);
 			return false;
@@ -143,7 +143,8 @@ bool FEasySessionFollowStep::Update()
 
 		case FTestState::EStep::AwaitingJoin:
 		{
-			// No beacon runs for the copied host session, so the join is refused before leaving and the run moves on to its next pass.
+			// The copied host session advertises no reservation beacon to check the password, so the join is refused.
+			// The player keeps its session, and the run moves on to its next pass.
 			if (!Run.IsValid() || FEasySessionTestAccess::GetFailedJoinCount(*Run) < 1)
 			{
 				return TimedOut(State, TEXT("the follow's join"));
@@ -186,9 +187,9 @@ bool FEasySessionFollowStep::Update()
 }
 
 /**
- * A group member follows the leader with a matchmaking run that searches for one host and joins it.
- * The run starts while the member is still in a session, because its join leaves that session only once the host approved.
- * A password-protected host stays a candidate, because the reservation the leader asked for lets the member in without the password.
+ * A player of the group follows its host with a matchmaking run that searches for that one host and joins it.
+ * The run starts while the player is still in a session, because its join destroys that session only after the host approved the join.
+ * A password-protected host is still tried, because the reservation the party leader or the host asked for lets the player in without the password.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFollowTest, "EasySession.Group.AFollowSearchesForTheHostAndJoins", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFollowTest::RunTest(const FString& Parameters)

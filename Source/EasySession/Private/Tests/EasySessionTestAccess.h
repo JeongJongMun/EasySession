@@ -55,7 +55,7 @@ public:
 	}
 
 	/**
-	 * Make the host's travel to Initial Map Name do nothing.
+	 * Make the host's travel to InitialMapName do nothing.
 	 * A headless test world has no player controller to travel with.
 	 */
 	static void SkipHostTravel(UEasySessionSubsystem& Subsystem)
@@ -64,7 +64,7 @@ public:
 	}
 
 	/**
-	 * Spawn the state actor and the reservation beacon, as the host does when it initializes the game mode of the session's map.
+	 * Spawn the state actor and the reservation beacon, as the host does one tick after the game mode of the session's map initializes.
 	 * Tests call it after the create, because SkipHostTravel keeps them in the world they started in.
 	 */
 	static void ArriveInSessionMap(UEasySessionSubsystem& Subsystem)
@@ -127,7 +127,7 @@ public:
 	}
 
 	/**
-	 * Take the host side down the way a server travel does, which destroys the state actor and releases the beacon port.
+	 * Destroy the state actor, stop the reservation beacon and release the beacon listener, as the host does when a server travel starts.
 	 * A headless test cannot load a second map, so this stands in for the world change.
 	 */
 	static void DestroyHostSideActors(UEasySessionSubsystem& Subsystem)
@@ -365,7 +365,7 @@ public:
 		Subsystem.Party->HandlePostLoadMap(Subsystem.GetGameInstance()->GetWorld());
 	}
 
-	/** @return Whether a party of the last match is kept to get back. */
+	/** @return Whether the party from before the last game session is kept for the next map without a game session to restore. */
 	static bool HasLastParty(const UEasySessionSubsystem& Subsystem)
 	{
 		return Subsystem.Party->LastParty.IsSet();

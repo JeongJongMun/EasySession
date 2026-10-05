@@ -96,7 +96,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 					Shared->PendingResult = InResult;
 
 					// The shape every Blueprint uses: start something from On Failure.
-					// A search because NULL does not finish that one inside the call, so it is still active when the rejected start reports itself.
+					// The queue starts the search on a later tick, so it is still pending when the refused StartSession returns false.
 					FEasySessionSearchParams SearchParams;
 					SearchParams.bLANQuery = true;
 					Subsystem->FindSessions(SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
@@ -127,7 +127,6 @@ bool FEasySessionWaitForReentrantRequest::Update()
 				return false;
 			}
 
-			// The whole point.
 			// The refused start must not complete the request that began inside its failure callback.
 			CurrentTest->TestFalse(
 				FString::Printf(TEXT("The search does not carry the start's error (got '%s')"), *State->ReentrantError),

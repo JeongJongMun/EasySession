@@ -178,7 +178,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 }
 
 /**
- * The session state is never replicated by the online subsystem, so the advertised in-progress key stands in for it.
+ * Search results do not carry the session state, so searches read the advertised in-progress key instead.
  * Create writes it as off, Start sets it, End clears it, and the search filter plus the result flag read it.
  * The results are injected because one process cannot find its own LAN session.
  */

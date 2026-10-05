@@ -14,14 +14,14 @@
 namespace EasySessionTest
 {
 	/**
-	 * The Initial Map Name the tests host with.
-	 * Create Easy Session refuses host params without one, and no test travels there, so the map does not have to exist.
+	 * The InitialMapName the tests host with.
+	 * CreateSession refuses host params without one, and no test travels there, so the map does not have to exist.
 	 */
 	inline const TCHAR* const SessionMapName = TEXT("/Game/EasySessionTestMap");
 
 	/**
 	 * Initialize a test game instance and disable the host's travel in its subsystem.
-	 * A headless world has no player controller, so the travel to Initial Map Name would always fail.
+	 * A headless world has no player controller, so the travel to InitialMapName would always fail.
 	 * A test that needs the state actor or the reservation beacon calls FEasySessionTestAccess::ArriveInSessionMap after the create.
 	 */
 	template <typename GameInstancePtrType>

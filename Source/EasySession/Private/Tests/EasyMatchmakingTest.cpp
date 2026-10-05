@@ -67,7 +67,7 @@ bool FEasyMatchmakingScoringTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Bucket boundary is inclusive"), Policy->ScoreSession(OnBoundary) > Policy->ScoreSession(PastBoundary));
 
 	// A full session cannot be joined.
-	// Preferring fuller sessions would otherwise make it the best candidate in its bucket.
+	// Preferring fuller sessions would otherwise make it the best search result in its bucket.
 	// It has to lose to any session with an open slot, even one in the worst bucket.
 	const FEasySessionSearchResult FastFull = MakeFakeResult(10, 8, 0);
 	const FEasySessionSearchResult SlowWithRoom = MakeFakeResult(900, 8, 8);
@@ -174,10 +174,10 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 }
 
 /**
- * Matchmaking refuses a host fallback without Initial Map Name before the first search pass.
+ * Matchmaking refuses a host fallback without InitialMapName before the first search pass.
  *
- * Create Easy Session refuses host params without Initial Map Name, so the fallback could never host.
- * The refusal is delivered inside the StartMatchmaking call, not after every search pass has run.
+ * CreateSession refuses host params without InitialMapName, so the fallback could never host.
+ * StartMatchmaking completes with InvalidParams inside this call, not after every search pass has run.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackWithoutMapTest, "EasySession.Matchmaking.HostFallbackWithoutAMapIsRefused", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Parameters)
@@ -430,7 +430,7 @@ bool FEasyMatchmakingWaitCanceledUndo::Update()
 		CurrentTest->TestEqual(TEXT("Matchmaking result"), State->MatchmakingResult.GetValue(), EEasySessionResult::Canceled);
 		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
 
-		// No cleanup of our own: the undo destroy the policy queued is what we wait out below.
+		// No destroy of our own: the run's undo destroy is what we wait for below.
 		State->bCleanupIssued = true;
 		State->StartTime = FPlatformTime::Seconds();
 		return false;
@@ -536,7 +536,7 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
 				Shared->MatchmakingResult = Result;
 			}));
 
-		// The run starts on the next tick like every request, so the refusal is not here yet.
+		// The run starts on the next tick like every request, so the completion delegate has not fired yet.
 		CurrentTest->TestFalse(TEXT("The refusal arrives on a later tick"), State->MatchmakingResult.IsSet());
 		State->bRunStarted = true;
 		State->StartTime = FPlatformTime::Seconds();
@@ -607,7 +607,7 @@ bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
 	HostParams.SessionDisplayName = TEXT("EasySession AlreadyInSession Test");
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
-	// Empty Initial Map Name: the session simply exists here, no travel follows.
+	// SkipHostTravel keeps this process in its world, so no travel follows the create.
 	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();
@@ -686,7 +686,7 @@ bool FEasySessionWaitForCandidateRun::Update()
 
 			FEasyMatchmakingParams Params;
 			Params.Search.bLANQuery = true;
-			// A long inter-pass delay opens a quiet window to inject into.
+			// A 10 second delay between the two passes leaves time to inject results while no search runs.
 			Params.MaxSearchPasses = 2;
 			Params.DelayBetweenPassesSeconds = 10.0f;
 			Params.bAllowHostFallback = false;
@@ -730,7 +730,8 @@ bool FEasySessionWaitForCandidateRun::Update()
 				return true;
 			}
 
-			// One candidate per assertion, ordered worst-first on purpose.
+			// TopCandidatesToShuffle of 1 turns the shuffle off, so the search results keep their score order.
+			// The results are added out of that order on purpose.
 			// They share the seed session's id, so the failed session list ends with one key for all of them.
 			Policy->TopCandidatesToShuffle = 1;
 			auto MakeCandidate = [Shared](const TCHAR* Name, int32 Ping, bool bLocked)
@@ -795,7 +796,8 @@ bool FEasySessionWaitForCandidateRun::Update()
 
 /**
  * The half of matchmaking after a search returns sessions.
- * Password sessions are excluded, candidates are tried best score first, and a refused session goes on the failed session list.
+ * Password-protected sessions are excluded without a JoinPassword, and search results are tried best score first.
+ * A refused session goes on the failed session list.
  * None of it ran under automation before, because the only way results entered the policy was a real search, and one process cannot find its own LAN session.
  *
  * The crafted candidates copy a real session's info with port 0, so every join really runs and fails on address resolve.
@@ -965,9 +967,9 @@ bool FEasyMatchmakingWaitEvents::Update()
 }
 
 /**
- * The subsystem's matchmaking events reach a listener that bound before any run existed in full.
+ * Every matchmaking event of the subsystem reaches a listener that bound before any run existed.
  * Started fires first, then the state changes and a once-a-second update with the elapsed seconds, then Completed last.
- * A run refused when it starts keeps the pairing, so a spinner shown on Started always sees the end.
+ * A run refused when it starts still fires Completed after Started, so a spinner shown on Started is always hidden again.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingEventsTest, "EasySession.Matchmaking.EventsFireInOrder", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingEventsTest::RunTest(const FString& Parameters)
@@ -1106,7 +1108,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				return false;
 			}
 
-			// Without the password, the coded session is found but never becomes a candidate.
+			// Without the password, the coded session is found but never tried.
 			StartTargetedRun(*Subsystem, State->JoinCode, FString(), State, State->NoPasswordResult);
 			State->Run = FEasySessionTestAccess::GetMatchmakingRequest(*Subsystem);
 			State->Phase = 2;
@@ -1129,7 +1131,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 			CurrentTest->TestEqual(TEXT("Without a password the run finds nothing to join"), State->NoPasswordResult.GetValue(), EEasySessionResult::NoSessionsFound);
 			CurrentTest->TestEqual(TEXT("And no join was attempted"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 0);
 
-			// With the password, the protected session becomes a candidate and a join really runs.
+			// With the password, the protected session is tried and a join really runs.
 			StartTargetedRun(*Subsystem, State->JoinCode, TEXT("secret"), State, State->WithPasswordResult);
 			State->Run = FEasySessionTestAccess::GetMatchmakingRequest(*Subsystem);
 			State->Phase = 3;
@@ -1162,7 +1164,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 
 /**
  * Targeted matchmaking searches for one specific session.
- * A Join Code in the search params finds the hidden, password protected session, and Join Password decides whether it may become a candidate.
+ * The run searches with the JoinCode of a hidden, password-protected session, and JoinPassword decides whether that session is tried.
  * The injected result stands in for the search, and the failed join it leaves on the run is the proof that a join was really attempted.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.PasswordOpensTheCodedSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -1234,7 +1236,7 @@ bool FEasyMatchmakingCancelSearching::Update()
 }
 
 /**
- * Cancel while the search pass is at the online subsystem.
+ * Cancel while the online subsystem runs the search pass.
  * The run has to end inside the cancel call rather than when the search completes.
  * The search is canceled and the queue is idle inside the call, which is what lets a menu react the moment the button is pressed.
  */

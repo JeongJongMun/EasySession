@@ -66,7 +66,7 @@ bool FEasySessionWaitForLifecycle::Update()
 	}
 
 	// A UI binds to the event instead of reading the state every tick, so every state it needs must arrive there.
-	// The request may pass through a transitional state (Starting, Ending, Destroying) on the way, which is why this looks for a subsequence.
+	// The event can also report a transitional state such as Starting or Ending in between, which is why this checks for a subsequence.
 	const TArray<EEasySessionState> Expected = { EEasySessionState::Pending, EEasySessionState::InProgress, EEasySessionState::Ended, EEasySessionState::NoSession };
 	int32 ExpectedIndex = 0;
 	for (const EEasySessionState Seen : State->Listener->SessionStates)

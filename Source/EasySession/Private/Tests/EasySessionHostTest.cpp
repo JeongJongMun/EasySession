@@ -15,10 +15,10 @@
 
 namespace EasySessionHostTest
 {
-	/** Maximum time to wait for each step before failing the test. */
+	// Maximum time to wait for each step before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
-	/** The password the test session is created with, so the host has a password to forget. */
+	// The password the test session is created with, so the test can check that the destroy clears it.
 	static const TCHAR* TestPassword = TEXT("host-test");
 
 	enum class EStep : uint8
@@ -33,12 +33,12 @@ namespace EasySessionHostTest
 		TStrongObjectPtr<UGameInstance> GameInstance;
 		EStep Step = EStep::AwaitingCreate;
 		TOptional<EEasySessionResult> CreateResult;
-		/** Whether the test stops after the create step and destroys the session, or changes the world first. */
+		/** Does the test change the world after the create step, before it destroys the session. */
 		bool bChangeWorld = false;
 		double StartTime = 0.0;
 	};
 
-	/** Check the four parts of the host side: the authority, the credentials, the state actor and the reservation beacon. */
+	// Check the four parts of the host side: the authority, the session password, the state actor and the reservation beacon.
 	static void TestHostSide(FAutomationTestBase& Test, UEasySessionSubsystem& Subsystem, bool bExpected, const TCHAR* When)
 	{
 		Test.TestEqual(FString::Printf(TEXT("%s: session authority"), When), Subsystem.IsSessionAuthority(), bExpected);
@@ -87,7 +87,7 @@ bool FEasySessionHostStep::Update()
 			if (State->bChangeWorld)
 			{
 				// A travel destroys the actors of the previous world.
-				// The server then initializes the game mode of the next world.
+				// The host then initializes the game mode of the next world.
 				FEasySessionTestAccess::DestroyHostSideActors(*Subsystem);
 				CurrentTest->TestFalse(TEXT("The state actor is destroyed after the world change"), FEasySessionTestAccess::HasStateActor(*Subsystem));
 				CurrentTest->TestNull(TEXT("The reservation beacon is unregistered after the world change"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
@@ -173,8 +173,8 @@ namespace EasySessionHostTest
 }
 
 /**
- * Creating a session does four things on the host.
- * It sets the authority and the session password, and spawns the state actor and the reservation beacon.
+ * Hosting a session sets four things on the host.
+ * The create sets the authority and the session password, and the session's map spawns the state actor and the reservation beacon.
  * Destroying the session has to undo all four, because a later session would otherwise start with the previous one's password or actors.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostDestroyTest, "EasySession.Host.DestroyUndoesWhatCreateDid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -185,7 +185,7 @@ bool FEasySessionHostDestroyTest::RunTest(const FString& Parameters)
 
 /**
  * The state actor and the reservation beacon are actors, so a travel destroys them.
- * One game mode initialization hook has to spawn both again in the next world, not only one of them.
+ * HandleGameModeInitialized has to spawn both again in the next world, not only one of them.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostNextWorldTest, "EasySession.Host.SpawnsTheWorldActorsAgainInTheNextWorld", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionHostNextWorldTest::RunTest(const FString& Parameters)

@@ -86,8 +86,8 @@ bool FEasySessionRunReservedKeySteps::Update()
 		CurrentTest->TestEqual(TEXT("Beacon port is advertised as a number"),
 			FEasySessionTestAccess::GetAdvertisedSettingType(*Subsystem, SETTING_BEACONPORT), EOnlineKeyValuePairDataType::Int32);
 
-		// What a Blueprint gets from Get Easy Session Settings.
-		// The plugin's own keys must not be in there, or passing this struct back to Update rewrites them.
+		// What GetSessionSettings returns to the game.
+		// The plugin's own keys must not be in there, or passing this struct back to UpdateSession rewrites them.
 		const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 		CurrentTest->TestFalse(TEXT("The reservations key is not exposed as a custom setting"),
 			ReadBack.CustomSettings.Contains(EasySession::SettingKey_Reservations.ToString()));
@@ -159,7 +159,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 /**
  * Reading the host params and passing them back to Update leaves the plugin's own keys alone.
  *
- * The keys are advertised as numbers and Custom Settings is a string map, so a key that leaks into that map comes back as a string.
+ * The keys are advertised as numbers and CustomSettings is a string map, so a key that leaks into that map comes back as a string.
  * The key stays present, so every reader gets zero instead of a missing key, and the host quietly stops running the reservation beacon.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.SettingsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

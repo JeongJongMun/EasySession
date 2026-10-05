@@ -45,7 +45,8 @@ bool FEasySessionWaitForQueueDrain::Update()
 
 	if (CurrentTest != nullptr)
 	{
-		// Moving on is not enough on its own. The failed request must still have completed to its caller, or its node would hang.
+		// Moving on is not enough on its own.
+		// The failed request must still notify its requester, or its node would never fire a pin.
 		CurrentTest->TestTrue(TEXT("The failed request answered its caller"), State->StartResult.IsSet());
 		if (State->StartResult.IsSet())
 		{
@@ -81,7 +82,7 @@ bool FEasySessionQueueDrainTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	// Queue a request that fails inside the call (no session to start) followed by a destroy.
+	// Queue a request that fails as soon as it runs (no session to start), followed by a destroy.
 	// Whatever happens to the first one, the queue must reach the second.
 	Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString& /*ErrorMessage*/)

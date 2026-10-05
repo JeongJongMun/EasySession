@@ -19,7 +19,7 @@
 
 namespace EasySessionReservationTest
 {
-	/** Maximum time to wait for each request before failing the test. */
+	// Maximum time to wait for each request before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
 	/** Which request the latent command is waiting on. */
@@ -66,7 +66,7 @@ namespace EasySessionReservationTest
 		return Params;
 	}
 
-	/** The callback that stores a request's result for the latent command. */
+	// The callback that stores a request's result for the latent command.
 	static FEasySessionCompleteDelegate MakeCallback(TSharedPtr<FTestState> State)
 	{
 		return FEasySessionCompleteDelegate::CreateLambda(
@@ -93,7 +93,7 @@ namespace EasySessionReservationTest
 		return EWait::TimedOut;
 	}
 
-	/** Take the result the last request produced, leaving it empty for the next one. */
+	// Take the result the last request produced, and empty it for the next one.
 	static EEasySessionResult ConsumeResult(FTestState& State)
 	{
 		const EEasySessionResult Result = State.PendingResult.GetValue();
@@ -102,10 +102,8 @@ namespace EasySessionReservationTest
 		return Result;
 	}
 
-	/**
-	 * Destroy the session, which every test does before it destroys its world.
-	 * The online subsystem outlives these worlds, so a session left behind makes the next test's create fail with SessionAlreadyExists.
-	 */
+	// Destroy the session, which every test does before it destroys its world.
+	// The online subsystem outlives these worlds, so a session left behind makes the next test's create fail with SessionAlreadyExists.
 	static void StartDestroy(TSharedPtr<FTestState> State, UEasySessionSubsystem& Subsystem)
 	{
 		State->Step = EStep::AwaitingDestroy;
@@ -113,7 +111,7 @@ namespace EasySessionReservationTest
 		Subsystem.DestroySession(MakeCallback(State));
 	}
 
-	/** Start the world, the subsystem and the create every one of these tests begins with. */
+	// Create the game instance and start the CreateSession every one of these tests begins with.
 	static UEasySessionSubsystem* Begin(TSharedPtr<FTestState> State, FAutomationTestBase& Test, const FEasySessionHostParams& Params)
 	{
 		State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
@@ -136,14 +134,14 @@ namespace EasySessionReservationTest
 		return Begin(State, Test, MakeParams(MaxPlayers));
 	}
 
-	/** An id for a made-up player, which the NULL subsystem creates for any name. */
+	// An id for a made-up player, which the NULL subsystem creates for any name.
 	static FUniqueNetIdRepl MakePlayerId(UWorld* World, const TCHAR* PlayerName)
 	{
 		const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
 		return FUniqueNetIdRepl(Identity.IsValid() ? Identity->CreateUniquePlayerId(PlayerName) : nullptr);
 	}
 
-	/** Set the ElapsedTime of every player holding a reservation, as if they had been out of the session this long. */
+	// Set the ElapsedTime of every player holding a reservation, as if they had been out of the session this long.
 	static void AgeEveryReservation(APartyBeaconHost& Beacon, float Seconds)
 	{
 		for (FPartyReservation& Reservation : Beacon.GetState()->GetReservations())
@@ -155,7 +153,7 @@ namespace EasySessionReservationTest
 		}
 	}
 
-	/** @return The longest ElapsedTime of any player holding a reservation. */
+	// The longest ElapsedTime of any player holding a reservation.
 	static float LongestReservationWait(const APartyBeaconHost& Beacon)
 	{
 		float Longest = 0.0f;
@@ -169,10 +167,8 @@ namespace EasySessionReservationTest
 		return Longest;
 	}
 
-	/**
-	 * Add a reservation for this player, the way an approved join does before that player arrives.
-	 * @return Whether the beacon accepted it.
-	 */
+	// Add a reservation for this player, the way an approved join does before that player arrives.
+	// Returns whether the beacon accepted it.
 	static bool AddReservationFor(APartyBeaconHost& Beacon, const FUniqueNetIdRepl& PlayerId)
 	{
 		FPartyReservation Reservation;
@@ -184,10 +180,8 @@ namespace EasySessionReservationTest
 		return Beacon.AddPartyReservation(Reservation) == EPartyReservationResult::ReservationAccepted;
 	}
 
-	/**
-	 * Ask the beacon for one reservation that holds a leader and the group travelling with them, the way a group leader's join does.
-	 * @return The parent's result, before this plugin turns it into a response.
-	 */
+	// Ask the beacon for one reservation that holds a requester and the group traveling with them, the way the join of a player with a group does.
+	// Returns the parent's result, before this plugin turns it into a response.
 	static EPartyReservationResult::Type AddGroupReservation(APartyBeaconHost& Beacon, const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers)
 	{
 		FPartyReservation Reservation;
@@ -197,7 +191,7 @@ namespace EasySessionReservationTest
 		return Beacon.AddPartyReservation(Reservation);
 	}
 
-	/** @return The refusal PreLogin writes for this player, or empty when it lets them in. */
+	// The refusal PreLogin writes for this player, or empty when it lets them in.
 	static FString SendPreLogin(AGameModeBase* GameMode, const FUniqueNetIdRepl& PlayerId)
 	{
 		FString ErrorMessage;
@@ -252,9 +246,9 @@ bool FEasySessionHostReservationStep::Update()
 }
 
 /**
- * The host holds one of the Max Players reservations, like any joining player.
+ * The host holds one of the MaxPlayers reservations, like any joining player.
  *
- * The beacon refuses every reservation until the shared listener owns its beacon host, so the host's reservation is added after the registration.
+ * The beacon refuses every reservation until it is registered on the shared listener, so the host's reservation is added after the registration.
  * Reserved before it, the request came back denied and the session took one player too many.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostReservationTest, "EasySession.Reservation.TheHostHoldsAReservation", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -307,7 +301,7 @@ bool FEasySessionHeldReservationStep::Update()
 			AddReservationFor(*Beacon, MakePlayerId(World, TEXT("EasySessionApprovedPlayer"))));
 		CurrentTest->TestEqual(TEXT("Both reservations are held"), Beacon->GetNumConsumedReservations(), 2);
 
-		// The player holding the reservation never arrived, so counting the players in the session would leave room and let this one in.
+		// The player holding the reservation never arrived, so counting the players in the session would find an open slot and let this one in.
 		CurrentTest->TestTrue(TEXT("Fewer players arrived than Max Players"), FEasySessionTestAccess::GetRegisteredPlayerCount(*Subsystem) < 2);
 		CurrentTest->TestEqual(TEXT("The next player is refused while the reservation is held"),
 			FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString()), EEasyReservationResult::SessionFull);
@@ -318,8 +312,9 @@ bool FEasySessionHeldReservationStep::Update()
 }
 
 /**
- * A reservation is added the moment a join is approved and held until that player arrives, and the next player is refused meanwhile.
- * The players the game mode counts only grow when someone arrives, so two players traveling to a session with one reservation left both passed before the beacon held it.
+ * A reservation is added when a join is approved and stays held while that player travels, so the next player is refused meanwhile.
+ * The game mode counts a player only after that player arrives.
+ * Before the beacon held reservations, two players traveling to a session with one open slot left were both approved.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHeldReservationTest, "EasySession.Reservation.AReservationRefusesTheNextPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionHeldReservationTest::RunTest(const FString& Parameters)
@@ -437,7 +432,7 @@ bool FEasySessionKeptReservationStep::Update()
 		AgeEveryReservation(*Beacon, 30.0f);
 	}
 
-	// What the host does when it changes the map: the beacon is destroyed with the world, and the next world starts a new one.
+	// What the host does when a server travel starts: it keeps the reservations and destroys the beacon, and the next world starts a new one.
 	FEasySessionTestAccess::DestroyHostSideActors(*Subsystem);
 	CurrentTest->TestNull(TEXT("The map change took the beacon down"), FEasySessionTestAccess::GetReservationBeacon(*Subsystem));
 
@@ -458,7 +453,7 @@ bool FEasySessionKeptReservationStep::Update()
 
 /**
  * A map change destroys the beacon, and the players it approved are traveling to that very map.
- * Their reservations move to the beacon of the next world, or the map change would let the session take more players than Max Players.
+ * Their reservations move to the beacon of the next world, or the map change would let the session take more players than MaxPlayers.
  *
  * The wait starts over there, because the map change makes every player travel again.
  */
@@ -478,7 +473,7 @@ bool FEasySessionKeptReservationTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The beacon decides whether the session is full, so a Max Players change has to reach it.
+ * The beacon decides whether the session is full, so a MaxPlayers change has to reach it.
  * Left alone, the beacon would keep refusing joins on the reservation count the session was created with.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservationResizeTest, "EasySession.Reservation.MaxPlayersUpdateResizesTheReservations", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -537,7 +532,7 @@ bool FEasySessionRemovedReservationStep::Update()
 		CurrentTest->TestEqual(TEXT("The next player is let in at once"),
 			FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString()), EEasyReservationResult::Approved);
 
-		// This player never arrived, so they were still in PlayersPendingJoin when they left.
+		// This player never arrived, so they were still in PlayersPendingJoin when their reservation was removed.
 		CurrentTest->TestTrue(TEXT("The same player can take a reservation again"), AddReservationFor(*Beacon, LeavingPlayer));
 	}
 
@@ -546,7 +541,7 @@ bool FEasySessionRemovedReservationStep::Update()
 }
 
 /**
- * A player who leaves loses their reservation in the logout, so the next player is let in without waiting for a timeout.
+ * A player whose controller logs out loses their reservation, so the next player is let in without waiting for a timeout.
  * The player is also removed from PlayersPendingJoin, or their next join would be refused as a player already in the session.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRemovedReservationTest, "EasySession.Reservation.LeavingRemovesTheReservation", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -556,7 +551,7 @@ bool FEasySessionRemovedReservationTest::RunTest(const FString& Parameters)
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 
-	// Two players: the host, and one reservation for the player who leaves.
+	// Two players: the host, and one reservation for the player who logs out.
 	if (Begin(State, *this, 2) == nullptr)
 	{
 		return false;
@@ -570,7 +565,7 @@ bool FEasySessionRemovedReservationTest::RunTest(const FString& Parameters)
  * Every result the parent can return for a reservation request maps to a response here.
  * A duplicate is the one whose name misleads: the parent found the reservation this player already holds and kept it.
  *
- * Read as a refusal, every player who left a session and came back was refused until their reservation timed out.
+ * Read as a refusal, every player who logged out and joined the session again was refused until their reservation timed out.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservationResultTest, "EasySession.Reservation.ResultTable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReservationResultTest::RunTest(const FString& Parameters)
@@ -735,7 +730,7 @@ bool FEasySessionHolderChecksStep::Update()
 			AEasySessionReservationBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
 			if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
 			{
-				// The host and this member take both slots, the way a group leader's reservation would hold the member.
+				// The host and this player take both slots, the way a group's reservation would hold this player.
 				CurrentTest->TestTrue(TEXT("The member holds a reservation"), AddReservationFor(*Beacon, Member));
 			}
 
@@ -771,8 +766,8 @@ bool FEasySessionHolderChecksStep::Update()
 }
 
 /**
- * A player holding a reservation is approved before any other check, so a member a group leader brought needs no password and no slot of their own.
- * The password, the free slots and join-in-progress still decide for every other player.
+ * A reservation holder is approved before the join-in-progress, open slot and password checks, so a player of a group needs no password and no open slot.
+ * The password, the open slots and join-in-progress still decide for every other player.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHolderChecksTest, "EasySession.Reservation.HoldersSkipTheJoinChecks", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionHolderChecksTest::RunTest(const FString& Parameters)
@@ -842,7 +837,7 @@ bool FEasySessionGroupReservationStep::Update()
 			AddGroupReservation(*Beacon, Leader, { MemberA, MemberB }), EPartyReservationResult::ReservationAccepted);
 		CurrentTest->TestEqual(TEXT("Every member of the group holds a slot"), Beacon->GetNumConsumedReservations(), 4);
 
-		// A member following the leader asks for a reservation of their own, and the parent moves them out of the group's.
+		// A player of the group who follows the requester asks for a reservation of their own, and the parent moves them out of the group's.
 		CurrentTest->TestEqual(TEXT("A member's own request is accepted on the full session"),
 			AddGroupReservation(*Beacon, MemberB, {}), EPartyReservationResult::ReservationAccepted);
 		CurrentTest->TestEqual(TEXT("It takes no second slot"), Beacon->GetNumConsumedReservations(), 4);
@@ -853,8 +848,8 @@ bool FEasySessionGroupReservationStep::Update()
 }
 
 /**
- * One reservation holds a group leader and every member, or none of them, so a group never splits across a session with too few slots.
- * A member who then asks for their own reservation keeps the slot the group held, which is what lets them follow the leader with a normal join.
+ * One reservation holds the requester and every player of the group, or none of them, so a group never splits over a session with too few open slots.
+ * A player of the group who then asks for their own reservation keeps the slot the group held, so they can follow the requester with a normal join.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionGroupReservationTest, "EasySession.Reservation.AGroupTakesItsSlotsTogether", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionGroupReservationTest::RunTest(const FString& Parameters)

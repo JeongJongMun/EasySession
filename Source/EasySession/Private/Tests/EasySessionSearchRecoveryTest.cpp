@@ -107,7 +107,7 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 		return false;
 	}
 
-	// Success specifically: an online subsystem still holding the failed search refuses this one, and the drop detection reports SearchFailure instead.
+	// Success specifically: an online subsystem still holding the failed search drops this one, and the Find request then completes with SearchFailure.
 	CurrentTest->TestEqual(TEXT("A search after a synchronously failed one still reaches the online subsystem"), Result, EEasySessionResult::Success);
 
 	Finish(*State);

@@ -11,7 +11,7 @@
 #include "UObject/StrongObjectPtr.h"
 
 /**
- * The generated code is safe to read aloud and type: six characters, none of them look-alikes (no 0/O, 1/I/L, 8/B), and two codes in a row are not the same.
+ * The generated code is safe to read aloud and type: six characters with no look-alikes (0, O, 1, I, L and B are left out), and two codes in a row differ.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinCodeAlphabetTest, "EasySession.JoinCode.GeneratedCodeIsReadable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinCodeAlphabetTest::RunTest(const FString& Parameters)
@@ -243,7 +243,8 @@ bool FEasySessionWaitForJoinCodeRun::Update()
  * The whole life of a join code against a hidden session.
  * It is advertised and readable by the host, invisible to a normal search, and preserved by a read-modify-write update.
  * A code search then previews it, and that result joins like any other.
- * The join itself fails on address resolve, which is what proves the previewed session was real rather than skipped.
+ * The join itself fails on address resolve, which proves the previewed session was real rather than skipped.
+ * A code no session advertises finds nothing.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinCodeTest, "EasySession.JoinCode.CodeOpensAHiddenSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinCodeTest::RunTest(const FString& Parameters)

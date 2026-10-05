@@ -203,7 +203,7 @@ namespace EasySession
 	/** Custom session setting key holding the shareable join code. Empty when the host advertises none. */
 	EASYSESSION_API extern const FName SettingKey_JoinCode;
 
-	/** Make a six character join code from an alphabet without look-alike characters (no 0/O, 1/I/L, 8/B). */
+	/** Make a six character join code from an alphabet without look-alike characters (no 0, O, 1, I, L or B). */
 	EASYSESSION_API FString GenerateJoinCode();
 
 	/**

@@ -24,7 +24,7 @@ class UEasySessionTestEventListener : public UObject
 
 public:
 
-	/** How many times OnSessionSettingsChanged fired, so a test can prove the dedup guard holds. */
+	/** How many times OnSessionSettingsChanged fired, so a test can prove a repeated settings payload does not fire it again. */
 	UPROPERTY()
 	int32 SettingsChangedBroadcasts = 0;
 
@@ -71,7 +71,10 @@ public:
 		}
 	}
 
-	/** Everything seen from the subsystem's matchmaking events, in arrival order. The once-a-second updates are kept out. They go to MatchmakingElapsedSeen. */
+	/**
+	 * Everything seen from the subsystem's matchmaking events, in arrival order.
+	 * OnMatchmakingUpdated is kept out, both the once-a-second broadcasts and the ones fired on every state change, and goes to MatchmakingElapsedSeen.
+	 */
 	UPROPERTY()
 	TArray<FString> MatchmakingJournal;
 

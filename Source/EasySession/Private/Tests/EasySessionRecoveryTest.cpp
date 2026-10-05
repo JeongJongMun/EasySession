@@ -34,7 +34,7 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("No pending info initially"), Subsystem->HasPendingDisconnectInfo());
 
 	// Record a disconnect.
-	// There is no session and no menu map configured, so the recovery flow only stores the info.
+	// There is no session, so the recovery flow stores the info and requests the return to the menu.
 	Subsystem->HandleDisconnect(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("First reason")));
 	TestTrue(TEXT("Pending after first notify"), Subsystem->HasPendingDisconnectInfo());
 
@@ -74,7 +74,7 @@ namespace EasySessionSecondDisconnectTest
 		bool bAutoReturnWasEnabled = true;
 	};
 
-	/** Builds host params that create a named session without opening a server. */
+	// Build host params for a named session, which opens no listen server because the test game instance skips the host travel.
 	static FEasySessionHostParams MakeParams(const TCHAR* DisplayName)
 	{
 		FEasySessionHostParams Params;
@@ -129,7 +129,7 @@ bool FEasySessionWaitForSecondDisconnect::Update()
 			}
 			CurrentTest->TestTrue(TEXT("Reason is pending and deliberately left unconsumed"), Subsystem->HasPendingDisconnectInfo());
 
-			// Join another host.
+			// Create a second session, which stands in for joining another host.
 			// Nothing consumed the first reason, which is what a project that never shows the popup looks like.
 			Subsystem->CreateSession(MakeParams(TEXT("EasySession Second Host")), FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
@@ -412,8 +412,8 @@ bool FEasySessionWaitForTravelFailure::Update()
  * A failed server travel leaves the host's world, session and connected players exactly where they were.
  * The engine only clears the pending URL.
  * Treating it as a disconnect destroyed a live session over a map name typo.
- * The host now keeps the session and receives the failure through On Session Failure.
- * A client still cleans up, because its travel failure really does mean it never reached the host.
+ * The host keeps the session and receives the failure through OnSessionFailure.
+ * A client still destroys its session, because its travel failure means it never reached the host.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionTravelFailureTest, "EasySession.Recovery.HostKeepsSessionOnTravelFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)

@@ -10,7 +10,7 @@
 /**
  * Port 0 detection.
  * The cases that matter are the ones where the string cannot be read with certainty.
- * Those must report "no problem", because a wrong complaint refuses a join that would have worked.
+ * Those must return false, because a false positive refuses a join that would have worked.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAddressZeroPortTest, "EasySession.Address.HasZeroPort", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAddressZeroPortTest::RunTest(const FString& Parameters)

@@ -89,7 +89,8 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 				FEasySessionTestAccess::GetOpenPublicConnections(*Subsystem), 4 - Registered);
 
 			// Raise the cap.
-			// The engine's UpdateSession does not touch the open slot count, so without the plugin's recompute this would show a player that never joined.
+			// The engine's UpdateSession does not touch the open slot count.
+			// Without the recompute in FEasySessionHost::OnSettingsUpdated, two slots would stay taken.
 			FEasySessionSettings Raised = Subsystem->GetSessionSettings();
 			Raised.MaxPlayers = 6;
 			State->Step = EStep::AwaitingRaise;

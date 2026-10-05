@@ -22,10 +22,10 @@ namespace EasySessionRequestFlowTest
 		/** The result the requester's delegate received. */
 		TOptional<EEasySessionResult> MatchmakingResult;
 
-		/** Whether Is Matchmaking Running was still true inside the requester's delegate. */
+		/** Was IsMatchmakingRunning still true inside the requester's delegate. */
 		bool bRunningInsideCompletion = true;
 
-		/** Whether Is Busy was still true inside the requester's delegate. */
+		/** Was IsBusy still true inside the requester's delegate. */
 		bool bBusyInsideCompletion = true;
 
 		double StartTime = 0.0;
@@ -63,9 +63,10 @@ bool FEasySessionWaitCanceledMatchmaking::Update()
 
 /**
  * Matchmaking and the friend search are requests like Create and Join.
- * A queued matchmaking makes the subsystem busy, names the activity, appears on the status line and refuses a second run.
+ * A queued matchmaking makes the subsystem busy, sets the activity to Matchmaking, is listed by GetQueueStatus and refuses a second run.
  * A friend search on NULL is refused inside the call, so it leaves the subsystem idle.
- * Both stop counting as running before their completion is delivered, and a canceled matchmaking that has not started leaves the queue inside the cancel.
+ * Both stop counting as running before the requester is notified.
+ * A matchmaking canceled before the queue starts it completes with Canceled, and no policy or activity remains afterward.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRequestFlowTest, "EasySession.Subsystem.RequestsDriveBusyAndActivity", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionRequestFlowTest::RunTest(const FString& Parameters)

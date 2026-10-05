@@ -14,7 +14,7 @@
 
 namespace EasySessionJoinFromSessionTest
 {
-	/** Maximum time to wait for each step before failing the test. */
+	// Maximum time to wait for each step before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
 	/** Which join from inside a session a test runs. */
@@ -23,7 +23,7 @@ namespace EasySessionJoinFromSessionTest
 		/** The host's reservation beacon approves the join. */
 		Approved,
 
-		/** No reservation beacon answers the join. */
+		/** The session to join advertises no reservation beacon. */
 		HostCannotBeAsked,
 
 		/** The joining player hosts a match in progress. */
@@ -49,7 +49,7 @@ namespace EasySessionJoinFromSessionTest
 		double StartTime = 0.0;
 	};
 
-	/** @return Whether the step timed out, reporting it and taking the game instance down when it did. */
+	// Whether the step timed out. Reports the error and destroys the game instance when it did.
 	bool TimedOut(TSharedPtr<FTestState> State, const TCHAR* What)
 	{
 		if (FPlatformTime::Seconds() - State->StartTime <= TimeoutSeconds)
@@ -62,7 +62,7 @@ namespace EasySessionJoinFromSessionTest
 		return true;
 	}
 
-	/** Create a session this test can leave or join, named after the step that needs it. */
+	// Create a session with this display name, as the join target or as the session the join starts from.
 	void CreateSession(UEasySessionSubsystem& Subsystem, const TCHAR* DisplayName)
 	{
 		FEasySessionHostParams HostParams;
@@ -72,7 +72,8 @@ namespace EasySessionJoinFromSessionTest
 		Subsystem.CreateSession(HostParams);
 	}
 
-	/** Start the join of the target session. The approved case then waits to approve it. */
+	// Start the join of the target session.
+	// The approved case then waits to approve it.
 	void StartJoin(TSharedPtr<FTestState> State, UEasySessionSubsystem& Subsystem)
 	{
 		State->CurrentSessionId = FEasySessionTestAccess::GetCurrentSessionIdString(Subsystem);
@@ -88,7 +89,7 @@ namespace EasySessionJoinFromSessionTest
 		State->StartTime = FPlatformTime::Seconds();
 	}
 
-	/** Check what the finished join left behind, for the case this test runs. */
+	// Check the result and the session state of the finished join, for the case this test runs.
 	void CheckJoinResult(const FTestState& State, UEasySessionSubsystem& Subsystem)
 	{
 		FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
@@ -99,7 +100,7 @@ namespace EasySessionJoinFromSessionTest
 			CurrentTest->TestEqual(TEXT("It leaves the current session and fails on the address instead"), Result, EEasySessionResult::ResolveFailure);
 			CurrentTest->TestFalse(TEXT("No session is left behind"), Subsystem.IsInSession());
 
-			// A player who left a session for a join that then failed has no map to stay on, so the request travels to the menu.
+			// A player who destroyed their session for a join that then failed has no map to stay on, so the request travels to the menu.
 			CurrentTest->TestTrue(TEXT("The trip to the menu is on its way"), Subsystem.IsBusy());
 			return;
 		}
@@ -137,7 +138,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 				return true;
 			}
 
-			// The approved case asks a reservation beacon first, which only a session with the reservations key does.
+			// The approved case asks a reservation beacon first, and a join asks one only for a session that advertises the reservations key.
 			if (State->Case == ECase::Approved)
 			{
 				State->TargetResult.NativeResult.Session.SessionSettings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineService);
@@ -223,7 +224,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 				return TimedOut(State, TEXT("the join"));
 			}
 
-			// The approved case leaves its session, so it waits until the session is gone.
+			// The approved case destroys its session, so the test waits until the session is gone.
 			if (State->Case == ECase::Approved && Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the current session to be left"));
@@ -281,8 +282,8 @@ bool EasySessionJoinFromSessionTest::Begin(FAutomationTestBase& Test, ECase Case
 }
 
 /**
- * Joining from inside another session leaves that session once the host approved the join, rather than refusing it.
- * One node covers both cases, which is why an accepted invite needs no second node and no "may leave" flag.
+ * Joining from inside another session destroys that session once the host approved the join, rather than refusing it.
+ * JoinSession covers both cases, so an accepted invite needs no second function and no flag that allows destroying the current session.
  *
  * The target session is unreachable on purpose: created without listening, it advertises this process's address with port 0.
  * Its info is copied into a search result before it is destroyed, so the session the player then holds has a different session id.
@@ -295,8 +296,8 @@ bool FEasySessionJoinFromSessionTest::RunTest(const FString& Parameters)
 }
 
 /**
- * A player in a session keeps it when no reservation beacon answers the join.
- * Leaving first and being refused on arrival would drop that player from a session the join never replaced.
+ * A player in a session keeps it when the join cannot ask a reservation beacon.
+ * Destroying the session first and being refused on arrival would drop that player from a session the join never replaced.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinUnaskedTest, "EasySession.Join.StaysWhenTheHostCannotBeAsked", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinUnaskedTest::RunTest(const FString& Parameters)
@@ -305,8 +306,8 @@ bool FEasySessionJoinUnaskedTest::RunTest(const FString& Parameters)
 }
 
 /**
- * The host of a match in progress is refused, because a leaving host takes its session with it.
- * One join would end the match for every player in it.
+ * The host of a match in progress is refused, because the join would destroy the host's session.
+ * That would end the match for every player in it.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinFromMatchTest, "EasySession.Join.AHostStaysInItsMatchInProgress", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinFromMatchTest::RunTest(const FString& Parameters)

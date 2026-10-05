@@ -92,8 +92,8 @@ bool FEasySessionWaitForRegionRun::Update()
 
 		case 1:
 		{
-			// One search case per pass.
-			// Start the find, feed it the crafted result once it is actually running (the queue executes on its own tick), then judge what it listed.
+			// One search case at a time.
+			// Start the find, complete it with the crafted result once it runs (the queue starts it on a later tick), then check what it listed.
 			if (!State->bFindStarted)
 			{
 				FEasySessionSearchParams Params;

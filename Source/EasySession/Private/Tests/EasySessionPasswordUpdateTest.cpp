@@ -169,7 +169,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 
 /**
  * A host must be able to set and remove the password of a running session.
- * Both halves of a password have to move together: the flag searching players see, and the value arriving players are checked against.
+ * The flag searching players see and the value arriving players are checked against must change together.
  * Update used to write neither, reporting Success while the session stayed open.
  *
  * The read-modify-write assertions guard the other half of that contract.

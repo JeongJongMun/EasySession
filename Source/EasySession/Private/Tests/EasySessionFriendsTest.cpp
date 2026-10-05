@@ -14,8 +14,8 @@
 #include "UObject/StrongObjectPtr.h"
 
 /**
- * Friends test on the NULL subsystem: the read must fail gracefully with a clear result instead of crashing or hanging.
- * The invite helpers must report unsupported.
+ * Friends test on the NULL subsystem: the read must complete with NotSupportedByService inside the call instead of crashing or hanging.
+ * ShowInviteUI must report NotSupportedByService, and an invite or a profile request without a friend id must report InvalidParams.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendsUnsupportedTest, "EasySession.Friends.NullSubsystemGracefulFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
@@ -51,7 +51,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
 
 	// The friend session search starts with the same read, so it must fail the same way.
-	// It is refused inside the call, and it no longer counts as running when the caller receives the result.
+	// It is refused inside the call, so no FriendSessions request is queued when the caller receives the result.
 	bool bSessionsCallbackFired = false;
 	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
 		[this, &bSessionsCallbackFired, Subsystem](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)

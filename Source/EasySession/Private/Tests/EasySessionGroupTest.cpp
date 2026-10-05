@@ -20,7 +20,7 @@
 
 namespace EasySessionGroupTest
 {
-	/** Maximum time to wait for each step before failing the test. */
+	// Maximum time to wait for each step before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
 	struct FTestState
@@ -31,7 +31,7 @@ namespace EasySessionGroupTest
 		double StartTime = 0.0;
 	};
 
-	/** @return Whether the phase timed out, reporting it and taking the game instance down when it did. */
+	// Whether the phase timed out. Reports the error and destroys the game instance when it did.
 	bool TimedOut(TSharedPtr<FTestState> State, const TCHAR* What)
 	{
 		if (FPlatformTime::Seconds() - State->StartTime <= TimeoutSeconds)
@@ -44,7 +44,7 @@ namespace EasySessionGroupTest
 		return true;
 	}
 
-	/** Move to the next phase and restart its timeout. */
+	// Move to the next phase and restart its timeout.
 	void NextPhase(TSharedPtr<FTestState> State)
 	{
 		++State->Phase;
@@ -61,7 +61,7 @@ namespace EasySessionGroupTest
 		return HostParams;
 	}
 
-	/** The callback that stores a request's result for the latent command. */
+	// The callback that stores a request's result for the latent command.
 	FEasySessionCompleteDelegate MakeCallback(TSharedPtr<FTestState> State)
 	{
 		return FEasySessionCompleteDelegate::CreateLambda([State](EEasySessionResult Result, const FString&)
@@ -70,7 +70,7 @@ namespace EasySessionGroupTest
 		});
 	}
 
-	/** A one-pass run that would host a session of its own when it finds none. */
+	// Start a matchmaking run with one search pass, which would host a session of its own when it finds none.
 	void StartMatchmaking(TSharedPtr<FTestState> State, UEasySessionSubsystem& Subsystem)
 	{
 		FEasyMatchmakingParams Params;
@@ -82,7 +82,7 @@ namespace EasySessionGroupTest
 		Subsystem.StartMatchmaking(Params, nullptr, MakeCallback(State));
 	}
 
-	/** An id for a made-up player, which the NULL subsystem creates for any name. */
+	// An id for a made-up player, which the NULL subsystem creates for any name.
 	FUniqueNetIdRepl MakePlayerId(UWorld* World, const TCHAR* PlayerName)
 	{
 		const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
@@ -145,11 +145,11 @@ bool FEasySessionHostMatchmakingStep::Update()
 
 			if (const TSharedPtr<FEasySessionMatchmakingRequest> Run = FEasySessionTestAccess::GetMatchmakingRequest(*Subsystem))
 			{
-				// No player joined this headless session, so the group is the host alone.
+				// No player joined this headless session, so the group is empty and the run needs one open slot for the host.
 				CurrentTest->TestEqual(TEXT("It looks for room for the host and its group"), FEasySessionTestAccess::GetMatchmakingParams(*Run).Search.MinOpenSlots, 1);
 			}
 
-			// The host's own session comes back from the search, and is no candidate.
+			// The host's own session comes back from the search, and is never tried.
 			// The run completes inside this call, so the phase moves on first.
 			NextPhase(State);
 			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem) });
@@ -212,8 +212,8 @@ bool FEasySessionHostMatchmakingStep::Update()
 
 /**
  * A host whose match has not started may matchmake from its own session, and each join then takes the session's players along.
- * The run looks for room for the whole group, skips the host's own session, and never hosts a second session when it finds none.
- * The host of a match in progress is still refused, because its leaving would end the match for everyone.
+ * The run searches for open slots for the host and its group, skips the host's own session, and never hosts a second session when it finds none.
+ * The host of a match in progress is still refused, because the join would destroy its session and end the match for every player.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostMatchmakingTest, "EasySession.Group.AHostMatchmakesFromItsSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionHostMatchmakingTest::RunTest(const FString& Parameters)
@@ -319,7 +319,7 @@ bool FEasySessionKickedPlayerStep::Update()
 
 /**
  * A kicked player is refused for as long as the session they were kicked from exists, and a new session lets them in again.
- * A group with a kicked player in it is refused as a whole, so its host never leaves that player behind.
+ * A group with a kicked player in it is refused as a whole, because the whole group travels on one reservation.
  * Only the host kicks, and only a connected remote player.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionKickedPlayerTest, "EasySession.Group.AKickedPlayerStaysOutUntilTheSessionEnds", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -339,7 +339,7 @@ bool FEasySessionKickedPlayerTest::RunTest(const FString& Parameters)
 
 namespace EasySessionGroupTest
 {
-	/** Spawn a PlayerState in the world, the way a login or a PlayerState swap in a seamless travel does. */
+	// Spawn a PlayerState in the world, the way a login or a PlayerState swap in a seamless travel does.
 	APlayerState* SpawnPlayerState(UWorld* World)
 	{
 		FActorSpawnParameters SpawnParams;
@@ -347,7 +347,7 @@ namespace EasySessionGroupTest
 		return World->SpawnActor<APlayerState>(SpawnParams);
 	}
 
-	/** @return The replicated player component on this PlayerState, or null. */
+	// The replicated player component on this PlayerState, or null when it has none.
 	UEasySessionPlayerComponent* GetPlayerComponent(const APlayerState* PlayerState)
 	{
 		UEasySessionPlayerComponent* Component = PlayerState ? PlayerState->FindComponentByClass<UEasySessionPlayerComponent>() : nullptr;
@@ -373,7 +373,7 @@ bool FEasySessionPlayerComponentStep::Update()
 				return TimedOut(State, TEXT("the create"));
 			}
 
-			// A seamless travel swaps the PlayerStates before the host sets the new world up.
+			// A seamless travel swaps the PlayerStates before the host spawns its world actors.
 			APlayerState* AlreadyHere = SpawnPlayerState(World);
 			CurrentTest->TestNull(TEXT("A PlayerState gets no component before the host sets the world up"), GetPlayerComponent(AlreadyHere));
 
@@ -413,7 +413,7 @@ bool FEasySessionPlayerComponentStep::Update()
 
 /**
  * The host adds a player component to every PlayerState of its world, which carries a message to one player and the player's ready state.
- * A PlayerState spawned before the host set the world up gets one too, because a seamless travel swaps the PlayerStates that early.
+ * A PlayerState spawned before the host spawned its world actors gets one too, because a seamless travel swaps the PlayerStates that early.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPlayerComponentTest, "EasySession.Group.EveryPlayerStateGetsAPlayerComponent", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionPlayerComponentTest::RunTest(const FString& Parameters)

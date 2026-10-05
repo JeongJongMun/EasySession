@@ -25,7 +25,7 @@ namespace EasySessionDiagnosticsTest
 
 /**
  * Diagnostics smoke test: the checks must run to completion on any subsystem (NULL or Steam) without crashing, including a null world.
- * Logging whatever they returned must survive the same cases.
+ * Logging the report of the standalone world must not crash either.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsSmokeTest, "EasySession.Diagnostics.RunsToCompletion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
@@ -48,7 +48,7 @@ bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
 /**
  * The findings follow the config.
  * The online subsystem mismatch appears exactly when the configured online subsystem is not the one that loaded, and its causes name bEnabled=false.
- * That knowledge moved there when the always-false bEnabled check in DiagnoseSteam was removed.
+ * DiagnoseSteam does not check bEnabled, so the causes of the mismatch are where the report names it.
  * The checks inside DiagnoseSteam itself stay untested here: they only run when Steam is the active subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsFindingsTest, "EasySession.Diagnostics.FindingsFollowTheConfig", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

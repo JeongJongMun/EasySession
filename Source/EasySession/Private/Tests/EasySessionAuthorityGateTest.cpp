@@ -65,7 +65,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 	switch (State->Phase)
 	{
 		case 0:
-			// Baseline first: while this process holds the session it created, match control must keep working exactly as before.
+			// Baseline first: while this process holds the session it created, StartSession and EndSession must complete with Success.
 			if (!State->CreateResult.IsSet())
 			{
 				return false;
@@ -119,7 +119,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 				return false;
 			}
 
-			// The point of the test: this used to complete with Success while only flipping the local session copy, starting nothing.
+			// The point of the test: this used to complete with Success while it only changed the state of the local session copy and started nothing.
 			CurrentTest->TestEqual(TEXT("Start without authority is refused"),
 				State->StartWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
 
@@ -144,7 +144,8 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			CurrentTest->TestFalse(TEXT("ServerTravel without authority is refused"),
 				Subsystem->ServerTravel(TEXT("ES13_NoSuchMap")));
 
-			// Leaving a session another process created must stay allowed, because that is how a client leaves, so this call itself is also an assertion.
+			// DestroySession on a session another process created must stay allowed, because that is how a client destroys its session.
+			// The last phase waits until no session exists, so a refused destroy fails the test on the timeout.
 			Subsystem->DestroySession();
 			State->Phase = 5;
 			return false;

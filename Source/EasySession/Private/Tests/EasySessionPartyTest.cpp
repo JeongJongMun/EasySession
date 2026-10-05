@@ -18,7 +18,7 @@
 
 namespace EasySessionPartyTest
 {
-	/** Maximum time to wait for each step before failing the test. */
+	// Maximum time to wait for each step before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
 	struct FTestState
@@ -39,7 +39,7 @@ namespace EasySessionPartyTest
 		return Online::GetIdentityInterface(State->GameInstance->GetWorld());
 	}
 
-	/** Log out the player the test logged in, and take the game instance down. */
+	// Log out the player the test logged in, and destroy the game instance.
 	void End(TSharedPtr<FTestState> State)
 	{
 		const IOnlineIdentityPtr Identity = GetIdentity(State);
@@ -50,7 +50,7 @@ namespace EasySessionPartyTest
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	}
 
-	/** @return Whether the phase timed out, reporting it and ending the test when it did. */
+	// Whether the phase timed out. Reports the error and ends the test when it did.
 	bool TimedOut(TSharedPtr<FTestState> State, const TCHAR* What)
 	{
 		if (FPlatformTime::Seconds() - State->StartTime <= TimeoutSeconds)
@@ -63,7 +63,7 @@ namespace EasySessionPartyTest
 		return true;
 	}
 
-	/** Move to the next phase and restart its timeout. */
+	// Move to the next phase and restart its timeout.
 	void NextPhase(TSharedPtr<FTestState> State)
 	{
 		++State->Phase;
@@ -72,7 +72,7 @@ namespace EasySessionPartyTest
 		State->StartTime = FPlatformTime::Seconds();
 	}
 
-	/** The callback that stores a request's result for the latent command. */
+	// The callback that stores a request's result for the latent command.
 	FEasySessionCompleteDelegate MakeCallback(TSharedPtr<FTestState> State)
 	{
 		return FEasySessionCompleteDelegate::CreateLambda([State](EEasySessionResult Result, const FString&)
@@ -81,7 +81,7 @@ namespace EasySessionPartyTest
 		});
 	}
 
-	/** The callback that stores a search's result and how many sessions it kept. */
+	// The callback that stores a search's result and how many sessions it kept.
 	FEasySessionFindCompleteDelegate MakeFindCallback(TSharedPtr<FTestState> State)
 	{
 		return FEasySessionFindCompleteDelegate::CreateLambda([State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
@@ -109,14 +109,14 @@ namespace EasySessionPartyTest
 		return Settings;
 	}
 
-	/** An id for a made-up player, which the NULL subsystem creates for any name. */
+	// An id for a made-up player, which the NULL subsystem creates for any name.
 	FUniqueNetIdRepl MakePlayerId(TSharedPtr<FTestState> State, const TCHAR* PlayerName)
 	{
 		const IOnlineIdentityPtr Identity = GetIdentity(State);
 		return FUniqueNetIdRepl(Identity.IsValid() ? Identity->CreateUniquePlayerId(PlayerName) : nullptr);
 	}
 
-	/** @return The integer the party session advertises under this key, or -1 when it advertises none. */
+	// The integer the party session advertises under this key, or -1 when it advertises none.
 	int32 GetPartySettingInt(UEasySessionSubsystem& Subsystem, FName Key)
 	{
 		const FOnlineSessionSearchResult Result = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(Subsystem, NAME_PartySession);
@@ -125,12 +125,9 @@ namespace EasySessionPartyTest
 		return Value;
 	}
 
-	/**
-	 * Start a game instance with a logged in local player, because a party needs a leader with an id.
-	 * A headless test world starts with nobody logged in.
-	 *
-	 * @return The subsystem, or null when the test cannot run.
-	 */
+	// Start a game instance with a logged in local player, because a party needs a leader with an id.
+	// A headless test world starts with nobody logged in.
+	// Returns the subsystem, or null when the test cannot run.
 	UEasySessionSubsystem* Begin(TSharedPtr<FTestState> State, FAutomationTestBase& Test)
 	{
 		State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
@@ -238,7 +235,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 				return TimedOut(State, TEXT("the game session search"));
 			}
 
-			// A search for game sessions that the party answers, as NULL does, which ignores the query settings.
+			// The search returns the party, as a NULL search does, because NULL ignores the query settings.
 			NextPhase(State);
 			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession) });
 			return false;
@@ -346,7 +343,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 }
 
 /**
- * A party is created with the local player as its leader and only member, and leaving it closes the party beacon and reports Left.
+ * A party is created with the local player as its leader and only member, and LeaveParty closes the party beacon and reports Left.
  * A second party, a party of one and a party inside a game session are refused.
  * A search for game sessions skips the party even when the online subsystem returns it.
  */
@@ -459,7 +456,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 				return TimedOut(State, TEXT("the party search"));
 			}
 
-			// The party and a game session both answer, as they do on NULL, which ignores the query settings.
+			// The search returns the party and a game session, as a NULL search does, because NULL ignores the query settings.
 			FOnlineSessionSearchResult Party = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession);
 			FOnlineSessionSearchResult GameSession = Party;
 			GameSession.Session.SessionSettings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineService);
@@ -686,8 +683,8 @@ bool FEasySessionPartyMoveStep::Update()
 
 /**
  * A party member cannot create, join or matchmake alone, and the leader brings the whole party.
- * The leader's matchmaking looks for room for every member, and a session too small for the party is refused.
- * The session the leader creates reserves a place for every member and closes the party.
+ * The leader's matchmaking searches for open slots for every member, and a session too small for the party is refused.
+ * The session the leader creates holds a reservation for every member and closes the party.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyMoveTest, "EasySession.Party.TheLeaderBringsTheParty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionPartyMoveTest::RunTest(const FString& Parameters)
@@ -798,7 +795,7 @@ bool FEasySessionPartyRestoreStep::Update()
 				return TimedOut(State, TEXT("the restored party leave"));
 			}
 
-			// A member of a leader who stays in the match longer, which nothing in this world answers.
+			// The local player was a member of a leader who is still in the match, so no party of that leader exists in this world.
 			FEasySessionTestAccess::SetLastPartyLeader(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyAbsentLeader")));
 			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
 			CurrentTest->TestTrue(TEXT("A member looks for the leader's party"), Subsystem->IsRestoringParty());
@@ -839,7 +836,7 @@ bool FEasySessionPartyRestoreStep::Update()
 /**
  * A map change destroys the party beacon, and the leader starts it again for the members to log in again.
  * The party that entered a game session comes back in the next map without one, and admits its members again.
- * A party the player creates while a member looks for the leader stops that restore.
+ * A party the player creates while searching for the leader's party stops that restore.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyRestoreTest, "EasySession.Party.ThePartyComesBackAfterAMatch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionPartyRestoreTest::RunTest(const FString& Parameters)

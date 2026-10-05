@@ -16,7 +16,7 @@
 
 namespace EasySessionSearchFilterTest
 {
-	/** Maximum time to wait for each step before failing the test. */
+	// Maximum time to wait for each step before failing the test.
 	static constexpr double TimeoutSeconds = 20.0;
 
 	/** The code the search asks for, typed in lower case the way a player might. */
@@ -32,7 +32,7 @@ namespace EasySessionSearchFilterTest
 		double StartTime = 0.0;
 	};
 
-	/** @return Whether the step timed out, reporting it and taking the game instance down when it did. */
+	// Whether the step timed out. Reports the error and destroys the game instance when it did.
 	bool TimedOut(TSharedPtr<FTestState> State, const TCHAR* What)
 	{
 		if (FPlatformTime::Seconds() - State->StartTime <= TimeoutSeconds)
@@ -45,7 +45,7 @@ namespace EasySessionSearchFilterTest
 		return true;
 	}
 
-	/** An id for a made-up host, which the NULL subsystem creates for any name. */
+	// An id for a made-up host, which the NULL subsystem creates for any name.
 	FUniqueNetIdRepl MakeHostId(UWorld* World)
 	{
 		const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
@@ -161,9 +161,9 @@ bool FEasySessionSearchFilterStep::Update()
 }
 
 /**
- * A search for one host or one join code filters on the online service, not only on the results it returned.
- * The online service returns a limited number of sessions, so on a busy one the session being looked for could be left out of them.
- * The session advertises its owner for the owner filter to match, and the owner key stays out of Custom Settings like every key the plugin writes.
+ * A search for one host or one join code filters inside the online subsystem, not only on the results it returned.
+ * The online subsystem returns a limited number of sessions, so with many sessions the searched session could be missing from them.
+ * The session advertises its owner for the owner filter to match, and the owner key stays out of CustomSettings like every key the plugin writes.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionSearchFilterTest, "EasySession.Search.OneSessionQueriesFilterOnTheService", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionSearchFilterTest::RunTest(const FString& Parameters)

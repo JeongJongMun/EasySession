@@ -94,8 +94,8 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 }
 
 /**
- * Server authority must not depend on there being a hosting player.
- * A dedicated server has no local player, yet that process is still the server of the session it created.
+ * Session authority must not depend on there being a hosting player.
+ * A dedicated server has no local player, yet that process is still the host of the session it created.
  * The authority is FNamedOnlineSession's bHosting, which FEasySessionHost sets when the create completes, so no local player is involved.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDedicatedAuthorityTest, "EasySession.Authority.ServerKeepsAuthorityWithoutHostingPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -115,7 +115,7 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 	}
 
 	// Destroying the session ends with a travel to the menu, which a headless test world has no use for.
-	// Turning it off leaves the session cleanup, which is what this test checks.
+	// DestroySessionForEveryone calls ReturnToMenu whatever this setting says, so turning it off does not stop that travel.
 	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
 	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
 	Settings->bAutoReturnToMenuOnDisconnect = false;
