@@ -18,7 +18,9 @@ public class EasySession : ModuleRules
 			"CoreOnline",
 			"Engine",
 			"OnlineSubsystem",
-			"DeveloperSettings"
+			"DeveloperSettings",
+			// UEasySessionWidget derives from UUserWidget in a public header.
+			"UMG"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new string[]
