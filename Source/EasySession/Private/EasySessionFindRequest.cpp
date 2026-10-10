@@ -28,7 +28,7 @@ void FEasySessionFindRequest::Execute()
 {
 	if (!SearchParams.IsValid())
 	{
-		Complete(EEasySessionResult::InvalidParams, TEXT("Search params are invalid: Max Results must be above 0, and Search Mode and Search Target Id must be set together."));
+		Complete(EEasySessionResult::InvalidParams, TEXT("Search params are invalid: Max Results must be above 0."));
 		return;
 	}
 
@@ -41,7 +41,7 @@ void FEasySessionFindRequest::Execute()
 		SearchParams.bIncludeInProgressSessions = true;
 	}
 
-	if (SearchParams.SearchMode == EEasySessionSearchMode::ByFriend)
+	if (SearchParams.FriendId.IsValid())
 	{
 		FindFriendSession();
 		return;
@@ -127,7 +127,7 @@ void FEasySessionFindRequest::FindFriendSession()
 
 	// A refused call can complete the request inside it, before it returns.
 	// Only a false return while the request is still running is a failure.
-	if (!Sessions->FindFriendSession(0, *SearchParams.SearchTargetId.GetUniqueNetId()) && IsRunning())
+	if (!Sessions->FindFriendSession(0, *SearchParams.FriendId.GetUniqueNetId()) && IsRunning())
 	{
 		Complete(EEasySessionResult::SearchFailure, TEXT("FindFriendSession request was rejected by the online subsystem."));
 	}

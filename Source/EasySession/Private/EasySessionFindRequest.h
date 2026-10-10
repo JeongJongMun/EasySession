@@ -10,7 +10,7 @@ class FOnlineSessionSearchResult;
 
 /**
  * FEasySessionFindRequest searches for sessions and filters what the online subsystem returns.
- * EEasySessionSearchMode::ByFriend asks for the one session a friend is in, which the online subsystem completes through its own delegate.
+ * A search with a Friend Id asks for the one session that friend is in, which the online subsystem completes through its own delegate.
  *
  * The subsystem creates it for FindSessions and FindParties.
  * FEasySessionParty creates it to search for the leader's party when it restores the party.

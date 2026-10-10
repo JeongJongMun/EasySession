@@ -10,20 +10,6 @@
 struct FEasySessionSearchResult;
 
 /**
- * Which call a search makes to the online subsystem.
- * Default describes the sessions to look for; the others name one exact session and read Search Target Id instead.
- */
-UENUM(BlueprintType)
-enum class EEasySessionSearchMode : uint8
-{
-	/** Search for sessions matching the filters. */
-	Default,
-
-	/** Ask for the session this friend is in. */
-	ByFriend UMETA(DisplayName = "By Friend")
-};
-
-/**
  * Result of an EasySession request.
  * Always check against Success.
  * The other values describe why a request failed.
@@ -481,16 +467,12 @@ struct EASYSESSION_API FEasySessionSearchParams
 	bool bIncludeHiddenSessions = false;
 
 	/**
-	 * Which call the search makes.
-	 * By Friend asks for the session the friend in Search Target Id is in, and needs an online subsystem with friends, such as Steam.
+	 * Ask for the session this friend is in instead of searching.
+	 * It needs an online subsystem with friends such as Steam, and fails with Not Supported By Service on NULL (LAN).
 	 * Max Results and LAN Query are then ignored, and the filters above still apply.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	EEasySessionSearchMode SearchMode = EEasySessionSearchMode::Default;
-
-	/** The friend the mode above asks about. Ignored while the mode is Default. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	FUniqueNetIdRepl SearchTargetId;
+	FUniqueNetIdRepl FriendId;
 
 	/**
 	 * Only return sessions hosted by this player.
@@ -507,8 +489,8 @@ struct EASYSESSION_API FEasySessionSearchParams
 	/** @return Whether these params can run as a search. */
 	bool IsValid() const;
 
-	/** @return Whether these params name one specific session (a search mode, an owner or a join code) rather than describing the sessions to look for. */
-	bool IsSpecificSessionQuery() const { return SearchMode != EEasySessionSearchMode::Default || OwnerId.IsValid() || !JoinCode.IsEmpty(); }
+	/** @return Whether these params name one specific session (a friend, an owner or a join code) rather than describing the sessions to look for. */
+	bool IsSpecificSessionQuery() const { return FriendId.IsValid() || OwnerId.IsValid() || !JoinCode.IsEmpty(); }
 
 	/** @return Whether this search result passes every filter above. */
 	bool ShouldInclude(const FEasySessionSearchResult& Result) const;
@@ -673,7 +655,7 @@ struct EASYSESSION_API FEasySessionFriend
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsPlayingThisGame = false;
 
-	/** The friend's unique id. Set it as a search's Search Target Id to find the session they are in. */
+	/** The friend's unique id. Set it as a search's Friend Id to find the session they are in. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FUniqueNetIdRepl NativeId;
 

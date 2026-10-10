@@ -246,9 +246,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `Region`과 `bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 지역 절과 참가 코드 절에서 다룹니다.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults`(int), `bLANQuery`, `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `SearchMode`(`EEasySessionSearchMode`), `SearchTargetId`(Unique Net Id), `OwnerId`(Unique Net Id)
+`MaxResults`(int), `bLANQuery`, `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `FriendId`(Unique Net Id), `OwnerId`(Unique Net Id)
 
-이 중 넷은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `SearchMode`는 서비스에 다른 호출을 하도록 바꾸고(By Friend), `SearchTargetId`가 어느 친구인지를 지정합니다. 이때 Max Results와 LAN Query는 무시되고, 필터는 그대로 적용됩니다. By Friend는 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 봅니다.
+이 중 셋은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `FriendId`는 서비스에 다른 호출을 해서 그 친구가 있는 세션을 묻습니다. 이때 Max Results와 LAN Query는 무시되고, 필터는 그대로 적용됩니다. 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 봅니다.
 
 ### 5.4 FEasySessionSearchResult *(읽기 전용)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `bIsParty`, `CustomSettings`
@@ -275,7 +275,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId`(Unique Net Id)
 
 `Read Easy Friends`가 돌려주며, 초대와 프로필 함수에 그대로 넘기면 됩니다.
-`NativeId`를 검색의 `SearchTargetId`에 넣고 `SearchMode`를 By Friend로 두면 그 친구가 있는 세션을 찾습니다.
+`NativeId`를 검색의 `FriendId`에 넣으면 그 친구가 있는 세션을 찾습니다.
 
 ### 5.9 FEasyDisconnectInfo *(읽기 전용)*
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)
@@ -345,15 +345,11 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `Any`에 `NorthAmericaEast`부터 `Oceania`까지 큰 단위의 세계 지역 아홉 개를 더한 열거형입니다. 한 지역 안이면 쾌적한 핑으로 플레이할 수 있도록 나눴습니다. 게임 고유의 분할이 필요하면 `Any`로 두고 `CustomSettings` 키로 필터하세요 ([가이드](Guide-Sessions.ko.md)).
 
-### 6.6 EEasySessionSearchMode
-
-`Default`는 필터가 묘사하는 세션들을 찾습니다. `ByFriend`는 대신 친구 한 명이 있는 세션을 서비스에 물으며, 어느 친구인지는 `SearchTargetId`에서 읽습니다.
-
-### 6.7 EEasySessionActivity
+### 6.6 EEasySessionActivity
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - 플러그인이 지금 하고 있는 일. `Get Easy Session Activity`로 읽습니다. 누가 시작했든 그 일에 이름을 붙이므로, 상태 위젯이 메뉴가 요청한 적 없는 초대 참가나 연결 끊김 복구도 서술할 수 있습니다. `Get Activity Message`가 이를 문장으로 바꿉니다.
 
-### 6.8 EEasyPartyLeaveReason
+### 6.7 EEasyPartyLeaveReason
 
 `OnPartyLeft`의 `Reason`입니다.
 

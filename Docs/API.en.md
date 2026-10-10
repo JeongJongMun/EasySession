@@ -258,9 +258,9 @@ with `Parse Option`. `Region` and `bUseJoinCode` are covered in the guide's
 sections.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults` (int), `bLANQuery`, `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `SearchMode` (`EEasySessionSearchMode`), `SearchTargetId` (Unique Net Id), `OwnerId` (Unique Net Id)
+`MaxResults` (int), `bLANQuery`, `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `FriendId` (Unique Net Id), `OwnerId` (Unique Net Id)
 
-Four of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `SearchMode` picks a different call to the service - By Friend - and `SearchTargetId` says which friend; Max Results and LAN Query are then ignored while the filters still apply. By Friend needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones.
+Three of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `FriendId` makes a different call to the service, asking for the session that friend is in; Max Results and LAN Query are then ignored while the filters still apply. It needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones.
 
 ### 5.4 FEasySessionSearchResult *(read-only)*
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `bIsParty`, `CustomSettings`
@@ -287,7 +287,7 @@ One entry per friend from `Find Easy Friend Sessions`. `Session` is only valid w
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId` (Unique Net Id)
 
 Returned by `Read Easy Friends`; pass one back to the invite and profile functions.
-`NativeId` goes into a search's `SearchTargetId`, with `SearchMode` set to By Friend, to find the session that friend is in.
+`NativeId` goes into a search's `FriendId` to find the session that friend is in.
 
 ### 5.9 FEasyDisconnectInfo *(read-only)*
 `Reason` (`EEasyDisconnectReason`), `ReasonText` (Text)
@@ -357,15 +357,11 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 `Any` plus nine coarse world regions, from `NorthAmericaEast` to `Oceania`, cut so that one region means playable latency. A game that needs its own split leaves this at `Any` and filters with a `CustomSettings` key instead ([guide](Guide-Sessions.en.md#regions)).
 
-### 6.6 EEasySessionSearchMode
-
-`Default` searches for the sessions the filters describe. `ByFriend` asks the service for the session one friend is in instead, reading `SearchTargetId` for which friend.
-
-### 6.7 EEasySessionActivity
+### 6.6 EEasySessionActivity
 
 `None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
 
-### 6.8 EEasyPartyLeaveReason
+### 6.7 EEasyPartyLeaveReason
 
 The `Reason` of `OnPartyLeft`.
 

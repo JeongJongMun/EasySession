@@ -200,12 +200,6 @@ bool FEasySessionHostParams::IsValid() const
 
 bool FEasySessionSearchParams::IsValid() const
 {
-	// The mode and the target id must be set together: one without the other asks about no one or ignores the id.
-	if ((SearchMode != EEasySessionSearchMode::Default) != SearchTargetId.IsValid())
-	{
-		return false;
-	}
-
 	return MaxResults > 0;
 }
 

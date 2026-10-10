@@ -100,8 +100,7 @@ void FEasySessionFriendSessionsRequest::FindNextFriendSession()
 	SearchingFriend = FriendsToSearch.Pop();
 
 	FEasySessionSearchParams SearchParams;
-	SearchParams.SearchMode = EEasySessionSearchMode::ByFriend;
-	SearchParams.SearchTargetId = FriendSessions[SearchingFriend].Friend.NativeId;
+	SearchParams.FriendId = FriendSessions[SearchingFriend].Friend.NativeId;
 	RunSubRequest(MakeShared<FEasySessionFindRequest>(SearchParams,
 		FEasySessionFindCompleteDelegate::CreateSP(this, &FEasySessionFriendSessionsRequest::HandleFriendSessionFindComplete)));
 }
