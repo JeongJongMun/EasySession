@@ -110,17 +110,20 @@ first. See [asking the host first](Guide-Sessions.en.md#asking-the-host-first).
 ```
 [Button Clicked] -> [Start Easy Matchmaking]
                       MatchmakingParams:
+                        Allow Host Fallback = true
                         Host -> Initial Map Name = "/Game/Maps/Lobby"   <- your map here
                       OnSuccess -> (joined the best session, or hosting a new one)
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Matchmaking searches, joins the best session (good ping, fuller sessions first), and hosts a
-new session if nothing is found. Use `Is Easy Session Host` to check which outcome you got.
+Matchmaking searches and joins the best session (good ping, fuller sessions first). With
+**Allow Host Fallback** on, it hosts a new session when nothing is found. Use
+`Is Easy Session Host` to check which outcome you got.
 
-**Leaving Host > Initial Map Name empty** makes the fallback open a listen server on the map this
-player is already on. Called from a menu, that turns the menu into the arena, so fill it in
-most of the time. Turn **Allow Host Fallback** on to host at all - it is off by default.
+**Host > Initial Map Name** is required once Allow Host Fallback is on, because the travel to
+that map is what opens the listen server. With it empty, the node fails with `InvalidParams`
+before the first search. Allow Host Fallback is off by default, so without it matchmaking only
+searches and joins.
 
 ## 6. Test in PIE
 

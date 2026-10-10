@@ -108,17 +108,19 @@
 ```
 [Button Clicked] -> [Start Easy Matchmaking]
                       MatchmakingParams:
+                        Allow Host Fallback = true
                         Host -> Initial Map Name = "/Game/Maps/Lobby"   <- 여기에 본인 맵
                       OnSuccess -> (가장 좋은 세션에 참가했거나, 직접 호스트가 됨)
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Matchmaking는 검색하고, 가장 좋은 세션(핑이 좋고 더 찬 세션 우선)에 참가하고, 없으면 직접 세션을
-만듭니다. 어느 쪽이 됐는지는 `Is Easy Session Host`로 확인합니다.
+Matchmaking는 검색하고, 가장 좋은 세션(핑이 좋고 더 찬 세션 우선)에 참가합니다.
+**Allow Host Fallback**을 켜면 아무것도 없을 때 직접 세션을 만듭니다. 어느 쪽이 됐는지는
+`Is Easy Session Host`로 확인합니다.
 
-**Host > Initial Map Name을 비워두면** 직접 호스트가 될 때 지금 있는 맵에서 리슨 서버를 엽니다.
-메뉴에서 Matchmaking를 부른다면 메뉴 맵이 경기장이 되므로, 대개는 채우는 게 맞습니다. 이
-직접 호스트가 되게 하려면 **Allow Host Fallback**을 켜세요. 기본값은 꺼짐입니다.
+Allow Host Fallback을 켜면 **Host > Initial Map Name**이 필요합니다. 그 맵으로 이동해야 리슨 서버가
+열리기 때문입니다. 비어 있으면 첫 검색 전에 `InvalidParams`로 실패합니다. Allow Host Fallback은
+기본값이 꺼짐이라, 켜지 않으면 검색과 참가만 합니다.
 
 ## 6. PIE로 테스트하기
 
