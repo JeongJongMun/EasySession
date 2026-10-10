@@ -185,6 +185,15 @@ FEasySessionSettings UEasySessionStatics::GetEasySessionSettings(const UObject* 
 	return Subsystem != nullptr ? Subsystem->GetSessionSettings() : FEasySessionSettings();
 }
 
+FEasySessionHostParams UEasySessionStatics::MakeEasySessionHostParamsFromSettings(const FEasySessionSettings& Settings, const FString& InitialMapName, bool bIsLANMatch)
+{
+	FEasySessionHostParams HostParams;
+	static_cast<FEasySessionSettings&>(HostParams) = Settings;
+	HostParams.InitialMapName = InitialMapName;
+	HostParams.bIsLANMatch = bIsLANMatch;
+	return HostParams;
+}
+
 FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

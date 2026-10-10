@@ -208,6 +208,17 @@ public:
 	static FEasySessionSettings GetEasySessionSettings(const UObject* WorldContextObject);
 
 	/**
+	 * Host params that advertise these settings, for Create Easy Session.
+	 * Host Params adds the map and the LAN choice to Settings, and Blueprint cannot copy one struct into the other, so this fills the shared fields.
+	 *
+	 * @param Settings The settings to advertise, for example the ones a settings form returns.
+	 * @param InitialMapName Map the host travels to once the session is created.
+	 * @param bIsLANMatch Host on the local network instead of through the online subsystem.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Session")
+	static FEasySessionHostParams MakeEasySessionHostParamsFromSettings(const FEasySessionSettings& Settings, const FString& InitialMapName, bool bIsLANMatch = false);
+
+	/**
 	 * The join code the current session advertises, or empty when it advertises none.
 	 * Works for every player in the session, so any session member can share the code.
 	 */
