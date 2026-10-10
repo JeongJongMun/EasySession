@@ -26,30 +26,37 @@
 5. 한쪽 창에서 **CREATE SESSION**을 눌러 세션을 만듭니다. 다른 창에서 **FIND SESSIONS**, **SEARCH**, **JOIN** 순서로 누릅니다.
 
 이 예제를 구성하는 위젯은 `/EasySession/Examples/UI/`에 있습니다. 위젯마다 한 가지 일을 맡고
-그 일에 필요한 노드를 직접 부르므로, 하나만 떼어 읽거나 자기 게임으로 복사해 가도 됩니다.
-`WBP_MainMenu`는 화면을 배치하고 전환하는 일만 합니다. 화면 아래 상태 줄은
-`Modules/WBP_SessionStatus`입니다. 플러그인 이벤트를 한 번 바인딩해 두고, 누가 시작했든
-지금 도는 요청을 서술하는 위젯이라 세션 진행을 보여줄 화면 어디에나 올려놓으면 됩니다.
+그 일에 필요한 노드를 직접 부르므로, 아래 표에 적힌 그래프를 열면 그 노드가 바로 보입니다.
+`WBP_MainMenu`는 Widget Switcher에 화면 네 개를 담고 팝업을 띄우는 일만 합니다. 화면 아래 상태 줄은
+`Modules/WBP_SessionStatus`입니다. 누가 시작했든 지금 도는 요청을 서술하는 위젯이라 세션 진행을
+보여줄 화면 어디에나 올려놓으면 됩니다.
 
-| 위젯 | 하는 일 | 주요 노드 |
+세션에 반응하는 위젯은 모두 부모 클래스가 `EasySessionWidget`이라, 플러그인 이벤트가 Assign 노드 없이
+오버라이드 이벤트로 들어옵니다. 예제가 이동하는 맵은 **EasySessionExample** 카테고리의 변수입니다.
+홈 화면, 세션 생성 화면, 인게임 메뉴의 `LobbyMap`과 로비의 `MatchMap`을 자기 맵으로 바꾸면 됩니다.
+
+| 위젯 | 하는 일 | 플러그인 노드와 그것을 부르는 그래프 |
 |---|---|---|
-| `WBP_MainMenu` | Home, Create Session, Find Sessions, Create Party, Find Parties 화면. 브라우저가 요청한 결과에 참가합니다 | Start Easy Matchmaking, Create Easy Session, Join Easy Session, Create Easy Party, Join Easy Party |
-| `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다 | Make / Break Easy Session Settings |
-| `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭이 있는 Find Sessions와 Find Parties | Find Easy Sessions, Find Easy Friend Sessions, Find Easy Parties |
-| `Modules/WBP_PartyCard` | 내 파티: 만들기, 코드로 참가, 찾기, 준비, 나가기 | Join Easy Party, Set Easy Party Ready, Leave Easy Party, Get Easy Party Settings, Get Easy Party Join Code |
-| `Modules/WBP_CreatePartyForm` | 새 파티의 최대 인원, 숨김, 참가 코드 | Make Easy Party Settings |
-| `Modules/WBP_PartyMemberList` | 파티 멤버. 빈 자리를 누르면 초대 오버레이, 멤버를 누르면 프로필이 열립니다 | Get Easy Party Members, Show Easy Party Invite UI, Show Easy Profile UI For Party Member, Kick Easy Party Member |
-| `WBP_Lobby` | 로비: 준비, 매치 시작, 세션 설정, 나가기 | Set Easy Session Ready, Start Easy Session, Server Travel Easy Session, Leave Easy Session |
-| `Modules/WBP_PlayerList` | 세션 플레이어. 빈 자리와 프로필 클릭은 파티 목록과 같습니다 | Get Easy Session Player Infos, Show Easy Invite UI, Show Easy Profile UI For Player, Kick Easy Session Player |
-| `Modules/WBP_SessionInfo` | 세션 설정을 한눈에 | Get Easy Session Settings, Get Easy Session Join Code, Get Easy Session State |
-| `Modules/WBP_SessionStatus` | 상태 줄 | Get Easy Session Activity, Get Activity Message, On Session Failure |
-| `WBP_InGame`, `Popups/WBP_EscPopup` | 매치와 Esc 메뉴: 나가기, 로비로 돌아가기, 세션 끝내기 | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone |
-| `Popups/WBP_UpdateSessionPopup` | 로비에서 세션 설정을 바꿉니다 | Update Easy Session |
-| `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | 비밀번호 입력, 그리고 지난 세션이나 파티가 끝난 이유 | Join Easy Session, Consume Pending Easy Disconnect Info (메인 메뉴가 부름) |
+| `WBP_MainMenu` | 화면을 전환하고, Find 화면이 요청한 결과에 참가합니다 | Join Easy Session, Join Easy Party (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct) |
+| `Screens/WBP_HomeScreen` | Quick Match, Create Session, Find Sessions, Quit | Start Easy Matchmaking, Cancel Easy Matchmaking (OnClicked QuickMatchButton); Is Easy Session Busy, Get Easy Matchmaking State (RefreshInteractable); Get Easy Party Members (ArePartyMembersReady) |
+| `Screens/WBP_CreateSessionScreen` | 설정 폼, LAN 토글, CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
+| `Screens/WBP_FindScreen` | 세션 모드와 파티 모드의 브라우저 | 자체 노드 없음. 브라우저의 참가 요청을 위로 넘깁니다 |
+| `Screens/WBP_CreatePartyScreen` | 새 파티의 최대 인원, 숨김, 참가 코드, 그리고 CREATE PARTY | Make Easy Party Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
+| `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다 | Make Easy Session Settings (GetSettings), Break Easy Session Settings (SetSettings) |
+| `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭이 있는 Find Sessions와 Find Parties | Find Easy Sessions, Find Easy Parties (OnClicked PublicSearchButton); Find Easy Friend Sessions (OnClicked FriendsSearchButton); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
+| `Modules/WBP_PartyCard` | 내 파티: 만들기, 코드로 참가, 찾기, 준비, 나가기 | Find Easy Parties와 Join Easy Party (OnClicked CodeSearchButton); Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Party; Get Easy Party Settings, Get Easy Party Join Code (RefreshParty) |
+| `Modules/WBP_PartyMemberList` | 파티 멤버. 빈 자리를 누르면 초대 오버레이, 멤버를 누르면 프로필이 열립니다 | Get Easy Party Members (RefreshMemberList); Show Easy Party Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
+| `Screens/WBP_LobbyScreen` | 로비: 준비, 매치 시작, 세션 설정, 나가기 | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
+| `Modules/WBP_PlayerList` | 세션 플레이어. 빈 자리와 프로필 클릭은 파티 목록과 같습니다 | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
+| `Modules/WBP_SessionInfo` | 세션 설정을 한눈에 | Get Easy Session Settings, Get Easy Session Join Code, Get Easy Session State (RefreshSessionInfo) |
+| `Modules/WBP_SessionStatus` | 상태 줄 | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
+| `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | 매치와 Esc 메뉴: 나가기, 로비로 돌아가기, 세션 끝내기 | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (WBP_InGameMenu의 Event Graph) |
+| `Popups/WBP_UpdateSessionPopup` | 로비에서 세션 설정을 바꿉니다 | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
+| `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | 비밀번호 입력, 그리고 지난 세션이나 파티가 끝난 이유 | 플러그인 노드 없음. 받은 비밀번호로 메인 메뉴가 Join Easy Session을 부릅니다 (OnPasswordSubmitted) |
 
-`Modules/`의 나머지는 플러그인 노드를 쓰지 않는 공통 부품입니다. `WBP_MenuButton`, `WBP_TabBar`,
-`WBP_InfoRow`, `WBP_PopupFrame`, `WBP_PlayerRow`와 입력 위젯들입니다. 파티를 쓰지 않는 게임은
-메인 메뉴에서 `WBP_PartyCard`만 빼면 되고, 나머지는 그대로 동작합니다.
+`Common/`에는 플러그인 노드를 쓰지 않는 부품이 있습니다. 메뉴 버튼, 패널 헤더, 팝업 프레임, 정보 행,
+입력 위젯들입니다. 화면의 모양을 맞추려고 있는 것이라 읽을 내용은 없습니다. 파티를 쓰지 않는
+게임은 메인 메뉴에서 `WBP_PartyCard`와 `WBP_CreatePartyScreen`만 빼면 되고, 나머지는 그대로 동작합니다.
 
 ## 3. 세션 만들기
 

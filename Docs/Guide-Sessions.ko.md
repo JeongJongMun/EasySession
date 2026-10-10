@@ -256,8 +256,9 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 ## 이벤트와 상태 조회
 
-요청 하나의 결과는 그 노드의 출력 핀으로 옵니다. 세션 전체를 지켜보는 UI라면 서브시스템(`Get Easy Session Subsystem`)에서
-아래 이벤트를 바인딩하세요.
+요청 하나의 결과는 그 노드의 출력 핀으로 옵니다. 세션 전체를 지켜보는 UI라면 위젯의 부모 클래스를 `EasySessionWidget`으로
+바꾸고 필요한 이벤트를 오버라이드하세요. 부모 클래스를 바꿀 수 없으면 서브시스템(`Get Easy Session Subsystem`)에서
+아래 이벤트를 Assign 노드로 바인딩합니다.
 
 - `OnSessionPlayersChanged` - 플레이어가 들어오거나, 나가거나, 준비 상태를 바꿨습니다
 - `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 무엇인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다

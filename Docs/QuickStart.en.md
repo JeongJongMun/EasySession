@@ -25,31 +25,40 @@ wiring your first node, and it shows what the finished flow looks like.
 4. Set up two players as described in [step 6](#6-test-in-pie), then press Play.
 5. Press **CREATE SESSION** and create in one window. In the other, press **FIND SESSIONS**, **SEARCH**, then **JOIN**.
 
-The widgets behind it live in `/EasySession/Examples/UI/`. Each one does one job and calls the
-nodes for that job, so you can read one on its own or copy it into your game. `WBP_MainMenu`
-only lays out the screens and switches between them. The status line at its bottom is
-`Modules/WBP_SessionStatus`, a widget that binds the plugin's events once and narrates
-whatever runs, whoever started it. Drop it on any screen that should show session progress.
+The widgets behind it live in `/EasySession/Examples/UI/`. Each one does one job and
+calls the nodes for that job, so you can open one and read the graph named in the table below.
+`WBP_MainMenu` only holds the four screens in a Widget Switcher and the popups. The status line
+at its bottom is `Modules/WBP_SessionStatus`, a widget that narrates whatever runs, whoever
+started it. Drop it on any screen that should show session progress.
 
-| Widget | What it does | Main nodes |
+Every widget that reacts to the session has `EasySessionWidget` as its parent class, so the
+plugin's events appear as overridable events in it, with no Assign node. The maps the example
+travels to are variables in the **EasySessionExample** category: `LobbyMap` on the home and
+create screens and on the in-game menu, `MatchMap` on the lobby. Point them at your maps.
+
+| Widget | What it does | Plugin nodes, and the graph that calls them |
 |---|---|---|
-| `WBP_MainMenu` | Home, Create Session, Find Sessions, Create Party and Find Parties screens. Joins whatever the browser asks for | Start Easy Matchmaking, Create Easy Session, Join Easy Session, Create Easy Party, Join Easy Party |
-| `Modules/WBP_SessionSettingsForm` | The session settings inputs, shared by Create Session and the update popup | Make / Break Easy Session Settings |
-| `Modules/WBP_SessionBrowser` | Find Sessions with Public, Friends and Code tabs, and Find Parties | Find Easy Sessions, Find Easy Friend Sessions, Find Easy Parties |
-| `Modules/WBP_PartyCard` | The local party: create, join by code, find, ready and leave | Join Easy Party, Set Easy Party Ready, Leave Easy Party, Get Easy Party Settings, Get Easy Party Join Code |
-| `Modules/WBP_CreatePartyForm` | Max members, hidden and join code of a new party | Make Easy Party Settings |
-| `Modules/WBP_PartyMemberList` | The party members. An open slot opens the invite overlay, a member opens their profile | Get Easy Party Members, Show Easy Party Invite UI, Show Easy Profile UI For Party Member, Kick Easy Party Member |
-| `WBP_Lobby` | The lobby: ready, start the match, session settings, leave | Set Easy Session Ready, Start Easy Session, Server Travel Easy Session, Leave Easy Session |
-| `Modules/WBP_PlayerList` | The session players, with the same open slot and profile clicks | Get Easy Session Player Infos, Show Easy Invite UI, Show Easy Profile UI For Player, Kick Easy Session Player |
-| `Modules/WBP_SessionInfo` | The session settings at a glance | Get Easy Session Settings, Get Easy Session Join Code, Get Easy Session State |
-| `Modules/WBP_SessionStatus` | The status line | Get Easy Session Activity, Get Activity Message, On Session Failure |
-| `WBP_InGame`, `Popups/WBP_EscPopup` | The match and its Esc menu: leave, return to the lobby, end the session | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone |
-| `Popups/WBP_UpdateSessionPopup` | Changes the session settings from the lobby | Update Easy Session |
-| `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | The password prompt, and why the last session or party ended | Join Easy Session, Consume Pending Easy Disconnect Info (called by the main menu) |
+| `WBP_MainMenu` | Switches between the screens, and joins what the Find screen asks for | Join Easy Session, Join Easy Party (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct) |
+| `Screens/WBP_HomeScreen` | Quick Match, Create Session, Find Sessions, Quit | Start Easy Matchmaking, Cancel Easy Matchmaking (OnClicked QuickMatchButton); Is Easy Session Busy, Get Easy Matchmaking State (RefreshInteractable); Get Easy Party Members (ArePartyMembersReady) |
+| `Screens/WBP_CreateSessionScreen` | The settings form, the LAN toggle and CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
+| `Screens/WBP_FindScreen` | The browser in session or party mode | None of its own: it passes the browser's join request up |
+| `Screens/WBP_CreatePartyScreen` | Max members, hidden and join code of a new party, and CREATE PARTY | Make Easy Party Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
+| `Modules/WBP_SessionSettingsForm` | The session settings inputs, shared by Create Session and the update popup | Make Easy Session Settings (GetSettings), Break Easy Session Settings (SetSettings) |
+| `Modules/WBP_SessionBrowser` | Find Sessions with Public, Friends and Code tabs, and Find Parties | Find Easy Sessions, Find Easy Parties (OnClicked PublicSearchButton); Find Easy Friend Sessions (OnClicked FriendsSearchButton); Find Easy Sessions by join code (OnClicked CodeSearchButton) |
+| `Modules/WBP_PartyCard` | The local party: create, join by code, find, ready and leave | Find Easy Parties and Join Easy Party (OnClicked CodeSearchButton); Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Party; Get Easy Party Settings, Get Easy Party Join Code (RefreshParty) |
+| `Modules/WBP_PartyMemberList` | The party members. An open slot opens the invite overlay, a member opens their profile | Get Easy Party Members (RefreshMemberList); Show Easy Party Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
+| `Screens/WBP_LobbyScreen` | The lobby: ready, start the match, session settings, leave | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
+| `Modules/WBP_PlayerList` | The session players, with the same open slot and profile clicks | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
+| `Modules/WBP_SessionInfo` | The session settings at a glance | Get Easy Session Settings, Get Easy Session Join Code, Get Easy Session State (RefreshSessionInfo) |
+| `Modules/WBP_SessionStatus` | The status line | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
+| `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | The match and its Esc menu: leave, return to the lobby, end the session | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (Event Graph of WBP_InGameMenu) |
+| `Popups/WBP_UpdateSessionPopup` | Changes the session settings from the lobby | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
+| `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | The password prompt, and why the last session or party ended | No plugin nodes: the main menu calls Join Easy Session with the password it collects (OnPasswordSubmitted) |
 
-The rest of `Modules/` are shared parts with no plugin nodes: `WBP_MenuButton`, `WBP_TabBar`,
-`WBP_InfoRow`, `WBP_PopupFrame`, `WBP_PlayerRow` and the input widgets. A game without parties
-can drop `WBP_PartyCard` from the main menu, and everything else keeps working.
+`Common/` holds the parts with no plugin nodes: the menu button, the panel header, the popup frame,
+the info row and the input widgets. They only exist so the screens look alike, so there is nothing
+to read there. A game without parties can drop `WBP_PartyCard` and `WBP_CreatePartyScreen` from
+the main menu, and everything else keeps working.
 
 ## 3. Host a session
 

@@ -258,7 +258,8 @@ two combine: the code finds the session, the password still gates the door.
 ## Events and state queries
 
 The result of each request arrives on its node's output pins. For UI that watches the session as a whole,
-bind these on the subsystem (`Get Easy Session Subsystem`):
+reparent the widget to `EasySessionWidget` and override the events it needs, or bind them on the
+subsystem (`Get Easy Session Subsystem`) with Assign nodes when the parent class is taken:
 
 - `OnSessionPlayersChanged` - a player joined, left or changed whether they are ready
 - `OnBusyChanged` - a request started or everything finished. `Get Easy Session Activity` names the activity, so a spinner can say what it waits for

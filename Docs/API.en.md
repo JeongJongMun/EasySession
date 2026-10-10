@@ -124,6 +124,7 @@ node name without spaces.
 | Get Easy Session Queue Status | `GetQueueStatus` | What the request queue is doing, as a string for status UI and bug reports. Running requests are appended, e.g. `Idle; Matchmaking (Searching, 12s)` |
 | Get Easy Session Settings | `GetSessionSettings` | The settings the session advertises, so Update can change one field. Works for every member; the password and its friends exception are only filled on the host |
 | Get Easy Session Join Code | `GetSessionJoinCode` | The join code the session advertises, or empty. Every player in the session can read and share it |
+| Make Easy Session Host Params From Settings | - | Host params that advertise the given settings, plus Initial Map Name and the LAN choice. Blueprint cannot copy a Settings struct into Host Params, so a settings form goes through this to reach Create Easy Session |
 | Is In Easy Party | `IsInParty` | Is the local player in a party |
 | Is Easy Party Leader | `IsPartyLeader` | Does the local player lead the party. False outside a party |
 | Get Easy Party Members | `GetPartyMembers` | Every member, the leader included, with leader, local-player and ready flags |
@@ -207,6 +208,11 @@ nothing and gets a warning in the log, so show the button only when
 Assignable on the subsystem. They report states and matchmaking runs, not single requests:
 the result of Create, Find, Join, Update, Start, End or Destroy goes to the node's output pins
 (or the C++ completion delegate) and nowhere else.
+
+A widget receives them without any Assign node by reparenting to `EasySessionWidget`
+(**Class Settings -> Parent Class**): every event below then appears under **Override**
+in the My Blueprint panel, bound while the widget is constructed and unbound when it is destructed.
+A widget whose parent class is taken binds them with Assign nodes on `Get Easy Session Subsystem` instead.
 
 | Event | Payload | Fires when |
 |---|---|---|

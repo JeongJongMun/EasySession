@@ -37,9 +37,9 @@ LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키�
 
 | 화면 | 위젯 |
 |---|---|
-| 메인 메뉴 | `WBP_MainMenu`, 그리고 `WBP_SessionBrowser`, `WBP_SessionSettingsForm`, `WBP_PartyCard`, `WBP_CreatePartyForm` |
-| 로비 | `WBP_Lobby`, 그리고 `WBP_PlayerList`, `WBP_SessionInfo`, `WBP_UpdateSessionPopup` |
-| 매치 | `WBP_InGame`, 그리고 `WBP_EscPopup` |
+| 메인 메뉴 | `WBP_MainMenu`, 그 안의 `WBP_HomeScreen`, `WBP_CreateSessionScreen`, `WBP_FindScreen`, `WBP_CreatePartyScreen`, `WBP_PartyCard` |
+| 로비 | `WBP_LobbyScreen`, 그리고 `WBP_PlayerList`, `WBP_SessionInfo`, `WBP_UpdateSessionPopup` |
+| 매치 | `WBP_InGameMenu`, 그리고 `WBP_EscPopup` |
 | 아무 화면 | `WBP_SessionStatus`. 지금 도는 요청을 서술하는 상태 줄 |
 
 [빠른 시작](Docs/QuickStart.ko.md#2-먼저-예제를-실행해보기)에 실행 방법과 위젯마다 부르는 노드가 있습니다.

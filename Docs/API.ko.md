@@ -120,6 +120,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용. 돌고 있는 요청이 뒤에 붙습니다. 예: `Idle; Matchmaking (Searching, 12s)` |
 | Get Easy Session Settings | `GetSessionSettings` | 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호와 친구 예외만 호스트에서만 채워집니다 |
 | Get Easy Session Join Code | `GetSessionJoinCode` | 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 세션에 있는 누구나 읽고 공유할 수 있습니다 |
+| Make Easy Session Host Params From Settings | - | 주어진 설정에 Initial Map Name과 LAN 여부를 더한 호스트 파라미터. 블루프린트는 Settings 구조체를 Host Params에 복사하지 못하므로, 설정 폼의 값은 이 노드를 거쳐 Create Easy Session으로 갑니다 |
 | Is In Easy Party | `IsInParty` | 로컬 플레이어가 파티에 있는가 |
 | Is Easy Party Leader | `IsPartyLeader` | 로컬 플레이어가 파티 리더인가. 파티 밖에서는 false |
 | Get Easy Party Members | `GetPartyMembers` | 리더를 포함한 모든 멤버와 리더/로컬 플레이어/준비 여부 |
@@ -199,6 +200,10 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 서브시스템에 바인딩합니다. 요청 하나하나가 아니라 상태와 Matchmaking 실행을 알립니다.
 Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 핀(C++에서는 완료 델리게이트)으로만
 전달됩니다.
+
+위젯은 부모 클래스를 `EasySessionWidget`으로 바꾸면(**Class Settings -> Parent Class**) Assign 노드 없이 이 이벤트를 받습니다.
+아래 이벤트가 전부 My Blueprint 패널의 **Override**에 나타나고, 위젯이 만들어질 때 바인딩되고 사라질 때 풀립니다.
+부모 클래스를 바꿀 수 없는 위젯은 지금처럼 `Get Easy Session Subsystem`에 Assign 노드로 바인딩합니다.
 
 | 이벤트 | 넘기는 값 | 언제 발화하는가 |
 |---|---|---|
