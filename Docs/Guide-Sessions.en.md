@@ -162,11 +162,11 @@ The password itself is never advertised. Only a "password protected" flag goes o
 
 ### Joining a locked session
 
-Call `Join Easy Session` without a password first. When the host answers `PasswordRequired`, ask the player and pass the answer to the `Password` pin on the next `Join Easy Session`. The host checks it over the reservation beacon before the travel ([Asking the host first](#asking-the-host-first)), and it never goes into the travel URL, so the engine's travel logs never show it. A player the beacon did not approve is refused on arrival, so a direct connect such as the `open` console command cannot enter a password session.
+Call `Join Easy Session` without a password first. When the host answers `PasswordRequired`, ask the player and pass the answer to the `Password` pin on the next `Join Easy Session`. The host checks it over the reservation beacon before the travel ([Asking the host first](#asking-the-host-first)), and it never goes into the travel URL, so the engine's travel logs never show it. A player the beacon did not approve is refused on arrival, so a direct connect such as the `open` console command cannot enter a password session. An accepted invite is joined without a password too, and when the host answers `PasswordRequired`, `OnInvitePasswordRequired` hands you the session to ask for the password and join again.
 
 ### Friends skip the password
 
-`Friends Bypass Password` defaults to **true**. Platform invites carry no password prompt, so an invited friend would otherwise be turned away by the session they were invited to. The host verifies friendship against the platform friends list, which the joining player cannot fake. This has no effect on NULL/LAN, where there are no friends.
+`Friends Bypass Password` defaults to **true**. Platform invites carry no password, so without it an invited friend would be asked for one ([Joining a locked session](#joining-a-locked-session)). The host verifies friendship against the platform friends list, which the joining player cannot fake. This has no effect on NULL/LAN, where there are no friends.
 
 ## Start Session / End Session
 
@@ -266,7 +266,8 @@ subsystem (`Get Easy Session Subsystem`) with Assign nodes when the parent class
 
 - `OnSessionPlayersChanged` - a player joined, left or changed whether they are ready
 - `OnBusyChanged` - a request started or everything finished. `Get Easy Session Activity` names the activity, so a spinner can say what it waits for
-- `OnSessionFailure` - something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player
+- `OnSessionFailure` - something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed for a reason other than a missing password. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player
+- `OnInvitePasswordRequired` - the automatic join of an accepted invite needs a password from this player. Ask for it, then call `Join Easy Session` with the event's `Session` and the password
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)
 
 Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.

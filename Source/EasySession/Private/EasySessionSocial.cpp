@@ -190,6 +190,24 @@ void FEasySessionSocial::SortFriends(TArray<FEasySessionFriend>& Friends)
 	Friends.StableSort(&FEasySessionSocial::FriendComesFirst);
 }
 
+void FEasySessionSocial::ReportInvitedJoinResult(UEasySessionSubsystem& Owner, const FEasySessionSearchResult& Session, EEasySessionResult Result, const FString& ErrorMessage)
+{
+	if (Result == EEasySessionResult::Success)
+	{
+		return;
+	}
+
+	// An invite carries no password, so the game asks the player and joins again with one.
+	if (Result == EEasySessionResult::PasswordRequired)
+	{
+		UE_LOG(LogEasySession, Log, TEXT("The invited session '%s' needs a password from this player."), *Session.SessionDisplayName);
+		Owner.OnInvitePasswordRequired.Broadcast(Session);
+		return;
+	}
+
+	Owner.OnSessionFailure.Broadcast(FString::Printf(TEXT("Joining the invited session failed: %s"), *ErrorMessage));
+}
+
 void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)
 {
 	if (!bWasSuccessful || !InviteResult.IsValid())
@@ -228,15 +246,12 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 		return;
 	}
 
-	// No node waits for this join, so a failure is broadcast.
+	// The game did not call Join Easy Session for this join, so no node pin receives its result and the events report it instead.
 	UEasySessionSubsystem* OwnerSub = &Owner;
 	Owner.JoinSession(Session, FString(), FString(), FEasySessionCompleteDelegate::CreateWeakLambda(OwnerSub,
-		[OwnerSub](EEasySessionResult Result, const FString& ErrorMessage)
+		[OwnerSub, Session](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			if (Result != EEasySessionResult::Success)
-			{
-				OwnerSub->OnSessionFailure.Broadcast(FString::Printf(TEXT("Joining the invited session failed: %s"), *ErrorMessage));
-			}
+			ReportInvitedJoinResult(*OwnerSub, Session, Result, ErrorMessage);
 		}));
 }
 
@@ -260,7 +275,7 @@ void FEasySessionSocial::JoinInvitedParty(const FEasySessionSearchResult& Party)
 		Owner.LeaveParty();
 	}
 
-	// No node waits for this join, so a failure is broadcast.
+	// The game did not call Join Easy Party for this join, so no node pin receives its result and OnSessionFailure reports it instead.
 	UEasySessionSubsystem* OwnerSub = &Owner;
 	Owner.JoinParty(Party, FEasySessionCompleteDelegate::CreateWeakLambda(OwnerSub,
 		[OwnerSub](EEasySessionResult Result, const FString& ErrorMessage)

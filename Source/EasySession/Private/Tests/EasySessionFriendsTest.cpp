@@ -4,8 +4,10 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionSocial.h"
 #include "EasySessionStatics.h"
 #include "EasySessionSubsystem.h"
+#include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -147,6 +149,49 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForFriendLookup(State));
+	return true;
+}
+
+/**
+ * The automatic join of an accepted invite has no node, so its result reaches the game only through the subsystem events.
+ * A refusal for a missing password carries the session to join again with a password, and is not also reported as a failure.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionInvitedJoinResultTest, "EasySession.Social.InvitedJoinRefusalReachesTheGame", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionInvitedJoinResultTest::RunTest(const FString& Parameters)
+{
+	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	EasySessionTest::InitializeGameInstance(GameInstance);
+
+	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(GameInstance.Get());
+		return false;
+	}
+
+	TStrongObjectPtr<UEasySessionTestEventListener> Listener(NewObject<UEasySessionTestEventListener>());
+	Subsystem->OnSessionFailure.AddDynamic(Listener.Get(), &UEasySessionTestEventListener::HandleSessionFailure);
+	Subsystem->OnInvitePasswordRequired.AddDynamic(Listener.Get(), &UEasySessionTestEventListener::HandleInvitePasswordRequired);
+
+	FEasySessionSearchResult Session;
+	Session.SessionDisplayName = TEXT("Locked room");
+
+	FEasySessionSocial::ReportInvitedJoinResult(*Subsystem, Session, EEasySessionResult::Success, FString());
+	TestEqual(TEXT("A joined invite asks for nothing"), Listener->PasswordRequiredSessions.Num(), 0);
+	TestEqual(TEXT("A joined invite reports no failure"), Listener->FailureReasons.Num(), 0);
+
+	FEasySessionSocial::ReportInvitedJoinResult(*Subsystem, Session, EEasySessionResult::PasswordRequired, TEXT("This session needs a password."));
+	if (TestEqual(TEXT("A missing password asks the game for one"), Listener->PasswordRequiredSessions.Num(), 1))
+	{
+		TestEqual(TEXT("The game gets the session to join again"), Listener->PasswordRequiredSessions[0].SessionDisplayName, Session.SessionDisplayName);
+	}
+	TestEqual(TEXT("A missing password is not also a failure"), Listener->FailureReasons.Num(), 0);
+
+	FEasySessionSocial::ReportInvitedJoinResult(*Subsystem, Session, EEasySessionResult::JoinSessionFull, TEXT("The session is full."));
+	TestEqual(TEXT("Any other refusal is a failure"), Listener->FailureReasons.Num(), 1);
+	TestEqual(TEXT("Any other refusal asks for no password"), Listener->PasswordRequiredSessions.Num(), 1);
+
+	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;
 }
 

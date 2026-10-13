@@ -43,6 +43,7 @@ bool FEasySessionWidgetBindsEventsTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("On Busy Changed is bound while constructed"), Subsystem->OnBusyChanged.Contains(Widget.Get(), FName(TEXT("OnBusyChanged"))));
 	TestTrue(TEXT("On Party Left is bound while constructed"), Subsystem->OnPartyLeft.Contains(Widget.Get(), FName(TEXT("OnPartyLeft"))));
 	TestTrue(TEXT("On Matchmaking Updated is bound while constructed"), Subsystem->OnMatchmakingUpdated.Contains(Widget.Get(), FName(TEXT("OnMatchmakingUpdated"))));
+	TestTrue(TEXT("On Invite Password Required is bound while constructed"), Subsystem->OnInvitePasswordRequired.Contains(Widget.Get(), FName(TEXT("OnInvitePasswordRequired"))));
 
 	SlateWidget.Reset();
 	TestFalse(TEXT("On Busy Changed is unbound after destruct"), Subsystem->OnBusyChanged.Contains(Widget.Get(), FName(TEXT("OnBusyChanged"))));

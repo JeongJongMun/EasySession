@@ -64,6 +64,10 @@ protected:
 	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")
 	void OnSessionInviteAccepted(const FEasySessionSearchResult& Session);
 
+	/** The automatic join of an accepted invite needs a password from this player: ask for it, then call Join Easy Session with Session and the password. */
+	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")
+	void OnInvitePasswordRequired(const FEasySessionSearchResult& Session);
+
 	/** A matchmaking run was accepted. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")
 	void OnMatchmakingStarted();

@@ -162,11 +162,11 @@ Create Easy Session
 
 ### 잠긴 세션에 참가하기
 
-먼저 비밀번호 없이 `Join Easy Session`을 부르세요. 호스트가 `PasswordRequired`로 답하면 플레이어에게 물은 값을 다음 `Join Easy Session`의 `Password` 핀에 넘기세요. 호스트가 Travel 전에 예약 비콘으로 그 값을 확인하고([호스트에게 먼저 묻기](#호스트에게-먼저-묻기)), 비밀번호는 Travel URL에 들어가지 않으므로 엔진의 Travel 로그에도 남지 않습니다. 비콘에서 승인받지 않은 플레이어는 도착할 때 거절되므로, `open` 콘솔 명령 같은 직접 접속으로는 비밀번호 세션에 들어올 수 없습니다.
+먼저 비밀번호 없이 `Join Easy Session`을 부르세요. 호스트가 `PasswordRequired`로 답하면 플레이어에게 물은 값을 다음 `Join Easy Session`의 `Password` 핀에 넘기세요. 호스트가 Travel 전에 예약 비콘으로 그 값을 확인하고([호스트에게 먼저 묻기](#호스트에게-먼저-묻기)), 비밀번호는 Travel URL에 들어가지 않으므로 엔진의 Travel 로그에도 남지 않습니다. 비콘에서 승인받지 않은 플레이어는 도착할 때 거절되므로, `open` 콘솔 명령 같은 직접 접속으로는 비밀번호 세션에 들어올 수 없습니다. 수락한 초대도 비밀번호 없이 참가하며, 호스트가 `PasswordRequired`로 답하면 `OnInvitePasswordRequired`가 비밀번호를 물어 다시 참가할 세션을 넘겨줍니다.
 
 ### 친구는 비밀번호를 건너뜁니다
 
-`Friends Bypass Password`의 기본값은 **true**입니다. 플랫폼 초대에는 비밀번호를 입력할 자리가 없어서, 이게 없으면 초대받은 친구가 정작 그 세션에서 쫓겨납니다. 호스트가 플랫폼 친구 목록으로 친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는 아무 영향이 없습니다.
+`Friends Bypass Password`의 기본값은 **true**입니다. 플랫폼 초대에는 비밀번호가 실리지 않아서, 이게 없으면 초대받은 친구도 비밀번호를 입력해야 합니다([잠긴 세션에 참가하기](#잠긴-세션에-참가하기)). 호스트가 플랫폼 친구 목록으로 친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는 아무 영향이 없습니다.
 
 ## Start Session / End Session
 
@@ -265,7 +265,8 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 - `OnSessionPlayersChanged` - 플레이어가 들어오거나, 나가거나, 준비 상태를 바꿨습니다
 - `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 무엇인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
-- `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패한 경우입니다. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다
+- `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 비밀번호 요구 외의 이유로 실패한 경우입니다. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다
+- `OnInvitePasswordRequired` - 수락한 초대의 자동 참가에 이 플레이어의 비밀번호가 필요합니다. 비밀번호를 물은 뒤 이벤트의 `Session`과 그 비밀번호로 `Join Easy Session`을 부르세요
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
 
 어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.

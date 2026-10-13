@@ -75,6 +75,12 @@ public:
 	/** Order friends for display, see FriendComesFirst. */
 	static void SortFriends(TArray<FEasySessionFriend>& Friends);
 
+	/**
+	 * Report the result of the automatic join of an accepted invite, which no node waits for.
+	 * A refusal for a missing password goes to OnInvitePasswordRequired, so the game can ask the player, and any other failure to OnSessionFailure.
+	 */
+	static void ReportInvitedJoinResult(UEasySessionSubsystem& Owner, const FEasySessionSearchResult& Session, EEasySessionResult Result, const FString& ErrorMessage);
+
 private:
 
 	/**

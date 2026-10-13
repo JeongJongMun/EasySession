@@ -57,6 +57,17 @@ public:
 		FailureReasons.Add(Reason);
 	}
 
+	/** Sessions seen on OnInvitePasswordRequired, in order. */
+	UPROPERTY()
+	TArray<FEasySessionSearchResult> PasswordRequiredSessions;
+
+	/** Bind to OnInvitePasswordRequired. */
+	UFUNCTION()
+	void HandleInvitePasswordRequired(const FEasySessionSearchResult& Session)
+	{
+		PasswordRequiredSessions.Add(Session);
+	}
+
 	/** When set, entering Hosting calls CancelMatchmaking on this subsystem, which the run ignores in that state. */
 	UPROPERTY()
 	TObjectPtr<UEasySessionSubsystem> CancelMatchmakingOnHosting;

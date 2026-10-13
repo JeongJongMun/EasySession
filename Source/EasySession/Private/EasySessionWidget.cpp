@@ -28,6 +28,7 @@ void UEasySessionWidget::NativeConstruct()
 	Subsystem->OnSessionPlayersChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnSessionPlayersChanged);
 	Subsystem->OnSessionFailure.AddUniqueDynamic(this, &UEasySessionWidget::OnSessionFailure);
 	Subsystem->OnSessionInviteAccepted.AddUniqueDynamic(this, &UEasySessionWidget::OnSessionInviteAccepted);
+	Subsystem->OnInvitePasswordRequired.AddUniqueDynamic(this, &UEasySessionWidget::OnInvitePasswordRequired);
 	Subsystem->OnMatchmakingStarted.AddUniqueDynamic(this, &UEasySessionWidget::OnMatchmakingStarted);
 	Subsystem->OnMatchmakingStateChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnMatchmakingStateChanged);
 	Subsystem->OnMatchmakingUpdated.AddUniqueDynamic(this, &UEasySessionWidget::OnMatchmakingUpdated);
@@ -46,6 +47,7 @@ void UEasySessionWidget::NativeDestruct()
 		Subsystem->OnSessionPlayersChanged.RemoveAll(this);
 		Subsystem->OnSessionFailure.RemoveAll(this);
 		Subsystem->OnSessionInviteAccepted.RemoveAll(this);
+		Subsystem->OnInvitePasswordRequired.RemoveAll(this);
 		Subsystem->OnMatchmakingStarted.RemoveAll(this);
 		Subsystem->OnMatchmakingStateChanged.RemoveAll(this);
 		Subsystem->OnMatchmakingUpdated.RemoveAll(this);
