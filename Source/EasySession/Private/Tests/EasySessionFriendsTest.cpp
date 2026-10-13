@@ -6,7 +6,6 @@
 
 #include "EasySessionStatics.h"
 #include "EasySessionSubsystem.h"
-#include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
@@ -49,32 +48,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("No friends returned"), Friends.Num(), 0);
 		}));
 	TestTrue(TEXT("Friends callback fired"), bCallbackFired);
-
-	// The friend session search starts with the same read, so it must fail the same way.
-	// It is refused inside the call, so no FriendSessions request is queued when the caller receives the result.
-	bool bSessionsCallbackFired = false;
-	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
-		[this, &bSessionsCallbackFired, Subsystem](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasyFriendSession>& FriendSessions)
-		{
-			bSessionsCallbackFired = true;
-			TestEqual(TEXT("The friend session search reports the same"), Result, EEasySessionResult::NotSupportedByService);
-			TestEqual(TEXT("No friend sessions returned"), FriendSessions.Num(), 0);
-			TestFalse(TEXT("The search has ended by the time its result is delivered"), FEasySessionTestAccess::HasRequest(*Subsystem, FEasySessionRequest::EType::FriendSessions));
-		}));
-	TestTrue(TEXT("Friend sessions callback fired"), bSessionsCallbackFired);
-	TestFalse(TEXT("No search is left running"), FEasySessionTestAccess::HasRequest(*Subsystem, FEasySessionRequest::EType::FriendSessions));
-	TestFalse(TEXT("A failed search never counted as busy"), Subsystem->IsBusy());
-
-	// A finished search must not block the next one, and a cancel with nothing running is a no-op.
-	Subsystem->CancelFriendSearch();
-	bool bSecondFired = false;
-	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
-		[this, &bSecondFired](EEasySessionResult Result, const FString&, const TArray<FEasyFriendSession>&)
-		{
-			bSecondFired = true;
-			TestNotEqual(TEXT("The second search is not refused as already running"), Result, EEasySessionResult::FriendSearchAlreadyInProgress);
-		}));
-	TestTrue(TEXT("Second friend sessions callback fired"), bSecondFired);
+	TestFalse(TEXT("A refused read never made the subsystem busy"), Subsystem->IsBusy());
 
 	// The invite helpers name the reason rather than returning a bare failure.
 	TestEqual(TEXT("ShowInviteUI reports the online subsystem has no overlay"), Subsystem->ShowInviteUI(), EEasySessionResult::NotSupportedByService);

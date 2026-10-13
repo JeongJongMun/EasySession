@@ -94,7 +94,7 @@ public:
 		Subsystem.HandleReplicatedSessionSettings(Settings);
 	}
 
-	/** The Find request running now, on its own or as a sub-request of matchmaking or the friend session search. Null when none runs. */
+	/** The Find request running now, on its own or as a sub-request of matchmaking. Null when none runs. */
 	static TSharedPtr<FEasySessionFindRequest> GetRunningFind(const UEasySessionSubsystem& Subsystem)
 	{
 		for (TSharedPtr<FEasySessionRequest> Request = Subsystem.RequestQueue->GetActiveRequest(); Request.IsValid(); Request = Request->GetRunningSubRequest())

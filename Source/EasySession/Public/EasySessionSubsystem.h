@@ -76,9 +76,6 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasyPartyLeftEvent, EEasyPartyLeav
 /** Multicast event fired with the result of a friends list read, used by the Read Easy Friends node. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionFriend>&, Friends);
 
-/** Multicast event fired with the result of a friend session search, used by the Find Easy Friend Sessions node. */
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendSessionsEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasyFriendSession>&, FriendSessions);
-
 /**
  * The EasySession subsystem is responsible for every session request of the plugin.
  * It is created automatically for each game instance, so no custom GameInstance class is needed.
@@ -574,29 +571,11 @@ public:
 	/**
 	 * Read the local player's friends list, in display order.
 	 * Not supported on the NULL (LAN) subsystem.
-	 * The read waits in the session queue like every other request.
+	 * The read runs outside the session queue, so it does not wait for session requests and does not make IsBusy true.
 	 *
 	 * @param OnComplete Called with the friends when the read completes.
 	 */
 	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete = FEasyFriendsCompleteDelegate());
-
-	/**
-	 * Read the friends list and find the session each friend playing this game is in.
-	 * Not supported on the NULL (LAN) subsystem.
-	 * The search holds the session queue until it ends, so session requests made meanwhile run after it.
-	 * One friend search runs at a time.
-	 * A second call while one runs fails with FriendSearchAlreadyInProgress.
-	 *
-	 * @param OnComplete Called with one friend session per friend. Those with bHasSession carry a session joinable with JoinSession.
-	 */
-	void FindFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete = FEasyFriendSessionsCompleteDelegate());
-
-	/**
-	 * Cancel the running friend session search.
-	 * It completes with Canceled inside this call.
-	 * Does nothing when none is running.
-	 */
-	void CancelFriendSearch();
 
 public:
 

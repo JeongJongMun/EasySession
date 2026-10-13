@@ -4,11 +4,14 @@
 
 #include "EasySession.h"
 #include "EasySessionConfig.h"
+#include "EasySessionMessages.h"
 #include "EasySessionSubsystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "Interfaces/OnlineExternalUIInterface.h"
+#include "Interfaces/OnlineFriendsInterface.h"
 #include "Interfaces/OnlineIdentityInterface.h"
+#include "Interfaces/OnlinePresenceInterface.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 
@@ -108,6 +111,83 @@ EEasySessionResult FEasySessionSocial::ShowProfileUI(const FUniqueNetIdPtr& Targ
 	}
 
 	return EEasySessionResult::Success;
+}
+
+void FEasySessionSocial::ReadFriends(FEasyFriendsCompleteDelegate OnComplete) const
+{
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
+	const IOnlineFriendsPtr FriendsInterface = OnlineSub ? OnlineSub->GetFriendsInterface() : nullptr;
+	if (!FriendsInterface.IsValid())
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::NoFriendsListMessage);
+		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Reading the friends list."));
+
+	// The completion delegate is bound weakly to the subsystem and reads the world from it, because Deinitialize destroys this object first.
+	// Steam fires the completion delegate for a refused read too, so the return value is not checked.
+	UEasySessionSubsystem* OwnerSubsystem = &Owner;
+	FriendsInterface->ReadFriendsList(0, EFriendsLists::ToString(EFriendsLists::Default), FOnReadFriendsListComplete::CreateWeakLambda(OwnerSubsystem,
+		[OwnerSubsystem, UserDelegate = MoveTemp(OnComplete)](int32 LocalUserNum, bool bWasSuccessful, const FString& ListName, const FString& ErrorStr)
+		{
+			if (!bWasSuccessful)
+			{
+				UserDelegate.ExecuteIfBound(EEasySessionResult::UnknownFailure, ErrorStr, {});
+				return;
+			}
+
+			const UWorld* World = OwnerSubsystem->GetGameInstance() ? OwnerSubsystem->GetGameInstance()->GetWorld() : nullptr;
+			const IOnlineSubsystem* CallbackOnlineSub = Online::GetSubsystem(World);
+			const IOnlineFriendsPtr CallbackFriendsInterface = CallbackOnlineSub ? CallbackOnlineSub->GetFriendsInterface() : nullptr;
+			TArray<TSharedRef<FOnlineFriend>> FriendList;
+			if (CallbackFriendsInterface.IsValid())
+			{
+				CallbackFriendsInterface->GetFriendsList(LocalUserNum, ListName, FriendList);
+			}
+
+			TArray<FEasySessionFriend> Friends;
+			Friends.Reserve(FriendList.Num());
+			for (const TSharedRef<FOnlineFriend>& OnlineFriend : FriendList)
+			{
+				const FOnlineUserPresence& Presence = OnlineFriend->GetPresence();
+				FEasySessionFriend& Friend = Friends.AddDefaulted_GetRef();
+				Friend.DisplayName = OnlineFriend->GetDisplayName();
+				Friend.bIsOnline = Presence.bIsOnline;
+				Friend.bIsPlayingThisGame = Presence.bIsPlayingThisGame;
+				// Steam reports the lobby a friend is in through presence, so no request to the online subsystem is needed.
+				// It sets an id even when the friend is in no lobby, so the id itself is checked too.
+				Friend.bIsInLobby = Presence.bIsPlayingThisGame && Presence.SessionId.IsValid() && Presence.SessionId->IsValid();
+				Friend.NativeId = FUniqueNetIdRepl(OnlineFriend->GetUserId());
+			}
+			SortFriends(Friends);
+
+			UE_LOG(LogEasySession, Log, TEXT("Friends list read: %d friend(s)."), Friends.Num());
+			UserDelegate.ExecuteIfBound(EEasySessionResult::Success, FString(), Friends);
+		}));
+}
+
+bool FEasySessionSocial::HasFriendsList(const UWorld* World)
+{
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(World);
+	return OnlineSub != nullptr && OnlineSub->GetFriendsInterface().IsValid();
+}
+
+bool FEasySessionSocial::FriendComesFirst(const FEasySessionFriend& A, const FEasySessionFriend& B)
+{
+	const int32 RankA = A.bIsInLobby ? 3 : (A.bIsPlayingThisGame ? 2 : (A.bIsOnline ? 1 : 0));
+	const int32 RankB = B.bIsInLobby ? 3 : (B.bIsPlayingThisGame ? 2 : (B.bIsOnline ? 1 : 0));
+	if (RankA != RankB)
+	{
+		return RankA > RankB;
+	}
+	return A.DisplayName.Compare(B.DisplayName, ESearchCase::IgnoreCase) < 0;
+}
+
+void FEasySessionSocial::SortFriends(TArray<FEasySessionFriend>& Friends)
+{
+	Friends.StableSort(&FEasySessionSocial::FriendComesFirst);
 }
 
 void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult)

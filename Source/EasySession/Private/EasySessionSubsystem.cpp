@@ -8,8 +8,6 @@
 #include "EasySessionAddress.h"
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
-#include "EasySessionFriendSessionsRequest.h"
-#include "EasySessionReadFriendsRequest.h"
 #include "EasySessionMatchmakingRequest.h"
 #include "EasySessionCreatePartyRequest.h"
 #include "EasySessionCreateRequest.h"
@@ -650,44 +648,8 @@ EEasySessionResult UEasySessionSubsystem::ShowProfileUIForPartyMember(const FEas
 
 void UEasySessionSubsystem::ReadFriends(FEasyFriendsCompleteDelegate OnComplete)
 {
-	// NULL has no friends list, and the failure is reported inside this call.
-	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::NoFriendsListMessage);
-		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
-		return;
-	}
-
-	EnqueueRequest(MakeShared<FEasySessionReadFriendsRequest>(MoveTemp(OnComplete)));
-}
-
-void UEasySessionSubsystem::FindFriendSessions(FEasyFriendSessionsCompleteDelegate OnComplete)
-{
-	if (RequestQueue->Find(FEasySessionRequest::EType::FriendSessions).IsValid())
-	{
-		const TCHAR* AlreadyRunningMessage = TEXT("A friend session search is already running.");
-		UE_LOG(LogEasySession, Warning, TEXT("%s"), AlreadyRunningMessage);
-		OnComplete.ExecuteIfBound(EEasySessionResult::FriendSearchAlreadyInProgress, AlreadyRunningMessage, {});
-		return;
-	}
-
-	// NULL has no friends list, and the failure is reported inside this call.
-	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::NoFriendsListMessage);
-		OnComplete.ExecuteIfBound(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage, {});
-		return;
-	}
-
-	EnqueueRequest(MakeShared<FEasySessionFriendSessionsRequest>(MoveTemp(OnComplete)));
-}
-
-void UEasySessionSubsystem::CancelFriendSearch()
-{
-	if (const TSharedPtr<FEasySessionRequest> FriendSessions = RequestQueue->Find(FEasySessionRequest::EType::FriendSessions))
-	{
-		FriendSessions->Cancel();
-	}
+	// The friends list is not read through the session interface, so the read does not wait for session requests.
+	Social->ReadFriends(MoveTemp(OnComplete));
 }
 
 FEasyDisconnectInfo UEasySessionSubsystem::ConsumePendingDisconnectInfo()

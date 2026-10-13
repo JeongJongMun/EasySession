@@ -28,7 +28,6 @@ FText UEasySessionUIStatics::GetResultMessage(EEasySessionResult Result)
 		case EEasySessionResult::StateChangeFailure: return LOCTEXT("Result_StateChangeFailure", "Could not change the match state");
 		case EEasySessionResult::Canceled: return LOCTEXT("Result_Canceled", "Canceled");
 		case EEasySessionResult::RequiresSessionAuthority: return LOCTEXT("Result_RequiresSessionAuthority", "Only the host can do that");
-		case EEasySessionResult::FriendSearchAlreadyInProgress: return LOCTEXT("Result_FriendSearchAlreadyInProgress", "A friend search is already running");
 		case EEasySessionResult::NotSupportedByService: return LOCTEXT("Result_NotSupportedByService", "This online service does not offer that");
 		case EEasySessionResult::RequiresPartyLeader: return LOCTEXT("Result_RequiresPartyLeader", "Only the party leader can do that");
 		case EEasySessionResult::InParty: return LOCTEXT("Result_InParty", "The party leader decides where the party goes");

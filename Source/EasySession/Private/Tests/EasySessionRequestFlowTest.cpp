@@ -62,10 +62,9 @@ bool FEasySessionWaitCanceledMatchmaking::Update()
 }
 
 /**
- * Matchmaking and the friend search are requests like Create and Join.
+ * Matchmaking is a request like Create and Join.
  * A queued matchmaking makes the subsystem busy, sets the activity to Matchmaking, is listed by GetQueueStatus and refuses a second run.
- * A friend search on NULL is refused inside the call, so it leaves the subsystem idle.
- * Both stop counting as running before the requester is notified.
+ * It stops counting as running before the requester is notified.
  * A matchmaking canceled before the queue starts it completes with Canceled, and no policy or activity remains afterward.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRequestFlowTest, "EasySession.Subsystem.RequestsDriveBusyAndActivity", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
@@ -85,16 +84,6 @@ bool FEasySessionRequestFlowTest::RunTest(const FString& Parameters)
 	}
 
 	TestFalse(TEXT("The subsystem starts idle"), Subsystem->IsBusy());
-
-	// NULL has no friends interface, so the search finishes inside the call.
-	bool bFriendSearchRunningInsideCompletion = true;
-	Subsystem->FindFriendSessions(FEasyFriendSessionsCompleteDelegate::CreateLambda(
-		[Subsystem, &bFriendSearchRunningInsideCompletion](EEasySessionResult, const FString&, const TArray<FEasyFriendSession>&)
-		{
-			bFriendSearchRunningInsideCompletion = FEasySessionTestAccess::HasRequest(*Subsystem, FEasySessionRequest::EType::FriendSessions);
-		}));
-	TestFalse(TEXT("The friend search no longer counts as running inside its completion"), bFriendSearchRunningInsideCompletion);
-	TestFalse(TEXT("A finished friend search does not make the subsystem busy"), Subsystem->IsBusy());
 
 	FEasyMatchmakingParams Params;
 	Params.Search.bLANQuery = true;

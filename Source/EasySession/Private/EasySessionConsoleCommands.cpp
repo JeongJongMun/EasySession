@@ -512,8 +512,8 @@ namespace EasySessionConsole
 						Print(FString::Printf(TEXT("Friends: %d"), Friends.Num()));
 						for (int32 Index = 0; Index < Friends.Num(); ++Index)
 						{
-							Print(FString::Printf(TEXT("  [%d] %s | Online=%d | PlayingThisGame=%d"),
-								Index, *Friends[Index].DisplayName, Friends[Index].bIsOnline ? 1 : 0, Friends[Index].bIsPlayingThisGame ? 1 : 0));
+							Print(FString::Printf(TEXT("  [%d] %s | Online=%d | PlayingThisGame=%d | InLobby=%d"),
+								Index, *Friends[Index].DisplayName, Friends[Index].bIsOnline ? 1 : 0, Friends[Index].bIsPlayingThisGame ? 1 : 0, Friends[Index].bIsInLobby ? 1 : 0));
 						}
 					}));
 			}

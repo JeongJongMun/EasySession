@@ -53,13 +53,11 @@ The map you hand to `Update Easy Session` replaces the session's custom data: a 
 | Region | Any | Only sessions advertising this region ([regions](#regions)) |
 | Include In Progress Sessions | true | Turn off to hide sessions whose match already started. Sessions refusing join-in-progress never appear either way |
 
-`Find Easy Friend Sessions` is the friends-flavored search: it reads the friends list
-and finds the session each friend playing this game is in, one entry per friend. The
-entries come back ordered for a list: friends in a joinable session first, then the rest
-by presence (playing this game, online, offline) and name. A friend session joins like
-any other search result. `Cancel Easy Friend Search` stops a friend session search a menu no longer needs,
-and `Is Easy Session Busy` tells a Refresh button to wait, like every other session call. Like the friends list
-itself, it is not supported on NULL/LAN.
+To find the session one friend is in, set `Friend Id` to that friend's `Native Id` from
+`Read Easy Friends` and search. The friends list already says who is in a lobby of this
+game (`Is In Lobby`), with no request, so a menu can list every friend and search only
+for the one the player picks. The result joins like any other search result. Like the
+friends list itself, this is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess`.
 

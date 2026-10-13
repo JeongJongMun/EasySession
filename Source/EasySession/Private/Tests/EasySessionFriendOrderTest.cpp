@@ -4,73 +4,57 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionFriendSessionsRequest.h"
-#include "EasySessionReadFriendsRequest.h"
+#include "EasySessionSocial.h"
 #include "EasySessionTypes.h"
 
 namespace EasySessionFriendOrderTest
 {
-	static FEasySessionFriend MakeFriend(const TCHAR* Name, bool bOnline, bool bPlaying)
+	static FEasySessionFriend MakeFriend(const TCHAR* Name, bool bOnline, bool bPlaying, bool bInLobby)
 	{
 		FEasySessionFriend Friend;
 		Friend.DisplayName = Name;
 		Friend.bIsOnline = bOnline;
 		Friend.bIsPlayingThisGame = bPlaying;
+		Friend.bIsInLobby = bInLobby;
 		return Friend;
 	}
 
-	static FEasyFriendSession MakeEntry(const TCHAR* Name, bool bOnline, bool bPlaying, bool bHasSession)
-	{
-		FEasyFriendSession Entry;
-		Entry.Friend = MakeFriend(Name, bOnline, bPlaying);
-		Entry.bHasSession = bHasSession;
-		return Entry;
-	}
-
-	static FString Names(const TArray<FEasyFriendSession>& Entries)
+	static FString Names(const TArray<FEasySessionFriend>& Friends)
 	{
 		TArray<FString> Out;
-		for (const FEasyFriendSession& Entry : Entries)
+		for (const FEasySessionFriend& Friend : Friends)
 		{
-			Out.Add(Entry.Friend.DisplayName);
+			Out.Add(Friend.DisplayName);
 		}
 		return FString::Join(Out, TEXT(","));
 	}
 }
 
 /**
- * The friend list a UI shows should need no sorting of its own: friends in a joinable session first, then by presence, then by name.
+ * The friend list a UI shows should need no sorting of its own: friends in a lobby first, then by presence, then by name.
  * The order is a pure function of the entries, so it is checked without an online subsystem.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendOrderTest, "EasySession.Friends.ListOrdersSessionsThenPresence", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendOrderTest, "EasySession.Friends.ListOrdersLobbiesThenPresence", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendOrderTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionFriendOrderTest;
 
-	TArray<FEasyFriendSession> Entries;
-	Entries.Add(MakeEntry(TEXT("zed"), false, false, false));       // offline
-	Entries.Add(MakeEntry(TEXT("Mia"), true, false, false));        // online, other game
-	Entries.Add(MakeEntry(TEXT("bob"), true, true, true));          // in a session
-	Entries.Add(MakeEntry(TEXT("Amy"), true, true, false));         // playing, no findable session
-	Entries.Add(MakeEntry(TEXT("Kai"), false, false, false));       // offline
-	Entries.Add(MakeEntry(TEXT("Ada"), true, true, true));          // in a session
+	TArray<FEasySessionFriend> Friends;
+	Friends.Add(MakeFriend(TEXT("zed"), false, false, false));      // offline
+	Friends.Add(MakeFriend(TEXT("Mia"), true, false, false));       // online, other game
+	Friends.Add(MakeFriend(TEXT("bob"), true, true, true));         // in a lobby
+	Friends.Add(MakeFriend(TEXT("Amy"), true, true, false));        // playing, in no lobby
+	Friends.Add(MakeFriend(TEXT("Kai"), false, false, false));      // offline
+	Friends.Add(MakeFriend(TEXT("Ada"), true, true, true));         // in a lobby
 
-	FEasySessionFriendSessionsRequest::SortFriendSessions(Entries);
-	TestEqual(TEXT("Sessions first, then playing, online, offline; names sorted case-insensitively inside each group"),
-		Names(Entries), FString(TEXT("Ada,bob,Amy,Mia,Kai,zed")));
+	FEasySessionSocial::SortFriends(Friends);
+	TestEqual(TEXT("Lobbies first, then playing, online, offline; names sorted case-insensitively inside each rank"),
+		Names(Friends), FString(TEXT("Ada,bob,Amy,Mia,Kai,zed")));
 
 	// Sorting again changes nothing. A refresh must not shuffle rows the player is looking at.
-	const FString Before = Names(Entries);
-	FEasySessionFriendSessionsRequest::SortFriendSessions(Entries);
-	TestEqual(TEXT("The order is stable under a second sort"), Names(Entries), Before);
-
-	TArray<FEasySessionFriend> Friends;
-	Friends.Add(MakeFriend(TEXT("Cy"), false, false));
-	Friends.Add(MakeFriend(TEXT("Bo"), true, false));
-	Friends.Add(MakeFriend(TEXT("Al"), true, true));
-	FEasySessionReadFriendsRequest::SortFriends(Friends);
-	TestEqual(TEXT("Read Easy Friends orders playing, online, offline"),
-		Friends[0].DisplayName + Friends[1].DisplayName + Friends[2].DisplayName, FString(TEXT("AlBoCy")));
+	const FString Before = Names(Friends);
+	FEasySessionSocial::SortFriends(Friends);
+	TestEqual(TEXT("The order is stable under a second sort"), Names(Friends), Before);
 
 	return true;
 }

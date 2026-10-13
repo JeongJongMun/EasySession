@@ -14,7 +14,7 @@ class FOnlineSessionSearchResult;
  *
  * The subsystem creates it for FindSessions and FindParties.
  * FEasySessionParty creates it to search for the leader's party when it restores the party.
- * Matchmaking runs it as a sub-request for each search pass, and the friend session search runs it for each friend.
+ * Matchmaking runs it as a sub-request for each search pass.
  *
  * The request owns the native search object while it runs.
  * The online subsystem holds that object too and refuses every later search until it is released, so Cleanup releases it on every path.

@@ -200,14 +200,6 @@ FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextO
 	return Subsystem != nullptr ? Subsystem->GetSessionJoinCode() : FString();
 }
 
-void UEasySessionStatics::CancelEasyFriendSearch(const UObject* WorldContextObject)
-{
-	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
-	{
-		Subsystem->CancelFriendSearch();
-	}
-}
-
 void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObject)
 {
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))

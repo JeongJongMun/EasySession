@@ -5,7 +5,7 @@
 #include "EasySession.h"
 #include "EasySessionMessages.h"
 #include "EasySessionParty.h"
-#include "EasySessionReadFriendsRequest.h"
+#include "EasySessionSocial.h"
 #include "EasySessionSubsystem.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
@@ -114,7 +114,7 @@ void FEasySessionFindRequest::FindFriendSession()
 	}
 
 	// NULL completes every friend query with "no session" without searching, so that result would look like a real one.
-	if (!FEasySessionReadFriendsRequest::HasFriendsList(GetWorld()))
+	if (!FEasySessionSocial::HasFriendsList(GetWorld()))
 	{
 		Complete(EEasySessionResult::NotSupportedByService, EasySession::NoFriendsListMessage);
 		return;

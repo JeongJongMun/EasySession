@@ -50,8 +50,7 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 | **Destroy Easy Session** | - | `DestroySession` 호출. 이 게임의 네임드 세션만 지우고 맵에는 그대로 남습니다. 호스트든 클라이언트든 직후에 다시 호스팅하거나 참가할 수 있습니다 |
 | **Leave Easy Session** | - | Destroy Easy Session에 귀갓길까지. 네임드 세션을 지운 뒤 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 세션을 닫습니다 |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
-| **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다: 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 `NotSupportedByService`로 실패합니다 |
-| **Find Easy Friend Sessions** | - | 친구 목록을 읽은 뒤, 이 게임을 플레이 중인 친구마다 `FindFriendSession`을 호출합니다. `OnSuccess`가 `FEasyFriendSession` 배열을 넘깁니다. 모든 친구가 나열되고, 참가 가능한 세션에 있는 친구는 그 세션을 들고 맨 위로 정렬됩니다. NULL/LAN에서는 `NotSupportedByService`로 실패합니다 |
+| **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다: 이 게임의 로비에 있음, 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 `NotSupportedByService`로 실패합니다 |
 | **Create Easy Party** | `PartySettings` | 로컬 플레이어를 리더로 파티를 만듭니다. 아무도 이동하지 않습니다 ([가이드](Guide-Party.ko.md)) |
 | **Find Easy Parties** | `SearchParams` | Public 파티를 나열합니다. Join Code가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 파티만 돌아옵니다 |
 | **Join Easy Party** | `SearchResult` | Find Easy Parties가 돌려준 파티에 참가합니다. 참가는 리더가 정하고, 거절되면 `JoinRefused`와 리더의 사유로 실패합니다 |
@@ -176,7 +175,6 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 |---|---|---|
 | Consume Pending Easy Disconnect Info | `ConsumePendingDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | `Searching` 상태인 Matchmaking를 `Canceled`로 끝냅니다. `Joining`이나 `Hosting` 상태에서는 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다 |
-| Cancel Easy Friend Search | `CancelFriendSearch` | 진행 중인 `Find Easy Friend Sessions`를 `Canceled`로 끝냅니다. 실행 중이던 친구 한 명의 세션 검색 결과는 버립니다 |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | 플랫폼 초대. 결과 값을 돌려줍니다 |
 | Show Easy Invite UI | `ShowInviteUI` | 플랫폼 초대 오버레이. 결과 값을 돌려줍니다 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이. 결과 값을 돌려줍니다 |
@@ -236,7 +234,7 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 호스팅은 위 설정에 서버를 띄우는 방법을 더한 것입니다. 여기 더해진 필드들은 세션을 만들 때
 한 번만 읽히고, 그래서 Update가 바꿀 수 없습니다.
 두 이름의 규칙은 이렇습니다. Settings는 세션이나 파티가 광고하고 다시 읽을 수 있는 값이고, HostParams는 거기에 서버를 띄우는 데 필요한 값을 더한 것입니다.
-파티는 서버를 띄우지 않으므로 Settings만 있습니다 ([5.10](#510-feasypartysettings)).
+파티는 서버를 띄우지 않으므로 Settings만 있습니다 ([5.9](#59-feasypartysettings)).
 
 각 필드의 동작은 [세션 가이드](Guide-Sessions.ko.md)에 있습니다. `bHidden`은 세션을 광고하되
 Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Password`와 `bFriendsBypassPassword`는
@@ -257,35 +255,31 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 구조체를 통째로 들고 계세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
 저장해야 합니다. Find Easy Parties도 `bIsParty`가 켜진 같은 구조체를 돌려주고, Join Easy Party가 그것을 받습니다.
 
-### 5.5 FEasyFriendSession
-`Friend`(`FEasySessionFriend`), `bHasSession`, `Session`(`FEasySessionSearchResult`)
-
-`Find Easy Friend Sessions`가 친구 한 명당 하나씩 돌려주는 구조체입니다. `Session`은
-`bHasSession`이 true일 때만 유효하고, 다른 검색 결과처럼 그대로 참가에 씁니다.
-
 `bPasswordProtected`는 `Join Easy Session` 전에 비밀번호를 물어볼지 판단하는 근거입니다.
 
-### 5.6 FEasyMatchmakingParams
+### 5.5 FEasyMatchmakingParams
 `Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `JoinPassword`(String), `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
 
-### 5.7 FEasySessionPlayerInfo *(읽기 전용)*
+### 5.6 FEasySessionPlayerInfo *(읽기 전용)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `bIsReady`(세션이 맵을 옮길 때마다 다시 풀림), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)
 
-### 5.8 FEasySessionFriend *(읽기 전용)*
-`DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId`(Unique Net Id)
+### 5.7 FEasySessionFriend *(읽기 전용)*
+`DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `bIsInLobby`, `NativeId`(Unique Net Id)
 
 `Read Easy Friends`가 돌려주며, 초대와 프로필 함수에 그대로 넘기면 됩니다.
 `NativeId`를 검색의 `FriendId`에 넣으면 그 친구가 있는 세션을 찾습니다.
+`bIsInLobby`는 요청 없이 친구의 접속 상태에서 읽으므로, 친구 목록의 모든 친구에게 바로 보여줄 수 있습니다.
+파티에만 있는 친구도 켜지며, 그 친구를 검색하면 게임 세션이 나오지 않습니다.
 
-### 5.9 FEasyDisconnectInfo *(읽기 전용)*
+### 5.8 FEasyDisconnectInfo *(읽기 전용)*
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)
 
-### 5.10 FEasyPartySettings
+### 5.9 FEasyPartySettings
 `MaxMembers`(int, 리더 포함 2 이상), `bHidden`(bool, 기본 true: Find Easy Parties 목록에서 뺌), `bUseJoinCode`(bool, 기본 false: 참가 코드 광고)
 
 `Create Easy Party`가 받고 `Get Easy Party Settings`가 돌려주는 구조체입니다. 파티에는 맵, 비밀번호, 지역, 커스텀 데이터가 없으므로 이 세 필드가 전부입니다. `bHidden`과 `bUseJoinCode`는 게임 세션의 같은 필드처럼 동작하고, 둘 다 플레이어를 거절하지 않습니다 ([가이드](Guide-Party.ko.md#누가-들어올-수-있나)).
 
-### 5.11 FEasyPartyMemberInfo *(읽기 전용)*
+### 5.10 FEasyPartyMemberInfo *(읽기 전용)*
 `PlayerName`, `bIsLocalPlayer`, `bIsLeader`, `bIsReady`, `PlayerId`
 
 `Get Easy Party Members`가 돌려주며, `Kick Easy Party Member`에 그대로 넘깁니다.
@@ -387,10 +381,10 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 `FindSessions`, `JoinSession`, `DestroySession`, `UpdateSession`,
 `StartMatchmaking`, `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`. 블루프린트와 C++은 같은 코드 경로를 지납니다.
 
-세션 호출은 전부 큐에 요청 하나로 들어가고, 큐는 한 번에 하나씩 실행합니다. Matchmaking과
-`FindFriendSessions`는 검색, 참가, 호스트를 자기 요청 안의 하위 요청으로 실행하므로, 게임의
+세션 호출은 전부 큐에 요청 하나로 들어가고, 큐는 한 번에 하나씩 실행합니다. Matchmaking은
+검색, 참가, 호스트를 자기 요청 안의 하위 요청으로 실행하므로, 게임의
 요청은 두 하위 요청 사이에 끼어들지 않고 실행 전체가 끝날 때까지 기다립니다.
-`ReadFriends`도 요청이므로, 친구 목록을 읽는 동안 `IsBusy`가 켜집니다.
+`ReadFriends`는 세션 인터페이스를 쓰지 않으므로 큐 밖에서 실행됩니다. 실행 중인 요청을 기다리지 않고 `IsBusy`도 켜지 않습니다.
 실행 중이거나 대기 중인 요청은 모두 `IsBusy`, `GetActivity`, `GetQueueStatus`에 반영됩니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.

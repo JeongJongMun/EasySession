@@ -51,8 +51,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
 | **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the session for everyone with "The host has left the game." |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
-| **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
-| **Find Easy Friend Sessions** | - | Reads the friends list, then calls `FindFriendSession` for each friend playing this game. `OnSuccess` carries a `FEasyFriendSession` array - every friend listed, the ones in a joinable session carrying it and sorted to the top. Fails with `NotSupportedByService` on NULL/LAN |
+| **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: in a lobby of this game, then playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
 | **Create Easy Party** | `PartySettings` | Creates a party with the local player as its leader. Nothing travels ([guide](Guide-Party.en.md)) |
 | **Find Easy Parties** | `SearchParams` | Lists the Public parties, or with a Join Code the one party that advertises it. Only parties come back |
 | **Join Easy Party** | `SearchResult` | Joins a party Find Easy Parties returned. The leader decides, and a refusal fails with `JoinRefused` and the leader's reason |
@@ -182,7 +181,6 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 |---|---|---|
 | Consume Pending Easy Disconnect Info | `ConsumePendingDisconnectInfo` | Reads the disconnect reason and clears it. Survives map travel, so the menu can show it |
 | Cancel Easy Matchmaking | `CancelMatchmaking` | Ends a Matchmaking run with `Canceled` while it is `Searching`. Does nothing while the run is `Joining` or `Hosting`, because a join or a host moves the group and cannot be undone |
-| Cancel Easy Friend Search | `CancelFriendSearch` | Ends Find Easy Friend Sessions with `Canceled`. The running search for a friend's session is ignored |
 | Send Easy Session Invite To Friend | `SendSessionInviteToFriend` | Platform invite, returns a result |
 | Show Easy Invite UI | `ShowInviteUI` | Platform invite overlay, returns a result |
 | Show Easy Profile UI | `ShowProfileUI` | Profile overlay for a friend, returns a result |
@@ -245,7 +243,7 @@ so every field here is one a live session can change. On a client, `Get Easy Ses
 Hosting is the settings above plus how to bring the server up. These added fields are
 read once, while the session is created, which is why Update cannot change them.
 The rule for the two names: Settings are what a session or a party advertises and can be read back, and HostParams adds what starting a server needs.
-A party starts no server, so it has Settings only ([5.10](#510-feasypartysettings)).
+A party starts no server, so it has Settings only ([5.9](#59-feasypartysettings)).
 
 Field behavior is in the [session guide](Guide-Sessions.en.md). `bHidden` advertises the
 session but keeps it out of Find results, so it can only be reached through an invite.
@@ -269,35 +267,31 @@ This struct connects the two nodes: `Find Easy Sessions` returns them and
 `Join Easy Session` takes one back. Keep the whole struct - a server-browser row should
 store it, not just the name it displays. Find Easy Parties returns the same struct with `bIsParty` set, and Join Easy Party takes it.
 
-### 5.5 FEasyFriendSession
-`Friend` (`FEasySessionFriend`), `bHasSession`, `Session` (`FEasySessionSearchResult`)
-
-One entry per friend from `Find Easy Friend Sessions`. `Session` is only valid while
-`bHasSession` is true, and joins like any other search result.
-
 `bPasswordProtected` is how you decide whether to prompt before `Join Easy Session`.
 
-### 5.6 FEasyMatchmakingParams
+### 5.5 FEasyMatchmakingParams
 `Search` (SearchParams), `Host` (HostParams - read only while `bAllowHostFallback` is on), `bAllowHostFallback`, `JoinPassword` (String), `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
 
-### 5.7 FEasySessionPlayerInfo *(read-only)*
+### 5.6 FEasySessionPlayerInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost` (always false on dedicated servers), `bIsReady` (unset again in every map the session travels to), `PlayerId` (the online service id - names can repeat, this cannot)
 
-### 5.8 FEasySessionFriend *(read-only)*
-`DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `NativeId` (Unique Net Id)
+### 5.7 FEasySessionFriend *(read-only)*
+`DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `bIsInLobby`, `NativeId` (Unique Net Id)
 
 Returned by `Read Easy Friends`; pass one back to the invite and profile functions.
 `NativeId` goes into a search's `FriendId` to find the session that friend is in.
+`bIsInLobby` comes from the friend's presence with no request, so a friends list can show it for every friend.
+It is also set for a friend who is only in a party, and a search for that friend finds no game session.
 
-### 5.9 FEasyDisconnectInfo *(read-only)*
+### 5.8 FEasyDisconnectInfo *(read-only)*
 `Reason` (`EEasyDisconnectReason`), `ReasonText` (Text)
 
-### 5.10 FEasyPartySettings
+### 5.9 FEasyPartySettings
 `MaxMembers` (int, at least 2, the leader included), `bHidden` (bool, default true: left out of the Find Easy Parties list), `bUseJoinCode` (bool, default false: advertise a join code)
 
 What `Create Easy Party` takes and `Get Easy Party Settings` returns. A party has no map, password, region or custom data, so these three fields are all of it. `bHidden` and `bUseJoinCode` work like the same fields of a game session, and neither refuses a player ([guide](Guide-Party.en.md#who-may-join)).
 
-### 5.11 FEasyPartyMemberInfo *(read-only)*
+### 5.10 FEasyPartyMemberInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsLeader`, `bIsReady`, `PlayerId`
 
 Returned by `Get Easy Party Members`; pass one to `Kick Easy Party Member`.
@@ -397,11 +391,11 @@ The same requests are callable natively with delegate callbacks: `CreateSession`
 `StartMatchmaking`, `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`. Blueprint and C++ take the same code path.
 
 Every session call is one request on a queue that runs them one at a time. Matchmaking
-and `FindFriendSessions` run their searches, joins and host as sub-requests inside
-their own request, so a request from the game waits until the whole run ends instead of
-slipping in between two of its sub-requests. `ReadFriends` is a request as well, so
-reading the friends list turns `IsBusy` on while it runs. Every running or waiting
-request counts toward `IsBusy`, `GetActivity` and `GetQueueStatus`.
+runs its searches, joins and host as sub-requests inside its own request, so a request
+from the game waits until the whole run ends instead of slipping in between two of its
+sub-requests. `ReadFriends` does not use the session interface, so it runs outside the
+queue: it does not wait for a running request and does not turn `IsBusy` on. Every running
+or waiting request counts toward `IsBusy`, `GetActivity` and `GetQueueStatus`.
 
 `OnModifyServerTravelURL` and `OnModifyClientTravelURL` are C++ only delegates on the
 subsystem. They give you the travel URL just before travel so you can append your own

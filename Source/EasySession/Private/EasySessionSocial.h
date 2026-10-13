@@ -8,11 +8,11 @@
 class UEasySessionSubsystem;
 
 /**
- * FEasySessionSocial is responsible for the platform's social features that need no request: accepted invites, sent invites and the overlays.
- * Reading the friends list and the friend session search are requests, see FEasySessionReadFriendsRequest and FEasySessionFriendSessionsRequest.
+ * FEasySessionSocial is responsible for the platform's social features that need no request: accepted invites, sent invites, the overlays and the friends list.
+ * The friends list is read outside the session queue, because reading it does not use the session interface.
  * An accepted invite is joined with JoinSession or JoinParty, the same calls a game uses.
  *
- * These use the identity and external UI interfaces, and no part of the session lifecycle depends on them.
+ * These use the identity, friends and external UI interfaces, and no part of the session lifecycle depends on them.
  * A game with no social features never calls into this object at all.
  *
  * There is deliberately no list of received invites.
@@ -62,6 +62,18 @@ public:
 	 * Blueprint cannot hold a raw id, which is why the subsystem exposes one typed entry point per struct instead.
 	 */
 	EEasySessionResult ShowProfileUI(const FUniqueNetIdPtr& TargetId) const;
+
+	/** Read the local player's friends list in display order. NULL has none, which is reported inside this call. */
+	void ReadFriends(FEasyFriendsCompleteDelegate OnComplete) const;
+
+	/** @return Whether the online subsystem of this world has a friends list. NULL has none. */
+	static bool HasFriendsList(const UWorld* World);
+
+	/** @return Whether A comes before B in display order: in a lobby first, then playing this game, then online, then offline, and by name inside each rank. */
+	static bool FriendComesFirst(const FEasySessionFriend& A, const FEasySessionFriend& B);
+
+	/** Order friends for display, see FriendComesFirst. */
+	static void SortFriends(TArray<FEasySessionFriend>& Friends);
 
 private:
 

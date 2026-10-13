@@ -83,9 +83,6 @@ enum class EEasySessionResult : uint8
 	/** Only the game that created the session can do this. Show the button only when Is Easy Session Authority is true. */
 	RequiresSessionAuthority,
 
-	/** A friend session search is already running. One runs at a time. Wait for it to complete. */
-	FriendSearchAlreadyInProgress,
-
 	/** The online subsystem in use does not offer this feature. Friends and invites need Steam. NULL (LAN) has no friends, which is not a configuration problem. */
 	NotSupportedByService,
 
@@ -655,33 +652,19 @@ struct EASYSESSION_API FEasySessionFriend
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsPlayingThisGame = false;
 
+	/**
+	 * Whether the friend is in a lobby of this game, which can be a game session or a party.
+	 * Search with their Native Id as Friend Id to find the game session, which a friend only in a party does not have.
+	 */
+	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
+	bool bIsInLobby = false;
+
 	/** The friend's unique id. Set it as a search's Friend Id to find the session they are in. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FUniqueNetIdRepl NativeId;
 
 	/** @return Whether this friend has an id, which invites and friend searches need. */
 	bool IsValid() const { return NativeId.IsValid(); }
-};
-
-/**
- * A friend together with the session they are in, as returned by Find Easy Friend Sessions.
- */
-USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasyFriendSession
-{
-	GENERATED_BODY()
-
-	/** The friend. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	FEasySessionFriend Friend;
-
-	/** Whether a joinable session was found for this friend. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	bool bHasSession = false;
-
-	/** The friend's session, joinable with Join Easy Session. Only valid while bHasSession is true. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	FEasySessionSearchResult Session;
 };
 
 /**
@@ -943,6 +926,3 @@ DECLARE_DELEGATE_ThreeParams(FEasySessionFindCompleteDelegate, EEasySessionResul
 
 /** Delegate fired when reading the friends list completes. */
 DECLARE_DELEGATE_ThreeParams(FEasyFriendsCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/, const TArray<FEasySessionFriend>& /*Friends*/);
-
-/** Delegate fired when finding friend sessions completes. */
-DECLARE_DELEGATE_ThreeParams(FEasyFriendSessionsCompleteDelegate, EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/, const TArray<FEasyFriendSession>& /*FriendSessions*/);

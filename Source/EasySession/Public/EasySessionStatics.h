@@ -233,10 +233,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Matchmaking", meta = (WorldContext = "WorldContextObject"))
 	static void CancelEasyMatchmaking(const UObject* WorldContextObject);
 
-	/** Cancel the running Find Easy Friend Sessions. It completes with Canceled. Does nothing when none is running. */
-	UFUNCTION(BlueprintCallable, Category = "EasySession|Friends", meta = (WorldContext = "WorldContextObject"))
-	static void CancelEasyFriendSearch(const UObject* WorldContextObject);
-
 	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.
 	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.

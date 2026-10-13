@@ -84,7 +84,6 @@ namespace EasySession
 			case EEasySessionResult::StateChangeFailure:		return TEXT("StateChangeFailure");
 			case EEasySessionResult::Canceled:					return TEXT("Canceled");
 			case EEasySessionResult::RequiresSessionAuthority:	return TEXT("RequiresSessionAuthority");
-			case EEasySessionResult::FriendSearchAlreadyInProgress:	return TEXT("FriendSearchAlreadyInProgress");
 			case EEasySessionResult::NotSupportedByService:		return TEXT("NotSupportedByService");
 			case EEasySessionResult::RequiresPartyLeader:		return TEXT("RequiresPartyLeader");
 			case EEasySessionResult::InParty:					return TEXT("InParty");

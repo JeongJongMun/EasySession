@@ -64,12 +64,6 @@ enum class EEasySessionRequestType : uint8
 	/** One matchmaking run: searches and joins, then a host fallback. */
 	Matchmaking,
 
-	/** The friend session search: the friends list, then one session search per friend. */
-	FriendSessions,
-
-	/** Read the local player's friends list. */
-	ReadFriends,
-
 	/** Create the party session and start the party beacon. */
 	CreateParty,
 
