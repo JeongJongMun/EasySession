@@ -284,7 +284,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 			CurrentTest->TestEqual(TEXT("The right password enters"), Approve(TEXT("hunter2")), EEasyReservationResult::Approved);
 			CurrentTest->TestEqual(TEXT("Whitespace around it is forgiven"), Approve(TEXT("  hunter2  ")), EEasyReservationResult::Approved);
 			CurrentTest->TestEqual(TEXT("A wrong password is refused"), Approve(TEXT("wrong")), EEasyReservationResult::WrongPassword);
-			CurrentTest->TestEqual(TEXT("No password is refused"), Approve(TEXT("")), EEasyReservationResult::WrongPassword);
+			CurrentTest->TestEqual(TEXT("No password asks for one"), Approve(TEXT("")), EEasyReservationResult::PasswordRequired);
 			CurrentTest->TestEqual(TEXT("The comparison is case sensitive"), Approve(TEXT("HUNTER2")), EEasyReservationResult::WrongPassword);
 
 			Subsystem->StartSession();

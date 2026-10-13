@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionJoinRequest.h"
 #include "EasySessionReservationBeacon.h"
 #include "EasySessionReservations.h"
 #include "EasySessionSubsystem.h"
@@ -588,6 +589,20 @@ bool FEasySessionReservationResultTest::RunTest(const FString& Parameters)
 	// The join node shows this sentence, so a refused player is never left without one.
 	TestFalse(TEXT("A refusal says why"), AEasySessionReservationBeaconClient::MakeResponseFromReservationResult(EPartyReservationResult::GeneralError).ReasonText.IsEmpty());
 	TestTrue(TEXT("An approved join has nothing to say"), AEasySessionReservationBeaconClient::MakeResponseFromReservationResult(EPartyReservationResult::ReservationDuplicate).ReasonText.IsEmpty());
+	return true;
+}
+
+/**
+ * Every refusal the reservation beacon sends becomes the Join Easy Session result the documentation tells a game to branch on.
+ * The translation is a pure function, so it is checked without a beacon round trip.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionRefusalResultTest, "EasySession.Reservation.RefusalBecomesTheJoinResult", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionRefusalResultTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("No password asks the player for one"), FEasySessionJoinRequest::GetRefusalResult(EEasyReservationResult::PasswordRequired), EEasySessionResult::PasswordRequired);
+	TestEqual(TEXT("A wrong password lets the player retype it"), FEasySessionJoinRequest::GetRefusalResult(EEasyReservationResult::WrongPassword), EEasySessionResult::WrongPassword);
+	TestEqual(TEXT("No reservation left is a full session"), FEasySessionJoinRequest::GetRefusalResult(EEasyReservationResult::SessionFull), EEasySessionResult::JoinSessionFull);
+	TestEqual(TEXT("Any other refusal is refused with the host's reason"), FEasySessionJoinRequest::GetRefusalResult(EEasyReservationResult::Refused), EEasySessionResult::JoinRefused);
 	return true;
 }
 

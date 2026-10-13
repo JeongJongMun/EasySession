@@ -101,7 +101,7 @@ Every failure pin gives you a `Result` enum and a message you can show a player.
 Keep the whole `SearchResult` on each row, not just the name it displays - `Join Easy
 Session` needs it back.
 
-A wrong password, a full session or a match that stopped taking players fails the node right here, with
+A missing or wrong password, a full session or a match that stopped taking players fails the node right here, with
 `Result` saying which and `ErrorMessage` carrying the host's reason - no loading screen
 first. See [asking the host first](Guide-Sessions.en.md#asking-the-host-first).
 

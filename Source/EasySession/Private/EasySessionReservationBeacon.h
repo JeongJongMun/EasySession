@@ -16,7 +16,10 @@ enum class EEasyReservationResult : uint8
 	/** The player may join. */
 	Approved,
 
-	/** The session password did not match. An empty one never does. */
+	/** The session is password-protected and no password was sent. */
+	PasswordRequired,
+
+	/** The password that was sent did not match. */
 	WrongPassword,
 
 	/** The session has no reservation left for another player. */

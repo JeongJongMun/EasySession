@@ -73,16 +73,21 @@ EasySession은 성공을 알리기 **전에** 호스트 주소를 검증합니�
 
 참가하는 플레이어는 Travel 전에 호스트에게 예약을 요청합니다. 호스트는 매치가 아직 플레이어를 받는지, 세션이 꽉 차지 않았는지, 비밀번호가 맞는지를 확인합니다.
 
-매치가 더 이상 플레이어를 받지 않으면 노드가 `JoinRefused`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 비밀번호가 틀리면 `WrongPassword`로 실패합니다. 세 경우 모두 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며, 플레이어는 곧바로 다시 시도할 수 있습니다.
+매치가 더 이상 플레이어를 받지 않으면 노드가 `JoinRefused`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 비밀번호가 걸린 세션에 비밀번호 없이 참가하면 `PasswordRequired`로, 비밀번호가 틀리면 `WrongPassword`로 실패합니다. 어느 경우든 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며, 플레이어는 곧바로 다시 시도할 수 있습니다.
 
 ```
-Join Easy Session
-  OnFailure -> Result == WrongPassword ?
+Join Easy Session (비밀번호 없이)
+  OnFailure -> Result == PasswordRequired ?
+                 true  -> 플레이어에게 비밀번호 묻기
+                 false -> ErrorMessage 표시
+
+Join Easy Session (플레이어가 입력한 비밀번호로)
+  OnFailure -> Result == WrongPassword 또는 PasswordRequired ?
                  true  -> 비밀번호 입력창을 다시 열고 ErrorMessage 표시
                  false -> ErrorMessage 표시
 ```
 
-예제의 비밀번호 팝업이 바로 이렇게 합니다. 다시 입력할 수 있도록 열린 채로 남고, 입력칸 아래에 사유를 보여줍니다(`WBP_JoinPasswordPopup`).
+검색 결과가 잠겨 있다는 이유로 묻지 말고, `PasswordRequired`를 받은 뒤에만 비밀번호를 물으세요. 누구에게 비밀번호가 필요한지는 호스트가 정하고, 호스트의 친구에게는 필요 없을 수 있습니다([친구는 비밀번호를 건너뜁니다](#친구는-비밀번호를-건너뜁니다)). 예제의 메인 메뉴와 비밀번호 팝업이 바로 이렇게 합니다. 팝업은 다시 입력할 수 있도록 열린 채로 남고, 입력칸 아래에 사유를 보여줍니다(`WBP_JoinPasswordPopup`).
 
 ### 예약
 
@@ -153,11 +158,11 @@ Create Easy Session
   Host Params > Password = "1234"
 ```
 
-비밀번호 자체는 광고되지 않습니다. "비밀번호가 걸려 있음"이라는 표시만 세션과 함께 나가고, `Find Easy Sessions`가 그것을 각 검색 결과의 `Password Protected`로 돌려줍니다. 입력을 받을지 말지 이 값으로 정하세요.
+비밀번호 자체는 광고되지 않습니다. "비밀번호가 걸려 있음"이라는 표시만 세션과 함께 나가고, `Find Easy Sessions`가 그것을 각 검색 결과의 `Password Protected`로 돌려줍니다. 목록에서 잠긴 세션을 표시하는 데 쓰세요. 비밀번호를 물을지는 호스트의 답으로 정합니다([호스트에게 먼저 묻기](#호스트에게-먼저-묻기)).
 
 ### 잠긴 세션에 참가하기
 
-플레이어가 입력한 값을 `Join Easy Session`의 `Password` 핀에 넘기세요. 호스트가 Travel 전에 예약 비콘으로 그 값을 확인하고([호스트에게 먼저 묻기](#호스트에게-먼저-묻기)), 비밀번호는 Travel URL에 들어가지 않으므로 엔진의 Travel 로그에도 남지 않습니다. 비콘에서 승인받지 않은 플레이어는 도착할 때 거절되므로, `open` 콘솔 명령 같은 직접 접속으로는 비밀번호 세션에 들어올 수 없습니다.
+먼저 비밀번호 없이 `Join Easy Session`을 부르세요. 호스트가 `PasswordRequired`로 답하면 플레이어에게 물은 값을 다음 `Join Easy Session`의 `Password` 핀에 넘기세요. 호스트가 Travel 전에 예약 비콘으로 그 값을 확인하고([호스트에게 먼저 묻기](#호스트에게-먼저-묻기)), 비밀번호는 Travel URL에 들어가지 않으므로 엔진의 Travel 로그에도 남지 않습니다. 비콘에서 승인받지 않은 플레이어는 도착할 때 거절되므로, `open` 콘솔 명령 같은 직접 접속으로는 비밀번호 세션에 들어올 수 없습니다.
 
 ### 친구는 비밀번호를 건너뜁니다
 

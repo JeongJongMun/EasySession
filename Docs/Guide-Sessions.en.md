@@ -73,16 +73,21 @@ EasySession validates the host address **before** reporting success - if the hos
 
 Before the travel, the joining player asks the host for a reservation. The host checks that the match still takes players, that the session is not full, and the password.
 
-A match that no longer takes players fails the node with `JoinRefused`, a full session with `JoinSessionFull`, and a wrong password with `WrongPassword`. In all three cases no map has started loading, `ErrorMessage` carries the host's own sentence, and the player can retry immediately:
+A match that no longer takes players fails the node with `JoinRefused`, a full session with `JoinSessionFull`, a password-protected session joined without a password with `PasswordRequired`, and a wrong password with `WrongPassword`. In every case no map has started loading, `ErrorMessage` carries the host's own sentence, and the player can retry immediately:
 
 ```
-Join Easy Session
-  OnFailure -> Result == WrongPassword ?
+Join Easy Session (no password)
+  OnFailure -> Result == PasswordRequired ?
+                 true  -> ask the player for the password
+                 false -> show ErrorMessage
+
+Join Easy Session (the password the player typed)
+  OnFailure -> Result == WrongPassword or PasswordRequired ?
                  true  -> reopen the password prompt, show ErrorMessage
                  false -> show ErrorMessage
 ```
 
-The example's password popup does exactly this - it stays available for a retype and shows the reason under the input (`WBP_JoinPasswordPopup`).
+Ask for the password only after `PasswordRequired`, not because a search result is locked: the host decides who needs one, and a friend of the host may need none ([Friends skip the password](#friends-skip-the-password)). The example's main menu and password popup do exactly this - the popup stays available for a retype and shows the reason under the input (`WBP_JoinPasswordPopup`).
 
 ### Reservations
 
@@ -153,11 +158,11 @@ Create Easy Session
   Host Params > Password = "1234"
 ```
 
-The password itself is never advertised. Only a "password protected" flag goes out with the session, which `Find Easy Sessions` returns as `Password Protected` on each search result - use it to decide whether to prompt.
+The password itself is never advertised. Only a "password protected" flag goes out with the session, which `Find Easy Sessions` returns as `Password Protected` on each search result - use it to mark locked sessions in a list. Whether to ask for the password is the host's answer ([Asking the host first](#asking-the-host-first)).
 
 ### Joining a locked session
 
-Pass the player's answer to the `Password` pin on `Join Easy Session`. The host checks it over the reservation beacon before the travel ([Asking the host first](#asking-the-host-first)), and it never goes into the travel URL, so the engine's travel logs never show it. A player the beacon did not approve is refused on arrival, so a direct connect such as the `open` console command cannot enter a password session.
+Call `Join Easy Session` without a password first. When the host answers `PasswordRequired`, ask the player and pass the answer to the `Password` pin on the next `Join Easy Session`. The host checks it over the reservation beacon before the travel ([Asking the host first](#asking-the-host-first)), and it never goes into the travel URL, so the engine's travel logs never show it. A player the beacon did not approve is refused on arrival, so a direct connect such as the `open` console command cannot enter a password session.
 
 ### Friends skip the password
 

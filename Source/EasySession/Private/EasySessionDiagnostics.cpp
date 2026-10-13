@@ -164,7 +164,7 @@ EasySessionDiagnostics::FReport EasySessionDiagnostics::RunDiagnostics(UWorld* W
 	if (GEngine != nullptr && !GEngine->NetDriverDefinitions.ContainsByPredicate(
 		[](const FNetDriverDefinition& Definition) { return Definition.DefName == FName(TEXT("BeaconNetDriver")); }))
 	{
-		AddFix(Report, TEXT("No BeaconNetDriver definition - the reservation beacon cannot start, so hosts fall back to refusing players after they have already traveled."),
+		AddFix(Report, TEXT("No BeaconNetDriver definition - the reservation beacon cannot start, so hosts refuse players only after they have traveled, and nobody can join a password-protected session."),
 			{ TEXT("[/Script/Engine.GameEngine]"),
 			  TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"/Script/OnlineSubsystemUtils.IpNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") });
 	}

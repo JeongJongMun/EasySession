@@ -43,7 +43,7 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 |---|---|---|
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 이어서 Initial Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 됩니다. Initial Map Name이 비어 있으면 `InvalidParams`로 실패합니다. 접속할 서버 없이 세션만 광고되기 때문입니다 |
 | **Find Easy Sessions** | `SearchParams` | `FindSessions` 호출. 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다 |
-| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 예약을 먼저 요청한 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `WrongPassword` / `JoinRefused`로 실패합니다. 세션 밖의 플레이어가 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
+| **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 예약을 먼저 요청한 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 없거나 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `PasswordRequired` / `WrongPassword` / `JoinRefused`로 실패합니다. 세션 밖의 플레이어가 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)) |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 세션 권한 필요 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 세션 권한 필요 |
 | **Update Easy Session** | `NewSettings` | `UpdateSession` 호출. `FEasySessionSettings`로 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 이 구조체는 살아있는 세션이 바꿀 수 있는 필드만 들고 있어서, 무시되는 값이 없습니다. 세션 권한 필요 |
@@ -211,7 +211,7 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 | `OnMatchmakingStateChanged` | `OldState`, `NewState` | Matchmaking 상태가 바뀌었을 때 (`Searching`, `Joining`, `Hosting`, `Complete`) |
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Matchmaking 상태가 바뀔 때 + 실행 중 1초마다. 경과 시간 표시를 만드는 이벤트입니다 |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | Matchmaking 한 번이 끝났을 때. 참가했든, 호스트가 됐든, 취소됐든(`Result` = `Canceled`) 발화합니다. 어느 쪽인지는 `Is Easy Session Host`로 확인합니다 |
-| `OnSessionFailure` | `Reason`(String) | 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패한 경우입니다. `Reason`은 상태 표시나 로그에 쓰세요. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다 |
+| `OnSessionFailure` | `Reason`(String) | 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 실패했거나, 호스트의 비밀번호 세션에서 예약 비콘이 시작되지 않아 아무도 참가할 수 없게 된 경우입니다. `Reason`은 상태 표시나 로그에 쓰세요. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다 |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy가 바뀌었을 때. 한 번 바인딩해 두고 이 플래그로 세션 버튼을 켜고 끄면 매 틱 폴링이 필요 없습니다. true로 바뀐 순간 Get Easy Session Activity가 무엇이 시작됐는지 알려줍니다 |
 | `OnSessionInviteAccepted` | `Session`(`FEasySessionSearchResult`) | 플랫폼 오버레이에서 초대를 수락했을 때. Auto Join Accepted Invites가 켜져 있으면 참가가 이어서 진행되고, 실행 중인 Matchmaking은 취소됩니다. 단 이미 세션에 있다면 `bAcceptInvitesWhileInSession`이 켜져 있어야 합니다. Matchmaking이 이미 `Joining`이나 `Hosting` 상태면 취소되지 않고, 초대에도 참가하지 않습니다. 파티 초대면 `Session.bIsParty`가 true이고, Join Easy Party로 참가하며 게임 세션 중에는 참가하지 않습니다 ([가이드](Guide-Party.ko.md#초대)) |
 | `OnSessionPlayersChanged` | - | 플레이어가 세션에 들어오거나 나가거나 준비 상태를 바꿨을 때. 호스트와 모든 클라이언트에서 발생합니다. Get Easy Session Player Infos가 이미 새 목록을 돌려줍니다 |
@@ -298,8 +298,8 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`NoSessionsFound`** | 검색은 정상이었고 결과가 없었습니다. 오류가 아니므로 직접 호스팅을 권하면 됩니다 |
 | **`JoinSessionFull`** | 세션이 꽉 찼습니다. 트래블 전에는 호스트가, 그 뒤에는 온라인 서비스가 거절합니다. 호스트는 아직 로드 중인 플레이어의 예약까지 세므로, 빈자리가 보이던 검색 결과도 여기서 끝날 수 있습니다 |
 | **`JoinSessionDoesNotExist`** | 참가 시점에 세션이 사라졌습니다. 다시 검색하세요 |
-| **`PasswordRequired`** | 비밀번호가 걸린 세션인데 비밀번호를 보내지 않았습니다. 특정 세션 하나를 찾는 매치메이킹은 그 세션이 잠겨 있으면 이 결과로 끝납니다. 비밀번호와 함께 `Join Easy Session`으로 들어가세요 |
-| **`WrongPassword`** | 호스트가 거절했습니다: 비밀번호가 맞지 않습니다. 다시 입력받으세요 |
+| **`PasswordRequired`** | 비밀번호가 걸린 세션인데 비밀번호를 보내지 않았습니다. 플레이어에게 비밀번호를 물은 뒤 그 값으로 `Join Easy Session`을 다시 부르세요([호스트에게 먼저 묻기](Guide-Sessions.ko.md#호스트에게-먼저-묻기)). 특정 세션 하나를 찾는 매치메이킹도 그 세션이 잠겨 있으면 이 결과로 끝납니다 |
+| **`WrongPassword`** | 호스트가 거절했습니다: 보낸 비밀번호가 맞지 않습니다. 다시 입력받으세요 |
 | **`JoinRefused`** | 호스트가 다른 이유로 거절했습니다. 예: 더 이상 플레이어를 받지 않는 매치, 또는 비밀번호 세션의 예약 비콘에 닿지 못함. `ErrorMessage`는 그대로 보여줘도 됩니다 |
 | **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.ko.md)) |
 | **`RequiresSessionAuthority`** | 그 세션을 만든 게임만 할 수 있는 일입니다. `Is Easy Session Authority`가 true일 때만 버튼을 보여주세요 |

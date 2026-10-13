@@ -124,7 +124,7 @@ void FEasySessionReservations::StartBeacon()
 	else if (!Beacon->InitHostBeacon(1, MaxPlayers, MaxPlayers, NAME_GameSession, 0, true))
 	{
 		// Without that state the parent refuses every reservation, so a beacon left running here would refuse every join.
-		UE_LOG(LogEasySession, Error, TEXT("The reservation beacon cannot hold reservations for %d players, so it is not running. A refused join is now reported after the travel instead of before it."), MaxPlayers);
+		ReportBeaconNotRunning(FString::Printf(TEXT("The reservation beacon cannot hold reservations for %d players, so it is not running."), MaxPlayers));
 		Beacon->Destroy();
 		return;
 	}
@@ -134,7 +134,7 @@ void FEasySessionReservations::StartBeacon()
 
 	if (!BeaconPort.Register(*Beacon))
 	{
-		UE_LOG(LogEasySession, Error, TEXT("The reservation beacon is not running. A refused join is now reported after the travel instead of before it."));
+		ReportBeaconNotRunning(TEXT("The reservation beacon is not running."));
 		Beacon->Destroy();
 		return;
 	}
@@ -229,6 +229,13 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 		}
 	}
 
+	// No password at all is the joining game's cue to ask the player, so it is told apart from a wrong one.
+	if (Password.TrimStartAndEnd().IsEmpty())
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Reservations: refusing '%s' - no password was sent for a password-protected session."), *Requester.ToString());
+		return MakeResponse(EEasyReservationResult::PasswordRequired, NSLOCTEXT("EasySession", "PasswordRequired", "This session needs a password."));
+	}
+
 	// Never log the password: on a listen server the log file is on a player's machine.
 	UE_LOG(LogEasySession, Warning, TEXT("Reservations: refusing '%s' - the session password did not match."), *Requester.ToString());
 	return MakeResponse(EEasyReservationResult::WrongPassword, NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password."));
@@ -264,9 +271,9 @@ void FEasySessionReservations::HandlePreLogin(AGameModeBase* GameMode, const FUn
 
 	// Only the reservation beacon receives the password, so a player without a reservation is checked as if they sent none.
 	FEasyReservationResponse Response = ApproveJoin(FString(), NewPlayer);
-	if (Response.Result == EEasyReservationResult::WrongPassword)
+	if (Response.Result == EEasyReservationResult::PasswordRequired)
 	{
-		// This player sent no password at all, so "wrong password" would mislead them.
+		// This player could only have sent a password over the beacon, so "needs a password" would mislead them.
 		UE_LOG(LogEasySession, Warning, TEXT("Reservations: '%s' arrived without a reservation, and only the reservation beacon checks the password."), *NewPlayer.ToString());
 		Response.ReasonText = NSLOCTEXT("EasySession", "PasswordVerifyFailed", "Could not verify the session password.").ToString();
 	}
@@ -355,6 +362,20 @@ void FEasySessionReservations::CheckAdvertisedPort(const FOnlineSessionSettings&
 	UE_LOG(LogEasySession, Warning,
 		TEXT("The reservation beacon listens on port %d but this session advertises %d, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port %d, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
 		BoundPort, AdvertisedPort, AdvertisedPort);
+}
+
+void FEasySessionReservations::ReportBeaconNotRunning(const FString& Cause) const
+{
+	// Only the reservation beacon receives the password, so without it nobody can join a password-protected session at all.
+	if (!SessionPassword.IsEmpty())
+	{
+		const FString Reason = Cause + TEXT(" This session is password-protected, so no player can join it until the beacon runs.");
+		UE_LOG(LogEasySession, Error, TEXT("%s"), *Reason);
+		Owner.OnSessionFailure.Broadcast(Reason);
+		return;
+	}
+
+	UE_LOG(LogEasySession, Error, TEXT("%s A refused join is now reported after the travel instead of before it."), *Cause);
 }
 
 void FEasySessionReservations::AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession) const

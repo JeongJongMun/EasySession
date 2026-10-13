@@ -164,6 +164,7 @@ public:
 	 * That is a dropped connection, or an accepted invite that this player does not join or whose join fails.
 	 * It also fires when following the party leader or the host into a new session fails.
 	 * It also covers a travel or listen server started by EasySession that fails, for example on a wrong Initial Map Name.
+	 * On the host it fires when the reservation beacon of a password-protected session cannot start, because no player can join that session then.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionFailureEvent OnSessionFailure;

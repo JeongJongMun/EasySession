@@ -77,6 +77,7 @@ public:
 	 * Refuses a player the host removed, and a group with such a player in it, because the group moves together.
 	 * Approves a player holding a reservation without further checks, so the players of a group need no password and no free slot of their own.
 	 * Checks any other player against the join-in-progress policy first, then whether the session is full, then the password, which friends of the host may skip.
+	 * A missing password is refused with PasswordRequired and a wrong one with WrongPassword, so the joining game knows when to ask the player.
 	 * Never returns Unreachable, which only the beacon client produces.
 	 *
 	 * @param Password What the joining player sent over the reservation beacon. PreLogin passes none, because the password is never in the travel URL.
@@ -131,6 +132,9 @@ private:
 
 	/** Check the port the session advertises against the one the listener bound, and warn when joining players would reach no beacon. */
 	void CheckAdvertisedPort(const FOnlineSessionSettings& Settings) const;
+
+	/** Log that the reservation beacon is not running, and broadcast OnSessionFailure when that leaves a password-protected session no player can join. */
+	void ReportBeaconNotRunning(const FString& Cause) const;
 
 	/** Add a reservation for the host and the group it brings, because Max Players counts the host too. */
 	void AddHostReservation(AEasySessionReservationBeaconHost& Beacon, const FNamedOnlineSession& NamedSession) const;

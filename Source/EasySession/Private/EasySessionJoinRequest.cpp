@@ -38,6 +38,17 @@ FEasySessionJoinRequest::~FEasySessionJoinRequest()
 	DestroyReservationClient();
 }
 
+EEasySessionResult FEasySessionJoinRequest::GetRefusalResult(EEasyReservationResult Refusal)
+{
+	switch (Refusal)
+	{
+		case EEasyReservationResult::PasswordRequired:	return EEasySessionResult::PasswordRequired;
+		case EEasyReservationResult::WrongPassword:		return EEasySessionResult::WrongPassword;
+		case EEasyReservationResult::SessionFull:		return EEasySessionResult::JoinSessionFull;
+		default:										return EEasySessionResult::JoinRefused;
+	}
+}
+
 void FEasySessionJoinRequest::Execute()
 {
 	if (!Target.IsValid())
@@ -161,16 +172,8 @@ void FEasySessionJoinRequest::HandleReservationResponse(const FEasyReservationRe
 			JoinWithoutReservation();
 			break;
 
-		case EEasyReservationResult::WrongPassword:
-			Complete(EEasySessionResult::WrongPassword, Response.ReasonText);
-			break;
-
-		case EEasyReservationResult::SessionFull:
-			Complete(EEasySessionResult::JoinSessionFull, Response.ReasonText);
-			break;
-
 		default:
-			Complete(EEasySessionResult::JoinRefused, Response.ReasonText);
+			Complete(GetRefusalResult(Response.Result), Response.ReasonText);
 			break;
 	}
 }
@@ -227,7 +230,7 @@ void FEasySessionJoinRequest::JoinWithoutReservation()
 	// Only the reservation beacon checks the password, so the travel would only end in a refusal from PreLogin.
 	if (Target.bPasswordProtected)
 	{
-		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host to check the password."));
+		Complete(EEasySessionResult::JoinRefused, TEXT("Could not reach the host's reservation beacon, which checks the password, so this password-protected session cannot be joined."));
 		return;
 	}
 
