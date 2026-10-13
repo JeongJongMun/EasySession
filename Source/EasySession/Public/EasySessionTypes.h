@@ -311,8 +311,8 @@ struct EASYSESSION_API FEasySessionSettings
 	FString Password;
 
 	/**
-	 * Whether platform friends of the host join a password protected session without the password.
-	 * The invite flow never asks for a password, so with this off an invited player is refused.
+	 * Whether platform friends of the host join a password protected session without the password, whether they were invited or not.
+	 * An invite carries no password, so with this off an invited friend is asked for one through On Invite Password Required.
 	 * Only friends of the host get through, so a player invited by another member still needs the password.
 	 * No effect on NULL (LAN), which has no friends.
 	 * Get Easy Session Settings fills it only on the host, so a client always reads false.

@@ -21,7 +21,7 @@
 | Should Advertise | true | 끄면 세션을 아예 광고하지 않습니다 |
 | Hidden | false | 광고는 하되 `Find Easy Sessions` 결과에서 뺍니다. 초대로만 들어올 수 있습니다 |
 | Password | (비어 있음) | 아래 [비밀번호로 잠근 세션](#비밀번호로-잠근-세션) 참고 |
-| Friends Bypass Password | true | 친구는 비밀번호 없이 참가합니다. 같은 절 참고 |
+| Friends Bypass Password | true | 호스트의 친구는 초대 여부와 관계없이 비밀번호 없이 참가합니다. 같은 절 참고 |
 | Additional Travel Options | (비어 있음) | 호스트의 Travel URL에 그대로 붙는 옵션 문자열 |
 | Allow Join In Progress | true | 스팀에서는 켜 두세요. 꺼두면 첫 참가에 로비가 닫힙니다([FAQ](FAQ.ko.md)) |
 | Allow Invites / Use Presence | true | Use Presence는 LAN에서 무시됩니다 |
@@ -166,7 +166,9 @@ Create Easy Session
 
 ### 친구는 비밀번호를 건너뜁니다
 
-`Friends Bypass Password`의 기본값은 **true**입니다. 플랫폼 초대에는 비밀번호가 실리지 않아서, 이게 없으면 초대받은 친구도 비밀번호를 입력해야 합니다([잠긴 세션에 참가하기](#잠긴-세션에-참가하기)). 호스트가 플랫폼 친구 목록으로 친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는 아무 영향이 없습니다.
+`Friends Bypass Password`의 기본값은 **true**입니다. 초대를 받았든 목록에서 찾았든, 호스트의 플랫폼 친구는 모두 비밀번호 없이 참가합니다. 플랫폼 초대에는 비밀번호가 실리지 않아서, 이게 없으면 초대받은 친구도 비밀번호를 입력해야 합니다([잠긴 세션에 참가하기](#잠긴-세션에-참가하기)). 호스트가 플랫폼 친구 목록으로 친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는 아무 영향이 없습니다.
+
+통과하는 것은 호스트의 친구뿐입니다. 다른 멤버가 초대한 사람이 호스트의 친구가 아니면 다른 사람처럼 비밀번호를 물으므로, 초대한 멤버가 알려 주면 됩니다. 호스트의 친구도 비밀번호를 입력하게 하려면 `Friends Bypass Password`를 끄세요.
 
 ## Start Session / End Session
 

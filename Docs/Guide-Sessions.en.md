@@ -21,7 +21,7 @@ Players who stay together between matches, such as friends in the main menu, are
 | Should Advertise | true | Off does not advertise the session at all |
 | Hidden | false | Advertised, but left out of `Find Easy Sessions` results - reachable through invites only |
 | Password | (empty) | See [password protected sessions](#password-protected-sessions) below |
-| Friends Bypass Password | true | Friends join without the password, same section |
+| Friends Bypass Password | true | The host's friends join without the password, invited or not - same section |
 | Additional Travel Options | (empty) | Option string appended to the host's travel URL as written |
 | Allow Join In Progress | true | Leave on for Steam, which closes the lobby at the first join when this is off ([FAQ](FAQ.en.md)) |
 | Allow Invites / Use Presence | true | Use Presence is ignored on LAN |
@@ -166,7 +166,9 @@ Call `Join Easy Session` without a password first. When the host answers `Passwo
 
 ### Friends skip the password
 
-`Friends Bypass Password` defaults to **true**. Platform invites carry no password, so without it an invited friend would be asked for one ([Joining a locked session](#joining-a-locked-session)). The host verifies friendship against the platform friends list, which the joining player cannot fake. This has no effect on NULL/LAN, where there are no friends.
+`Friends Bypass Password` defaults to **true**: every platform friend of the host joins without the password, whether they were invited or found the session in a list. Platform invites carry no password, so without it an invited friend would be asked for one ([Joining a locked session](#joining-a-locked-session)). The host verifies friendship against the platform friends list, which the joining player cannot fake. This has no effect on NULL/LAN, where there are no friends.
+
+Only friends of the host get through. A player invited by another member who is not the host's friend is asked for the password like anyone else, so the member who invited them can share it. To make the host's friends type the password too, turn `Friends Bypass Password` off.
 
 ## Start Session / End Session
 
