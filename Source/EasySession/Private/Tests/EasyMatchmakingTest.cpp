@@ -803,7 +803,7 @@ bool FEasySessionWaitForCandidateRun::Update()
 
 /**
  * The half of matchmaking after a search returns sessions.
- * Password-protected sessions are excluded without a JoinPassword, and search results are tried best score first.
+ * Password-protected sessions are never candidates, and search results are tried best score first.
  * A refused session goes on the failed session list.
  * None of it ran under automation before, because the only way results entered the policy was a real search, and one process cannot find its own LAN session.
  *
@@ -1045,22 +1045,20 @@ namespace EasyMatchmakingTargetedTest
 		/** The code the session advertises. */
 		FString JoinCode;
 
-		/** The run of the current phase, held so its joins can be counted after it completed. */
+		/** The run, held so its joins can be counted after it completed. */
 		TSharedPtr<FEasySessionMatchmakingRequest> Run;
 
-		TOptional<EEasySessionResult> NoPasswordResult;
-		TOptional<EEasySessionResult> WithPasswordResult;
+		TOptional<EEasySessionResult> RunResult;
 		int32 Phase = 0;
 		double StartTime = 0.0;
 	};
 
 	/** Start a targeted run searching for the coded session, reporting into OutResult. */
-	void StartTargetedRun(UEasySessionSubsystem& Subsystem, const FString& Code, const FString& Password, const TSharedPtr<FTestState>& State, TOptional<EEasySessionResult>& OutResult)
+	void StartTargetedRun(UEasySessionSubsystem& Subsystem, const FString& Code, const TSharedPtr<FTestState>& State, TOptional<EEasySessionResult>& OutResult)
 	{
 		FEasyMatchmakingParams Params;
 		Params.Search.bLANQuery = true;
-			Params.Search.JoinCode = Code;
-		Params.JoinPassword = Password;
+		Params.Search.JoinCode = Code;
 		Params.MaxSearchPasses = 1;
 		Params.DelayBetweenPassesSeconds = 0.0f;
 		Params.bAllowHostFallback = false;
@@ -1121,40 +1119,16 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				return false;
 			}
 
-			// Without the password, the coded session is found but never tried.
-			StartTargetedRun(*Subsystem, State->JoinCode, FString(), State, State->NoPasswordResult);
+			StartTargetedRun(*Subsystem, State->JoinCode, State, State->RunResult);
 			State->Run = FEasySessionTestAccess::GetMatchmakingRequest(*Subsystem);
 			State->Phase = 2;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
 		}
 
-		case 2:
-		{
-			if (!State->NoPasswordResult.IsSet())
-			{
-				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
-				return false;
-			}
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
-			{
-				return false;
-			}
-
-			CurrentTest->TestEqual(TEXT("Without a password the run finds nothing to join"), State->NoPasswordResult.GetValue(), EEasySessionResult::NoSessionsFound);
-			CurrentTest->TestEqual(TEXT("And no join was attempted"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 0);
-
-			// With the password, the protected session is tried and a join really runs.
-			StartTargetedRun(*Subsystem, State->JoinCode, TEXT("secret"), State, State->WithPasswordResult);
-			State->Run = FEasySessionTestAccess::GetMatchmakingRequest(*Subsystem);
-			State->Phase = 3;
-			State->StartTime = FPlatformTime::Seconds();
-			return false;
-		}
-
 		default:
 		{
-			if (!State->WithPasswordResult.IsSet())
+			if (!State->RunResult.IsSet())
 			{
 				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
 				return false;
@@ -1164,10 +1138,8 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				return false;
 			}
 
-			// No beacon runs for the crafted result, so the join is refused before the travel and the run ends with nothing joined.
-			// The failed join still proves the session was really tried.
-			CurrentTest->TestEqual(TEXT("The run still ends in NoSessionsFound"), State->WithPasswordResult.GetValue(), EEasySessionResult::NoSessionsFound);
-			CurrentTest->TestEqual(TEXT("The password opened the coded session for one real join attempt"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 1);
+			CurrentTest->TestEqual(TEXT("The locked coded session ends the run with PasswordRequired"), State->RunResult.GetValue(), EEasySessionResult::PasswordRequired);
+			CurrentTest->TestEqual(TEXT("And no join was attempted"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 0);
 
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
@@ -1177,10 +1149,10 @@ bool FEasyMatchmakingWaitTargeted::Update()
 
 /**
  * Targeted matchmaking searches for one specific session.
- * The run searches with the JoinCode of a hidden, password-protected session, and JoinPassword decides whether that session is tried.
- * The injected result stands in for the search, and the failed join it leaves on the run is the proof that a join was really attempted.
+ * The run searches with the JoinCode of a hidden, password-protected session, and ends with PasswordRequired as soon as it finds that session.
+ * Matchmaking sends no password, so no join is attempted, and the game joins the session with Join Easy Session instead.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.PasswordOpensTheCodedSession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.LockedTargetNeedsAPassword", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 {
 	using namespace EasyMatchmakingTargetedTest;

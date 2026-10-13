@@ -168,6 +168,15 @@ void FEasySessionMatchmakingRequest::HandleSearchComplete(EEasySessionResult Res
 		return;
 	}
 
+	// Matchmaking sends no password, so a run for one specific session that finds it locked ends here instead of trying it.
+	// A follow is the exception, because its reservation needs no password.
+	if (!bFollowsHost && Params.Search.IsSpecificSessionQuery()
+		&& Results.ContainsByPredicate([](const FEasySessionSearchResult& Found) { return Found.bPasswordProtected; }))
+	{
+		Complete(EEasySessionResult::PasswordRequired, TEXT("The session is password-protected, so matchmaking does not join it. Join it with Join Easy Session and its password."));
+		return;
+	}
+
 	BuildCandidates(Results);
 	if (Candidates.IsEmpty())
 	{
@@ -199,8 +208,8 @@ void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSe
 			continue;
 		}
 
-		// A password-protected session is only tried when this run carries a password to offer, or a reservation that needs none.
-		if (!bFollowsHost && Result.bPasswordProtected && Params.JoinPassword.TrimStartAndEnd().IsEmpty())
+		// Matchmaking sends no password, so only a follow, whose reservation needs none, tries a password-protected session.
+		if (!bFollowsHost && Result.bPasswordProtected)
 		{
 			continue;
 		}
@@ -253,7 +262,7 @@ void FEasySessionMatchmakingRequest::JoinNextCandidate()
 
 	const FEasySessionSearchResult& Candidate = Candidates[NextCandidateIndex];
 	UE_LOG(LogEasySession, Log, TEXT("Matchmaking joining candidate %d/%d ('%s')"), NextCandidateIndex + 1, Candidates.Num(), *Candidate.SessionDisplayName);
-	RunSubRequest(MakeShared<FEasySessionJoinRequest>(Candidate, Params.JoinPassword, FString(),
+	RunSubRequest(MakeShared<FEasySessionJoinRequest>(Candidate, FString(), FString(),
 		FEasySessionCompleteDelegate::CreateSP(this, &FEasySessionMatchmakingRequest::HandleJoinComplete)));
 }
 

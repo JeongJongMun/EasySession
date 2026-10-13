@@ -76,6 +76,7 @@ namespace EasySession
 			case EEasySessionResult::JoinFailure:				return TEXT("JoinFailure");
 			case EEasySessionResult::JoinSessionFull:			return TEXT("JoinSessionFull");
 			case EEasySessionResult::JoinSessionDoesNotExist:	return TEXT("JoinSessionDoesNotExist");
+			case EEasySessionResult::PasswordRequired:			return TEXT("PasswordRequired");
 			case EEasySessionResult::WrongPassword:				return TEXT("WrongPassword");
 			case EEasySessionResult::JoinRefused:				return TEXT("JoinRefused");
 			case EEasySessionResult::ResolveFailure:			return TEXT("ResolveFailure");

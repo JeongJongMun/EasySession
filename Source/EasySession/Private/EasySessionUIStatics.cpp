@@ -20,6 +20,7 @@ FText UEasySessionUIStatics::GetResultMessage(EEasySessionResult Result)
 		case EEasySessionResult::JoinFailure: return LOCTEXT("Result_JoinFailure", "Could not join the session");
 		case EEasySessionResult::JoinSessionFull: return LOCTEXT("Result_JoinSessionFull", "The session is full");
 		case EEasySessionResult::JoinSessionDoesNotExist: return LOCTEXT("Result_JoinSessionDoesNotExist", "The session no longer exists");
+		case EEasySessionResult::PasswordRequired: return LOCTEXT("Result_PasswordRequired", "This session needs a password");
 		case EEasySessionResult::WrongPassword: return LOCTEXT("Result_WrongPassword", "Wrong password");
 		case EEasySessionResult::JoinRefused: return LOCTEXT("Result_JoinRefused", "The host refused the join");
 		case EEasySessionResult::ResolveFailure: return LOCTEXT("Result_ResolveFailure", "Could not reach the host");

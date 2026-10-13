@@ -258,7 +258,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `bPasswordProtected`는 `Join Easy Session` 전에 비밀번호를 물어볼지 판단하는 근거입니다.
 
 ### 5.5 FEasyMatchmakingParams
-`Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `JoinPassword`(String), `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
+`Search`(SearchParams), `Host`(HostParams - `bAllowHostFallback`이 켜진 동안만 읽음), `bAllowHostFallback`, `MaxSearchPasses`(int), `DelayBetweenPassesSeconds`(float)
 
 ### 5.6 FEasySessionPlayerInfo *(읽기 전용)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`(데디케이티드 서버에서는 항상 false), `bIsReady`(세션이 맵을 옮길 때마다 다시 풀림), `PlayerId`(온라인 서비스의 플레이어 id - 이름은 겹칠 수 있지만 이것은 겹치지 않습니다)
@@ -298,6 +298,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`NoSessionsFound`** | 검색은 정상이었고 결과가 없었습니다. 오류가 아니므로 직접 호스팅을 권하면 됩니다 |
 | **`JoinSessionFull`** | 세션이 꽉 찼습니다. 트래블 전에는 호스트가, 그 뒤에는 온라인 서비스가 거절합니다. 호스트는 아직 로드 중인 플레이어의 예약까지 세므로, 빈자리가 보이던 검색 결과도 여기서 끝날 수 있습니다 |
 | **`JoinSessionDoesNotExist`** | 참가 시점에 세션이 사라졌습니다. 다시 검색하세요 |
+| **`PasswordRequired`** | 비밀번호가 걸린 세션인데 비밀번호를 보내지 않았습니다. 특정 세션 하나를 찾는 매치메이킹은 그 세션이 잠겨 있으면 이 결과로 끝납니다. 비밀번호와 함께 `Join Easy Session`으로 들어가세요 |
 | **`WrongPassword`** | 호스트가 거절했습니다: 비밀번호가 맞지 않습니다. 다시 입력받으세요 |
 | **`JoinRefused`** | 호스트가 다른 이유로 거절했습니다. 예: 더 이상 플레이어를 받지 않는 매치, 또는 비밀번호 세션의 예약 비콘에 닿지 못함. `ErrorMessage`는 그대로 보여줘도 됩니다 |
 | **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.ko.md)) |

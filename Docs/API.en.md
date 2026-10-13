@@ -270,7 +270,7 @@ store it, not just the name it displays. Find Easy Parties returns the same stru
 `bPasswordProtected` is how you decide whether to prompt before `Join Easy Session`.
 
 ### 5.5 FEasyMatchmakingParams
-`Search` (SearchParams), `Host` (HostParams - read only while `bAllowHostFallback` is on), `bAllowHostFallback`, `JoinPassword` (String), `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
+`Search` (SearchParams), `Host` (HostParams - read only while `bAllowHostFallback` is on), `bAllowHostFallback`, `MaxSearchPasses` (int), `DelayBetweenPassesSeconds` (float)
 
 ### 5.6 FEasySessionPlayerInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost` (always false on dedicated servers), `bIsReady` (unset again in every map the session travels to), `PlayerId` (the online service id - names can repeat, this cannot)
@@ -310,6 +310,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`NoSessionsFound`** | The search ran fine and found nothing. Not an error - offer to host |
 | **`JoinSessionFull`** | The session is full - refused by the host before the travel, or by the online service after it. The host also counts the reservations of players still loading, so a search result with a free slot can end here |
 | **`JoinSessionDoesNotExist`** | The session was gone by the time you joined. Search again |
+| **`PasswordRequired`** | The session is password-protected and no password was sent. A matchmaking run for one specific session ends with this when that session is locked: join it with `Join Easy Session` and the password |
 | **`WrongPassword`** | The host refused the join: the password did not match. Let the player retype it |
 | **`JoinRefused`** | The host refused the join for another reason, e.g. the match no longer takes players, or the reservation beacon of a password session could not be reached. `ErrorMessage` is safe to show |
 | **`ResolveFailure`** | Joined, but the host address does not work - usually a host that never became a listen server ([FAQ](FAQ.en.md)) |

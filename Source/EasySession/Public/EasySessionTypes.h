@@ -56,6 +56,9 @@ enum class EEasySessionResult : uint8
 	/** Could not join because the session no longer exists. */
 	JoinSessionDoesNotExist,
 
+	/** The session is password-protected and no password was sent. Ask the player for it, then join with Join Easy Session. */
+	PasswordRequired,
+
 	/** The host refused the join because the session password did not match. */
 	WrongPassword,
 
@@ -618,10 +621,6 @@ struct EASYSESSION_API FEasyMatchmakingParams
 	bool bAllowHostFallback = false;
 
 	//~ Advanced fields are folded behind the Make node's advanced arrow, for the reason described in FEasySessionHostParams.
-
-	/** Password sent when joining a password protected session. Without one, protected sessions are never tried. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	FString JoinPassword;
 
 	/** How many search passes to run before the run fails or hosts. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 1))
