@@ -51,7 +51,7 @@ bInitServerOnClient=true
 ## 3. 테스트 체크리스트
 
 - 에디터 PIE로는 스팀 사용자 두 명을 표현할 수 없습니다. **PC 두 대에서 서로 다른 스팀 계정으로**, 패키지 빌드나 `-game`으로 실행해 테스트하세요.
-- AppId 480은 Spacewar로 테스트하는 모두와 로비 공간을 공유하지만, 엔진이 빌드 ID가 다른 세션을 버리므로 검색에는 보통 자기 세션만 나옵니다. 같은 빌드로 테스트하는 팀이 여럿이라면 Host Params에 커스텀 세팅(예: `GameName = MyGameDev`)을 넣고 Search Params의 `Required Custom Settings`에 같은 값을 넣어 필터링하세요.
+- AppId 480은 Spacewar로 테스트하는 모두와 로비 공간을 공유합니다. 엔진은 빌드 ID가 같은 세션만 남기지만, 이 ID는 엔진 버전으로 정해지므로 같은 엔진 버전을 쓰는 다른 프로젝트의 세션도 검색과 매치메이킹에 나옵니다. 그런 세션에 참가하면 `OutdatedClient`로 실패합니다. 자기 세션만 보려면 Host Params에 커스텀 세팅(예: `GameName = MyGameDev`)을 넣고 Search Params의 `Required Custom Settings`에 같은 값을 넣어 필터링하세요.
 
 ### 스팀에서 파티 확인하기
 
