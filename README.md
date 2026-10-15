@@ -38,7 +38,7 @@ The plugin ships example maps and widgets with the full main menu -> lobby -> ma
 | Screen | Widgets |
 |---|---|
 | Main menu | `WBP_MainMenu`, holding `WBP_HomeScreen`, `WBP_CreateSessionScreen`, `WBP_FindScreen`, `WBP_CreatePartyScreen` and `WBP_PartyCard` |
-| Lobby | `WBP_LobbyScreen`, with `WBP_PlayerList`, `WBP_SessionInfo` and `WBP_UpdateSessionPopup` |
+| Lobby | `WBP_LobbyScreen`, with `WBP_SessionPlayerList`, `WBP_SessionInfo` and `WBP_UpdateSessionPopup` |
 | Match | `WBP_InGameMenu`, with `WBP_EscPopup` |
 | Any screen | `WBP_SessionStatus`, the status line that narrates whatever runs |
 
