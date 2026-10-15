@@ -788,14 +788,6 @@ void UEasySessionSubsystem::HandleSessionPlayersChanged()
 
 void UEasySessionSubsystem::HandleDisconnect(UWorld* World, UNetDriver* NetDriver)
 {
-	// A host gets here with its session still alive, for example after a failed server travel.
-	// The engine travels to the Game Default Map as it does without EasySession, and the session is not destroyed.
-	if (IsSessionAuthority())
-	{
-		GEngine->HandleDisconnect(World, NetDriver);
-		return;
-	}
-
 	// One disconnect can arrive here more than once, for example as a kick and then as the closed connection.
 	// Only the first call queues the destroy and the travel.
 	if (MenuTravelTickerHandle.IsValid())
@@ -992,20 +984,12 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 	}
 
 	// The travel is over even though no map was loaded.
-	// The recovery below may start a new one, which marks itself.
+	// The menu travel that follows the destroy marks itself again.
 	Travel->NotifyTravelFailed();
 
 	const FString Reason = FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(FailureType), *ErrorString);
 	UE_LOG(LogEasySession, Warning, TEXT("Travel failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
-
-	// A failed server travel leaves the host's world, session and players untouched.
-	// Only the map change failed, which OnSessionFailure just reported.
-	if (IsSessionAuthority())
-	{
-		Host->OnServerTravelFailed();
-		return;
-	}
 
 	// The engine also reports this failure to the online session, which destroys the lost session and travels to the menu, so this only records the reason.
 	RecordDisconnect(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));

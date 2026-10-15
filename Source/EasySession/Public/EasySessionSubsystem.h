@@ -670,8 +670,7 @@ public:
 
 	/**
 	 * Internal, called by UEasySessionOnlineSession when the engine reports a lost connection, a failed travel or a ReturnToMainMenu call to the online session.
-	 * On a client, destroys the lost session and travels to the Game Default Map after the destroy, so that map loads only once.
-	 * On the host, the engine travels to the Game Default Map as it does without EasySession, and the session is not destroyed.
+	 * Destroys the lost session and travels to the Game Default Map after the destroy, so that map loads only once.
 	 */
 	void HandleDisconnect(UWorld* World, class UNetDriver* NetDriver);
 

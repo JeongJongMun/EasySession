@@ -16,7 +16,7 @@ class UWorld;
  *
  * Owned by the subsystem and destroyed with it.
  * The map load delegate is bound raw because this object cannot outlive the owner that destroys it.
- * Travel failures arrive through the subsystem, whose failure handler owns the disconnect recovery and calls NotifyTravelFailed as one part of it.
+ * Travel failures arrive through the subsystem's failure handler, which calls NotifyTravelFailed.
  */
 class FEasySessionTravel
 {

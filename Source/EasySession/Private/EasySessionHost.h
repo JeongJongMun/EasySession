@@ -83,12 +83,6 @@ public:
 	 */
 	void OnServerTravelStarted();
 
-	/**
-	 * A server travel failed, so no new world arrives.
-	 * Spawns the world actors again in the world this game stayed in.
-	 */
-	void OnServerTravelFailed();
-
 public:
 
 	/** Tell every connected client to return to the menu with this reason, through the state actor. */

@@ -353,18 +353,12 @@ bool FEasySessionWaitForTravelFailure::Update()
 				State->ModifiedServerTravelURL.Contains(TEXT("ES_NoSuchMap")) && State->ModifiedServerTravelURL.Contains(TEXT("?listen")));
 			CurrentTest->TestTrue(TEXT("The travel reports busy"), Subsystem->IsBusy());
 
+			// The engine reports the failure to the online session too, which destroys the host's session as it does a client's.
 			GEngine->BroadcastTravelFailure(World, ETravelFailure::ServerTravelFailure, TEXT("No such map"));
 
-			CurrentTest->TestTrue(TEXT("The host keeps its session"), Subsystem->IsInSession());
 			CurrentTest->TestTrue(TEXT("The failure was reported"), State->Listener->FailureReasons.Num() >= 1);
-			CurrentTest->TestFalse(TEXT("No disconnect was recorded - nobody disconnected"), Subsystem->HasPendingDisconnectInfo());
-			CurrentTest->TestFalse(TEXT("The failed travel no longer reports busy"), Subsystem->IsBusy());
-			CurrentTest->TestNotNull(TEXT("The reservation beacon is back up"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
-
-			// The same broadcast on a client still destroys the lost session.
-			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
-			GEngine->BroadcastTravelFailure(World, ETravelFailure::ServerTravelFailure, TEXT("Could not reach the host"));
-			CurrentTest->TestEqual(TEXT("The client's cleanup destroy is queued"),
+			CurrentTest->TestTrue(TEXT("The host recorded a disconnect"), Subsystem->HasPendingDisconnectInfo());
+			CurrentTest->TestEqual(TEXT("The host's cleanup destroy is queued"),
 				FEasySessionTestAccess::CountRequests(*Subsystem, FEasySessionRequest::EType::Destroy), 1);
 
 			State->Phase = 1;
@@ -380,6 +374,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 			}
 
 			CurrentTest->TestEqual(TEXT("The disconnect reason is the travel failure"), Subsystem->ConsumePendingDisconnectInfo().Reason, EEasyDisconnectReason::TravelFailure);
+			CurrentTest->TestTrue(TEXT("The menu travel starts after the destroy"), FEasySessionTestAccess::IsTraveling(*Subsystem));
 
 			Finish(*State);
 			return true;
@@ -388,13 +383,11 @@ bool FEasySessionWaitForTravelFailure::Update()
 }
 
 /**
- * A failed server travel leaves the host's world, session and connected players exactly where they were.
- * The engine only clears the pending URL.
- * Treating it as a disconnect destroyed a live session over a map name typo.
- * The host keeps the session and receives the failure through OnSessionFailure.
- * A client still destroys its session, because its travel failure means it never reached the host.
+ * A failed server travel sends the host to the Game Default Map, because the engine reports it to the online session.
+ * The clients were told to travel first and fail on their own, so the host has no players left to keep.
+ * The host destroys its session before that travel, so it does not reach the menu still hosting.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionTravelFailureTest, "EasySession.Recovery.HostKeepsSessionOnTravelFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionTravelFailureTest, "EasySession.Recovery.HostLeavesOnTravelFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionTravelFailureTest;

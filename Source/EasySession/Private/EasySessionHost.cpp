@@ -107,12 +107,6 @@ void FEasySessionHost::OnServerTravelStarted()
 	BeaconPort.ReleaseListener();
 }
 
-void FEasySessionHost::OnServerTravelFailed()
-{
-	// The travel never loaded a new world, and OnServerTravelStarted already destroyed the state actor and stopped the reservation beacon.
-	SpawnWorldActors();
-}
-
 void FEasySessionHost::SpawnWorldActors()
 {
 	EnsureStateActor();

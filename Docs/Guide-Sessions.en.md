@@ -229,7 +229,7 @@ When the host calls it, clients see the connection drop and return to the menu w
 
 Always change maps with this node: it stops the reservation beacon before the map changes and keeps the reservations for the new map, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
-If the map fails to load (a typo, a map missing from the cook), the session and its players stay exactly where they were. The failure arrives on `OnSessionFailure` - call again with the right map name.
+If the map fails to load (a typo, a map missing from the cook), the clients fail first, because they were told to travel before the host. The host then destroys its session too, and everyone returns to the Game Default Map with a `TravelFailure` disconnect reason. EasySession does not check that the map exists, so check the map name before you call this node.
 
 ## Regions
 
