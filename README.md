@@ -2,7 +2,7 @@
 
 Beginner-friendly sessions and matchmaking for Unreal Engine, built on the Online Subsystem (OSS).
 
-Host, find, join and quick-play with a few Blueprint nodes - no custom `GameInstance`, no C++, no config files to start.
+Host, find, join and quick-play with a few Blueprint nodes - no C++ and no config files to start.
 
 *[한국어 README](README.ko.md)*
 
@@ -10,13 +10,14 @@ Host, find, join and quick-play with a few Blueprint nodes - no custom `GameInst
 
 1. Copy this folder into your project's `Plugins/` directory, so you have `YourProject/Plugins/EasySession/`.
 2. Open the project, go to **Edit -> Plugins**, search for **EasySession**, enable it and restart.
-3. For C++ projects, add `"EasySession"` to `PublicDependencyModuleNames` in your `.Build.cs`.
+3. In **Project Settings -> Maps & Modes**, set **Game Instance Class** to `EasySessionGameInstance`. If the project already has a GameInstance Blueprint, set its **Parent Class** to `EasySessionGameInstance` instead.
+4. For C++ projects, add `"EasySession"` to `PublicDependencyModuleNames` in your `.Build.cs`.
 
 That is the whole setup for LAN play. The NULL online subsystem needs no accounts or keys. For Steam, follow [Steam setup](Docs/Setup-Steam.en.md).
 
 ## Features
 
-- **Drops into an existing project** - no custom `GameInstance`, no required parent classes. Enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Keep the game mode and widgets you already have and add the nodes.
+- **Drops into an existing project** - enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Apart from the GameInstance setting in step 3, keep the game mode and widgets you already have and add the nodes.
 - **Matchmaking in one node** - `Start Easy Matchmaking` searches, joins the best session it finds, and with Allow Host Fallback on hosts one when it finds none.
 - **Parties** - friends gather in a party before they play: hidden or listed, with an optional join code, invites, ready state and kick. When the leader hosts, joins or matchmakes, the whole party follows, and after the match the party comes back on its own.
 - **Moving together** - the host of a lobby session that joins or matchmakes into another session brings every player along, with room reserved for all of them.

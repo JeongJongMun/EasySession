@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
@@ -24,7 +23,6 @@ namespace EasySessionAuthorityTest
 		int32 Phase = 0;
 		TOptional<EEasySessionResult> CreateResult;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	/** Builds host params that create a named session without opening a server. */
@@ -39,7 +37,6 @@ namespace EasySessionAuthorityTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -104,7 +101,7 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 	using namespace EasySessionAuthorityTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -113,12 +110,6 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	// Destroying the session ends with a travel to the menu, which a headless test world has no use for.
-	// DestroySessionForEveryone calls ReturnToMenu whatever this setting says, so turning it off does not stop that travel.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)

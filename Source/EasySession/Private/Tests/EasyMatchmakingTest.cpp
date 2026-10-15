@@ -141,7 +141,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -182,7 +182,7 @@ bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackWithoutMapTest, "EasySession.Matchmaking.HostFallbackWithoutAMapIsRefused", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingHostFallbackWithoutMapTest::RunTest(const FString& Parameters)
 {
-	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(GameInstance);
 
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -291,7 +291,7 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -379,7 +379,7 @@ bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -463,7 +463,7 @@ bool FEasyMatchmakingCancelWhileHostingTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -594,7 +594,7 @@ bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -816,7 +816,7 @@ bool FEasySessionCandidateTest::RunTest(const FString& Parameters)
 	using namespace EasySessionCandidateTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -990,7 +990,7 @@ bool FEasyMatchmakingEventsTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingEventsTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -1158,7 +1158,7 @@ bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTargetedTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -1230,7 +1230,7 @@ bool FEasyMatchmakingCancelSearchTest::RunTest(const FString& Parameters)
 	using namespace EasyMatchmakingTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();

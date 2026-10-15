@@ -3,7 +3,9 @@
 #include "EasySessionDiagnostics.h"
 
 #include "EasySession.h"
+#include "EasySessionOnlineSession.h"
 #include "Engine/Engine.h"
+#include "Engine/GameInstance.h"
 #include "Engine/NetDriver.h"
 #include "Engine/World.h"
 #include "Interfaces/OnlineIdentityInterface.h"
@@ -167,6 +169,16 @@ EasySessionDiagnostics::FReport EasySessionDiagnostics::RunDiagnostics(UWorld* W
 		AddFix(Report, TEXT("No BeaconNetDriver definition - the reservation beacon cannot start, so hosts refuse players only after they have traveled, and nobody can join a password-protected session."),
 			{ TEXT("[/Script/Engine.GameEngine]"),
 			  TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"/Script/OnlineSubsystemUtils.IpNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") });
+	}
+
+	// Every request is refused without the EasySession online session, because the engine would travel to the menu before a lost session is destroyed.
+	const UGameInstance* GameInstance = World != nullptr ? World->GetGameInstance() : nullptr;
+	if (GameInstance != nullptr && Cast<UEasySessionOnlineSession>(GameInstance->GetOnlineSession()) == nullptr)
+	{
+		AddFix(Report, TEXT("The Game Instance does not use EasySessionOnlineSession, so every session and party request fails with NoEasySessionGameInstance."),
+			{ TEXT("[/Script/EngineSettings.GameMapsSettings]"),
+			  TEXT("GameInstanceClass=/Script/EasySession.EasySessionGameInstance") },
+			TEXT("A project with its own GameInstance sets its parent class to EasySessionGameInstance, or in C++ returns UEasySessionOnlineSession from GetOnlineSessionClass."));
 	}
 
 	return Report;

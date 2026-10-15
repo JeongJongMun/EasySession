@@ -102,7 +102,7 @@ bool FEasySessionBusyWindowTest::RunTest(const FString& Parameters)
 	using namespace EasySessionBusyWindowTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	State->GameInstance->InitializeStandalone();
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();

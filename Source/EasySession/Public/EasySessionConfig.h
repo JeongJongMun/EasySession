@@ -22,15 +22,6 @@ public:
 	//~ End UDeveloperSettings Interface
 
 	/**
-	 * Travel to the project's Game Default Map when the connection to a session is lost or traveling to a session fails.
-	 * The lost session is destroyed either way, because it is gone for this player already.
-	 * Turn it off to keep the player in the map they are in and travel them yourself.
-	 * The reason is kept and can be read on the menu with Consume Pending Easy Disconnect Info.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Recovery")
-	bool bAutoReturnToMenuOnDisconnect = true;
-
-	/**
 	 * Automatically join the session or party when the player accepts an invite from the platform overlay (e.g. Steam).
 	 * Turn it off to only receive the On Session Invite Accepted event and call Join Easy Session or Join Easy Party yourself.
 	 */

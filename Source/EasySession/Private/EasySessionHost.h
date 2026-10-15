@@ -92,7 +92,7 @@ public:
 public:
 
 	/** Tell every connected client to return to the menu with this reason, through the state actor. */
-	void TellEveryoneToReturnToMenu(const FText& Reason);
+	void TellEveryoneToReturnToMainMenu(const FText& Reason);
 
 	/**
 	 * @return The players who move with the host when it joins another session: every other player who arrived, while the match has not started.

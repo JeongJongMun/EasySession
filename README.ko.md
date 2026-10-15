@@ -2,7 +2,7 @@
 
 언리얼 엔진의 Online Subsystem(OSS) 위에 올린, **초심자를 위한 세션 & 매치메이킹 플러그인**.
 
-세션 만들기, 찾기, 참가, 퀵매치를 블루프린트 노드 몇 개로 - 커스텀 `GameInstance`도, C++도, 설정 파일도 없이 시작할 수 있습니다.
+세션 만들기, 찾기, 참가, 퀵매치를 블루프린트 노드 몇 개로 - C++도, 설정 파일도 없이 시작할 수 있습니다.
 
 *[English README](README.md)*
 
@@ -10,13 +10,14 @@
 
 1. 이 폴더를 프로젝트의 `Plugins/` 아래에 복사합니다 (`내프로젝트/Plugins/EasySession/`).
 2. 프로젝트를 열고 **Edit -> Plugins**에서 **EasySession**을 찾아 활성화한 뒤 재시작합니다.
-3. C++ 프로젝트라면 `.Build.cs`의 `PublicDependencyModuleNames`에 `"EasySession"`을 추가합니다.
+3. **Project Settings -> Maps & Modes**에서 **Game Instance Class**를 `EasySessionGameInstance`로 지정합니다. 이미 GameInstance 블루프린트가 있다면 그 **Parent Class**를 `EasySessionGameInstance`로 바꾸세요.
+4. C++ 프로젝트라면 `.Build.cs`의 `PublicDependencyModuleNames`에 `"EasySession"`을 추가합니다.
 
 LAN 플레이는 이걸로 끝입니다. NULL 서브시스템은 계정도 키도 필요 없습니다. 스팀은 [Steam 설정 문서](Docs/Setup-Steam.ko.md)를 따르세요.
 
 ## 특징
 
-- **기존 프로젝트에 바로 얹힙니다** - 커스텀 `GameInstance`도, 지정된 부모 클래스도 필요 없습니다. 플러그인을 켜면 서브시스템이 자동으로 만들어지고, LAN은 설정 파일을 건드리지 않아도 바로 동작합니다. 이미 만들어둔 게임모드와 위젯을 그대로 쓰면서 노드만 추가하면 됩니다.
+- **기존 프로젝트에 바로 얹힙니다** - 플러그인을 켜면 서브시스템이 자동으로 만들어지고, LAN은 설정 파일을 건드리지 않아도 바로 동작합니다. 설치 3단계의 GameInstance 설정 말고는, 이미 만들어 둔 게임모드와 위젯을 그대로 쓰면서 노드만 추가하면 됩니다.
 - **매치메이킹 지원** - `Start Easy Matchmaking` 노드 하나가 세션을 검색하고, 가장 적합한 세션에 참가하고, 없으면 Allow Host Fallback이 켜진 경우 직접 호스트가 됩니다.
 - **파티** - 친구들이 플레이하기 전에 파티로 모입니다. 숨기거나 목록에 보이게 할 수 있고, 참가 코드를 붙일 수 있으며, 초대, 준비 상태, 추방을 지원합니다. 리더가 세션을 만들거나, 참가하거나, 매치메이킹을 하면 파티 전체가 따라가고, 매치가 끝나면 파티가 알아서 돌아옵니다.
 - **함께 이동** - 로비 세션의 호스트가 다른 세션에 참가하거나 매치메이킹을 하면, 모두의 자리를 예약해 두고 모든 플레이어를 데리고 갑니다.

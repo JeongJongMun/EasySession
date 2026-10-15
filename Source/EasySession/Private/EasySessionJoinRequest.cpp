@@ -113,7 +113,7 @@ void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& E
 	// Requested before the completion below, the same order every travel in this plugin uses.
 	if (Result != EEasySessionResult::Success && bLeftSession)
 	{
-		GetContext().Travel.ReturnToMenu();
+		GetContext().Travel.ReturnToMainMenu();
 	}
 
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
@@ -268,7 +268,7 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 		// The Destroy sub-request destroys the session of a host, so its clients are told why before their connection closes.
 		if (GetContext().Subsystem.IsSessionAuthority())
 		{
-			GetContext().Host.TellEveryoneToReturnToMenu(EasySession::GetHostLeftSessionReason());
+			GetContext().Host.TellEveryoneToReturnToMainMenu(EasySession::GetHostLeftSessionReason());
 		}
 
 		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(

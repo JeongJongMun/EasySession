@@ -132,3 +132,9 @@ To bring everyone into the same map, for example a lobby before the match, the l
 ## "Can I cancel a Matchmaking in progress?"
 
 Yes, while it is `Searching`: `Cancel Easy Matchmaking`. The Matchmaking node fires `OnFailure` with `Canceled`. Once the run is `Joining` or `Hosting` the call does nothing, because a join or a host moves the group and cannot be undone. Turn your cancel button off in those two states.
+
+## "NoEasySessionGameInstance" or "[FIX] The Game Instance does not use EasySessionOnlineSession"
+
+Every session and party node fails with `NoEasySessionGameInstance`, and the startup log shows the line above, when the project's GameInstance is not `EasySessionGameInstance` and does not return `UEasySessionOnlineSession` from `GetOnlineSessionClass()`. EasySession needs that online session to destroy a lost session before the engine loads the menu, so it refuses every request without it.
+
+Set **Project Settings -> Maps & Modes -> Game Instance Class** to `EasySessionGameInstance`, or set the **Parent Class** of your GameInstance Blueprint to it. A C++ GameInstance overrides `GetOnlineSessionClass()` and returns `UEasySessionOnlineSession::StaticClass()`.

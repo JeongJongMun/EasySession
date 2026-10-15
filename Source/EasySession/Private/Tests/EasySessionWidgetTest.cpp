@@ -18,7 +18,7 @@
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionWidgetBindsEventsTest, "EasySession.Widget.BindsTheSubsystemEventsWhileConstructed", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionWidgetBindsEventsTest::RunTest(const FString& Parameters)
 {
-	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(GameInstance);
 
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();

@@ -5,6 +5,7 @@
 #include "EasySession.h"
 #include "EasySessionAddress.h"
 #include "EasySessionSubsystem.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
@@ -94,7 +95,7 @@ bool FEasySessionTravel::ServerTravelToMap(const FString& MapName)
 	return true;
 }
 
-void FEasySessionTravel::ReturnToMenu()
+void FEasySessionTravel::ReturnToMainMenu()
 {
 	UGameInstance* GameInstance = Owner.GetGameInstance();
 	if (GameInstance == nullptr || GameInstance->GetWorld() == nullptr)
@@ -102,11 +103,24 @@ void FEasySessionTravel::ReturnToMenu()
 		return;
 	}
 
-	// ReturnToMainMenu also clears the pending net game, the ?listen and ?LAN options and the net driver, which OpenLevel keeps.
-	// It travels to the engine's Game Default Map, so the plugin needs no menu map setting of its own.
-	// A second call does nothing once the engine is already browsing to the default map.
-	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
+	// ReturnToMainMenu reports the return to the online session, which destroys a lost session before it travels.
 	GameInstance->ReturnToMainMenu();
+	MarkStarted(TEXT("return to menu"));
+}
+
+void FEasySessionTravel::TravelToGameDefaultMap()
+{
+	UGameInstance* GameInstance = Owner.GetGameInstance();
+	UWorld* World = GameInstance != nullptr ? GameInstance->GetWorld() : nullptr;
+	if (World == nullptr)
+	{
+		return;
+	}
+
+	// HandleDisconnect clears the pending net game, the ?listen and ?LAN options and the net driver, which OpenLevel keeps, then travels to the Game Default Map.
+	// This is the call UOnlineSession::HandleDisconnect makes by default, so this travel does not reach the online session again.
+	UE_LOG(LogEasySession, Log, TEXT("Returning to the main menu (Game Default Map)."));
+	GEngine->HandleDisconnect(World, World->GetNetDriver());
 	MarkStarted(TEXT("return to menu"));
 }
 

@@ -309,6 +309,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`InParty`** | 파티 멤버가 Create, Join, Matchmaking을 불렀습니다. 행선지는 리더가 정하므로 멤버에게는 그 버튼을 꺼 두거나, 혼자 플레이하려면 Leave Easy Party를 부르세요 |
 | **`RequiresPartyLeader`** | 파티 리더만 할 수 있는 일입니다. `Is Easy Party Leader`가 true일 때만 버튼을 보여주세요 |
 | `NoOnlineSubsystem` | 온라인 서브시스템이 없습니다. `DefaultEngine.ini`를 확인하세요 |
+| `NoEasySessionGameInstance` | 프로젝트의 GameInstance가 `EasySessionOnlineSession`을 쓰지 않습니다. **Game Instance Class**를 `EasySessionGameInstance`로 지정하세요(Quick Start 3단계) |
 | `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Initial Map Name 없는 Matchmaking |
 | `MatchmakingAlreadyInProgress` | Matchmaking가 이미 돌고 있습니다 |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | 온라인 서비스가 그 호출을 거절했습니다. 서비스가 한 말은 `ErrorMessage`에 담깁니다 |
@@ -370,7 +371,6 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 
 | 설정 | 기본값 | 효과 |
 |---|---|---|
-| `bAutoReturnToMenuOnDisconnect` | true | 접속이 끊기거나 Travel이 실패하면 프로젝트의 **Game Default Map**으로 이동하며, 그 맵이 읽을 수 있도록 사유를 남깁니다. 끊긴 세션은 설정과 무관하게 파괴되고, 끄면 플레이어만 있던 맵에 남습니다 |
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
 | `bRestorePartyAfterMatch` | true | 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티를 되돌립니다. 리더가 다시 만들고 모든 멤버가 찾습니다 ([가이드](Guide-Party.ko.md#매치가-끝난-뒤)) |
 | `PartyRestoreWaitSeconds` | 120 | 매치가 끝난 뒤 멤버가 리더의 파티를 찾는 시간 |
@@ -388,6 +388,12 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 요청은 두 하위 요청 사이에 끼어들지 않고 실행 전체가 끝날 때까지 기다립니다.
 `ReadFriends`는 세션 인터페이스를 쓰지 않으므로 큐 밖에서 실행됩니다. 실행 중인 요청을 기다리지 않고 `IsBusy`도 켜지 않습니다.
 실행 중이거나 대기 중인 요청은 모두 `IsBusy`, `GetActivity`, `GetQueueStatus`에 반영됩니다.
+
+`UEasySessionGameInstance`는 `GetOnlineSessionClass()`에서 `UEasySessionOnlineSession`을 돌려줍니다.
+엔진은 연결 끊김, Travel 실패, `ReturnToMainMenu` 호출을 이 온라인 세션에 알립니다. EasySession은 여기서
+끊긴 세션을 먼저 파괴한 뒤 Game Default Map으로 이동합니다. GameInstance를 직접 만든 C++ 프로젝트는
+그 클래스의 `GetOnlineSessionClass()`에서 `UEasySessionOnlineSession::StaticClass()`를 돌려주면 됩니다.
+둘 다 없으면 모든 요청이 `NoEasySessionGameInstance`로 실패하고, 시작할 때 진단이 이를 알려 줍니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.
 Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 시작할 때 한 번 바인딩하세요.

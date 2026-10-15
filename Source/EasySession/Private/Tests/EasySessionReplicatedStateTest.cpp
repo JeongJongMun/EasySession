@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -24,7 +23,6 @@ namespace EasySessionReplicatedStateTest
 		TOptional<EEasySessionResult> DestroyResult;
 		bool bCleanupIssued = false;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	static FEasySessionHostParams MakeParams()
@@ -38,7 +36,6 @@ namespace EasySessionReplicatedStateTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -131,7 +128,7 @@ bool FEasySessionReplicatedStateTest::RunTest(const FString& Parameters)
 	using namespace EasySessionReplicatedStateTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -140,10 +137,6 @@ bool FEasySessionReplicatedStateTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)

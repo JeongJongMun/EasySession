@@ -181,7 +181,7 @@ bool FEasySessionPasswordUpdateTest::RunTest(const FString& Parameters)
 	using namespace EasySessionPasswordUpdateTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -335,7 +335,7 @@ bool FEasySessionApprovalTableTest::RunTest(const FString& Parameters)
 	using namespace EasySessionApprovalTableTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();

@@ -17,6 +17,7 @@
 #include "EasySessionJoinRequest.h"
 #include "EasySessionLeavePartyRequest.h"
 #include "EasySessionMatchStateRequest.h"
+#include "EasySessionOnlineSession.h"
 #include "EasySessionParty.h"
 #include "EasySessionPlayerComponent.h"
 #include "EasySessionRequest.h"
@@ -26,7 +27,6 @@
 #include "EasySessionTravel.h"
 #include "EasySessionDiagnostics.h"
 #include "EasySessionReservations.h"
-#include "EasySessionConfig.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -128,6 +128,9 @@ void UEasySessionSubsystem::Deinitialize()
 	FTSTicker::GetCoreTicker().RemoveTicker(SessionPlayersChangedHandle);
 	SessionPlayersChangedHandle.Reset();
 
+	FTSTicker::GetCoreTicker().RemoveTicker(MenuTravelTickerHandle);
+	MenuTravelTickerHandle.Reset();
+
 	// Destroying these unbinds everything they registered, tickers included.
 	// Reverse creation order, so a collaborator is destroyed before the one it references.
 	RequestContext.Reset();
@@ -202,7 +205,7 @@ void UEasySessionSubsystem::LeaveSession(FEasySessionCompleteDelegate OnComplete
 		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			// Requested before the completion below, the same order every travel in this plugin uses.
-			Travel->ReturnToMenu();
+			Travel->ReturnToMainMenu();
 			OnComplete.ExecuteIfBound(Result, ErrorMessage);
 		}));
 }
@@ -220,12 +223,12 @@ void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySession
 	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
 
 	// Send every remote client the reason before the session is destroyed.
-	Host->TellEveryoneToReturnToMenu(Reason);
+	Host->TellEveryoneToReturnToMainMenu(Reason);
 
 	DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
 		{
-			Travel->ReturnToMenu();
+			Travel->ReturnToMainMenu();
 			OnComplete.ExecuteIfBound(Result, ErrorMessage);
 		}));
 }
@@ -659,54 +662,6 @@ FEasyDisconnectInfo UEasySessionSubsystem::ConsumePendingDisconnectInfo()
 	return Info;
 }
 
-void UEasySessionSubsystem::HandleDisconnect(EEasyDisconnectReason Reason, const FText& ReasonText)
-{
-	// The state actor calls in, and it may outlive Deinitialize while its world is destroyed.
-	if (!RequestQueue.IsValid())
-	{
-		return;
-	}
-
-	// The first reason is kept, because the destroy that follows can fail on its own, for example when the connection drops during it.
-	// Only the reason is kept, so a reason the game never read with ConsumePendingDisconnectInfo never stops a later disconnect from destroying the session.
-	if (!PendingDisconnectInfo.IsSet())
-	{
-		FEasyDisconnectInfo& Info = PendingDisconnectInfo.Emplace();
-		Info.Reason = Reason;
-		Info.ReasonText = ReasonText;
-	}
-
-	const bool bReturnToMenu = GetDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect;
-
-	if (IsInSession())
-	{
-		// A destroy already on the queue empties the session before a second one would run, so a second only adds a NoSessionExists failure.
-		// That destroy may come from the game and not return to the menu, so the menu travel is requested here.
-		if (RequestQueue->Find(FEasySessionRequest::EType::Destroy).IsValid())
-		{
-			if (bReturnToMenu)
-			{
-				Travel->ReturnToMenu();
-			}
-			return;
-		}
-
-		// Clean up the dead session so the player can host or join again right away.
-		DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
-			[this, bReturnToMenu](EEasySessionResult /*Result*/, const FString& /*ErrorMessage*/)
-			{
-				if (bReturnToMenu)
-				{
-					Travel->ReturnToMenu();
-				}
-			}));
-	}
-	else if (bReturnToMenu)
-	{
-		Travel->ReturnToMenu();
-	}
-}
-
 void UEasySessionSubsystem::ClearReplicatedSessionState()
 {
 	ReplicatedSessionState.Reset();
@@ -831,6 +786,59 @@ void UEasySessionSubsystem::HandleSessionPlayersChanged()
 	}));
 }
 
+void UEasySessionSubsystem::HandleDisconnect(UWorld* World, UNetDriver* NetDriver)
+{
+	// A host gets here with its session still alive, for example after a failed server travel.
+	// The engine travels to the Game Default Map as it does without EasySession, and the session is not destroyed.
+	if (IsSessionAuthority())
+	{
+		GEngine->HandleDisconnect(World, NetDriver);
+		return;
+	}
+
+	// One disconnect can arrive here more than once, for example as a kick and then as the closed connection.
+	// Only the first call queues the destroy and the travel.
+	if (MenuTravelTickerHandle.IsValid())
+	{
+		return;
+	}
+
+	// A second destroy would run after the first destroyed the session, and fail with NoSessionExists.
+	if (IsInSession() && !RequestQueue->Find(FEasySessionRequest::EType::Destroy).IsValid())
+	{
+		DestroySession(FEasySessionCompleteDelegate());
+	}
+
+	MenuTravelWorld = World;
+	MenuTravelTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
+	{
+		if (RequestQueue->Find(FEasySessionRequest::EType::Destroy).IsValid())
+		{
+			return true;
+		}
+
+		MenuTravelTickerHandle.Reset();
+
+		// If the game traveled to another map during the destroy, a menu travel now would replace that map, so it is skipped.
+		if (GetWorld() == MenuTravelWorld.Get())
+		{
+			Travel->TravelToGameDefaultMap();
+		}
+		return false;
+	}));
+}
+
+void UEasySessionSubsystem::ReturnToMainMenu(EEasyDisconnectReason Reason, const FText& ReasonText)
+{
+	RecordDisconnect(Reason, ReasonText);
+
+	// The state actor calls in, and it may outlive Deinitialize while its world is destroyed.
+	if (Travel.IsValid())
+	{
+		Travel->ReturnToMainMenu();
+	}
+}
+
 bool UEasySessionSubsystem::IsPartyMember() const
 {
 	// The party follows its leader, so only a member who is not the leader is held back.
@@ -844,10 +852,16 @@ IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 
 void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request, FName SessionName)
 {
-	// Where a request's target session is decided.
-	// Every sub-request of the request reads it from the request.
-	// Queries such as IsInSession only look at the game session and read NAME_GameSession.
+	// The request and its sub-requests pass this name to every session interface call, so a party request creates, joins or destroys the party session.
 	Request->Initialize(*RequestContext, SessionName);
+
+	// Without the EasySession online session the engine would travel to the menu before a lost session is destroyed, so the request is refused.
+	if (Cast<UEasySessionOnlineSession>(GetGameInstance()->GetOnlineSession()) == nullptr)
+	{
+		UE_LOG(LogEasySession, Error, TEXT("%s"), EasySession::NoEasySessionGameInstanceMessage);
+		Request->Refuse(EEasySessionResult::NoEasySessionGameInstance, EasySession::NoEasySessionGameInstanceMessage);
+		return;
+	}
 
 	RequestQueue->Enqueue(Request);
 
@@ -966,7 +980,8 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 		ReasonText = FText::FromString(Message);
 	}
 
-	HandleDisconnect(DisconnectReason, ReasonText);
+	// The engine also reports this failure to the online session, which destroys the lost session and travels to the menu, so this only records the reason.
+	RecordDisconnect(DisconnectReason, ReasonText);
 }
 
 void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString)
@@ -992,5 +1007,18 @@ void UEasySessionSubsystem::HandleTravelFailure(UWorld* World, ETravelFailure::T
 		return;
 	}
 
-	HandleDisconnect(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));
+	// The engine also reports this failure to the online session, which destroys the lost session and travels to the menu, so this only records the reason.
+	RecordDisconnect(EEasyDisconnectReason::TravelFailure, FText::FromString(Reason));
+}
+
+void UEasySessionSubsystem::RecordDisconnect(EEasyDisconnectReason Reason, const FText& ReasonText)
+{
+	// The first reason is kept, because the destroy that follows can fail on its own, for example when the connection drops during it.
+	// Only the reason is kept, so a reason the game never read with ConsumePendingDisconnectInfo never stops a later disconnect from destroying the session.
+	if (!PendingDisconnectInfo.IsSet())
+	{
+		FEasyDisconnectInfo& Info = PendingDisconnectInfo.Emplace();
+		Info.Reason = Reason;
+		Info.ReasonText = ReasonText;
+	}
 }

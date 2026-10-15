@@ -110,7 +110,7 @@ The reservation request travels over a beacon, a second lightweight connection t
 
 The beacon uses the engine's own port, 15000 by default. Move it with `ListenPort` under `[/Script/OnlineSubsystemUtils.OnlineBeaconHost]` in `DefaultEngine.ini`, or with `-BeaconPort=` on the command line. Only the host binds that port; joining players connect from a port the operating system picks, so two instances on one machine only collide when both of them host. Give each host its own `-BeaconPort=` then. When the port is already taken, the engine binds the next free one while the session keeps advertising the configured one, and the host logs a warning naming both ports.
 
-That late refusal is a disconnect, which sends the player back to the menu level (`bAutoReturnToMenuOnDisconnect`, on by default). Read it there:
+That late refusal is a disconnect, which destroys the session and sends the player back to the menu level. Read it there:
 
 ```
 Event Construct

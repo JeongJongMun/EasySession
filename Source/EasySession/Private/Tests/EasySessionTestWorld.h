@@ -6,6 +6,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionGameInstance.h"
 #include "EasySessionTestAccess.h"
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
@@ -18,6 +19,12 @@ namespace EasySessionTest
 	 * CreateSession refuses host params without one, and no test travels there, so the map does not have to exist.
 	 */
 	inline const TCHAR* const SessionMapName = TEXT("/Game/EasySessionTestMap");
+
+	/** Create a test game instance of the class EasySession needs, so its requests are not refused with NoEasySessionGameInstance. */
+	inline UEasySessionGameInstance* NewGameInstance()
+	{
+		return NewObject<UEasySessionGameInstance>(GEngine);
+	}
 
 	/**
 	 * Initialize a test game instance and disable the host's travel in its subsystem.

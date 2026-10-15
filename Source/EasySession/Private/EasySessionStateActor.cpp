@@ -33,7 +33,7 @@ void AEasySessionStateActor::SetReplicatedSessionSettings(const FEasySessionRepl
 	}
 }
 
-void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& Reason)
+void AEasySessionStateActor::MulticastReturnToMainMenu_Implementation(const FText& Reason)
 {
 	// The host destroys its own session separately. Only remote players react.
 	if (HasAuthority())
@@ -43,7 +43,7 @@ void AEasySessionStateActor::MulticastReturnToMenu_Implementation(const FText& R
 
 	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
-		Subsystem->HandleDisconnect(EEasyDisconnectReason::HostDestroyedSession, Reason);
+		Subsystem->ReturnToMainMenu(EEasyDisconnectReason::HostDestroyedSession, Reason);
 	}
 }
 

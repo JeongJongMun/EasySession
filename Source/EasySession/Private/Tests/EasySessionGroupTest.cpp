@@ -91,7 +91,7 @@ namespace EasySessionGroupTest
 
 	UEasySessionSubsystem* Begin(TSharedPtr<FTestState> State, FAutomationTestBase& Test)
 	{
-		State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+		State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 		EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 		UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();

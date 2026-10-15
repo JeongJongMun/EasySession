@@ -23,6 +23,12 @@ enum class EEasySessionResult : uint8
 	/** No online subsystem is available. Check DefaultEngine.ini configuration. */
 	NoOnlineSubsystem,
 
+	/**
+	 * The project's GameInstance does not use the EasySession online session, so EasySession refused the request.
+	 * Set Game Instance Class to EasySessionGameInstance in Project Settings > Maps & Modes, or make it the parent class of your GameInstance.
+	 */
+	NoEasySessionGameInstance,
+
 	/** The given parameters were invalid. */
 	InvalidParams,
 

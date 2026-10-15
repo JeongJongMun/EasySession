@@ -37,9 +37,9 @@ public:
 	/** @return The settings payload this actor replicates. For the subsystem and tests. */
 	const FEasySessionReplicatedSettings& GetReplicatedSessionSettings() const { return ReplicatedSessionSettings; }
 
-	/** Server: pass the reason to HandleDisconnect on every remote player, which travels them to the menu when bAutoReturnToMenuOnDisconnect is on. */
+	/** Server: send the reason to every remote player, who records it as a HostDestroyedSession disconnect and returns to the menu. */
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastReturnToMenu(const FText& Reason);
+	void MulticastReturnToMainMenu(const FText& Reason);
 
 	//~ Begin AActor Interface
 	virtual void PostNetInit() override;

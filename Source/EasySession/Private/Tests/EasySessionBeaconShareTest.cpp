@@ -127,7 +127,7 @@ bool FEasySessionBeaconShareTest::RunTest(const FString& Parameters)
 	using namespace EasySessionBeaconShareTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -174,7 +174,7 @@ namespace EasySessionBeaconPortTest
 
 		bool Init(FAutomationTestBase& Test)
 		{
-			GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+			GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 			EasySessionTest::InitializeGameInstance(GameInstance);
 			Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
 			World = GameInstance->GetWorld();

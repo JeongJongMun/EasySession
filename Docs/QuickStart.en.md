@@ -2,12 +2,15 @@
 
 *[한국어](QuickStart.ko.md)*
 
-This guide takes you from an empty project to two game instances playing together on LAN, using only Blueprint. No custom GameInstance, no C++, no config file editing.
+This guide takes you from an empty project to two game instances playing together on LAN, using only Blueprint. No C++, no config file editing.
 
 ## 1. Enable the plugin
 
 1. Open **Edit -> Plugins**, search for **EasySession** and enable it.
 2. Restart the editor when prompted.
+3. **Project Settings -> Maps & Modes -> Game Instance Class** = `EasySessionGameInstance`.
+   If the project already has a GameInstance Blueprint, open it and set **Class Settings -> Parent Class** to `EasySessionGameInstance` instead.
+   EasySession uses it to destroy a lost session before the engine loads the menu. Without it every EasySession node fails with `NoEasySessionGameInstance`, and the startup log says what is missing.
 
 That is the whole setup. EasySession runs on the NULL (LAN) online subsystem out of the box, which needs no accounts or keys.
 

@@ -15,6 +15,9 @@ namespace EasySession
 	/** The message of every NoOnlineSubsystem result a request completes with. */
 	inline constexpr const TCHAR* NoOnlineSubsystemMessage = TEXT("No online subsystem available.");
 
+	/** The message of every NoEasySessionGameInstance result. */
+	inline constexpr const TCHAR* NoEasySessionGameInstanceMessage = TEXT("The GameInstance does not use EasySessionOnlineSession. Set Game Instance Class to EasySessionGameInstance in Project Settings > Maps & Modes, or make it the parent class of your GameInstance.");
+
 	/** The message of a Blueprint node that finds no EasySession subsystem for its world context. */
 	inline constexpr const TCHAR* NoEasySessionSubsystemMessage = TEXT("No EasySession subsystem for this node's world context.");
 

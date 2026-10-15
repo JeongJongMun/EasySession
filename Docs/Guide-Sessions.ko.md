@@ -110,7 +110,7 @@ TravelSessionTimeoutSecs=90
 
 비콘은 엔진의 포트를 씁니다. 기본값은 15000이고, `DefaultEngine.ini`의 `[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`나 커맨드라인 `-BeaconPort=`로 옮길 수 있습니다. 그 포트를 잡는 쪽은 호스트뿐이고 참가자는 운영체제가 주는 임의 포트에서 접속하므로, 한 PC의 두 인스턴스는 둘 다 호스트일 때만 충돌합니다. 그때는 호스트마다 `-BeaconPort=`를 다르게 주세요. 포트가 이미 사용 중이면 엔진이 다음 빈 포트에 바인딩하는데 세션은 설정된 포트를 계속 광고하므로, 호스트가 두 포트를 모두 적은 경고를 남깁니다.
 
-이렇게 늦게 오는 거절은 디스커넥트이므로 플레이어는 메뉴 레벨로 돌아갑니다(`bAutoReturnToMenuOnDisconnect`, 기본값 켜짐). 사유는 거기서 읽으세요.
+이렇게 늦게 오는 거절은 디스커넥트이므로 세션이 파괴되고 플레이어는 메뉴 레벨로 돌아갑니다. 사유는 거기서 읽으세요.
 
 ```
 Event Construct

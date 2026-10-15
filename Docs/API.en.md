@@ -321,6 +321,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`InParty`** | A party member called Create, Join or Matchmaking. The leader decides where the party goes, so disable those buttons for members, or call Leave Easy Party to play alone |
 | **`RequiresPartyLeader`** | Only the party leader may do this. Show the button only when `Is Easy Party Leader` is true |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
+| `NoEasySessionGameInstance` | The project's GameInstance does not use `EasySessionOnlineSession`. Set **Game Instance Class** to `EasySessionGameInstance` (Quick Start step 3) |
 | `InvalidParams` | A parameter cannot work, e.g. Matchmaking with no fallback Initial Map Name |
 | `MatchmakingAlreadyInProgress` | A Matchmaking is already running |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | The online service refused that specific call. `ErrorMessage` carries what it said |
@@ -379,7 +380,6 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 
 | Setting | Default | Effect |
 |---|---|---|
-| `bAutoReturnToMenuOnDisconnect` | true | On disconnect or a failed travel, browse to the project's **Game Default Map**, keeping the reason for that map to read. The lost session is destroyed either way; off only leaves the player in the map they are in |
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
 | `bRestorePartyAfterMatch` | true | Gets the party back in the first map without a game session after a match. The leader creates it again and every member looks for it ([guide](Guide-Party.en.md#after-the-match)) |
 | `PartyRestoreWaitSeconds` | 120 | How long a member looks for the leader's party after a match |
@@ -398,6 +398,13 @@ from the game waits until the whole run ends instead of slipping in between two 
 sub-requests. `ReadFriends` does not use the session interface, so it runs outside the
 queue: it does not wait for a running request and does not turn `IsBusy` on. Every running
 or waiting request counts toward `IsBusy`, `GetActivity` and `GetQueueStatus`.
+
+`UEasySessionGameInstance` returns `UEasySessionOnlineSession` from `GetOnlineSessionClass()`.
+The engine reports a lost connection, a failed travel and `ReturnToMainMenu` to that online
+session, and EasySession destroys the lost session there before it travels to the Game Default
+Map. A C++ project with its own GameInstance returns `UEasySessionOnlineSession::StaticClass()`
+from its own `GetOnlineSessionClass()` instead. Without either, every request fails with
+`NoEasySessionGameInstance`, and the diagnostics at startup report it.
 
 `OnModifyServerTravelURL` and `OnModifyClientTravelURL` are C++ only delegates on the
 subsystem. They give you the travel URL just before travel so you can append your own

@@ -21,7 +21,7 @@
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFriendsUnsupportedTest, "EasySession.Friends.NullSubsystemGracefulFailure", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 {
-	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(GameInstance);
 
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -115,7 +115,7 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 	using namespace EasySessionFriendLookupTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -159,7 +159,7 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionInvitedJoinResultTest, "EasySession.Social.InvitedJoinRefusalReachesTheGame", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionInvitedJoinResultTest::RunTest(const FString& Parameters)
 {
-	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(GameInstance);
 
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();

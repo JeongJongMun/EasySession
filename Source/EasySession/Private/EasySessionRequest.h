@@ -132,6 +132,12 @@ public:
 	 */
 	void Cancel();
 
+	/**
+	 * Notify the requester with this result without running the request.
+	 * The subsystem calls it in place of enqueueing a request it does not accept.
+	 */
+	void Refuse(EEasySessionResult Result, const FString& ErrorMessage);
+
 	/** @return Whether the request runs now: it started and has not stopped running. */
 	bool IsRunning() const;
 

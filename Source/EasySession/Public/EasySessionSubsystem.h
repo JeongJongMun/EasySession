@@ -288,7 +288,7 @@ public:
 
 	/**
 	 * Destroy the session for every player.
-	 * Clients record Reason as a Host Destroyed Session disconnect, and travel to the menu when Auto Return To Menu On Disconnect is on.
+	 * Clients record Reason as a HostDestroyedSession disconnect, destroy their copy of the session and travel to the menu.
 	 * There, ConsumePendingDisconnectInfo returns it so the menu can show it to the player.
 	 * Needs session authority: only the game that created the session can do this.
 	 *
@@ -311,7 +311,7 @@ public:
 
 	/**
 	 * Remove a player from the session, and keep them out until the session is destroyed.
-	 * ConsumePendingDisconnectInfo then returns Kicked with this reason, and the player travels to the menu when Auto Return To Menu On Disconnect is on.
+	 * The player then travels to the menu, where ConsumePendingDisconnectInfo returns Kicked with this reason.
 	 * Needs session authority: only the game that created the session can do this.
 	 *
 	 * @return Success, RequiresSessionAuthority, or InvalidParams for a player who is not a connected remote player.
@@ -600,14 +600,6 @@ public:
 	 */
 	FEasyDisconnectInfo ConsumePendingDisconnectInfo();
 
-	/**
-	 * Record a disconnect, destroy the lost session, and travel to the project's Game Default Map when Auto Return To Menu On Disconnect is on.
-	 * Called automatically on network and travel failures.
-	 * Call it yourself only if you detect disconnects yourself.
-	 * The first reason recorded is kept until it is consumed, so a later failure cannot replace the first cause.
-	 */
-	void HandleDisconnect(EEasyDisconnectReason Reason, const FText& ReasonText);
-
 public:
 
 	/**
@@ -676,6 +668,20 @@ public:
 	 */
 	void HandleSessionPlayersChanged();
 
+	/**
+	 * Internal, called by UEasySessionOnlineSession when the engine reports a lost connection, a failed travel or a ReturnToMainMenu call to the online session.
+	 * On a client, destroys the lost session and travels to the Game Default Map after the destroy, so that map loads only once.
+	 * On the host, the engine travels to the Game Default Map as it does without EasySession, and the session is not destroyed.
+	 */
+	void HandleDisconnect(UWorld* World, class UNetDriver* NetDriver);
+
+	/**
+	 * Internal, called when the host removes this player or ends the session.
+	 * Records the reason with RecordDisconnect, then travels to the Game Default Map through UGameInstance::ReturnToMainMenu.
+	 * The online session destroys the lost session before that travel.
+	 */
+	void ReturnToMainMenu(EEasyDisconnectReason Reason, const FText& ReasonText);
+
 private:
 
 	/** @return Whether the local player is in a party they do not lead, so the leader decides where they go. */
@@ -700,6 +706,12 @@ private:
 	/** Engine delegate handlers. */
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type FailureType, const FString& ErrorString);
+
+	/**
+	 * Keep the reason of a disconnect for ConsumePendingDisconnectInfo, unless an earlier one is still waiting.
+	 * A later failure then cannot replace the first cause.
+	 */
+	void RecordDisconnect(EEasyDisconnectReason Reason, const FText& ReasonText);
 
 private:
 
@@ -735,6 +747,12 @@ private:
 
 	/** Ticker that watches Is Busy for the transitions no single call site sees, such as a travel ending. */
 	FTSTicker::FDelegateHandle BusyTickerHandle;
+
+	/** Ticker that waits for the lost session's destroy before HandleDisconnect travels to the menu. */
+	FTSTicker::FDelegateHandle MenuTravelTickerHandle;
+
+	/** The world HandleDisconnect travels from. The menu travel is skipped when the game already traveled away from it. */
+	TWeakObjectPtr<UWorld> MenuTravelWorld;
 
 	/** Delegate handle for engine-level network failures. Bound for the subsystem lifetime. */
 	FDelegateHandle NetworkFailureHandle;

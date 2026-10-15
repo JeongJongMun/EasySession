@@ -10,6 +10,7 @@ FText UEasySessionUIStatics::GetResultMessage(EEasySessionResult Result)
 	{
 		case EEasySessionResult::Success: return LOCTEXT("Result_Success", "Done");
 		case EEasySessionResult::NoOnlineSubsystem: return LOCTEXT("Result_NoOnlineSubsystem", "No online service is available");
+		case EEasySessionResult::NoEasySessionGameInstance: return LOCTEXT("Result_NoEasySessionGameInstance", "Online play is not set up in this game");
 		case EEasySessionResult::InvalidParams: return LOCTEXT("Result_InvalidParams", "The settings are invalid");
 		case EEasySessionResult::SessionAlreadyExists: return LOCTEXT("Result_SessionAlreadyExists", "You are already in a session");
 		case EEasySessionResult::NoSessionExists: return LOCTEXT("Result_NoSessionExists", "There is no session");

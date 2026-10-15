@@ -27,7 +27,7 @@ void UEasySessionPlayerComponent::ClientKicked_Implementation(const FText& Reaso
 	// The reason of the lost connection that follows is dropped, because the first reason recorded is the one the menu shows.
 	if (UEasySessionSubsystem* Subsystem = GetSubsystem())
 	{
-		Subsystem->HandleDisconnect(EEasyDisconnectReason::Kicked, Reason);
+		Subsystem->ReturnToMainMenu(EEasyDisconnectReason::Kicked, Reason);
 	}
 }
 

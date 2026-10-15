@@ -115,7 +115,7 @@ namespace EasySessionReservationTest
 	// Create the game instance and start the CreateSession every one of these tests begins with.
 	static UEasySessionSubsystem* Begin(TSharedPtr<FTestState> State, FAutomationTestBase& Test, const FEasySessionHostParams& Params)
 	{
-		State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+		State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 		EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 		UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();

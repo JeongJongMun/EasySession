@@ -54,8 +54,14 @@ public:
 	 */
 	bool ServerTravelToMap(const FString& MapName);
 
-	/** Travel to the project's Game Default Map, the engine's main menu. A second call while that travel runs does nothing. */
-	void ReturnToMenu();
+	/**
+	 * Travel to the project's Game Default Map, the engine's main menu, through UGameInstance::ReturnToMainMenu.
+	 * The EasySession online session destroys a lost session first, and then calls TravelToGameDefaultMap.
+	 */
+	void ReturnToMainMenu();
+
+	/** Travel to the Game Default Map without reporting the travel to the online session. Called once the lost session is destroyed. */
+	void TravelToGameDefaultMap();
 
 public:
 

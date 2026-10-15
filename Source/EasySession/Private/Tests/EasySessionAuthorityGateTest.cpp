@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -27,7 +26,6 @@ namespace EasySessionAuthorityGateTest
 		TOptional<EEasySessionResult> StartWithoutAuthorityResult;
 		TOptional<EEasySessionResult> UpdateWithoutAuthorityResult;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	/** Builds host params that create a named session without opening a server. */
@@ -42,7 +40,6 @@ namespace EasySessionAuthorityGateTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -172,7 +169,7 @@ bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
 	using namespace EasySessionAuthorityGateTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -181,11 +178,6 @@ bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	// A refused travel must not browse anywhere, and a headless world has no menu to return to either way.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	Subsystem->CreateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)

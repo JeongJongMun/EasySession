@@ -66,6 +66,7 @@ namespace EasySession
 		{
 			case EEasySessionResult::Success:					return TEXT("Success");
 			case EEasySessionResult::NoOnlineSubsystem:			return TEXT("NoOnlineSubsystem");
+			case EEasySessionResult::NoEasySessionGameInstance:	return TEXT("NoEasySessionGameInstance");
 			case EEasySessionResult::InvalidParams:				return TEXT("InvalidParams");
 			case EEasySessionResult::SessionAlreadyExists:		return TEXT("SessionAlreadyExists");
 			case EEasySessionResult::NoSessionExists:			return TEXT("NoSessionExists");

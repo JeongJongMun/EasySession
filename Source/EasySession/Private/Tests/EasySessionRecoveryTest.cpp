@@ -4,7 +4,6 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-#include "EasySessionConfig.h"
 #include "EasySessionReservations.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
@@ -21,7 +20,7 @@
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDisconnectInfoTest, "EasySession.Recovery.DisconnectInfoStoreConsume", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 {
-	TStrongObjectPtr<UGameInstance> GameInstance(NewObject<UGameInstance>(GEngine));
+	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(GameInstance);
 
 	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -33,13 +32,11 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 
 	TestFalse(TEXT("No pending info initially"), Subsystem->HasPendingDisconnectInfo());
 
-	// Record a disconnect.
-	// There is no session, so the recovery flow stores the info and requests the return to the menu.
-	Subsystem->HandleDisconnect(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("First reason")));
+	Subsystem->ReturnToMainMenu(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("First reason")));
 	TestTrue(TEXT("Pending after first notify"), Subsystem->HasPendingDisconnectInfo());
 
 	// A later failure must not overwrite the original cause.
-	Subsystem->HandleDisconnect(EEasyDisconnectReason::TravelFailure, FText::FromString(TEXT("Second reason")));
+	Subsystem->ReturnToMainMenu(EEasyDisconnectReason::TravelFailure, FText::FromString(TEXT("Second reason")));
 
 	const FEasyDisconnectInfo Info = Subsystem->ConsumePendingDisconnectInfo();
 	TestEqual(TEXT("First reason wins"), Info.Reason, EEasyDisconnectReason::ConnectionLost);
@@ -51,7 +48,7 @@ bool FEasySessionDisconnectInfoTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Second consume returns None"), EmptyInfo.Reason, EEasyDisconnectReason::None);
 
 	// A new disconnect after consuming records fresh info again.
-	Subsystem->HandleDisconnect(EEasyDisconnectReason::HostDestroyedSession, FText::FromString(TEXT("Third reason")));
+	Subsystem->ReturnToMainMenu(EEasyDisconnectReason::HostDestroyedSession, FText::FromString(TEXT("Third reason")));
 	TestTrue(TEXT("Pending again after re-notify"), Subsystem->HasPendingDisconnectInfo());
 	TestEqual(TEXT("New reason recorded"), Subsystem->ConsumePendingDisconnectInfo().Reason, EEasyDisconnectReason::HostDestroyedSession);
 
@@ -71,7 +68,6 @@ namespace EasySessionSecondDisconnectTest
 		TOptional<EEasySessionResult> FirstCreateResult;
 		TOptional<EEasySessionResult> SecondCreateResult;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	// Build host params for a named session, which opens no listen server because the test game instance skips the host travel.
@@ -86,7 +82,6 @@ namespace EasySessionSecondDisconnectTest
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -117,7 +112,7 @@ bool FEasySessionWaitForSecondDisconnect::Update()
 				return false;
 			}
 			CurrentTest->TestEqual(TEXT("First session created"), State->FirstCreateResult.GetValue(), EEasySessionResult::Success);
-			Subsystem->HandleDisconnect(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Host A left")));
+			FEasySessionTestAccess::LoseSession(*Subsystem, EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Host A left")));
 			State->Phase = 1;
 			return false;
 
@@ -145,7 +140,7 @@ bool FEasySessionWaitForSecondDisconnect::Update()
 				return false;
 			}
 			CurrentTest->TestEqual(TEXT("Second session created"), State->SecondCreateResult.GetValue(), EEasySessionResult::Success);
-			Subsystem->HandleDisconnect(EEasyDisconnectReason::HostDestroyedSession, FText::FromString(TEXT("Host B left")));
+			FEasySessionTestAccess::LoseSession(*Subsystem, EEasyDisconnectReason::HostDestroyedSession, FText::FromString(TEXT("Host B left")));
 			State->Phase = 3;
 			return false;
 
@@ -176,7 +171,7 @@ bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
 	using namespace EasySessionSecondDisconnectTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -185,12 +180,6 @@ bool FEasySessionSecondDisconnectTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	// Returning to the menu means browsing to a map, which a headless test world has no use for.
-	// Turning it off leaves the session cleanup, which is what this test checks.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	Subsystem->CreateSession(MakeParams(TEXT("EasySession First Host")), FEasySessionCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&)
@@ -215,12 +204,10 @@ namespace EasySessionCleanupOnceTest
 		TOptional<EEasySessionResult> CreateResult;
 		int32 Phase = 0;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -251,15 +238,15 @@ bool FEasySessionWaitForCleanupOnce::Update()
 
 			// Two failures arrive in the same recovery: the host dying, then the net driver closing.
 			// The first queues the cleanup destroy; the second finds it already queued.
-			Subsystem->HandleDisconnect(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Host died")));
-			Subsystem->HandleDisconnect(EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Net driver closed")));
+			FEasySessionTestAccess::LoseSession(*Subsystem, EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Host died")));
+			FEasySessionTestAccess::LoseSession(*Subsystem, EEasyDisconnectReason::ConnectionLost, FText::FromString(TEXT("Net driver closed")));
 			CurrentTest->TestEqual(TEXT("One cleanup destroy is queued for both failures"),
 				FEasySessionTestAccess::CountRequests(*Subsystem, FEasySessionRequest::EType::Destroy), 1);
 			State->Phase = 1;
 			return false;
 
 		default:
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (Subsystem->IsInSession() || FEasySessionTestAccess::IsWaitingToTravelToGameDefaultMap(*Subsystem))
 			{
 				return false;
 			}
@@ -283,7 +270,7 @@ bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
 	using namespace EasySessionSecondDisconnectTest;
 
 	TSharedPtr<EasySessionCleanupOnceTest::FTestState> State = MakeShared<EasySessionCleanupOnceTest::FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -292,12 +279,6 @@ bool FEasySessionCleanupOnceTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	// Returning to the menu means browsing to a map, which a headless test world has no use for.
-	// Turning it off leaves the session cleanup, which is what this test checks.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	TSharedPtr<EasySessionCleanupOnceTest::FTestState> Shared = State;
 	Subsystem->CreateSession(MakeParams(TEXT("EasySession Cleanup Once Test")), FEasySessionCompleteDelegate::CreateLambda(
@@ -328,12 +309,10 @@ namespace EasySessionTravelFailureTest
 
 		int32 Phase = 0;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
 }
@@ -395,7 +374,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 
 		default:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (Subsystem->IsInSession() || FEasySessionTestAccess::IsWaitingToTravelToGameDefaultMap(*Subsystem))
 			{
 				return false;
 			}
@@ -422,7 +401,7 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 	using EasySessionSecondDisconnectTest::MakeParams;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -431,12 +410,6 @@ bool FEasySessionTravelFailureTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	// Returning to the menu means browsing to a map, which a headless test world has no use for.
-	// Turning it off leaves the recovery behavior, which is what this test checks.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
 	Subsystem->OnSessionFailure.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionFailure);
@@ -475,12 +448,10 @@ namespace EasySessionNetworkFilterTest
 
 		int32 Phase = 0;
 		double StartTime = 0.0;
-		bool bAutoReturnWasEnabled = true;
 	};
 
 	static void Finish(FTestState& State)
 	{
-		GetMutableDefault<UEasySessionConfig>()->bAutoReturnToMenuOnDisconnect = State.bAutoReturnWasEnabled;
 		EasySessionTest::DestroyGameInstance(State.ForeignGameInstance.Get());
 		EasySessionTest::DestroyGameInstance(State.GameInstance.Get());
 	}
@@ -525,6 +496,11 @@ bool FEasySessionWaitForNetworkFilter::Update()
 			// The same broadcast on a client is a lost host.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::ConnectionLost, TEXT("lost the host"));
+			CurrentTest->TestEqual(TEXT("The failure handler only records the reason"),
+				FEasySessionTestAccess::CountRequests(*Subsystem, FEasySessionRequest::EType::Destroy), 0);
+
+			// The engine reports a lost connection to the online session only for a net driver, which this headless world does not have.
+			State->GameInstance->GetOnlineSession()->HandleDisconnect(World, nullptr);
 			CurrentTest->TestEqual(TEXT("The client's cleanup destroy is queued"),
 				FEasySessionTestAccess::CountRequests(*Subsystem, FEasySessionRequest::EType::Destroy), 1);
 
@@ -535,7 +511,7 @@ bool FEasySessionWaitForNetworkFilter::Update()
 
 		default:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (Subsystem->IsInSession() || FEasySessionTestAccess::IsWaitingToTravelToGameDefaultMap(*Subsystem))
 			{
 				return false;
 			}
@@ -587,9 +563,9 @@ bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
 	AddExpectedError(TEXT("UEngine::BroadcastNetworkFailure"), EAutomationExpectedErrorFlags::Contains, 0);
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->GameInstance);
-	State->ForeignGameInstance = TStrongObjectPtr<UGameInstance>(NewObject<UGameInstance>(GEngine));
+	State->ForeignGameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(State->ForeignGameInstance);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -598,12 +574,6 @@ bool FEasySessionNetworkFilterTest::RunTest(const FString& Parameters)
 		Finish(*State);
 		return false;
 	}
-
-	// Returning to the menu means browsing to a map, which a headless test world has no use for.
-	// Turning it off leaves the filter decisions, which are what this test checks.
-	UEasySessionConfig* Settings = GetMutableDefault<UEasySessionConfig>();
-	State->bAutoReturnWasEnabled = Settings->bAutoReturnToMenuOnDisconnect;
-	Settings->bAutoReturnToMenuOnDisconnect = false;
 
 	State->Listener = TStrongObjectPtr<UEasySessionTestEventListener>(NewObject<UEasySessionTestEventListener>());
 	Subsystem->OnSessionFailure.AddDynamic(State->Listener.Get(), &UEasySessionTestEventListener::HandleSessionFailure);

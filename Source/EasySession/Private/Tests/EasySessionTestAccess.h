@@ -22,6 +22,8 @@
 #include "EasySessionTravel.h"
 #include "GameFramework/OnlineReplStructs.h"
 #include "EasySessionTypes.h"
+#include "Engine/GameInstance.h"
+#include "GameFramework/OnlineSession.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
@@ -61,6 +63,30 @@ public:
 	static void SkipHostTravel(UEasySessionSubsystem& Subsystem)
 	{
 		Subsystem.Travel->bSkipHostTravel = true;
+	}
+
+	/** Whether a travel this plugin started is still waiting for its map to load. */
+	static bool IsTraveling(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.Travel->IsTraveling();
+	}
+
+	/** Whether HandleDisconnect is waiting for the lost session's destroy before it travels to the menu. */
+	static bool IsWaitingToTravelToGameDefaultMap(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.MenuTravelTickerHandle.IsValid();
+	}
+
+	/**
+	 * Lose the session as a client does: make this process a client of it, record why, and report the disconnect to the online session.
+	 * The engine reports a lost connection there only for a net driver, which a headless test world does not have.
+	 */
+	static void LoseSession(UEasySessionSubsystem& Subsystem, EEasyDisconnectReason Reason, const FText& ReasonText)
+	{
+		SetCreatedActiveSession(Subsystem, false);
+		Subsystem.RecordDisconnect(Reason, ReasonText);
+		UGameInstance* GameInstance = Subsystem.GetGameInstance();
+		GameInstance->GetOnlineSession()->HandleDisconnect(GameInstance->GetWorld(), nullptr);
 	}
 
 	/**

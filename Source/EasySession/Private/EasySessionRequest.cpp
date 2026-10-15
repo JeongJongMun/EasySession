@@ -102,6 +102,12 @@ void FEasySessionRequest::Cancel()
 	NotifyOnce(EEasySessionResult::Canceled, TEXT("The request was canceled before it started."));
 }
 
+void FEasySessionRequest::Refuse(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	bCompleting = true;
+	NotifyOnce(Result, ErrorMessage);
+}
+
 bool FEasySessionRequest::IsRunning() const
 {
 	if (!bStarted || Context == nullptr)

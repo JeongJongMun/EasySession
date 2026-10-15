@@ -205,11 +205,11 @@ APlayerController* FEasySessionHost::FindRemoteController(const FUniqueNetIdRepl
 	return nullptr;
 }
 
-void FEasySessionHost::TellEveryoneToReturnToMenu(const FText& Reason)
+void FEasySessionHost::TellEveryoneToReturnToMainMenu(const FText& Reason)
 {
 	if (AEasySessionStateActor* Actor = StateActor.Get())
 	{
-		Actor->MulticastReturnToMenu(Reason);
+		Actor->MulticastReturnToMainMenu(Reason);
 	}
 }
 

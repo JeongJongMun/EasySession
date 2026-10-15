@@ -2,12 +2,15 @@
 
 *[English](QuickStart.en.md)*
 
-빈 프로젝트에서 두 게임 인스턴스가 LAN으로 함께 플레이하는 데까지, 블루프린트만으로 갑니다. 커스텀 GameInstance도, C++도, 설정 파일을 직접 고칠 일도 없습니다.
+빈 프로젝트에서 두 게임 인스턴스가 LAN으로 함께 플레이하는 데까지, 블루프린트만으로 갑니다. C++도, 설정 파일을 직접 고칠 일도 없습니다.
 
 ## 1. 플러그인 켜기
 
 1. **Edit -> Plugins**에서 **EasySession**을 찾아 활성화합니다.
 2. 재시작하라는 안내가 뜨면 재시작합니다.
+3. **Project Settings -> Maps & Modes -> Game Instance Class**를 `EasySessionGameInstance`로 지정합니다.
+   프로젝트에 이미 GameInstance 블루프린트가 있다면, 그것을 열고 **Class Settings -> Parent Class**를 `EasySessionGameInstance`로 바꾸세요.
+   EasySession은 이 GameInstance를 통해 메뉴를 로드하기 전에 끊긴 세션을 파괴합니다. 없으면 모든 EasySession 노드가 `NoEasySessionGameInstance`로 실패하고, 시작 로그가 무엇이 빠졌는지 알려 줍니다.
 
 설정은 이걸로 끝입니다. EasySession은 별도 설정 없이 NULL(LAN) 온라인 서브시스템에서 동작하며, 계정도 키도 필요 없습니다.
 

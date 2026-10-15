@@ -132,3 +132,9 @@ LogEasySession: Warning: The party leader decides where the party goes. Call Lea
 ## "진행 중인 Matchmaking를 취소할 수 있나요?"
 
 `Searching` 상태일 때 가능합니다. `Cancel Easy Matchmaking`를 부르세요. Matchmaking 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 실행이 `Joining`이나 `Hosting` 상태가 되면 이 호출은 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다. 이 두 상태에서는 취소 버튼을 꺼 두세요.
+
+## "NoEasySessionGameInstance" 또는 "[FIX] The Game Instance does not use EasySessionOnlineSession"
+
+프로젝트의 GameInstance가 `EasySessionGameInstance`가 아니고 `GetOnlineSessionClass()`에서 `UEasySessionOnlineSession`을 돌려주지도 않으면, 모든 세션 노드와 파티 노드가 `NoEasySessionGameInstance`로 실패하고 시작 로그에 위 문장이 나옵니다. EasySession은 이 온라인 세션을 통해 메뉴를 로드하기 전에 끊긴 세션을 파괴합니다. 그래서 이것이 없으면 요청을 하나도 받지 않습니다.
+
+**Project Settings -> Maps & Modes -> Game Instance Class**를 `EasySessionGameInstance`로 지정하거나, 쓰고 있는 GameInstance 블루프린트의 **Parent Class**를 `EasySessionGameInstance`로 바꾸세요. C++ GameInstance는 `GetOnlineSessionClass()`를 override해서 `UEasySessionOnlineSession::StaticClass()`를 돌려주면 됩니다.
