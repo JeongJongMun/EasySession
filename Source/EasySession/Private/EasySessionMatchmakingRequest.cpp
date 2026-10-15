@@ -168,15 +168,6 @@ void FEasySessionMatchmakingRequest::HandleSearchComplete(EEasySessionResult Res
 		return;
 	}
 
-	// Matchmaking sends no password, so a run for one specific session that finds it locked ends here instead of trying it.
-	// A follow is the exception, because its reservation needs no password.
-	if (!bFollowsHost && Params.Search.IsSpecificSessionQuery()
-		&& Results.ContainsByPredicate([](const FEasySessionSearchResult& Found) { return Found.bPasswordProtected; }))
-	{
-		Complete(EEasySessionResult::PasswordRequired, TEXT("The session is password-protected, so matchmaking does not join it. Join it with Join Easy Session and its password."));
-		return;
-	}
-
 	BuildCandidates(Results);
 	if (Candidates.IsEmpty())
 	{
@@ -208,8 +199,9 @@ void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSe
 			continue;
 		}
 
-		// Matchmaking sends no password, so only a follow, whose reservation needs none, tries a password-protected session.
-		if (!bFollowsHost && Result.bPasswordProtected)
+		// A general search only considers sessions that take players without a password, because matchmaking sends none.
+		// A search for one session tries it anyway, because only the host's reservation beacon knows whether this player needs a password.
+		if (!Params.Search.IsSpecificSessionQuery() && Result.bPasswordProtected)
 		{
 			continue;
 		}
@@ -277,6 +269,8 @@ void FEasySessionMatchmakingRequest::HandleJoinComplete(EEasySessionResult Resul
 		return;
 	}
 
+	// The host's answer is kept, so a run that joins nothing reports why the last session it tried refused it.
+	LastJoinFailure.Emplace(Result, ErrorMessage);
 	FailedSessionKeys.Add(GetSessionKey(Candidates[NextCandidateIndex]));
 	++NextCandidateIndex;
 	JoinNextCandidate();
@@ -294,6 +288,11 @@ void FEasySessionMatchmakingRequest::FinishSearchPass(EEasySessionResult SearchR
 		if (Params.bAllowHostFallback && !GetContext().Subsystem.IsInSession())
 		{
 			HostFallbackSession();
+		}
+		// A session that refused this player says more than a search that found nothing or failed.
+		else if (LastJoinFailure.IsSet())
+		{
+			Complete(LastJoinFailure->Key, LastJoinFailure->Value);
 		}
 		// A failed search found nothing because it never ran, so the run keeps its result.
 		else if (SearchResult != EEasySessionResult::Success)

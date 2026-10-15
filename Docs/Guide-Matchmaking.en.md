@@ -10,7 +10,7 @@
 |---|---|---|
 | Search | (defaults) | Same filters as Find Easy Sessions |
 | Host | (defaults) | Used when falling back to hosting. Initial Map Name is covered below |
-| Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there, or with the search's own result such as `SearchFailure` when the search itself failed. Turn it on to host instead |
+| Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there, or with the search's own result such as `SearchFailure` when the search itself failed. A run that found sessions but was refused by them ends with the host's reason for the last one, such as `JoinSessionFull`. Turn it on to host instead |
 | Max Search Passes | 3 | How many search passes to run before giving up or hosting. 3 means three searches |
 | Delay Between Passes | 2.0s | How long to rest before the next search |
 
@@ -38,9 +38,11 @@ The targeted queries `Find Easy Sessions` takes work here too: set `Search > Joi
 included - joining it the moment it appears. With `Allow Host Fallback` off, this is "keep
 trying to get into my friends' session" in one call.
 
-Matchmaking sends no password. When the session it searches for is password-protected, the run ends
-with `PasswordRequired` as soon as it finds that session, without trying to join it. Join it
-with `Join Easy Session` and the password instead.
+Matchmaking sends no password, but a run for one specific session still tries it when it is
+password-protected: only the host knows whether this player needs one, and a friend of the host
+may need none ([Friends skip the password](Guide-Sessions.en.md#friends-skip-the-password)).
+A player who needs a password ends the run with `PasswordRequired`. Ask for it, then call
+`Join Easy Session` with the password.
 
 A run holds the session queue from its first search to its last sub-request. A Create, Join or
 Find the game asks for meanwhile runs after the run ends, and an accepted invite cancels
@@ -78,7 +80,7 @@ The default policy narrows the search results down to candidates, then scores th
 
 **Left out of the candidates**
 
-- **Password protected sessions** - always skipped, because matchmaking sends no password. A run for one specific session ends with `PasswordRequired` instead ([Matchmaking one specific session](#matchmaking-one-specific-session)).
+- **Password protected sessions** - skipped by a search for any session, because matchmaking sends no password. A run for one specific session asks the host instead ([Matchmaking one specific session](#matchmaking-one-specific-session)).
 - **Sessions that already refused** - a session that rejected a join is never tried again for the rest of the run.
 
 **How the rest are ordered**

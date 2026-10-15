@@ -783,13 +783,14 @@ bool FEasySessionWaitForCandidateRun::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("Exhausting every candidate without fallback ends in NoSessionsFound"),
-				State->MatchmakingResult.GetValue(), EEasySessionResult::NoSessionsFound);
 			if (!CurrentTest->TestTrue(TEXT("The run was held"), State->Run.IsValid()))
 			{
 				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 				return true;
 			}
+			const TOptional<EEasySessionResult> JoinFailure = FEasySessionTestAccess::GetLastJoinFailure(*State->Run);
+			CurrentTest->TestTrue(TEXT("Exhausting every candidate without fallback ends with the last join's result"),
+				JoinFailure.IsSet() && JoinFailure.GetValue() == State->MatchmakingResult.GetValue());
 			CurrentTest->TestEqual(TEXT("Every candidate was actually tried"), FEasySessionTestAccess::GetFailedJoinCount(*State->Run), 3);
 
 			// One key, not three: the crafted candidates share the seed session's id.
@@ -1048,6 +1049,9 @@ namespace EasyMatchmakingTargetedTest
 		/** The run, held so its joins can be counted after it completed. */
 		TSharedPtr<FEasySessionMatchmakingRequest> Run;
 
+		/** Whether the run searches for the session's join code, or for any session. */
+		bool bSearchForCode = true;
+
 		TOptional<EEasySessionResult> RunResult;
 		int32 Phase = 0;
 		double StartTime = 0.0;
@@ -1058,7 +1062,7 @@ namespace EasyMatchmakingTargetedTest
 	{
 		FEasyMatchmakingParams Params;
 		Params.Search.bLANQuery = true;
-		Params.Search.JoinCode = Code;
+		Params.Search.JoinCode = State->bSearchForCode ? Code : FString();
 		Params.MaxSearchPasses = 1;
 		Params.DelayBetweenPassesSeconds = 0.0f;
 		Params.bAllowHostFallback = false;
@@ -1138,8 +1142,12 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("The locked coded session ends the run with PasswordRequired"), State->RunResult.GetValue(), EEasySessionResult::PasswordRequired);
-			CurrentTest->TestEqual(TEXT("And no join was attempted"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 0);
+			// No reservation beacon runs here, so the join fails on its own.
+			// What matters is that the run tried the session it found and ended with that join's result.
+			CurrentTest->TestEqual(TEXT("The run tried to join the session it found"), State->Run.IsValid() ? FEasySessionTestAccess::GetFailedJoinCount(*State->Run) : -1, 1);
+			const TOptional<EEasySessionResult> JoinFailure = State->Run.IsValid() ? FEasySessionTestAccess::GetLastJoinFailure(*State->Run) : TOptional<EEasySessionResult>();
+			CurrentTest->TestTrue(TEXT("The join's result is the run's result"), JoinFailure.IsSet() && JoinFailure.GetValue() == State->RunResult.GetValue());
+			CurrentTest->TestNotEqual(TEXT("The run does not say that nothing was found"), State->RunResult.GetValue(), EEasySessionResult::NoSessionsFound);
 
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
@@ -1149,10 +1157,11 @@ bool FEasyMatchmakingWaitTargeted::Update()
 
 /**
  * Targeted matchmaking searches for one specific session.
- * The run searches with the JoinCode of a hidden, password-protected session, and ends with PasswordRequired as soon as it finds that session.
- * Matchmaking sends no password, so no join is attempted, and the game joins the session with Join Easy Session instead.
+ * The run searches with the JoinCode of a hidden, password-protected session, and tries to join it although it sends no password.
+ * Only the host's reservation beacon knows whether this player needs one, because a friend of the host may join without it.
+ * The join's result is the run's result.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.LockedTargetNeedsAPassword", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingTargetedTest, "EasySession.Matchmaking.LockedTargetAsksTheHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 {
 	using namespace EasyMatchmakingTargetedTest;
@@ -1176,6 +1185,41 @@ bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 	HostParams.bHidden = true;
 	HostParams.bUseJoinCode = true;
 	HostParams.Password = TEXT("secret");
+	Subsystem->CreateSession(HostParams);
+
+	State->StartTime = FPlatformTime::Seconds();
+	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitTargeted(State));
+	return true;
+}
+
+/**
+ * A run that finds a session but cannot join it ends with that join's result, such as JoinSessionFull from a full session.
+ * The search found a session, so NoSessionsFound would tell the player that nothing was there.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingRefusalTest, "EasySession.Matchmaking.RefusalIsTheRunResult", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasyMatchmakingRefusalTest::RunTest(const FString& Parameters)
+{
+	using namespace EasyMatchmakingTargetedTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	State->bSearchForCode = false;
+	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
+	EasySessionTest::InitializeGameInstance(State->GameInstance);
+
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+		return false;
+	}
+
+	// The session is listed and has no password, so a run for any session tries it.
+	// It still advertises a join code, which the first phase reads.
+	FEasySessionHostParams HostParams;
+	HostParams.SessionDisplayName = TEXT("EasySession Full Session");
+	HostParams.bIsLANMatch = true;
+	HostParams.InitialMapName = EasySessionTest::SessionMapName;
+	HostParams.bUseJoinCode = true;
 	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();

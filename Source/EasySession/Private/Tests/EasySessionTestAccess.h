@@ -545,6 +545,12 @@ public:
 	{
 		return Run.NextCandidateIndex;
 	}
+
+	/** @return The result of the last join that failed during the run, or unset when none failed. */
+	static TOptional<EEasySessionResult> GetLastJoinFailure(const FEasySessionMatchmakingRequest& Run)
+	{
+		return Run.LastJoinFailure.IsSet() ? TOptional<EEasySessionResult>(Run.LastJoinFailure->Key) : TOptional<EEasySessionResult>();
+	}
 };
 
 #endif // WITH_DEV_AUTOMATION_TESTS

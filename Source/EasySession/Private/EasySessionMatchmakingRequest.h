@@ -86,7 +86,7 @@ private:
 	/**
 	 * Start the next search pass, or host or complete the run when no pass is left.
 	 *
-	 * @param SearchResult The result of this pass's search. When no pass is left and no fallback session is hosted, a failure ends the run with it.
+	 * @param SearchResult The result of this pass's search. When no pass is left, no fallback session is hosted and no join failed, a failure ends the run with it.
 	 * @param SearchError The message that came with SearchResult.
 	 */
 	void FinishSearchPass(EEasySessionResult SearchResult = EEasySessionResult::Success, const FString& SearchError = FString());
@@ -138,6 +138,9 @@ private:
 
 	/** Sessions whose join failed during this run, for any reason. They are never tried again. */
 	TSet<FString> FailedSessionKeys;
+
+	/** The result and message of the last join that failed. A run that joins no session completes with it. Unset until a join fails. */
+	TOptional<TPair<EEasySessionResult, FString>> LastJoinFailure;
 
 	/** Ticker handle for the delay between search passes. */
 	FTSTicker::FDelegateHandle PassDelayTickerHandle;
