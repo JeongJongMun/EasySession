@@ -244,7 +244,7 @@ void FEasySessionFindRequest::CompleteWithResults(const TArray<FOnlineSessionSea
 		}
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Search complete. %d session(s) found after filtering."), Results.Num());
+	UE_LOG(LogEasySession, Log, TEXT("Search complete. %d session(s) match the search params."), Results.Num());
 	Complete(EEasySessionResult::Success);
 }
 

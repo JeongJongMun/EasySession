@@ -220,6 +220,9 @@ void FEasySessionMatchmakingRequest::BuildCandidates(const TArray<FEasySessionSe
 		}
 	}
 
+	UE_LOG(LogEasySession, Log, TEXT("%s pass %d: trying %d of %d found session(s)."),
+		bFollowsHost ? TEXT("Follow") : TEXT("Matchmaking"), PassesCompleted + 1, Candidates.Num(), Results.Num());
+
 	// A Blueprint policy runs its ScoreSession in the Blueprint VM, so every search result is scored once and the sort reads the score it got.
 	UEasyMatchmakingPolicy* ScoringPolicy = Policy.Get();
 	TArray<TPair<float, FEasySessionSearchResult>> ScoredCandidates;
