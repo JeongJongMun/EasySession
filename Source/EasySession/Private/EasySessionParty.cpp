@@ -346,12 +346,6 @@ TArray<FEasyPartyMemberInfo> FEasySessionParty::GetMembers() const
 	return Members;
 }
 
-bool FEasySessionParty::IsPartySession(const FOnlineSessionSettings& Settings)
-{
-	int32 bIsParty = 0;
-	return Settings.Get(EasySession::SettingKey_Party, bIsParty) && bIsParty != 0;
-}
-
 void FEasySessionParty::CancelRestore()
 {
 	if (!bRestoring && !LastParty.IsSet())

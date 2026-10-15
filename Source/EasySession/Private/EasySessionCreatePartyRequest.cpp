@@ -101,7 +101,7 @@ FOnlineSessionSettings FEasySessionCreatePartyRequest::MakeOnlineSettings(const 
 	Settings.bShouldAdvertise = true;
 	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
 
-	Settings.Set(EasySession::SettingKey_Party, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(EasySession::SettingKey_SessionType, FName(NAME_PartySession).ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_DisplayName, LeaderName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_Hidden, PartySettings.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	Settings.Set(EasySession::SettingKey_OwnerId, LeaderId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);

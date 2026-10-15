@@ -18,7 +18,7 @@ namespace EasySession
 	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
 	const FName SettingKey_Reservations = TEXT("EASYRESERVATIONS");
 	const FName SettingKey_OwnerId = TEXT("EASYOWNERID");
-	const FName SettingKey_Party = TEXT("EASYPARTY");
+	const FName SettingKey_SessionType = TEXT("EASYSESSIONTYPE");
 
 	int32 GetReservationBeaconPort()
 	{
@@ -42,8 +42,14 @@ namespace EasySession
 			|| Key == SettingKey_JoinCode
 			|| Key == SettingKey_Reservations
 			|| Key == SettingKey_OwnerId
-			|| Key == SettingKey_Party
+			|| Key == SettingKey_SessionType
 			|| Key == SETTING_BEACONPORT;
+	}
+
+	FName GetAdvertisedSessionType(const FOnlineSessionSettings& Settings)
+	{
+		FString SessionType;
+		return Settings.Get(SettingKey_SessionType, SessionType) ? FName(*SessionType) : NAME_None;
 	}
 
 	FString GenerateJoinCode()
@@ -293,11 +299,9 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		{
 			Result.JoinCode = Setting.Value.Data.ToString();
 		}
-		else if (Setting.Key == EasySession::SettingKey_Party)
+		else if (Setting.Key == EasySession::SettingKey_SessionType)
 		{
-			int32 IsParty = 0;
-			Setting.Value.Data.GetValue(IsParty);
-			Result.bIsParty = IsParty != 0;
+			Result.bIsParty = FName(*Setting.Value.Data.ToString()) == NAME_PartySession;
 		}
 		else if (Setting.Key == EasySession::SettingKey_MatchInProgress)
 		{

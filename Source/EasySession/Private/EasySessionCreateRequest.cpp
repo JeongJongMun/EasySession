@@ -109,7 +109,7 @@ FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEas
 	Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// A game session, so a search for parties never returns it.
-	Settings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(EasySession::SettingKey_SessionType, FName(NAME_GameSession).ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// The host's id, so a search for this host filters inside the online subsystem rather than on the results it returned.
 	// Without a logged in player there is no id to advertise.

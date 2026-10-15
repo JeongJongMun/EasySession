@@ -212,10 +212,14 @@ namespace EasySession
 	EASYSESSION_API extern const FName SettingKey_OwnerId;
 
 	/**
-	 * Custom session setting key marking a party session with 1 and a game session with 0.
+	 * Custom session setting key holding the named session the host created: GameSession for a game session, PartySession for a party.
 	 * Both kinds are advertised, so every search asks for one kind and never returns the other.
+	 * A session another project advertises has no such key, so searches and joins drop it.
 	 */
-	EASYSESSION_API extern const FName SettingKey_Party;
+	EASYSESSION_API extern const FName SettingKey_SessionType;
+
+	/** @return The named session these settings advertise under SettingKey_SessionType, or NAME_None for a session another project advertises. */
+	EASYSESSION_API FName GetAdvertisedSessionType(const FOnlineSessionSettings& Settings);
 
 	/**
 	 * The port the reservation beacon asks for: -BeaconPort= when the command line carries it, and the AOnlineBeaconHost config otherwise.

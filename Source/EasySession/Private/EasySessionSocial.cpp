@@ -225,7 +225,7 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 		return;
 	}
 
-	// The invite event carries no session name, so the advertised party key tells the two kinds apart.
+	// The invite event carries no session name, so the advertised session type tells the two kinds apart.
 	if (Session.bIsParty)
 	{
 		JoinInvitedParty(Session);

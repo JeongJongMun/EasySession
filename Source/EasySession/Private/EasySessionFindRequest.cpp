@@ -4,7 +4,6 @@
 
 #include "EasySession.h"
 #include "EasySessionMessages.h"
-#include "EasySessionParty.h"
 #include "EasySessionSocial.h"
 #include "EasySessionSubsystem.h"
 #include "Online/OnlineSessionNames.h"
@@ -165,7 +164,7 @@ void FEasySessionFindRequest::FindSessions()
 	}
 
 	// Parties and game sessions are both advertised, so the query asks for the kind of session this request searches for.
-	Search->QuerySettings.Set(EasySession::SettingKey_Party, IsPartySearch() ? 1 : 0, EOnlineComparisonOp::Equals);
+	Search->QuerySettings.Set(EasySession::SettingKey_SessionType, SessionName.ToString(), EOnlineComparisonOp::Equals);
 
 	// A search for one session filters inside the online subsystem, so that session is found however many others exist.
 	// The filter on the returned results still runs, because NULL (LAN) ignores these query settings.
@@ -231,8 +230,8 @@ void FEasySessionFindRequest::CompleteWithResults(const TArray<FOnlineSessionSea
 {
 	for (const FOnlineSessionSearchResult& NativeResult : NativeResults)
 	{
-		// NULL ignores the query settings, and a friend's session may be either kind, so the kind is checked here too.
-		if (!NativeResult.IsValid() || FEasySessionParty::IsPartySession(NativeResult.Session.SessionSettings) != IsPartySearch())
+		// NULL ignores the query settings, so the kind is checked here too.
+		if (!NativeResult.IsValid() || EasySession::GetAdvertisedSessionType(NativeResult.Session.SessionSettings) != SessionName)
 		{
 			continue;
 		}

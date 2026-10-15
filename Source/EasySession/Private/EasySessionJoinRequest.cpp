@@ -57,6 +57,13 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
+	// A party or a session of another project has no game server to travel to, so the travel would wait for the connect timeout.
+	if (EasySession::GetAdvertisedSessionType(Target.NativeResult.Session.SessionSettings) != NAME_GameSession)
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("The search result to join is not an EasySession game session. Use one Find Easy Sessions returned, and Join Easy Party for a party."));
+		return;
+	}
+
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (!Sessions.IsValid())
 	{

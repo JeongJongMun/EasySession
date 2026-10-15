@@ -26,7 +26,7 @@ FEasySessionJoinPartyRequest::FEasySessionJoinPartyRequest(const FEasySessionSea
 
 void FEasySessionJoinPartyRequest::Execute()
 {
-	if (!Target.IsValid() || !FEasySessionParty::IsPartySession(Target.NativeResult.Session.SessionSettings))
+	if (!Target.IsValid() || EasySession::GetAdvertisedSessionType(Target.NativeResult.Session.SessionSettings) != NAME_PartySession)
 	{
 		Complete(EEasySessionResult::InvalidParams, TEXT("The search result to join is not a party. Use one Find Easy Parties returned."));
 		return;

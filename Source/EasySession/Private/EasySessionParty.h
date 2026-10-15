@@ -106,9 +106,6 @@ public:
 	/** @return Every member of the party, the leader included. Empty outside a party. */
 	TArray<FEasyPartyMemberInfo> GetMembers() const;
 
-	/** @return Whether these settings belong to a party session rather than a game session. */
-	static bool IsPartySession(const FOnlineSessionSettings& Settings);
-
 	/** @return Whether the party of the last match is being restored: created again on the leader, or searched for on a member. */
 	bool IsRestoring() const { return bRestoring; }
 

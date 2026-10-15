@@ -197,7 +197,8 @@ bool FEasySessionPartyLifecycleStep::Update()
 				CurrentTest->TestTrue(TEXT("The member is the local player"), Members[0].bIsLocalPlayer);
 			}
 
-			CurrentTest->TestEqual(TEXT("The session is marked as a party"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Party), 1);
+			CurrentTest->TestEqual(TEXT("The session is marked as a party"),
+				EasySession::GetAdvertisedSessionType(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession).Session.SessionSettings), NAME_PartySession);
 			CurrentTest->TestEqual(TEXT("A join code party is hidden from plain searches"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
 			CurrentTest->TestEqual(TEXT("The party advertises a six character code"), Subsystem->GetPartyJoinCode().Len(), 6);
 			CurrentTest->TestEqual(TEXT("The party reads back its max members"), Subsystem->GetPartySettings().MaxMembers, 3);
@@ -459,7 +460,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 			// The search returns the party and a game session, as a NULL search does, because NULL ignores the query settings.
 			FOnlineSessionSearchResult Party = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession);
 			FOnlineSessionSearchResult GameSession = Party;
-			GameSession.Session.SessionSettings.Set(EasySession::SettingKey_Party, 0, EOnlineDataAdvertisementType::ViaOnlineService);
+			GameSession.Session.SessionSettings.Set(EasySession::SettingKey_SessionType, FName(NAME_GameSession).ToString(), EOnlineDataAdvertisementType::ViaOnlineService);
 
 			// An accepted invite can be either kind, and the game reads which from the result.
 			CurrentTest->TestTrue(TEXT("A party result says it is a party"), FEasySessionSearchResult::FromNative(Party).bIsParty);
