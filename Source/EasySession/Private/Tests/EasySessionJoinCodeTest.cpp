@@ -82,7 +82,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 				return false;
 			}
 
-			State->JoinCode = Subsystem->GetSessionJoinCode();
+			State->JoinCode = Subsystem->GetJoinCode();
 			CurrentTest->TestEqual(TEXT("The hidden session advertises a six character code"), State->JoinCode.Len(), 6);
 
 			const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
@@ -99,7 +99,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			// A normal search must not list the hidden session, code or no code.
 			FEasySessionSearchParams NormalSearch;
 			NormalSearch.bLANQuery = true;
-			Subsystem->FindSessions(NormalSearch, FEasySessionFindCompleteDelegate::CreateLambda(
+			Subsystem->FindSessions(EEasySessionType::GameSession, NormalSearch, FEasySessionFindCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 				{
 					Shared->NormalSearchCount = Result == EEasySessionResult::Success ? Results.Num() : -1;
@@ -125,7 +125,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			FEasySessionSearchParams CodeSearch;
 			CodeSearch.bLANQuery = true;
 			CodeSearch.JoinCode = State->JoinCode;
-			Subsystem->FindSessions(CodeSearch, FEasySessionFindCompleteDelegate::CreateLambda(
+			Subsystem->FindSessions(EEasySessionType::GameSession, CodeSearch, FEasySessionFindCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 				{
 					Shared->PreviewResults = Results;
@@ -166,7 +166,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 				return false;
 			}
 
-			CurrentTest->TestEqual(TEXT("The update kept the code"), Subsystem->GetSessionJoinCode(), State->JoinCode);
+			CurrentTest->TestEqual(TEXT("The update kept the code"), Subsystem->GetJoinCode(), State->JoinCode);
 
 			// The record must be gone before joining the preview, or the join is refused for being in a session already.
 			Subsystem->DestroySession();
@@ -208,7 +208,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			FEasySessionSearchParams WrongSearch;
 			WrongSearch.bLANQuery = true;
 			WrongSearch.JoinCode = TEXT("QQQQQQ");
-			Subsystem->FindSessions(WrongSearch, FEasySessionFindCompleteDelegate::CreateLambda(
+			Subsystem->FindSessions(EEasySessionType::GameSession, WrongSearch, FEasySessionFindCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 				{
 					Shared->WrongCodeCount = Result == EEasySessionResult::Success ? Results.Num() : -1;

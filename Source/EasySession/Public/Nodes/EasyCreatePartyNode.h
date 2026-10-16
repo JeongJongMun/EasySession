@@ -28,7 +28,7 @@ public:
 	/**
 	 * Create a party, with the local player as its leader.
 	 * A party lives outside game sessions and needs no map, so nothing travels.
-	 * It fails with Session Already Exists in a game session or a party, so call Leave Easy Session or Leave Easy Party first.
+	 * It fails with Session Already Exists in a game session or a party, so call Leave Easy Session for it first.
 	 *
 	 * @param PartySettings What the party advertises. Max Players counts the leader.
 	 *        A Password or Should Advertise off is refused with Invalid Params, because a party has no password and members find it again by its leader.

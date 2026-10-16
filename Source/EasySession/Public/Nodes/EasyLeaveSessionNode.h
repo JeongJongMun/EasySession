@@ -8,7 +8,7 @@
 #include "EasyLeaveSessionNode.generated.h"
 
 /**
- * Async node that leaves the session: destroys this game's named session, then travels to the menu map.
+ * Async node that leaves a session of one type: destroys this game's named session, and for a game session travels to the menu map.
  */
 UCLASS()
 class EASYSESSION_API UEasyLeaveSessionNode : public UEasySessionNodeBase
@@ -17,21 +17,24 @@ class EASYSESSION_API UEasyLeaveSessionNode : public UEasySessionNodeBase
 
 public:
 
-	/** Called when the session was left successfully. The menu travel has already started. */
+	/** Called when the session was left successfully. For a game session the menu travel has already started. */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnSuccess;
 
-	/** Called when the session could not be destroyed. The menu travel has started regardless. */
+	/** Called when there was no party to leave, or the named session could not be destroyed. A game session's menu travel has started regardless. */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Leave the session: destroy this game's named session, then travel to the menu map (Game Default Map).
-	 * A leaving host destroys the session for everyone, and each client receives "The host has left the game." first.
-	 * For a custom reason use Destroy Easy Session For Everyone on the subsystem.
+	 * Leave the session of this type: destroy this game's named session, and for a game session travel to the menu map (Game Default Map).
+	 * A leaving host destroys the game session for everyone, and each client receives "The host has left the game." first.
+	 * For a custom reason use Destroy Easy Session For Everyone.
+	 * A leader who leaves the party ends it for every member, and On Party Left fires with Left once the party is left.
+	 *
+	 * @param Type The game session or the party session to leave.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Leave Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
-	static UEasyLeaveSessionNode* LeaveEasySession(UObject* WorldContextObject);
+	static UEasyLeaveSessionNode* LeaveEasySession(UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 
 	//~ Begin UBlueprintAsyncActionBase Interface
 	virtual void Activate() override;
@@ -41,4 +44,7 @@ private:
 
 	/** Called when the subsystem finishes the leave request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
+
+	/** The type of session to leave. */
+	EEasySessionType Type = EEasySessionType::GameSession;
 };

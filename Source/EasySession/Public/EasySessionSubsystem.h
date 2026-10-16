@@ -37,7 +37,7 @@ struct FEasySessionRequestContext;
 /** Multicast event fired with the result of a session request, used by the async nodes and by On Matchmaking Complete. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasySessionEvent, EEasySessionResult, Result, const FString&, ErrorMessage);
 
-/** Multicast event fired with the result of a session or party search, used by the Find Easy Sessions and Find Easy Parties nodes. */
+/** Multicast event fired with the result of a session or party search, used by the Find Easy Sessions node. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasySessionFindEvent, EEasySessionResult, Result, const FString&, ErrorMessage, const TArray<FEasySessionSearchResult>&, Results);
 
 /** Multicast event fired when something fails outside any node's result, such as a lost connection or a failed travel. */
@@ -226,25 +226,33 @@ public:
 	void CreateSession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Search for sessions matching the given filters.
+	 * Search for sessions of one type matching the given filters.
+	 * A party search lists the parties that are not hidden, and with a join code it finds the party that advertises it, hidden or not.
 	 *
+	 * @param Type The game sessions or the party sessions to search for.
+	 *        A party advertises no region, custom settings or session state, so a party search ignores those filters.
 	 * @param SearchParams Parameters describing what to search for.
 	 * @param OnComplete Called with the filtered results when the search completes.
 	 */
-	void FindSessions(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete = FEasySessionFindCompleteDelegate());
+	void FindSessions(EEasySessionType Type, const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete = FEasySessionFindCompleteDelegate());
 
 	/**
-	 * Join the given session and travel to the host.
-	 * A player in another session destroys it first, once the new host approved the join, and a host tells its clients why.
+	 * Join the session a search returned: a game session, after which the local player travels to the host, or a party, which the local player logs in to.
+	 * The search result advertises its type.
+	 * For a game session, a player in another session destroys it first, once the new host approved the join, and a host tells its clients why.
 	 * A join that fails after that destroy travels the player to the menu.
 	 * Joining the session this player is already in fails with SessionAlreadyExists, and so does a join by the host of a match in progress.
 	 * A player in a session stays in it when the reservation beacon cannot reach the new host.
 	 * A party leader, or the host of a match that has not started, brings the group, which is told to follow before this player joins.
 	 * A party member is refused with InParty.
+	 * For a party, the leader decides the join, and a refusal fails with JoinRefused and the leader's reason.
+	 * A player in a party or a game session fails with SessionAlreadyExists.
+	 * On Success, GetPartyMembers already lists the local player.
 	 *
 	 * @param SearchResult A search result returned by FindSessions.
-	 * @param Password Password for password protected sessions. Ignored otherwise.
+	 * @param Password Password for a password protected game session. A party has none, so a password fails the join with InvalidParams.
 	 * @param AdditionalTravelOptions Extra options appended to the client travel URL (e.g. "Name=Player?Team=1").
+	 *        A party travels nowhere, so options fail with InvalidParams.
 	 * @param OnComplete Called when the request completes.
 	 */
 	void JoinSession(const FEasySessionSearchResult& SearchResult, const FString& Password = FString(), const FString& AdditionalTravelOptions = FString(), FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
@@ -279,13 +287,15 @@ public:
 	void DestroySession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Leave the session: destroy this game's named session, then travel to the menu map.
-	 * A leaving host takes the session with it, so it destroys the session for everyone and every client receives "The host has left the game." first.
+	 * Leave the session of this type: destroy this game's named session, and for a game session travel to the menu map.
+	 * A host that leaves destroys the game session for everyone, and every client receives "The host has left the game." first.
 	 * The menu travel runs whatever the destroy reported, because the player asked to leave.
+	 * A leader who leaves the party ends it for every member, and OnPartyLeft fires with Left once the party is left.
 	 *
-	 * @param OnComplete Called with the destroy's result, after the menu travel was requested.
+	 * @param Type The game session or the party session to leave.
+	 * @param OnComplete Called with the destroy's result, for a game session after the menu travel was requested.
 	 */
-	void LeaveSession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void LeaveSession(EEasySessionType Type = EEasySessionType::GameSession, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Destroy the session for every player.
@@ -370,35 +380,6 @@ public:
 	void CreateParty(const FEasySessionSettings& Settings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Search for parties.
-	 * Without a join code this lists the parties that are not hidden, and with one it finds the party that advertises it, hidden or not.
-	 *
-	 * @param SearchParams Parameters describing what to search for. Region, Required Custom Settings and Include In Progress Sessions are ignored,
-	 *        because a party advertises none of them.
-	 * @param OnComplete Called with the parties found when the search completes.
-	 */
-	void FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete = FEasySessionFindCompleteDelegate());
-
-	/**
-	 * Join a party a search returned.
-	 * The leader decides the join, and a refusal fails with JoinRefused and the leader's reason.
-	 * A player in a party or in a game session fails with SessionAlreadyExists.
-	 *
-	 * @param SearchResult A party returned by FindParties.
-	 * @param OnComplete Called when the request completes. On Success, GetPartyMembers already lists the local player.
-	 */
-	void JoinParty(const FEasySessionSearchResult& SearchResult, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
-
-	/**
-	 * Leave the party.
-	 * A leader who leaves ends the party for every member.
-	 * OnPartyLeft fires with Left once the party is left.
-	 *
-	 * @param OnComplete Called when the request completes.
-	 */
-	void LeaveParty(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
-
-	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 * The member receives OnPartyLeft with Kicked and this reason.
 	 * Only the leader can do this.
@@ -415,9 +396,6 @@ public:
 	 */
 	EEasySessionResult SetPartyReady(bool bReady);
 
-	/** @return Whether the local player is in a party. */
-	bool IsInParty() const;
-
 	/** @return Whether the local player leads the party. False outside a party. */
 	bool IsPartyLeader() const;
 
@@ -430,17 +408,6 @@ public:
 	 */
 	bool IsRestoringParty() const;
 
-	/**
-	 * @return The settings the party advertises, read back from the party session on the leader and on every member.
-	 *         Default settings outside a party.
-	 */
-	FEasySessionSettings GetPartySettings() const;
-
-	/**
-	 * @return The join code the party advertises, or empty when it uses none or there is no party.
-	 *         Works for the leader and every member, so any member can share the code.
-	 */
-	FString GetPartyJoinCode() const;
 
 public:
 
@@ -456,8 +423,11 @@ public:
 	 */
 	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const;
 
-	/** @return Whether the local player is in a session. */
-	bool IsInSession() const;
+	/**
+	 * @return Whether the local player is in a session of this type.
+	 *         For a party, whether the local player is a member on the party beacon: the leader, or a member whose login completed.
+	 */
+	bool IsInSession(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/**
 	 * @return The lifecycle state of the current session (Pending, InProgress, Ended, ...).
@@ -469,16 +439,18 @@ public:
 	 * Get these, change the one field, and pass them to Update Easy Session.
 	 * Building new settings instead resets every field you did not fill in.
 	 *
-	 * @return The settings the current session is advertising, so a change can be made without restating everything else.
-	 *         Works for every player in the session; the password and its friends exception are only filled on the host, the one game that holds them.
+	 * @return The settings the session of this type is advertising, so a change can be made without restating everything else.
+	 *         Works for every player in the session.
+	 *         The password and its friends exception are only filled on the host of a game session, the one game that holds them.
+	 *         Default settings when no session of this type exists.
 	 */
-	FEasySessionSettings GetSessionSettings() const;
+	FEasySessionSettings GetSessionSettings(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/**
-	 * @return The join code the current session advertises, or empty when it advertises none.
-	 *         Works for every player in the session, so any session member can share the code.
+	 * @return The join code the session of this type advertises, or empty when it advertises none or no such session exists.
+	 *         Works for every player in the session, so any of them can share the code.
 	 */
-	FString GetSessionJoinCode() const;
+	FString GetJoinCode(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/**
 	 * @return Whether the local player is hosting the current session.
@@ -493,17 +465,17 @@ public:
 	 */
 	bool IsSessionAuthority() const;
 
-	/** @return The display name of the current session. Empty when no session exists. */
-	FString GetSessionDisplayName() const;
+	/** @return The display name the session of this type advertises. Empty when no such session exists. */
+	FString GetDisplayName(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/** @return Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host. */
 	TArray<FEasySessionPlayerInfo> GetSessionPlayerInfos() const;
 
-	/** @return The number of players currently in the session. */
-	int32 GetSessionPlayerCount() const;
+	/** @return The number of players in the session of this type: the players of the game, or the members of the party. */
+	int32 GetPlayerCount(EEasySessionType Type = EEasySessionType::GameSession) const;
 
-	/** @return The maximum number of players allowed in the current session. 0 when no session exists. */
-	int32 GetSessionMaxPlayers() const;
+	/** @return The maximum number of players the session of this type allows. 0 when no such session exists. */
+	int32 GetMaxPlayers(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/**
 	 * Session buttons read this to disable themselves.
@@ -529,37 +501,19 @@ public:
 public:
 
 	/**
-	 * Invite a friend to the current session.
+	 * Invite a friend to the session of this type. Any member of a party can do this.
 	 *
 	 * @return Success, or why not: NotSupportedByService on an online subsystem without invites such as NULL (LAN),
-	 *         NoSessionExists with no session to invite to, InvalidParams for a friend ReadFriends did not return, or NoOnlineSubsystem.
+	 *         NoSessionExists with no session of this type to invite to, InvalidParams for a friend ReadFriends did not return, or NoOnlineSubsystem.
 	 */
-	EEasySessionResult SendSessionInviteToFriend(const FEasySessionFriend& Friend);
+	EEasySessionResult SendInviteToFriend(EEasySessionType Type, const FEasySessionFriend& Friend);
 
 	/**
-	 * Open the platform invite overlay (e.g. Steam) for the current session.
+	 * Open the platform invite overlay (e.g. Steam) for the session of this type. Any member of a party can do this.
 	 *
-	 * @return Success, or why the overlay could not be opened.
+	 * @return Success, or why the overlay could not be opened: NoSessionExists with no session of this type, or NotSupportedByService without an overlay.
 	 */
-	EEasySessionResult ShowInviteUI();
-
-	/**
-	 * Invite a friend to the party.
-	 * Any member can do this.
-	 *
-	 * @return Success, or why not: NoSessionExists outside a party,
-	 *         NotSupportedByService on an online subsystem without invites such as NULL (LAN), InvalidParams for a friend ReadFriends did not return,
-	 *         or NoOnlineSubsystem.
-	 */
-	EEasySessionResult SendPartyInviteToFriend(const FEasySessionFriend& Friend);
-
-	/**
-	 * Open the platform invite overlay (e.g. Steam) for the party.
-	 * Any member can do this.
-	 *
-	 * @return Success, or why the overlay could not be opened.
-	 */
-	EEasySessionResult ShowPartyInviteUI();
+	EEasySessionResult ShowInviteUI(EEasySessionType Type = EEasySessionType::GameSession);
 
 	/**
 	 * Open the platform profile overlay (e.g. Steam) for the given friend.
@@ -653,7 +607,7 @@ public:
 	void FollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/**
-	 * Internal, called when the party ends for the local player without LeaveParty.
+	 * Internal, called when the party ends for the local player without LeaveSession.
 	 * That is when the leader ended the membership, the connection to the leader was lost, or this player entered a game session.
 	 * Queues a leave of the party session unless one is queued already, and that leave broadcasts OnPartyLeft with the reason.
 	 */
@@ -661,7 +615,7 @@ public:
 
 	/**
 	 * Internal, called by the party to queue the requests that restore the party of the last match.
-	 * The public calls such as CreateParty and JoinParty cancel the restore first, so they cannot be used for this.
+	 * The public calls such as CreateParty and JoinSession cancel the restore first, so they cannot be used for this.
 	 */
 	void EnqueuePartyRequest(TSharedRef<FEasySessionRequest> Request);
 

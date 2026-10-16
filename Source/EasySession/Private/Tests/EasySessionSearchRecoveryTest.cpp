@@ -99,7 +99,7 @@ bool FEasySessionWaitForFailedSearchRecovery::Update()
 
 		State->bRecoveryStarted = true;
 		State->StartTime = FPlatformTime::Seconds();
-		Subsystem->FindSessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+		Subsystem->FindSessions(EEasySessionType::GameSession, MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
 			[Shared](EEasySessionResult InResult, const FString&, const TArray<FEasySessionSearchResult>&)
 			{
 				Shared->PendingResult = InResult;
@@ -140,7 +140,7 @@ bool FEasySessionFailedSearchRecoveryTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	Subsystem->FindSessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+	Subsystem->FindSessions(EEasySessionType::GameSession, MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>&)
 		{
 			State->PendingResult = Result;
@@ -228,7 +228,7 @@ bool FEasySessionForeignSearchTest::RunTest(const FString& Parameters)
 		return false;
 	}
 
-	Subsystem->FindSessions(MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+	Subsystem->FindSessions(EEasySessionType::GameSession, MakeParams(), FEasySessionFindCompleteDelegate::CreateLambda(
 		[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>&)
 		{
 			State->PendingResult = Result;
@@ -294,7 +294,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 		FEasySessionSearchParams Params;
 		Params.bLANQuery = true;
 		TSharedPtr<FTestState> Shared = State;
-		Subsystem->FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+		Subsystem->FindSessions(EEasySessionType::GameSession, Params, FEasySessionFindCompleteDelegate::CreateLambda(
 			[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>&)
 			{
 				Shared->SearchResult = Result;

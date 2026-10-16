@@ -129,7 +129,7 @@ bool FEasySessionRunReservedKeySteps::Update()
 		CurrentTest->TestEqual(TEXT("Beacon port still reads as the configured port"),
 			FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, SETTING_BEACONPORT), EasySession::GetReservationBeaconPort());
 
-		CurrentTest->TestEqual(TEXT("Max players took the update"), Subsystem->GetSessionMaxPlayers(), 8);
+		CurrentTest->TestEqual(TEXT("Max players took the update"), Subsystem->GetMaxPlayers(), 8);
 
 		// A key left out of the map is gone from the session, and its neighbor is untouched.
 		CurrentTest->TestEqual(TEXT("The dropped custom setting left the session"),

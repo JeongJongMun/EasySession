@@ -87,7 +87,7 @@ bool FEasySessionCreateRequest::CheckCanCreate()
 	if (Sessions->GetNamedSession(SessionName) != nullptr)
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, IsPartyRequest()
-			? TEXT("Already in a party. Call Leave Easy Party first.")
+			? TEXT("Already in a party. Leave it with Leave Easy Session first.")
 			: TEXT("Already in a session. Call Leave Easy Session first. A host changes maps with Server Travel Easy Session."));
 		return false;
 	}
@@ -136,7 +136,7 @@ bool FEasySessionCreateRequest::CheckCanCreatePartySession()
 	// Members find the party again after a match by searching for its leader, and a search returns only advertised sessions.
 	if (!HostParams.bShouldAdvertise)
 	{
-		Complete(EEasySessionResult::InvalidParams, TEXT("Every party is advertised. Set Hidden to keep it out of Find Easy Parties."));
+		Complete(EEasySessionResult::InvalidParams, TEXT("Every party is advertised. Set Hidden to keep it out of a party search."));
 		return false;
 	}
 
@@ -217,7 +217,7 @@ void FEasySessionCreateRequest::HostGameSession()
 	GetContext().Host.OnSessionCreated(HostParams, GroupMembers);
 
 	// The members search for this host until its map is open, so they are told before the travel.
-	// A party exists only outside game sessions, so HandlePartyEnded queues a LeaveParty request that destroys the party session.
+	// A party exists only outside game sessions, so HandlePartyEnded queues a Leave request that destroys the party session.
 	if (GetContext().Party.IsInParty())
 	{
 		if (!GroupMembers.IsEmpty())

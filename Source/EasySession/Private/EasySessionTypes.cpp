@@ -46,6 +46,11 @@ namespace EasySession
 			|| Key == SETTING_BEACONPORT;
 	}
 
+	FName ToSessionName(EEasySessionType Type)
+	{
+		return Type == EEasySessionType::PartySession ? NAME_PartySession : NAME_GameSession;
+	}
+
 	FName GetAdvertisedSessionType(const FOnlineSessionSettings& Settings)
 	{
 		FString SessionType;

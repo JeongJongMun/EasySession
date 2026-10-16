@@ -135,9 +135,7 @@ bool FEasySessionJoinRequest::CheckCanJoin()
 	// A session of another project advertises no kind at all.
 	if (EasySession::GetAdvertisedSessionType(Target.NativeResult.Session.SessionSettings) != SessionName)
 	{
-		Complete(EEasySessionResult::InvalidParams, IsPartyRequest()
-			? TEXT("The search result to join is not a party. Use one Find Easy Parties returned.")
-			: TEXT("The search result to join is not an EasySession game session. Use one Find Easy Sessions returned, and Join Easy Party for a party."));
+		Complete(EEasySessionResult::InvalidParams, TEXT("The search result to join is not an EasySession session. Use one Find Easy Sessions returned."));
 		return false;
 	}
 
@@ -176,7 +174,7 @@ bool FEasySessionJoinRequest::CheckCanJoinPartySession(const IOnlineSessionPtr& 
 {
 	if (Sessions->GetNamedSession(NAME_PartySession) != nullptr)
 	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a party. Call Leave Easy Party first."));
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a party. Leave it with Leave Easy Session first."));
 		return false;
 	}
 
@@ -293,7 +291,7 @@ bool FEasySessionJoinRequest::HandleGroupWaitTick(float DeltaTime)
 	}
 
 	// A host destroys its session in JoinOnlineSession, so a player who did not follow in time is sent to the menu with the reason.
-	// A party leader closes the party with a LeaveParty request after the join succeeds, which also ends the party for a member who did not follow.
+	// A party leader ends the party with a Leave request after the join succeeds, which also ends it for a member who did not follow.
 	if (bAnyStillHere)
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Not every player left to follow within %.0f seconds. The rest return to the menu when this host leaves."), GroupWaitTimeoutSeconds);
@@ -455,7 +453,7 @@ void FEasySessionJoinRequest::TravelToHost(const FString& ConnectString)
 {
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
-	// A party lives outside game sessions, so HandlePartyEnded queues a LeaveParty request.
+	// A party exists only outside game sessions, so HandlePartyEnded queues a Leave request.
 	if (GetContext().Party.IsInParty())
 	{
 		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());

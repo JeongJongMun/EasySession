@@ -76,7 +76,7 @@ LogEasySession: Warning: Not joining the invited session: this player is already
 파티 초대는 이 설정과 상관없이 게임 세션 중에는 참가하지 않으며, 로그에 그 사실이 남습니다.
 
 ```
-LogEasySession: Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Party with the invite's session.
+LogEasySession: Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Session with the invite's session.
 ```
 
 스팀에서는 원인이 하나 더 있습니다. 세션 검색이 도는 동안 수락한 초대는 EasySession이 알기 전에 엔진이 무시합니다. 로그 줄은 엔진이 남깁니다.
@@ -85,7 +85,7 @@ LogEasySession: Not joining the invited party during a game session. Call Leave 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-검색은 Find Easy Sessions, Find Easy Parties, Matchmaking, 리더를 따라가는 파티 멤버, 매치가 끝난 뒤 리더의 파티를 찾는 파티 멤버에서 돕니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
+검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 리더를 따라가는 파티 멤버, 매치가 끝난 뒤 리더의 파티를 찾는 파티 멤버에서 돕니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
 
 ## "Travel 중에 Warning: Player ... is not part of session (GameSession)이 뜹니다"
 
@@ -118,10 +118,10 @@ EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스�
 그 플레이어는 리더가 아니라 파티 멤버입니다. 행선지는 리더가 정하므로 요청이 `InParty`로 거절되고, 노드의 `OnFailure`에 사유가 담깁니다.
 
 ```
-LogEasySession: Warning: The party leader decides where the party goes. Call Leave Easy Party to play alone.
+LogEasySession: Warning: The party leader decides where the party goes. Leave it with Leave Easy Session to play alone.
 ```
 
-메뉴에 실패 메시지를 띄우고, 멤버에게는 그 버튼들을 꺼 두세요. 조건은 `Is In Easy Party`가 true이면서 `Is Easy Party Leader`가 false일 때입니다. 혼자 플레이하려는 멤버는 먼저 `Leave Easy Party`를 부릅니다.
+메뉴에 실패 메시지를 띄우고, 멤버에게는 그 버튼들을 꺼 두세요. 조건은 Type이 Party Session인 `Is In Easy Session`이 true이면서 `Is Easy Party Leader`가 false일 때입니다. 혼자 플레이하려는 멤버는 먼저 `Leave Easy Session`으로 파티를 나갑니다.
 
 ## "파티 리더가 다른 맵을 열었는데 멤버는 그대로 남아 있어요"
 

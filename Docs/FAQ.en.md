@@ -76,7 +76,7 @@ Accepting an invite is one click in the platform overlay, and joining would dest
 A party invite is never joined during a game session, whatever that setting says, and the log says so:
 
 ```
-LogEasySession: Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Party with the invite's session.
+LogEasySession: Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Session with the invite's session.
 ```
 
 On Steam there is one more cause: the engine ignores an invite accepted while a session search is running, before EasySession hears of it. The log line comes from the engine:
@@ -85,7 +85,7 @@ On Steam there is one more cause: the engine ignores an invite accepted while a 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-A search runs during Find Easy Sessions, Find Easy Parties, Matchmaking, a party member following the leader, and a party member looking for the leader's party after a match. Accept the invite again once the search has finished.
+A search runs during Find Easy Sessions for sessions or parties, Matchmaking, a party member following the leader, and a party member looking for the leader's party after a match. Accept the invite again once the search has finished.
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
@@ -118,10 +118,10 @@ You are - probably a leftover from a previous failed flow. Call `Leave Easy Sess
 The player is a party member, not the leader. The leader decides where the party goes, so the request is refused with `InParty` and the node's `OnFailure` carries the reason:
 
 ```
-LogEasySession: Warning: The party leader decides where the party goes. Call Leave Easy Party to play alone.
+LogEasySession: Warning: The party leader decides where the party goes. Leave it with Leave Easy Session to play alone.
 ```
 
-Show the failure message in your menu, and disable those buttons for members: `Is In Easy Party` is true and `Is Easy Party Leader` is false. A member who wants to play alone calls `Leave Easy Party` first.
+Show the failure message in your menu, and disable those buttons for members: `Is In Easy Session` with Type Party Session is true and `Is Easy Party Leader` is false. A member who wants to play alone leaves the party with `Leave Easy Session` first.
 
 ## "The party leader opened another map, and the members stayed behind"
 

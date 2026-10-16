@@ -57,7 +57,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("ShowProfileUI refuses a friend with no online id"), Subsystem->ShowProfileUI(FEasySessionFriend()), EEasySessionResult::InvalidParams);
 
 	// A friend struct the friends list never returned is a caller mistake, not a missing feature.
-	TestEqual(TEXT("An invite to no one is refused as an invalid parameter"), Subsystem->SendSessionInviteToFriend(FEasySessionFriend()), EEasySessionResult::InvalidParams);
+	TestEqual(TEXT("An invite to no one is refused as an invalid parameter"), Subsystem->SendInviteToFriend(EEasySessionType::GameSession, FEasySessionFriend()), EEasySessionResult::InvalidParams);
 
 	EasySessionTest::DestroyGameInstance(GameInstance.Get());
 	return true;
@@ -138,7 +138,7 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 	TSharedPtr<FTestState> Shared = State;
 	FEasySessionSearchParams LookupParams;
 	LookupParams.FriendId = FUniqueNetIdRepl(FriendId);
-	Subsystem->FindSessions(LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
+	Subsystem->FindSessions(EEasySessionType::GameSession, LookupParams, FEasySessionFindCompleteDelegate::CreateLambda(
 		[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 		{
 			Shared->LookupResult = Result;

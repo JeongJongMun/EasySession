@@ -10,7 +10,7 @@ class UEasySessionSubsystem;
 /**
  * FEasySessionSocial is responsible for the platform's social features that need no request: accepted invites, sent invites, the overlays and the friends list.
  * The friends list is read outside the session queue, because reading it does not use the session interface.
- * An accepted invite is joined with JoinSession or JoinParty, the same calls a game uses.
+ * An accepted invite is joined with JoinSession, the same call a game uses.
  *
  * These use the identity, friends and external UI interfaces, and no part of the session lifecycle depends on them.
  * A game with no social features never calls into this object at all.
@@ -90,7 +90,7 @@ private:
 	 */
 	void HandleSessionUserInviteAccepted(const bool bWasSuccessful, const int32 ControllerId, FUniqueNetIdPtr UserId, const FOnlineSessionSearchResult& InviteResult);
 
-	/** Join the party of an accepted invite, after a LeaveParty request for the party this player is in. */
+	/** Join the party of an accepted invite, after a Leave request for the party this player is in. */
 	void JoinInvitedParty(const FEasySessionSearchResult& Party);
 
 	/**

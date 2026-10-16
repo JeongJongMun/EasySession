@@ -37,7 +37,7 @@ namespace EasySessionInProgressTest
 		FEasySessionSearchParams Params;
 		Params.bLANQuery = true;
 		Params.bIncludeInProgressSessions = bIncludeInProgress;
-		Subsystem.FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+		Subsystem.FindSessions(EEasySessionType::GameSession, Params, FEasySessionFindCompleteDelegate::CreateLambda(
 			[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 			{
 				State->Delivered = Result == EEasySessionResult::Success ? Results : TArray<FEasySessionSearchResult>();

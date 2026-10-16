@@ -17,10 +17,10 @@ UEasySessionSubsystem* UEasySessionStatics::GetEasySessionSubsystem(const UObjec
 	return GameInstance ? GameInstance->GetSubsystem<UEasySessionSubsystem>() : nullptr;
 }
 
-bool UEasySessionStatics::IsInEasySession(const UObject* WorldContextObject)
+bool UEasySessionStatics::IsInEasySession(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsInSession();
+	return Subsystem != nullptr && Subsystem->IsInSession(Type);
 }
 
 bool UEasySessionStatics::IsEasySessionHost(const UObject* WorldContextObject)
@@ -41,10 +41,10 @@ EEasySessionState UEasySessionStatics::GetEasySessionState(const UObject* WorldC
 	return Subsystem != nullptr ? Subsystem->GetSessionState() : EEasySessionState::NoSession;
 }
 
-FString UEasySessionStatics::GetEasySessionPassword(const UObject* WorldContextObject)
+FString UEasySessionStatics::GetEasyPassword(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionSettings().Password : FString();
+	return Subsystem != nullptr ? Subsystem->GetSessionSettings(Type).Password : FString();
 }
 
 bool UEasySessionStatics::IsEasyMatchmakingRunning(const UObject* WorldContextObject)
@@ -77,10 +77,10 @@ EEasySessionActivity UEasySessionStatics::GetEasySessionActivity(const UObject* 
 	return Subsystem != nullptr ? Subsystem->GetActivity() : EEasySessionActivity::None;
 }
 
-FString UEasySessionStatics::GetEasySessionDisplayName(const UObject* WorldContextObject)
+FString UEasySessionStatics::GetEasyDisplayName(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionDisplayName() : FString();
+	return Subsystem != nullptr ? Subsystem->GetDisplayName(Type) : FString();
 }
 
 TArray<FEasySessionPlayerInfo> UEasySessionStatics::GetEasySessionPlayerInfos(const UObject* WorldContextObject)
@@ -95,22 +95,16 @@ EEasySessionResult UEasySessionStatics::SetEasySessionReady(const UObject* World
 	return Subsystem != nullptr ? Subsystem->SetSessionReady(bReady) : EEasySessionResult::NoOnlineSubsystem;
 }
 
-int32 UEasySessionStatics::GetEasySessionPlayerCount(const UObject* WorldContextObject)
+int32 UEasySessionStatics::GetEasyPlayerCount(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionPlayerCount() : 0;
+	return Subsystem != nullptr ? Subsystem->GetPlayerCount(Type) : 0;
 }
 
-int32 UEasySessionStatics::GetEasySessionMaxPlayers(const UObject* WorldContextObject)
+int32 UEasySessionStatics::GetEasyMaxPlayers(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionMaxPlayers() : 0;
-}
-
-bool UEasySessionStatics::IsInEasyParty(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsInParty();
+	return Subsystem != nullptr ? Subsystem->GetMaxPlayers(Type) : 0;
 }
 
 bool UEasySessionStatics::IsEasyPartyLeader(const UObject* WorldContextObject)
@@ -129,18 +123,6 @@ bool UEasySessionStatics::IsEasyPartyRestoring(const UObject* WorldContextObject
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr && Subsystem->IsRestoringParty();
-}
-
-FEasySessionSettings UEasySessionStatics::GetEasyPartySettings(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetPartySettings() : FEasySessionSettings();
-}
-
-FString UEasySessionStatics::GetEasyPartyJoinCode(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetPartyJoinCode() : FString();
 }
 
 EEasySessionResult UEasySessionStatics::KickEasyPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member, FText Reason)
@@ -179,10 +161,10 @@ FString UEasySessionStatics::GetEasySessionQueueStatus(const UObject* WorldConte
 	return Subsystem != nullptr ? Subsystem->GetQueueStatus() : FString();
 }
 
-FEasySessionSettings UEasySessionStatics::GetEasySessionSettings(const UObject* WorldContextObject)
+FEasySessionSettings UEasySessionStatics::GetEasySessionSettings(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionSettings() : FEasySessionSettings();
+	return Subsystem != nullptr ? Subsystem->GetSessionSettings(Type) : FEasySessionSettings();
 }
 
 FEasySessionHostParams UEasySessionStatics::MakeEasySessionHostParamsFromSettings(const FEasySessionSettings& Settings, const FString& InitialMapName, bool bIsLANMatch)
@@ -194,10 +176,10 @@ FEasySessionHostParams UEasySessionStatics::MakeEasySessionHostParamsFromSetting
 	return HostParams;
 }
 
-FString UEasySessionStatics::GetEasySessionJoinCode(const UObject* WorldContextObject)
+FString UEasySessionStatics::GetEasyJoinCode(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetSessionJoinCode() : FString();
+	return Subsystem != nullptr ? Subsystem->GetJoinCode(Type) : FString();
 }
 
 void UEasySessionStatics::CancelEasyMatchmaking(const UObject* WorldContextObject)
@@ -235,28 +217,16 @@ void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldCont
 	}
 }
 
-EEasySessionResult UEasySessionStatics::SendEasySessionInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
+EEasySessionResult UEasySessionStatics::SendEasyInviteToFriend(const UObject* WorldContextObject, EEasySessionType Type, const FEasySessionFriend& Friend)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->SendSessionInviteToFriend(Friend) : EEasySessionResult::NoOnlineSubsystem;
+	return Subsystem != nullptr ? Subsystem->SendInviteToFriend(Type, Friend) : EEasySessionResult::NoOnlineSubsystem;
 }
 
-EEasySessionResult UEasySessionStatics::ShowEasyInviteUI(const UObject* WorldContextObject)
+EEasySessionResult UEasySessionStatics::ShowEasyInviteUI(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->ShowInviteUI() : EEasySessionResult::NoOnlineSubsystem;
-}
-
-EEasySessionResult UEasySessionStatics::SendEasyPartyInviteToFriend(const UObject* WorldContextObject, const FEasySessionFriend& Friend)
-{
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->SendPartyInviteToFriend(Friend) : EEasySessionResult::NoOnlineSubsystem;
-}
-
-EEasySessionResult UEasySessionStatics::ShowEasyPartyInviteUI(const UObject* WorldContextObject)
-{
-	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->ShowPartyInviteUI() : EEasySessionResult::NoOnlineSubsystem;
+	return Subsystem != nullptr ? Subsystem->ShowInviteUI(Type) : EEasySessionResult::NoOnlineSubsystem;
 }
 
 EEasySessionResult UEasySessionStatics::ShowEasyProfileUI(const UObject* WorldContextObject, const FEasySessionFriend& Friend)

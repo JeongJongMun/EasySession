@@ -25,7 +25,7 @@ namespace EasySession
 	inline constexpr const TCHAR* NoFriendsListMessage = TEXT("This online subsystem has no friends list, for example NULL, which only does LAN.");
 
 	/** The message of every InParty result. */
-	inline constexpr const TCHAR* InPartyMessage = TEXT("The party leader decides where the party goes. Call Leave Easy Party to play alone.");
+	inline constexpr const TCHAR* InPartyMessage = TEXT("The party leader decides where the party goes. Leave it with Leave Easy Session to play alone.");
 
 	/** The message of every Canceled result of a matchmaking run. */
 	inline constexpr const TCHAR* MatchmakingCanceledMessage = TEXT("Matchmaking was canceled.");

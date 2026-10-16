@@ -99,7 +99,7 @@ bool FEasySessionWaitForRegionRun::Update()
 				FEasySessionSearchParams Params;
 				Params.bLANQuery = true;
 				Params.Region = SearchCases[State->CaseIndex].Filter;
-				Subsystem->FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+				Subsystem->FindSessions(EEasySessionType::GameSession, Params, FEasySessionFindCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 					{
 						Shared->DeliveredCount = Result == EEasySessionResult::Success ? Results.Num() : -1;

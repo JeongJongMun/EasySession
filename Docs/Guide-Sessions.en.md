@@ -241,7 +241,7 @@ with a `Custom Settings` key through `Required Custom Settings` instead.
 ## Join codes
 
 Turn on `Use Join Code` when hosting and the session advertises a generated six character
-code, readable with `Get Easy Session Join Code` by everyone in the session. Joining is a
+code, readable with `Get Easy Join Code` by everyone in the session. Joining is a
 search away: `Find Easy Sessions` with `Join Code` set returns that one session, hidden or
 not - show it, then pass it to `Join Easy Session`. Matchmaking with the same `Join
 Code` does both in one call, retrying while the session comes up. `Hidden` plus a code is
@@ -270,7 +270,7 @@ subsystem (`Get Easy Session Subsystem`) with Assign nodes when the parent class
 - `OnInvitePasswordRequired` - the automatic join of an accepted invite needs a password from this player. Ask for it, then call `Join Easy Session` with the event's `Session` and the password
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)
 
-Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.
+Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Display Name`, `Get Easy Session Player Infos`, `Get Easy Player Count`, `Get Easy Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.
 
 ## C++ API
 

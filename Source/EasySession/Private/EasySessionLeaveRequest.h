@@ -10,7 +10,7 @@
  * Both kinds run the same steps: close the beacon or tell the clients, destroy the session, then end the party or travel to the menu.
  * A host that leaves its game session sends every client the reason first, and a party closes its beacon first.
  *
- * The subsystem creates it for LeaveSession, DestroySessionForEveryone, LeaveParty and HandlePartyEnded.
+ * The subsystem creates it for LeaveSession of either type, DestroySessionForEveryone and HandlePartyEnded.
  */
 class FEasySessionLeaveRequest final : public FEasySessionRequest
 {

@@ -1100,7 +1100,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				return false;
 			}
 
-			State->JoinCode = Subsystem->GetSessionJoinCode();
+			State->JoinCode = Subsystem->GetJoinCode();
 			CurrentTest->TestEqual(TEXT("The session advertises a code"), State->JoinCode.Len(), 6);
 
 			State->BaseResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);

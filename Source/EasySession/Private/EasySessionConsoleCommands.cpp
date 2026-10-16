@@ -113,7 +113,7 @@ namespace EasySessionConsole
 			{
 				Print(TEXT("Searching for sessions..."));
 				LastFoundSessions.Reset();
-				Subsystem->FindSessions(FEasySessionSearchParams(), FEasySessionFindCompleteDelegate::CreateLambda(
+				Subsystem->FindSessions(EEasySessionType::GameSession, FEasySessionSearchParams(), FEasySessionFindCompleteDelegate::CreateLambda(
 					[](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
 					{
 						LastFoundSessions = Results;
@@ -352,7 +352,7 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Subsystem->LeaveParty(MakePrintDelegate(TEXT("LeaveParty")));
+				Subsystem->LeaveSession(EEasySessionType::PartySession, MakePrintDelegate(TEXT("LeaveParty")));
 			}
 		}));
 
@@ -363,7 +363,7 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				if (!Subsystem->IsInParty())
+				if (!Subsystem->IsInSession(EEasySessionType::PartySession))
 				{
 					Print(TEXT("Party: not in a party."));
 					return;
@@ -371,7 +371,7 @@ namespace EasySessionConsole
 
 				const TArray<FEasyPartyMemberInfo> Members = Subsystem->GetPartyMembers();
 				Print(FString::Printf(TEXT("Party: %d member(s)."), Members.Num()));
-				const FString JoinCode = Subsystem->GetPartyJoinCode();
+				const FString JoinCode = Subsystem->GetJoinCode(EEasySessionType::PartySession);
 				if (!JoinCode.IsEmpty())
 				{
 					Print(FString::Printf(TEXT("  Join code: %s"), *JoinCode));
@@ -404,7 +404,7 @@ namespace EasySessionConsole
 
 				Print(TEXT("Searching for parties..."));
 				LastFoundParties.Reset();
-				Subsystem->FindParties(SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
+				Subsystem->FindSessions(EEasySessionType::PartySession, SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
 					[](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
 					{
 						LastFoundParties = Results;
@@ -438,7 +438,7 @@ namespace EasySessionConsole
 					return;
 				}
 
-				Subsystem->JoinParty(LastFoundParties[Index], MakePrintDelegate(TEXT("JoinParty")));
+				Subsystem->JoinSession(LastFoundParties[Index], FString(), FString(), MakePrintDelegate(TEXT("JoinParty")));
 			}
 		}));
 
@@ -537,7 +537,7 @@ namespace EasySessionConsole
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				Print(FString::Printf(TEXT("PartyInviteUI: %s"), *EasySession::ResultToString(Subsystem->ShowPartyInviteUI())));
+				Print(FString::Printf(TEXT("PartyInviteUI: %s"), *EasySession::ResultToString(Subsystem->ShowInviteUI(EEasySessionType::PartySession))));
 			}
 		}));
 

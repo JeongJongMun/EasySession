@@ -4,10 +4,11 @@
 
 #include "EasySessionMessages.h"
 
-UEasyLeaveSessionNode* UEasyLeaveSessionNode::LeaveEasySession(UObject* WorldContextObject)
+UEasyLeaveSessionNode* UEasyLeaveSessionNode::LeaveEasySession(UObject* WorldContextObject, EEasySessionType Type)
 {
 	UEasyLeaveSessionNode* Node = NewObject<UEasyLeaveSessionNode>();
 	Node->WorldContext = WorldContextObject;
+	Node->Type = Type;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
 }
@@ -21,7 +22,7 @@ void UEasyLeaveSessionNode::Activate()
 		return;
 	}
 
-	Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateUObject(this, &UEasyLeaveSessionNode::HandleComplete));
+	Subsystem->LeaveSession(Type, FEasySessionCompleteDelegate::CreateUObject(this, &UEasyLeaveSessionNode::HandleComplete));
 }
 
 void UEasyLeaveSessionNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage)

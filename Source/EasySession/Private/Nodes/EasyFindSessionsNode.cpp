@@ -4,10 +4,11 @@
 
 #include "EasySessionMessages.h"
 
-UEasyFindSessionsNode* UEasyFindSessionsNode::FindEasySessions(UObject* WorldContextObject, const FEasySessionSearchParams& SearchParams)
+UEasyFindSessionsNode* UEasyFindSessionsNode::FindEasySessions(UObject* WorldContextObject, EEasySessionType Type, const FEasySessionSearchParams& SearchParams)
 {
 	UEasyFindSessionsNode* Node = NewObject<UEasyFindSessionsNode>();
 	Node->WorldContext = WorldContextObject;
+	Node->Type = Type;
 	Node->SearchParams = SearchParams;
 	Node->RegisterWithGameInstance(WorldContextObject);
 	return Node;
@@ -22,7 +23,7 @@ void UEasyFindSessionsNode::Activate()
 		return;
 	}
 
-	Subsystem->FindSessions(SearchParams, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyFindSessionsNode::HandleComplete));
+	Subsystem->FindSessions(Type, SearchParams, FEasySessionFindCompleteDelegate::CreateUObject(this, &UEasyFindSessionsNode::HandleComplete));
 }
 
 void UEasyFindSessionsNode::HandleComplete(EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)

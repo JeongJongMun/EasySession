@@ -94,7 +94,7 @@ bool FEasySessionWaitForSettingsPush::Update()
 			CurrentTest->TestEqual(TEXT("Payload carries the created display name"), AfterCreate.SessionDisplayName, TEXT("Settings Push Before"));
 			CurrentTest->TestEqual(TEXT("Payload carries the created cap"), AfterCreate.MaxPlayers, 4);
 			CurrentTest->TestEqual(TEXT("Payload carries the join code, so members can share it"),
-				AfterCreate.JoinCode, Subsystem->GetSessionJoinCode());
+				AfterCreate.JoinCode, Subsystem->GetJoinCode());
 			CurrentTest->TestFalse(TEXT("The created session advertised a join code"), AfterCreate.JoinCode.IsEmpty());
 
 			FEasySessionSettings Updated = Subsystem->GetSessionSettings();
@@ -137,7 +137,7 @@ bool FEasySessionWaitForSettingsPush::Update()
 			CurrentTest->TestFalse(TEXT("No reserved key leaked into the custom list"), bLeakedReservedKey);
 
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->LeaveSession(EEasySessionType::GameSession, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;
@@ -238,17 +238,17 @@ bool FEasySessionWaitForSettingsApply::Update()
 			NotWritten.bValid = false;
 			FEasySessionTestAccess::DriveReplicatedSessionSettings(*Subsystem, NotWritten);
 			CurrentTest->TestEqual(TEXT("An unwritten payload changed nothing"),
-				Subsystem->GetSessionDisplayName(), TEXT("Settings Apply Before"));
+				Subsystem->GetDisplayName(), TEXT("Settings Apply Before"));
 			CurrentTest->TestEqual(TEXT("An unwritten payload fired no event"), State->Listener->SettingsChangedBroadcasts, 0);
 
 			Payload.bValid = true;
 			FEasySessionTestAccess::DriveReplicatedSessionSettings(*Subsystem, Payload);
 
 			CurrentTest->TestEqual(TEXT("The client's display name follows the host"),
-				Subsystem->GetSessionDisplayName(), TEXT("Renamed By Host"));
-			CurrentTest->TestEqual(TEXT("The client's cap follows the host"), Subsystem->GetSessionMaxPlayers(), 8);
+				Subsystem->GetDisplayName(), TEXT("Renamed By Host"));
+			CurrentTest->TestEqual(TEXT("The client's cap follows the host"), Subsystem->GetMaxPlayers(), 8);
 			CurrentTest->TestEqual(TEXT("The client's join code follows the host"),
-				Subsystem->GetSessionJoinCode(), TEXT("XYZ234"));
+				Subsystem->GetJoinCode(), TEXT("XYZ234"));
 			CurrentTest->TestEqual(TEXT("The client's hidden flag follows the host"),
 				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
 			CurrentTest->TestEqual(TEXT("The client's region follows the host"),
@@ -263,7 +263,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 			// Give authority back so the cleanup runs the host's destroy path.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true);
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->LeaveSession(EEasySessionType::GameSession, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;

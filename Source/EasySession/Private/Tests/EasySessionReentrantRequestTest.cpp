@@ -99,7 +99,7 @@ bool FEasySessionWaitForReentrantRequest::Update()
 					// The queue starts the search on a later tick, so it is still pending when the refused StartSession returns false.
 					FEasySessionSearchParams SearchParams;
 					SearchParams.bLANQuery = true;
-					Subsystem->FindSessions(SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
+					Subsystem->FindSessions(EEasySessionType::GameSession, SearchParams, FEasySessionFindCompleteDelegate::CreateLambda(
 						[Shared](EEasySessionResult FindResult, const FString& FindError, const TArray<FEasySessionSearchResult>&)
 						{
 							Shared->ReentrantResult = FindResult;

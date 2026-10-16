@@ -260,7 +260,7 @@ void FEasySessionSocial::JoinInvitedParty(const FEasySessionSearchResult& Party)
 	// A party lives outside game sessions, and one click must not end the match this player is in, so the game decides.
 	if (Owner.IsInSession())
 	{
-		UE_LOG(LogEasySession, Log, TEXT("Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Party with the invite's session."));
+		UE_LOG(LogEasySession, Log, TEXT("Not joining the invited party during a game session. Call Leave Easy Session, then Join Easy Session with the invite's session."));
 		return;
 	}
 
@@ -269,15 +269,15 @@ void FEasySessionSocial::JoinInvitedParty(const FEasySessionSearchResult& Party)
 		return;
 	}
 
-	// The queue runs the LeaveParty request first, so the join finds this player in no party.
-	if (Owner.IsInParty())
+	// The queue runs the leave first, so the join finds this player in no party.
+	if (Owner.IsInSession(EEasySessionType::PartySession))
 	{
-		Owner.LeaveParty();
+		Owner.LeaveSession(EEasySessionType::PartySession);
 	}
 
-	// The game did not call Join Easy Party for this join, so no node pin receives its result and OnSessionFailure reports it instead.
+	// The game did not call Join Easy Session for this join, so no node pin receives its result and OnSessionFailure reports it instead.
 	UEasySessionSubsystem* OwnerSub = &Owner;
-	Owner.JoinParty(Party, FEasySessionCompleteDelegate::CreateWeakLambda(OwnerSub,
+	Owner.JoinSession(Party, FString(), FString(), FEasySessionCompleteDelegate::CreateWeakLambda(OwnerSub,
 		[OwnerSub](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			if (Result != EEasySessionResult::Success)

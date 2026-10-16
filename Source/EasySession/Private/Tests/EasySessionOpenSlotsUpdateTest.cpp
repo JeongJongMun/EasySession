@@ -117,7 +117,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 			{
 				// Nothing was registered, so there is no occupancy to lower. Skip to the cleanup.
 				State->Step = EStep::AwaitingDestroy;
-				Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
+				Subsystem->LeaveSession(EEasySessionType::GameSession, FEasySessionCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&)
 					{
 						Shared->PendingResult = Result;
@@ -141,7 +141,7 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 				FEasySessionTestAccess::GetOpenPublicConnections(*Subsystem), 0);
 
 			State->Step = EStep::AwaitingDestroy;
-			Subsystem->LeaveSession(FEasySessionCompleteDelegate::CreateLambda(
+			Subsystem->LeaveSession(EEasySessionType::GameSession, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
 				{
 					Shared->PendingResult = Result;

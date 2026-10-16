@@ -85,7 +85,7 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 				Params.OwnerId = FUniqueNetIdRepl(State->CaseIndex == 0
 					? State->BaseResult.Session.OwningUserId
 					: (Identity.IsValid() ? Identity->CreateUniquePlayerId(TEXT("EasySessionSomeoneElse")) : nullptr));
-				Subsystem->FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+				Subsystem->FindSessions(EEasySessionType::GameSession, Params, FEasySessionFindCompleteDelegate::CreateLambda(
 					[Shared](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 					{
 						Shared->DeliveredCount = Result == EEasySessionResult::Success ? Results.Num() : -1;

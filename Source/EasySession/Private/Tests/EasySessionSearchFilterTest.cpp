@@ -111,7 +111,7 @@ bool FEasySessionSearchFilterStep::Update()
 			Params.JoinCode = TypedJoinCode;
 
 			TSharedPtr<FTestState> Shared = State;
-			Subsystem->FindSessions(Params, FEasySessionFindCompleteDelegate::CreateLambda(
+			Subsystem->FindSessions(EEasySessionType::GameSession, Params, FEasySessionFindCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString& /*ErrorMessage*/, const TArray<FEasySessionSearchResult>& /*Results*/)
 				{
 					Shared->FindResult = Result;

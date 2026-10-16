@@ -23,7 +23,7 @@ public:
 
 	/**
 	 * Automatically join the session or party when the player accepts an invite from the platform overlay (e.g. Steam).
-	 * Turn it off to only receive the On Session Invite Accepted event and call Join Easy Session or Join Easy Party yourself.
+	 * Turn it off to only receive the On Session Invite Accepted event and call Join Easy Session yourself.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Invites")
 	bool bAutoJoinAcceptedInvites = true;
@@ -40,7 +40,7 @@ public:
 	/**
 	 * Restore the party in the first map without a game session that this player reaches after the match the party entered.
 	 * The leader creates the party again when that map loads, and every member searches for it until Party Restore Wait Seconds runs out.
-	 * Calling Create, Join or Leave Easy Party, Create or Join Easy Session, or Start Easy Matchmaking stops it, because the player chose something else.
+	 * Calling Create Easy Party, Create, Join or Leave Easy Session, or Start Easy Matchmaking stops it, because the player chose something else.
 	 */
 	UPROPERTY(config, EditAnywhere, Category = "Party")
 	bool bRestorePartyAfterMatch = true;

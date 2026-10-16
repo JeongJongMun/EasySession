@@ -156,14 +156,29 @@ void UEasySessionSubsystem::CreateSession(const FEasySessionHostParams& HostPara
 	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(HostParams, MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::FindSessions(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
+void UEasySessionSubsystem::FindSessions(EEasySessionType Type, const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
 {
-	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete)));
+	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete), EasySession::ToSessionName(Type)));
 }
 
 void UEasySessionSubsystem::JoinSession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
 	Party->CancelRestore();
+
+	// The search result advertises its type. A party result joins the party, and every other result is checked as a game session.
+	if (EasySession::GetAdvertisedSessionType(SearchResult.NativeResult.Session.SessionSettings) == NAME_PartySession)
+	{
+		if (!Password.IsEmpty() || !AdditionalTravelOptions.IsEmpty())
+		{
+			const TCHAR* Message = TEXT("A party has no password and travels nowhere. Leave Password and Additional Travel Options empty to join one.");
+			UE_LOG(LogEasySession, Warning, TEXT("%s"), Message);
+			OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, Message);
+			return;
+		}
+
+		EnqueueRequest(MakeShared<FEasySessionJoinRequest>(SearchResult, MoveTemp(OnComplete)));
+		return;
+	}
 
 	if (IsPartyMember())
 	{
@@ -190,8 +205,15 @@ void UEasySessionSubsystem::DestroySession(FEasySessionCompleteDelegate OnComple
 	EnqueueRequest(MakeShared<FEasySessionDestroyRequest>(MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::LeaveSession(FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::LeaveSession(EEasySessionType Type, FEasySessionCompleteDelegate OnComplete)
 {
+	if (Type == EEasySessionType::PartySession)
+	{
+		Party->CancelRestore();
+		EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)));
+		return;
+	}
+
 	// A leaving host takes the session with it, and the request tells each client why before the connection closes.
 	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EasySession::GetHostLeftSessionReason(), MoveTemp(OnComplete)));
 }
@@ -313,23 +335,6 @@ void UEasySessionSubsystem::CreateParty(const FEasySessionSettings& Settings, FE
 	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(Settings, MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
-{
-	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete), NAME_PartySession));
-}
-
-void UEasySessionSubsystem::JoinParty(const FEasySessionSearchResult& SearchResult, FEasySessionCompleteDelegate OnComplete)
-{
-	Party->CancelRestore();
-	EnqueueRequest(MakeShared<FEasySessionJoinRequest>(SearchResult, MoveTemp(OnComplete)));
-}
-
-void UEasySessionSubsystem::LeaveParty(FEasySessionCompleteDelegate OnComplete)
-{
-	Party->CancelRestore();
-	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)));
-}
-
 EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason)
 {
 	return Party->KickMember(Member.PlayerId, Reason);
@@ -338,11 +343,6 @@ EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMember
 EEasySessionResult UEasySessionSubsystem::SetPartyReady(bool bReady)
 {
 	return Party->SetReady(bReady);
-}
-
-bool UEasySessionSubsystem::IsInParty() const
-{
-	return Party->IsInParty();
 }
 
 bool UEasySessionSubsystem::IsPartyLeader() const
@@ -358,37 +358,6 @@ TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
 bool UEasySessionSubsystem::IsRestoringParty() const
 {
 	return Party->IsRestoring();
-}
-
-FEasySessionSettings UEasySessionSubsystem::GetPartySettings() const
-{
-	FEasySessionSettings Settings;
-
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return Settings;
-	}
-
-	// Only the leader holds the settings it created the party with, so every member reads them back from the advertised keys.
-	Settings.ReadFrom(NamedSession->SessionSettings);
-
-	return Settings;
-}
-
-FString UEasySessionSubsystem::GetPartyJoinCode() const
-{
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
-	if (NamedSession == nullptr)
-	{
-		return FString();
-	}
-
-	FString JoinCode;
-	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, JoinCode);
-	return JoinCode;
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const
@@ -408,8 +377,13 @@ UEasyMatchmakingPolicy* UEasySessionSubsystem::GetActiveMatchmakingPolicy() cons
 	return Matchmaking.IsValid() ? Matchmaking->GetPolicy() : nullptr;
 }
 
-bool UEasySessionSubsystem::IsInSession() const
+bool UEasySessionSubsystem::IsInSession(EEasySessionType Type) const
 {
+	if (Type == EEasySessionType::PartySession)
+	{
+		return Party->IsInParty();
+	}
+
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	return Sessions.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr;
 }
@@ -430,31 +404,35 @@ EEasySessionState UEasySessionSubsystem::GetSessionState() const
 	return LocalState;
 }
 
-FEasySessionSettings UEasySessionSubsystem::GetSessionSettings() const
+FEasySessionSettings UEasySessionSubsystem::GetSessionSettings(EEasySessionType Type) const
 {
-	FEasySessionSettings Params;
+	FEasySessionSettings Settings;
 
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(EasySession::ToSessionName(Type)) : nullptr;
 	if (NamedSession == nullptr)
 	{
-		return Params;
+		return Settings;
 	}
 
-	Params.ReadFrom(NamedSession->SessionSettings);
+	// Only the creator holds the settings the session was created with, so every player reads them back from the advertised keys.
+	Settings.ReadFrom(NamedSession->SessionSettings);
 
-	// Plain text on purpose, because this game already holds the password to check players against.
-	// Blanking it here would leave no way to remove one through Update.
-	Params.Password = Host->GetReservations().GetSessionPassword();
-	Params.bFriendsBypassPassword = Host->GetReservations().GetFriendsBypassPassword();
+	// The password is not advertised, and this game holds one only for the game session it hosts.
+	// Plain text on purpose, because this game already holds it to check players against, and blanking it would leave no way to remove one through Update.
+	if (Type == EEasySessionType::GameSession)
+	{
+		Settings.Password = Host->GetReservations().GetSessionPassword();
+		Settings.bFriendsBypassPassword = Host->GetReservations().GetFriendsBypassPassword();
+	}
 
-	return Params;
+	return Settings;
 }
 
-FString UEasySessionSubsystem::GetSessionJoinCode() const
+FString UEasySessionSubsystem::GetJoinCode(EEasySessionType Type) const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(EasySession::ToSessionName(Type)) : nullptr;
 	if (NamedSession == nullptr)
 	{
 		return FString();
@@ -481,10 +459,10 @@ bool UEasySessionSubsystem::IsSessionAuthority() const
 	return NamedSession != nullptr && NamedSession->bHosting;
 }
 
-FString UEasySessionSubsystem::GetSessionDisplayName() const
+FString UEasySessionSubsystem::GetDisplayName(EEasySessionType Type) const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(EasySession::ToSessionName(Type)) : nullptr;
 	if (NamedSession == nullptr)
 	{
 		return FString();
@@ -538,17 +516,22 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 	return Infos;
 }
 
-int32 UEasySessionSubsystem::GetSessionPlayerCount() const
+int32 UEasySessionSubsystem::GetPlayerCount(EEasySessionType Type) const
 {
+	if (Type == EEasySessionType::PartySession)
+	{
+		return Party->GetMembers().Num();
+	}
+
 	const UWorld* World = GetWorld();
 	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
 	return GameState ? GameState->PlayerArray.Num() : 0;
 }
 
-int32 UEasySessionSubsystem::GetSessionMaxPlayers() const
+int32 UEasySessionSubsystem::GetMaxPlayers(EEasySessionType Type) const
 {
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(EasySession::ToSessionName(Type)) : nullptr;
 	return NamedSession ? NamedSession->SessionSettings.NumPublicConnections : 0;
 }
 
@@ -573,34 +556,24 @@ FString UEasySessionSubsystem::GetQueueStatus() const
 	return RequestQueue->GetStatusText(Travel->IsTraveling());
 }
 
-EEasySessionResult UEasySessionSubsystem::SendSessionInviteToFriend(const FEasySessionFriend& Friend)
+EEasySessionResult UEasySessionSubsystem::SendInviteToFriend(EEasySessionType Type, const FEasySessionFriend& Friend)
 {
-	return Social->SendInviteToFriend(Friend, NAME_GameSession);
-}
-
-EEasySessionResult UEasySessionSubsystem::ShowInviteUI()
-{
-	return Social->ShowInviteUI(NAME_GameSession);
-}
-
-EEasySessionResult UEasySessionSubsystem::SendPartyInviteToFriend(const FEasySessionFriend& Friend)
-{
-	if (!IsInParty())
+	if (Type == EEasySessionType::PartySession && !Party->IsInParty())
 	{
 		return EEasySessionResult::NoSessionExists;
 	}
 
-	return Social->SendInviteToFriend(Friend, NAME_PartySession);
+	return Social->SendInviteToFriend(Friend, EasySession::ToSessionName(Type));
 }
 
-EEasySessionResult UEasySessionSubsystem::ShowPartyInviteUI()
+EEasySessionResult UEasySessionSubsystem::ShowInviteUI(EEasySessionType Type)
 {
-	if (!IsInParty())
+	if (Type == EEasySessionType::PartySession && !Party->IsInParty())
 	{
 		return EEasySessionResult::NoSessionExists;
 	}
 
-	return Social->ShowInviteUI(NAME_PartySession);
+	return Social->ShowInviteUI(EasySession::ToSessionName(Type));
 }
 
 EEasySessionResult UEasySessionSubsystem::ShowProfileUI(const FEasySessionFriend& Friend)

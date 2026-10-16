@@ -274,7 +274,7 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
 			FEasySessionSearchParams SearchParams;
-			UEasyFindSessionsNode* Node = UEasyFindSessionsNode::FindEasySessions(&GameInstance, SearchParams);
+			UEasyFindSessionsNode* Node = UEasyFindSessionsNode::FindEasySessions(&GameInstance, EEasySessionType::GameSession, SearchParams);
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFindSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFindFailure);
 			Node->Activate();

@@ -4,7 +4,7 @@
 
 파티는 게임 세션 밖에서 함께 움직이는 소수의 플레이어 묶음입니다. 예를 들어 친구들이 플레이하기 전에 메인 메뉴에서 모이는 경우입니다. 행선지는 리더가 정합니다. 리더가 게임 세션을 만들거나, 참가하거나, 매치메이킹으로 들어가면 모든 멤버가 따라갑니다.
 
-파티는 선택 사항입니다. 파티를 한 번도 만들지 않는 게임은 지금과 똑같이 동작하고, 모든 Session 노드는 계속 게임 세션에 대해서만 답합니다. 파티는 **EasySession | Party** 아래에 자기 노드를 따로 가집니다.
+파티는 선택 사항입니다. 파티를 한 번도 만들지 않는 게임은 지금과 똑같이 동작하고, 모든 Session 노드는 기본값으로 게임 세션에 대해 답합니다. 파티는 `Create Easy Party`로 만들고, 찾기, 참가, 나가기, 조회는 Session 노드의 `Type` 입력에 Party Session을 넘겨서 합니다. 멤버와 준비처럼 파티에만 있는 노드는 **EasySession | Party** 아래에 있습니다.
 
 | | 게임 세션 | 파티 |
 |---|---|---|
@@ -19,12 +19,12 @@
 
 | 필드 | 기본값 | 설명 |
 |---|---|---|
-| Session Display Name | (비어 있음) | `Find Easy Parties` 결과에 보이는 이름. 비어 있으면 리더 이름이 됩니다 |
+| Session Display Name | (비어 있음) | 파티 검색 결과에 보이는 이름. 비어 있으면 리더 이름이 됩니다 |
 | Max Players | 4 | 리더를 포함해 파티가 담을 인원 |
-| Hidden | false | `Find Easy Parties` 목록에서 뺍니다. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
+| Hidden | false | 파티 검색 목록에서 뺍니다. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
 | Use Join Code | false | 파티를 찾을 수 있는 6자리 코드를 광고합니다 |
 | Allow Invites | true | 멤버가 친구를 파티에 초대할 수 있는지 |
-| Custom Settings | (비어 있음) | 파티와 함께 광고하는 키-값 데이터. `Get Easy Party Settings`로 되읽습니다 |
+| Custom Settings | (비어 있음) | 파티와 함께 광고하는 키-값 데이터. `Get Easy Session Settings`로 되읽습니다 |
 | Password | (비어 있음) | 파티에는 비밀번호가 없어서, 값을 넣으면 생성이 `InvalidParams`로 실패합니다. 대신 파티를 숨기거나 참가 코드를 공유하세요 |
 | Should Advertise | true | 파티는 항상 광고됩니다. 경기 뒤 멤버가 파티를 다시 찾는 데 필요해서, 끄면 생성이 `InvalidParams`로 실패합니다. 대신 Hidden을 쓰세요 |
 
@@ -40,7 +40,7 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 `Hidden`과 `Use Join Code`는 플레이어가 파티를 찾는 방법을 정합니다. 게임 세션의 두 플래그와 같습니다. 둘 다 파티에 닿은 플레이어를 거절하지 않습니다. 리더는 내보낸 플레이어와, 파티가 가득 찼을 때만 거절합니다.
 
-| Hidden | Use Join Code | Find Easy Parties | 들어오는 길 |
+| Hidden | Use Join Code | 파티 검색 | 들어오는 길 |
 |---|---|---|---|
 | true(기본값) | false(기본값) | 목록에 없음 | 초대 |
 | true | true | 목록에 없음, 코드로 찾음 | 코드나 초대 |
@@ -49,31 +49,31 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 `Hidden`은 파티를 잠그지 않습니다. 리더의 ID처럼 다른 경로로 파티를 찾은 플레이어도 받습니다. 파티에는 비밀번호가 없습니다.
 
-`Use Join Code`를 켠 파티는 자동으로 만든 6자리 코드를 광고합니다. 리더는 `Get Easy Party Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다.
+`Use Join Code`를 켠 파티는 자동으로 만든 6자리 코드를 광고합니다. 리더는 `Type`을 Party Session으로 둔 `Get Easy Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다.
 
-`Get Easy Party Settings`는 파티를 만들 때 쓴 설정을 돌려줍니다. 리더와 모든 멤버에서 동작합니다. 파티를 "2/4"로 보여 주거나, 숨긴 파티라고 표시할 때 씁니다.
+`Type`을 Party Session으로 둔 `Get Easy Session Settings`는 파티를 만들 때 쓴 설정을 돌려줍니다. 리더와 모든 멤버에서 동작합니다. 파티를 "2/4"로 보여 주거나, 숨긴 파티라고 표시할 때 씁니다.
 
 ## 파티 찾기와 참가
 
-`Find Easy Parties`는 `Find Easy Sessions`와 같은 `FEasySessionSearchParams`를 받고, 파티만 돌려줍니다.
+`Type`을 Party Session으로 둔 `Find Easy Sessions`는 게임 세션 검색과 같은 `FEasySessionSearchParams`를 받고, 파티만 돌려줍니다.
 
 - `Join Code`가 비어 있으면 숨기지 않은 파티를 나열합니다.
 - `Join Code`가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 숨긴 파티도 찾습니다.
 - 결과의 `Host Name`은 리더 이름이고, `Session Display Name`은 파티 이름입니다. 리더가 이름을 정하지 않았으면 리더 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
 - 파티는 지역, 커스텀 세팅, 매치 상태를 광고하지 않으므로 `Region`, `Required Custom Settings`, `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
 
-`Join Easy Party`에 그 결과 하나를 넘깁니다. 참가는 리더가 정하고, 거절되면 노드가 `JoinRefused`와 리더의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party leader removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
+`Join Easy Session`에 그 결과 하나를 넘깁니다. 결과가 파티라고 알려 주므로 파티에 참가합니다. `Password`와 `Additional Travel Options`는 비워 두세요. 값이 있으면 `InvalidParams`로 실패합니다. 참가는 리더가 정하고, 거절되면 노드가 `JoinRefused`와 리더의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party leader removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
 
-이미 파티에 있거나 게임 세션 안에 있는 플레이어는 `SessionAlreadyExists`로 실패합니다. 먼저 `Leave Easy Party`나 `Leave Easy Session`을 부르세요.
+이미 파티에 있거나 게임 세션 안에 있는 플레이어는 `SessionAlreadyExists`로 실패합니다. 먼저 그쪽 Type으로 `Leave Easy Session`을 부르세요.
 
 ## 공개 파티에 자동 참가
 
 "아무나와 플레이" 버튼에는 별도 노드가 필요 없습니다. 위의 두 노드를 이어 붙입니다.
 
 ```
-[Find Easy Parties]  (Join Code 비움: 목록에 보이는 파티만)
+[Find Easy Sessions]  (Type Party Session, Join Code 비움: 목록에 보이는 파티만)
   OnSuccess (Results) -> Open Slots > 0인 첫 결과
-    있음 -> [Join Easy Party]
+    있음 -> [Join Easy Session]
               OnFailure -> 다음 결과로. 그사이 파티가 찼을 수 있습니다
     없음 -> [Create Easy Party]  (Hidden 끔. 다음 플레이어가 찾을 수 있게)
 ```
@@ -84,8 +84,8 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 초대는 리더뿐 아니라 모든 멤버가 할 수 있습니다.
 
-- `Send Easy Party Invite To Friend`는 `Read Easy Friends`가 돌려준 친구 한 명을 초대합니다.
-- `Show Easy Party Invite UI`는 파티용 플랫폼 초대 오버레이를 엽니다.
+- `Type`을 Party Session으로 둔 `Send Easy Invite To Friend`는 `Read Easy Friends`가 돌려준 친구 한 명을 초대합니다.
+- `Type`을 Party Session으로 둔 `Show Easy Invite UI`는 파티용 플랫폼 초대 오버레이를 엽니다.
 
 둘 다 파티 밖에서는 `NoSessionExists`, 초대가 없는 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
 
@@ -93,9 +93,9 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 - 돌고 있는 매치메이킹은 먼저 취소됩니다. 이미 `Joining`이나 `Hosting` 상태면 취소되지 않고, 초대에도 참가하지 않습니다.
 - 이미 파티에 있는 플레이어는 먼저 그 파티를 나갑니다.
-- 게임 세션 안에 있는 플레이어는 참가하지 않습니다. 오버레이 클릭 한 번으로 매치가 끝나면 안 되기 때문입니다. 로그에 그 사실이 남고, 게임은 `Leave Easy Session`을 부른 뒤 이벤트의 결과로 `Join Easy Party`를 부를 수 있습니다.
+- 게임 세션 안에 있는 플레이어는 참가하지 않습니다. 오버레이 클릭 한 번으로 매치가 끝나면 안 되기 때문입니다. 로그에 그 사실이 남고, 게임은 `Leave Easy Session`을 부른 뒤 이벤트의 결과로 `Join Easy Session`을 부를 수 있습니다.
 
-이 참가를 기다리는 노드가 없으므로, 실패는 `OnSessionFailure`로 옵니다. Auto Join Accepted Invites를 끄면 이벤트만 옵니다. `Is Party`를 보고 `Join Easy Party`나 `Join Easy Session`을 직접 부르세요.
+이 참가를 기다리는 노드가 없으므로, 실패는 `OnSessionFailure`로 옵니다. Auto Join Accepted Invites를 끄면 이벤트만 옵니다. 결과를 넘겨 `Join Easy Session`을 직접 부르세요. `Is Party`에 따라 파티나 게임 세션에 참가합니다.
 
 ## 멤버, 준비, 추방
 
@@ -107,13 +107,13 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 ## 파티 나가기
 
-`Leave Easy Party`로 파티를 나갑니다. 리더가 나가면 파티를 리더가 들고 있으므로 모든 멤버의 파티가 끝납니다.
+`Type`을 Party Session으로 둔 `Leave Easy Session`으로 파티를 나갑니다. 아무도 이동하지 않습니다. 리더가 나가면 파티를 리더가 들고 있으므로 모든 멤버의 파티가 끝납니다.
 
 로컬 플레이어가 더 이상 파티에 없게 되면 언제나 `OnPartyLeft`가 아래 사유 중 하나와 함께 옵니다.
 
 | Reason | 언제 |
 |---|---|
-| `Left` | 로컬 플레이어가 `Leave Easy Party`를 불렀습니다 |
+| `Left` | 로컬 플레이어가 `Leave Easy Session`으로 파티를 나갔습니다 |
 | `Kicked` | 리더가 로컬 플레이어를 내보냈습니다. `Reason Text`는 리더의 사유입니다 |
 | `LeaderLeft` | 리더가 나가서 파티가 끝났습니다 |
 | `ConnectionLost` | 리더와의 연결이 끊겼거나, 매치가 끝난 뒤 리더가 돌아오지 않았습니다 |
@@ -134,7 +134,7 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 멤버가 이 세 노드 중 하나를 부르면 `InParty`로 거절되고, 로그에 이유가 남습니다. 멤버에게는 그 버튼들을 꺼 두세요.
 
 ```
-Is Enabled = NOT (Is In Easy Party AND NOT Is Easy Party Leader)
+Is Enabled = NOT (Is In Easy Session (Party Session) AND NOT Is Easy Party Leader)
 ```
 
 게임 세션에 들어가면 파티가 닫힙니다. 모든 멤버와 리더에게 `MovedToGameSession`이 담긴 `OnPartyLeft`가 옵니다.
@@ -146,7 +146,7 @@ Is Enabled = NOT (Is In Easy Party AND NOT Is Easy Party Leader)
 - 리더는 같은 설정으로 즉시 파티를 다시 만듭니다. 멤버는 리더의 ID로 파티를 찾으므로 숨긴 파티도 돌아옵니다.
 - 리더가 매치에 더 오래 남아 있을 수 있으므로, 멤버는 리더의 파티를 2초마다 최대 **Party Restore Wait Seconds**(기본 120초) 동안 찾습니다. 그 안에 리더가 돌아오지 않으면 멤버에게 `ConnectionLost`가 담긴 `OnPartyLeft`가 옵니다.
 
-이 동안 `Is Easy Party Restoring`은 true이고, 멤버의 `Is In Easy Party`는 파티를 찾을 때까지 false입니다. 이때 대기 메시지를 띄우세요. `Create Easy Party`, `Join Easy Party`, `Leave Easy Party`, `Create Easy Session`, `Join Easy Session`, `Start Easy Matchmaking`을 부르면 복원이 멈춥니다. 플레이어가 다른 것을 골랐기 때문입니다.
+이 동안 `Is Easy Party Restoring`은 true이고, 멤버의 Party Session `Is In Easy Session`은 파티를 찾을 때까지 false입니다. 이때 대기 메시지를 띄우세요. `Create Easy Party`, `Create Easy Session`, `Join Easy Session`, `Leave Easy Session`, `Start Easy Matchmaking`을 부르면 복원이 멈춥니다. 플레이어가 다른 것을 골랐기 때문입니다.
 
 ## 매치 밖에서 맵 바꾸기
 
@@ -166,4 +166,5 @@ Project Settings -> Plugins -> EasySession의 Party 항목입니다.
 
 ## C++ API
 
-같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `FindParties`, `JoinParty`, `LeaveParty`, `KickPartyMember`, `SetPartyReady`, `IsInParty`, `IsPartyLeader`, `GetPartyMembers`, `GetPartySettings`, `GetPartyJoinCode`, `IsRestoringParty`, `SendPartyInviteToFriend`, `ShowPartyInviteUI`, `ShowProfileUIForPartyMember`입니다.
+같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `KickPartyMember`, `SetPartyReady`, `IsPartyLeader`, `GetPartyMembers`, `IsRestoringParty`, `ShowProfileUIForPartyMember`입니다.
+`FindSessions`, `LeaveSession`, `IsInSession`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend`, `ShowInviteUI`는 파티에 대해 `EEasySessionType::PartySession`을 받고, `JoinSession`은 검색 결과에서 타입을 읽습니다.

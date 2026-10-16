@@ -238,7 +238,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 ## 참가 코드
 
 호스팅할 때 `Use Join Code`를 켜면 생성된 6자리 코드가 세션에 광고되고, 세션에 있는 누구나
-`Get Easy Session Join Code`로 읽을 수 있습니다. 참가는 검색 한 번 거리입니다.
+`Get Easy Join Code`로 읽을 수 있습니다. 참가는 검색 한 번 거리입니다.
 `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도 그 세션 하나가 결과로 오니, 보여준
 뒤 `Join Easy Session`에 넘기면 됩니다. 같은 `Join Code`로 매치메이킹을 돌리면 찾기와
 참가를 한 번에, 세션이 생길 때까지 재시도까지 해줍니다. `Hidden`에 코드를 더하면 친구 전용
@@ -270,7 +270,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 - `OnInvitePasswordRequired` - 수락한 초대의 자동 참가에 이 플레이어의 비밀번호가 필요합니다. 비밀번호를 물은 뒤 이벤트의 `Session`과 그 비밀번호로 `Join Easy Session`을 부르세요
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
 
-어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Session Display Name`, `Get Easy Session Player Infos`, `Get Easy Session Player Count`, `Get Easy Session Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.
+어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Display Name`, `Get Easy Session Player Infos`, `Get Easy Player Count`, `Get Easy Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.
 
 ## C++ API
 

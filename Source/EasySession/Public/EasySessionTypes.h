@@ -33,7 +33,7 @@ enum class EEasySessionResult : uint8
 	InvalidParams,
 
 	/**
-	 * This player is already in a game session or a party, so call Leave Easy Session or Leave Easy Party first.
+	 * This player is already in a game session or a party, so call Leave Easy Session for it first.
 	 * Join Easy Session switches game sessions on its own, except for the host of a match in progress.
 	 */
 	SessionAlreadyExists,
@@ -98,7 +98,10 @@ enum class EEasySessionResult : uint8
 	/** Only the party leader can do this. Show the button only when Is Easy Party Leader is true. */
 	RequiresPartyLeader,
 
-	/** A party member cannot create, join or matchmake alone, because the leader decides where the party goes. Leave Easy Party first to play alone. */
+	/**
+	 * A party member cannot create, join or matchmake alone, because the leader decides where the party goes.
+	 * Leave the party with Leave Easy Session first to play alone.
+	 */
 	InParty
 };
 
@@ -172,10 +175,24 @@ enum class EEasySessionActivity : uint8
 	Traveling
 };
 
+/** The two kinds of session this plugin creates. A function that works on both takes one of these as its Type. */
+UENUM(BlueprintType)
+enum class EEasySessionType : uint8
+{
+	/** The session of a game. The host opens a listen server on a map, and the players connect to it. */
+	GameSession,
+
+	/** The session of a party. The leader runs a party beacon, and the members log in to it. */
+	PartySession
+};
+
 namespace EasySession
 {
 	/** Convert a result value to a human readable string. */
 	EASYSESSION_API FString ResultToString(EEasySessionResult Result);
+
+	/** @return The name of the named session of this type: NAME_GameSession or NAME_PartySession. */
+	EASYSESSION_API FName ToSessionName(EEasySessionType Type);
 
 	/** Custom session setting key holding the session display name. */
 	EASYSESSION_API extern const FName SettingKey_DisplayName;
@@ -305,13 +322,13 @@ struct EASYSESSION_API FEasySessionSettings
 
 	/**
 	 * Whether the session is advertised to other players. Turn it off for a session players join only by invite.
-	 * Every party is advertised, so Create Easy Party refuses this off. Hidden keeps a party out of the Find Easy Parties list instead.
+	 * Every party is advertised, so Create Easy Party refuses this off. Hidden keeps a party out of the Find Easy Sessions list instead.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bShouldAdvertise = true;
 
 	/**
-	 * Whether the session is left out of the Find Easy Sessions or Find Easy Parties results, while it stays advertised to the online subsystem.
+	 * Whether the session is left out of the Find Easy Sessions results, while it stays advertised to the online subsystem.
 	 * Players reach a hidden session through an invite or a search with a Join Code, an Owner Id or a friend.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -516,7 +533,7 @@ struct EASYSESSION_API FEasySessionSearchParams
 
 /**
  * A single session found by a search.
- * Pass this to Join Easy Session to join it, or to Join Easy Party when Is Party is set.
+ * Pass this to Join Easy Session to join it, whether it is a game session or a party.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasySessionSearchResult
@@ -562,7 +579,7 @@ struct EASYSESSION_API FEasySessionSearchResult
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bMatchInProgress = false;
 
-	/** Whether this is a party rather than a game session. An accepted invite can be either, and a party is joined with Join Easy Party. */
+	/** Whether this is a party rather than a game session. An accepted invite can be either, and Join Easy Session joins both. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsParty = false;
 
@@ -833,7 +850,7 @@ struct EASYSESSION_API FEasyPartyMemberInfo
 UENUM(BlueprintType)
 enum class EEasyPartyLeaveReason : uint8
 {
-	/** The local player called Leave Easy Party. */
+	/** The local player left the party with Leave Easy Session. */
 	Left,
 
 	/** The leader removed the local player, who cannot join this party again. Reason Text is the leader's reason. */

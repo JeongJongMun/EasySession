@@ -40,18 +40,18 @@
 
 | 위젯 | 하는 일 | 플러그인 노드와 그것을 부르는 그래프 |
 |---|---|---|
-| `WBP_MainMenu` | 화면을 전환하고, Find 화면이 요청한 결과에 참가합니다 | Join Easy Session, Join Easy Party (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct) |
+| `WBP_MainMenu` | 화면을 전환하고, Find 화면이 요청한 결과에 참가합니다 | Join Easy Session (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct) |
 | `Screens/WBP_HomeScreen` | Quick Match, Create Session, Find Sessions, Quit | Start Easy Matchmaking, Cancel Easy Matchmaking (OnClicked QuickMatchButton); Is Easy Session Busy, Get Easy Matchmaking State (RefreshInteractable); Get Easy Party Members (ArePartyMembersReady) |
 | `Screens/WBP_CreateSessionScreen` | 설정 폼, LAN 토글, CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
 | `Screens/WBP_FindScreen` | 세션 모드와 파티 모드의 브라우저 | 자체 노드 없음. 브라우저의 참가 요청을 위로 넘깁니다 |
 | `Screens/WBP_CreatePartyScreen` | 새 파티의 최대 인원, 숨김, 참가 코드, 그리고 CREATE PARTY | Make Easy Session Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
 | `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다 | Make Easy Session Settings (GetSettings), Break Easy Session Settings (SetSettings) |
-| `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭이 있는 Find Sessions와 Find Parties | Find Easy Sessions, Find Easy Parties (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); 친구를 Friend Id로 넣은 Find Easy Sessions (OnFriendJoinRequested ResultList); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
-| `Modules/WBP_PartyCard` | 내 파티: 만들기, 코드로 참가, 찾기, 준비, 나가기 | Find Easy Parties와 Join Easy Party (OnClicked CodeSearchButton); Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Party; Get Easy Party Settings, Get Easy Party Join Code (RefreshParty) |
-| `Modules/WBP_PartyMemberList` | 파티 멤버. 빈 자리를 누르면 초대 오버레이, 멤버를 누르면 프로필이 열립니다 | Get Easy Party Members (RefreshMemberList); Show Easy Party Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
+| `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭이 있는 Find Sessions와 Find Parties | 세션용과 파티용 Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); 친구를 Friend Id로 넣은 Find Easy Sessions (OnFriendJoinRequested ResultList); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
+| `Modules/WBP_PartyCard` | 내 파티: 만들기, 코드로 참가, 찾기, 준비, 나가기 | Type이 Party Session인 Find Easy Sessions와 Join Easy Session (OnClicked CodeSearchButton); Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty) |
+| `Modules/WBP_PartyMemberList` | 파티 멤버. 빈 자리를 누르면 초대 오버레이, 멤버를 누르면 프로필이 열립니다 | Get Easy Party Members (RefreshMemberList); Show Easy Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
 | `Screens/WBP_LobbyScreen` | 로비: 준비, 매치 시작, 세션 설정, 나가기 | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
 | `Modules/WBP_SessionPlayerList` | 세션 플레이어. 빈 자리와 프로필 클릭은 파티 목록과 같습니다 | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
-| `Modules/WBP_SessionInfo` | 세션 설정을 한눈에 | Get Easy Session Settings, Get Easy Session Join Code, Get Easy Session State (RefreshSessionInfo) |
+| `Modules/WBP_SessionInfo` | 세션 설정을 한눈에 | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State (RefreshSessionInfo) |
 | `Modules/WBP_SessionStatus` | 상태 줄 | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
 | `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | 매치와 Esc 메뉴: 나가기, 로비로 돌아가기, 세션 끝내기 | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (WBP_InGameMenu의 Event Graph) |
 | `Popups/WBP_UpdateSessionPopup` | 로비에서 세션 설정을 바꿉니다 | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
