@@ -5,9 +5,9 @@
 #include "EasySession.h"
 #include "EasySessionBeaconPort.h"
 #include "EasySessionConfig.h"
-#include "EasySessionCreatePartyRequest.h"
+#include "EasySessionCreateRequest.h"
 #include "EasySessionFindRequest.h"
-#include "EasySessionJoinPartyRequest.h"
+#include "EasySessionJoinRequest.h"
 #include "EasySessionMessages.h"
 #include "EasySessionPartyBeacon.h"
 #include "EasySessionSubsystem.h"
@@ -52,7 +52,7 @@ FEasySessionParty::~FEasySessionParty()
 	FTSTicker::GetCoreTicker().RemoveTicker(RetryHandle);
 }
 
-bool FEasySessionParty::StartHosting(const FEasyPartySettings& InPartySettings)
+bool FEasySessionParty::StartHosting(const FEasySessionSettings& InPartySettings)
 {
 	UWorld* World = GetWorld();
 	const FUniqueNetIdRepl LocalId = GetLocalPlayerId();
@@ -85,7 +85,7 @@ bool FEasySessionParty::StartHosting(const FEasyPartySettings& InPartySettings)
 	}
 
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
-	if (!Beacon->StartParty(InPartySettings.MaxMembers, LocalId, Identity.IsValid() ? Identity->GetPlayerNickname(0) : FString()))
+	if (!Beacon->StartParty(InPartySettings.MaxPlayers, LocalId, Identity.IsValid() ? Identity->GetPlayerNickname(0) : FString()))
 	{
 		BeaconPort.Unregister(*Beacon);
 		Beacon->Destroy();
@@ -102,7 +102,7 @@ bool FEasySessionParty::StartHosting(const FEasyPartySettings& InPartySettings)
 
 	BindStateEvents();
 
-	UE_LOG(LogEasySession, Log, TEXT("Party beacon started for %d members."), InPartySettings.MaxMembers);
+	UE_LOG(LogEasySession, Log, TEXT("Party beacon started for %d members."), InPartySettings.MaxPlayers);
 	return true;
 }
 
@@ -210,7 +210,7 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 
 	KickedPlayers.Reset();
 	PendingLeave.Reset();
-	PartySettings = FEasyPartySettings();
+	PartySettings = FEasySessionSettings();
 	LeaderId = FUniqueNetIdRepl();
 	bIsLANParty = false;
 	ReconnectStartSeconds = 0.0;
@@ -491,7 +491,7 @@ void FEasySessionParty::TryRestoreCreate()
 	const FLastParty& Last = LastParty.GetValue();
 
 	const TWeakPtr<bool> WeakLifetime = Lifetime;
-	RunRestoreRequest(MakeShared<FEasySessionCreatePartyRequest>(Last.Settings, FEasySessionCompleteDelegate::CreateLambda(
+	RunRestoreRequest(MakeShared<FEasySessionCreateRequest>(Last.Settings, FEasySessionCompleteDelegate::CreateLambda(
 		[this, WeakLifetime](EEasySessionResult Result, const FString& ErrorMessage)
 		{
 			if (!WeakLifetime.IsValid() || !bRestoring)
@@ -530,7 +530,7 @@ void FEasySessionParty::TryRestoreJoin()
 				return;
 			}
 
-			RunRestoreRequest(MakeShared<FEasySessionJoinPartyRequest>(Results[0], FEasySessionCompleteDelegate::CreateLambda(
+			RunRestoreRequest(MakeShared<FEasySessionJoinRequest>(Results[0], FEasySessionCompleteDelegate::CreateLambda(
 				[this, WeakLifetime](EEasySessionResult JoinResult, const FString& JoinError)
 				{
 					if (!WeakLifetime.IsValid() || !bRestoring)
@@ -545,7 +545,7 @@ void FEasySessionParty::TryRestoreJoin()
 					}
 					RetryRestore(FText::FromString(JoinError));
 				})));
-		})));
+		}), NAME_PartySession));
 }
 
 void FEasySessionParty::RetryRestore(const FText& Reason)

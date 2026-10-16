@@ -3,6 +3,7 @@
 #include "EasySessionCreateRequest.h"
 
 #include "EasySession.h"
+#include "EasySessionDestroyRequest.h"
 #include "EasySessionHost.h"
 #include "EasySessionMessages.h"
 #include "EasySessionParty.h"
@@ -14,54 +15,39 @@
 #include "OnlineSubsystemUtils.h"
 
 FEasySessionCreateRequest::FEasySessionCreateRequest(const FEasySessionHostParams& InHostParams, FEasySessionCompleteDelegate InOnComplete)
-	: FEasySessionRequest(EType::Create)
-	, HostParams(InHostParams)
+	: FEasySessionCreateRequest(NAME_GameSession, MoveTemp(InOnComplete))
+{
+	HostParams = InHostParams;
+}
+
+FEasySessionCreateRequest::FEasySessionCreateRequest(const FEasySessionSettings& InSettings, FEasySessionCompleteDelegate InOnComplete)
+	: FEasySessionCreateRequest(NAME_PartySession, MoveTemp(InOnComplete))
+{
+	// A party has no listen server, so the fields FEasySessionHostParams adds stay at their defaults: no map, not LAN, with presence.
+	static_cast<FEasySessionSettings&>(HostParams) = InSettings;
+}
+
+FEasySessionCreateRequest::FEasySessionCreateRequest(FName InSessionName, FEasySessionCompleteDelegate InOnComplete)
+	: FEasySessionRequest(EType::Create, InSessionName)
 	, OnComplete(MoveTemp(InOnComplete))
 {
 }
 
 void FEasySessionCreateRequest::Execute()
 {
-	if (!HostParams.IsValid())
+	// A failed check completed the request with the refusal.
+	if (!CheckCanCreate())
 	{
-		Complete(EEasySessionResult::InvalidParams, EasySession::InvalidHostParamsMessage);
 		return;
 	}
+
+	const FOnlineSessionSettings Settings = MakeSessionSettings();
 
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid())
-	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
-		return;
-	}
-
-	if (Sessions->GetNamedSession(SessionName) != nullptr)
-	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a session. Call Leave Easy Session first. A host changes maps with Server Travel Easy Session."));
-		return;
-	}
-
-	// A party leader brings the party, and the host's reservation holds every member, so MaxPlayers must count every member and the host.
-	GroupMembers = GetGroupMembers();
-	if (HostParams.MaxPlayers < GroupMembers.Num() + 1)
-	{
-		Complete(EEasySessionResult::InvalidParams, TEXT("Max Players is smaller than the party."));
-		return;
-	}
-
-	// The session is created for local player 0 below, so a search for this host filters on that player's id.
-	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
-	OwnerId = FUniqueNetIdRepl(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
-
-	const FOnlineSessionSettings Settings = MakeSessionSettings(HostParams, ShouldForceLAN(), OwnerId);
-
 	CreateCompleteHandle = Sessions->AddOnCreateSessionCompleteDelegate_Handle(
 		FOnCreateSessionCompleteDelegate::CreateSP(this, &FEasySessionCreateRequest::HandleCreateSessionComplete));
 
-	UE_LOG(LogEasySession, Log, TEXT("Creating session '%s' (MaxPlayers=%d, LAN=%d)"),
-		*HostParams.SessionDisplayName,
-		HostParams.MaxPlayers,
-		Settings.bIsLANMatch ? 1 : 0);
+	UE_LOG(LogEasySession, Log, TEXT("Creating %s '%s' (MaxPlayers=%d, LAN=%d)"), *SessionName.ToString(), *HostParams.SessionDisplayName, HostParams.MaxPlayers, Settings.bIsLANMatch ? 1 : 0);
 
 	if (!Sessions->CreateSession(0, SessionName, Settings))
 	{
@@ -83,39 +69,119 @@ void FEasySessionCreateRequest::Notify(EEasySessionResult Result, const FString&
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
 }
 
-FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings(const FEasySessionHostParams& Params, bool bForceLAN, const FUniqueNetIdRepl& OwnerId)
+bool FEasySessionCreateRequest::CheckCanCreate()
+{
+	if (!HostParams.FEasySessionSettings::IsValid())
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("Max Players must be above 0."));
+		return false;
+	}
+
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
+		return false;
+	}
+
+	if (Sessions->GetNamedSession(SessionName) != nullptr)
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, IsPartyRequest()
+			? TEXT("Already in a party. Call Leave Easy Party first.")
+			: TEXT("Already in a session. Call Leave Easy Session first. A host changes maps with Server Travel Easy Session."));
+		return false;
+	}
+
+	// The session is created for local player 0 in Execute, so a search for this host or leader filters on that player's id.
+	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
+	OwnerId = FUniqueNetIdRepl(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
+
+	// A session with no name is named after the player who creates it.
+	if (HostParams.SessionDisplayName.TrimStartAndEnd().IsEmpty())
+	{
+		HostParams.SessionDisplayName = Identity.IsValid() ? Identity->GetPlayerNickname(0) : FString();
+	}
+
+	return IsPartyRequest() ? CheckCanCreatePartySession() : CheckCanCreateGameSession();
+}
+
+bool FEasySessionCreateRequest::CheckCanCreateGameSession()
+{
+	if (!HostParams.IsValid())
+	{
+		Complete(EEasySessionResult::InvalidParams, EasySession::InvalidHostParamsMessage);
+		return false;
+	}
+
+	// A party leader brings the party, and the host's reservation holds every member, so MaxPlayers must count every member and the host.
+	GroupMembers = GetGroupMembers();
+	if (HostParams.MaxPlayers < GroupMembers.Num() + 1)
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("Max Players is smaller than the party."));
+		return false;
+	}
+
+	return true;
+}
+
+bool FEasySessionCreateRequest::CheckCanCreatePartySession()
+{
+	// The party beacon approves members without a password, so a password would protect nothing.
+	if (!HostParams.Password.TrimStartAndEnd().IsEmpty())
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("A party has no password. Hide the party or share its join code instead."));
+		return false;
+	}
+
+	// Members find the party again after a match by searching for its leader, and a search returns only advertised sessions.
+	if (!HostParams.bShouldAdvertise)
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("Every party is advertised. Set Hidden to keep it out of Find Easy Parties."));
+		return false;
+	}
+
+	if (GetSessionInterface()->GetNamedSession(NAME_GameSession) != nullptr)
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A party is created outside a game session. Call Leave Easy Session first."));
+		return false;
+	}
+
+	if (!OwnerId.IsValid())
+	{
+		Complete(EEasySessionResult::CreateFailure, TEXT("No player is logged in to the online subsystem, so the party would have no leader."));
+		return false;
+	}
+
+	return true;
+}
+
+FOnlineSessionSettings FEasySessionCreateRequest::MakeSessionSettings() const
 {
 	FOnlineSessionSettings Settings;
-	Params.ApplyTo(Settings);
+	HostParams.ApplyTo(Settings);
 
-	Settings.bIsLANMatch = Params.bIsLANMatch || bForceLAN;
-	Settings.bUsesPresence = !Settings.bIsLANMatch && Params.bUsePresence;
+	// Steam keeps a presence session in a lobby, and it treats these flags as one.
+	Settings.bIsLANMatch = HostParams.bIsLANMatch || ShouldForceLAN();
+	Settings.bUsesPresence = !Settings.bIsLANMatch && HostParams.bUsePresence;
 	Settings.bAllowJoinViaPresence = Settings.bUsesPresence;
 	Settings.bUseLobbiesIfAvailable = Settings.bUsesPresence;
 
-	// Whether the match is running.
-	// Search results do not carry the session state, so searches read this key instead.
-	// Start and End update it.
-	Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	Settings.Set(EasySession::SettingKey_SessionType, SessionName.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// The port joining players reach the reservation beacon on.
+	// The party beacon registers on the reservation beacon's listener, so both kinds advertise one port.
 	// Read from config rather than from a running beacon, because the host creates one per world after each travel.
-	// GetResolvedConnectString reads this key to build the beacon address.
 	Settings.Set(SETTING_BEACONPORT, EasySession::GetReservationBeaconPort(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
-	// Whether this host runs a reservation beacon.
-	// Joining players that find the key ask it for a reservation before traveling.
-	// The host reads the key back after each travel to decide whether the new world needs a beacon.
-	Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// A game session, so a search for parties never returns it.
-	Settings.Set(EasySession::SettingKey_SessionType, FName(NAME_GameSession).ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-
-	// The host's id, so a search for this host filters inside the online subsystem rather than on the results it returned.
-	// Without a logged in player there is no id to advertise.
 	if (OwnerId.IsValid())
 	{
 		Settings.Set(EasySession::SettingKey_OwnerId, OwnerId.ToString(), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+
+	// A party runs no match and no reservation beacon, so only a game session advertises these two keys.
+	if (SessionName == NAME_GameSession)
+	{
+		Settings.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		Settings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	}
 
 	return Settings;
@@ -130,10 +196,22 @@ void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName,
 
 	if (!bWasSuccessful)
 	{
-		Complete(EEasySessionResult::CreateFailure, TEXT("The online subsystem failed to create the session."));
+		Complete(EEasySessionResult::CreateFailure, FString::Printf(TEXT("The online subsystem failed to create the %s."), *SessionName.ToString()));
 		return;
 	}
 
+	if (IsPartyRequest())
+	{
+		HostPartySession();
+	}
+	else
+	{
+		HostGameSession();
+	}
+}
+
+void FEasySessionCreateRequest::HostGameSession()
+{
 	UE_LOG(LogEasySession, Log, TEXT("Session created successfully."));
 
 	GetContext().Host.OnSessionCreated(HostParams, GroupMembers);
@@ -153,5 +231,30 @@ void FEasySessionCreateRequest::HandleCreateSessionComplete(FName InSessionName,
 	// Requested before the request completes, so IsBusy is already true for the travel when the completion delegate fires.
 	GetContext().Travel.TravelToOwnSession(HostParams);
 
+	Complete(EEasySessionResult::Success);
+}
+
+void FEasySessionCreateRequest::HostPartySession()
+{
+	// This process created the party, so it leads it.
+	// NULL already sets bHosting in CreateSession, but Steam never does.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr)
+	{
+		NamedSession->bHosting = true;
+	}
+
+	if (!GetContext().Party.StartHosting(HostParams))
+	{
+		// The party session would advertise a party that nobody can join, so it is destroyed again.
+		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,
+			[this](EEasySessionResult /*DestroyResult*/, const FString& /*DestroyError*/)
+			{
+				Complete(EEasySessionResult::CreateFailure, TEXT("The party beacon could not start, so the party was removed again."));
+			})));
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Party created."));
 	Complete(EEasySessionResult::Success);
 }

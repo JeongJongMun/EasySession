@@ -44,7 +44,7 @@
 | `Screens/WBP_HomeScreen` | Quick Match, Create Session, Find Sessions, Quit | Start Easy Matchmaking, Cancel Easy Matchmaking (OnClicked QuickMatchButton); Is Easy Session Busy, Get Easy Matchmaking State (RefreshInteractable); Get Easy Party Members (ArePartyMembersReady) |
 | `Screens/WBP_CreateSessionScreen` | 설정 폼, LAN 토글, CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
 | `Screens/WBP_FindScreen` | 세션 모드와 파티 모드의 브라우저 | 자체 노드 없음. 브라우저의 참가 요청을 위로 넘깁니다 |
-| `Screens/WBP_CreatePartyScreen` | 새 파티의 최대 인원, 숨김, 참가 코드, 그리고 CREATE PARTY | Make Easy Party Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
+| `Screens/WBP_CreatePartyScreen` | 새 파티의 최대 인원, 숨김, 참가 코드, 그리고 CREATE PARTY | Make Easy Session Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
 | `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다 | Make Easy Session Settings (GetSettings), Break Easy Session Settings (SetSettings) |
 | `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭이 있는 Find Sessions와 Find Parties | Find Easy Sessions, Find Easy Parties (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); 친구를 Friend Id로 넣은 Find Easy Sessions (OnFriendJoinRequested ResultList); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
 | `Modules/WBP_PartyCard` | 내 파티: 만들기, 코드로 참가, 찾기, 준비, 나가기 | Find Easy Parties와 Join Easy Party (OnClicked CodeSearchButton); Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Party; Get Easy Party Settings, Get Easy Party Join Code (RefreshParty) |

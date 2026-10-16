@@ -4,7 +4,7 @@
 
 #include "EasySessionMessages.h"
 
-UEasyCreatePartyNode* UEasyCreatePartyNode::CreateEasyParty(UObject* WorldContextObject, const FEasyPartySettings& PartySettings)
+UEasyCreatePartyNode* UEasyCreatePartyNode::CreateEasyParty(UObject* WorldContextObject, const FEasySessionSettings& PartySettings)
 {
 	UEasyCreatePartyNode* Node = NewObject<UEasyCreatePartyNode>();
 	Node->WorldContext = WorldContextObject;

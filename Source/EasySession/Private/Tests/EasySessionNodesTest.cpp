@@ -9,7 +9,6 @@
 #include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "Nodes/EasyCreateSessionNode.h"
-#include "Nodes/EasyDestroySessionNode.h"
 #include "UObject/StrongObjectPtr.h"
 
 namespace EasySessionNodesTest
@@ -48,9 +47,8 @@ bool FEasySessionWaitNodeCreate::Update()
 	CurrentTest->TestTrue(TEXT("Statics report in-session"), UEasySessionStatics::IsInEasySession(State->GameInstance.Get()));
 	CurrentTest->TestTrue(TEXT("Statics report host"), UEasySessionStatics::IsEasySessionHost(State->GameInstance.Get()));
 
-	// Destroy the session through the node, exactly as a Blueprint graph would.
-	UEasyDestroySessionNode* DestroyNode = UEasyDestroySessionNode::DestroyEasySession(State->GameInstance.Get());
-	DestroyNode->Activate();
+	// Blueprint has no destroy node, so the session is destroyed through the subsystem, as the C++ API does.
+	Subsystem->DestroySession();
 
 	State->StartTime = FPlatformTime::Seconds();
 	return true;
@@ -75,7 +73,7 @@ bool FEasySessionWaitNodeDestroy::Update()
 		return false;
 	}
 
-	CurrentTest->TestFalse(TEXT("Not in session after destroy node"), Subsystem->IsInSession());
+	CurrentTest->TestFalse(TEXT("Not in session after the destroy"), Subsystem->IsInSession());
 	CurrentTest->TestFalse(TEXT("Statics report not in-session"), UEasySessionStatics::IsInEasySession(State->GameInstance.Get()));
 
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
@@ -83,7 +81,8 @@ bool FEasySessionWaitNodeDestroy::Update()
 }
 
 /**
- * Node test: drive the create and destroy async nodes like a Blueprint graph does (factory function + Activate), then check IsInSession and the statics after each.
+ * Node test: drive the create async node like a Blueprint graph does (factory function + Activate), then destroy the session through the subsystem.
+ * IsInSession and the statics are checked after each step.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodesTest, "EasySession.Nodes.CreateAndDestroy", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodesTest::RunTest(const FString& Parameters)

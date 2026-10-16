@@ -14,7 +14,7 @@
 
 | 필드 | 기본값 | 설명 |
 |---|---|---|
-| Session Display Name | "My Session" | 검색 결과에 보이는 이름 |
+| Session Display Name | (비어 있음) | 검색 결과에 보이는 이름. 비어 있으면 호스트 이름이 됩니다 |
 | Initial Map Name | (비어 있음) | 필수. 세션을 만든 뒤 호스트가 `?listen`을 붙여 그 맵으로 이동하고, 이것이 이 게임을 서버로 만듭니다. 비어 있으면 생성이 `InvalidParams`로 실패합니다. 맵을 새로 로드하므로, 세션이 생기기 전에 접속해 있던 플레이어는 연결이 끊기고 세션에 참가해서 다시 들어와야 합니다. 세션은 자기 맵을 광고하지 않습니다 |
 | Max Players | 4 | 공개 커넥션 수. 엔진의 접속 정원(Server full)도 이 값을 따릅니다 |
 | Is LAN Match | false | NULL 서브시스템에서는 자동으로 켜집니다 |
@@ -210,15 +210,14 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 나머지 절반은 `OnSessionStateChanged`가 맡습니다. 세션 상태가 바뀔 때 호스트와 모든
 클라이언트에서 발생하므로, 클라이언트는 폴링 없이 호스트의 매치 시작과 종료를 알 수 있습니다.
 
-## Destroy Session
+## Leave Session
 
-`Destroy Easy Session`은 이 게임의 네임드 세션만 지웁니다. 플레이어는 지금 맵에 그대로
-남는데, 매치 사이의 호스트에게는 그게 맞습니다. 세션을 나가려는 클라이언트가 원하는 것은
-`Leave Easy Session`입니다. 네임드 세션을 지운 뒤 메뉴 맵으로 돌아갑니다. 호스트가 Leave를
-누르면 세션이 모두에게 닫히고, 클라이언트들은 "The host has left the game."을 사유로
-읽습니다. 어느 쪽이든 직후에 곧바로 다시 세션을 만들거나 참가할 수 있습니다.
+`Leave Easy Session`은 이 게임의 네임드 세션을 지운 뒤 플레이어를 메뉴 맵(Game Default Map)으로 돌려보냅니다.
+호스트가 Leave를 누르면 세션이 모두에게 닫히고, 클라이언트들은 "The host has left the game."을 사유로 읽습니다.
+다른 사유를 보내고 싶다면 `Destroy Easy Session For Everyone`을 부르세요. 세션을 내리기 전에 모두에게 그 문구를 먼저 보내고, 받는 쪽은 `HostDestroyedSession`으로 읽습니다.
+어느 쪽이든 플레이어는 메뉴에서 곧바로 다시 세션을 만들거나 참가할 수 있습니다.
 
-호스트가 이 노드를 부르면 클라이언트들은 연결이 끊긴 것으로 보고 `ConnectionLost`로 메뉴에 돌아갑니다. 왜 끝났는지 알려주고 싶다면 `Destroy Easy Session For Everyone`에 사유를 넘기세요. 세션을 내리기 전에 모두에게 그 문구를 먼저 보내고, 받는 쪽은 `HostDestroyedSession`으로 읽습니다.
+세션만 지우고 맵에 남는 Blueprint 노드는 없습니다. 나가는 플레이어가 원하는 것은 메뉴이기 때문입니다. 필요한 C++ 코드는 서브시스템의 `DestroySession`을 부릅니다.
 
 ## 매치 도중 맵 옮기기
 

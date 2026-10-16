@@ -280,16 +280,20 @@ enum class EEasySessionRegion : uint8
 
 /**
  * What a session advertises about itself, and everything Update Easy Session can change while players are in it.
- * FEasySessionHostParams adds the fields that are only read while the session is created.
+ * Create Easy Party takes it as well, because a party is a session that players reach through the party beacon instead of a game server.
+ * FEasySessionHostParams adds the fields that are only read while a game session is created.
  */
 USTRUCT(BlueprintType)
 struct EASYSESSION_API FEasySessionSettings
 {
 	GENERATED_BODY()
 
-	/** Display name of the session, shown to other players in search results. */
+	/**
+	 * Display name of the session, shown to other players in search results.
+	 * Leave it empty to name the session after the player who creates it.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	FString SessionDisplayName = TEXT("My Session");
+	FString SessionDisplayName;
 
 	/** Maximum number of players allowed in the session. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = 1))
@@ -299,12 +303,15 @@ struct EASYSESSION_API FEasySessionSettings
 	//~ UK2Node_MakeStruct folds on its own from five fields up, but only while no field carries AdvancedDisplay.
 	//~ Without the markers, adding a field would move the fold.
 
-	/** Whether the session is advertised to other players. Turn it off for a session players join only by invite. */
+	/**
+	 * Whether the session is advertised to other players. Turn it off for a session players join only by invite.
+	 * Every party is advertised, so Create Easy Party refuses this off. Hidden keeps a party out of the Find Easy Parties list instead.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bShouldAdvertise = true;
 
 	/**
-	 * Whether the session is left out of the Find Easy Sessions results, while it stays advertised to the online subsystem.
+	 * Whether the session is left out of the Find Easy Sessions or Find Easy Parties results, while it stays advertised to the online subsystem.
 	 * Players reach a hidden session through an invite or a search with a Join Code, an Owner Id or a friend.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -316,6 +323,7 @@ struct EASYSESSION_API FEasySessionSettings
 	 * Only a password protected flag is advertised.
 	 * The password itself never leaves the host.
 	 * Joining players pass the password to Join Easy Session, and a wrong one is refused before the map loads.
+	 * A party has no password, so Create Easy Party refuses one. Hide the party or share its join code instead.
 	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	FString Password;
@@ -348,7 +356,7 @@ struct EASYSESSION_API FEasySessionSettings
 	EEasySessionRegion Region = EEasySessionRegion::Any;
 
 	/**
-	 * Whether the session advertises a generated six character join code, readable with Get Easy Session Join Code.
+	 * Whether the session advertises a generated six character join code, readable with Get Easy Session Join Code or Get Easy Party Join Code.
 	 * A search with the code in Join Code returns the session, hidden or not, so Find Easy Sessions lists it and matchmaking joins it.
 	 * Anyone with the code can find the session, so set Password as well to keep others out.
 	 */
@@ -788,39 +796,6 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	/** The player's id on the online subsystem. Names can repeat between players. This cannot. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	FUniqueNetIdRepl PlayerId;
-};
-
-/**
- * The settings of a party: how many players it holds and who finds it.
- * Create Easy Party takes them, and Get Easy Party Settings reads them back.
- * Every party is advertised, so a member can find the leader's party again after a match.
- */
-USTRUCT(BlueprintType)
-struct EASYSESSION_API FEasyPartySettings
-{
-	GENERATED_BODY()
-
-	/** The most players the party holds, the leader included. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession", meta = (ClampMin = "2", UIMin = "2"))
-	int32 MaxMembers = 4;
-
-	/**
-	 * Whether the party is left out of the Find Easy Parties results, while it stays advertised.
-	 * Players reach a hidden party through an invite or a search with a Join Code, an Owner Id or a friend.
-	 * A hidden party still admits every player who reaches it, unless it is full or the leader kicked that player.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	bool bHidden = true;
-
-	/**
-	 * Whether the party advertises a generated six character join code, readable with Get Easy Party Join Code.
-	 * Find Easy Parties with the code in Join Code returns the party, hidden or not.
-	 */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "EasySession")
-	bool bUseJoinCode = false;
-
-	/** @return Whether these settings can create a party. */
-	bool IsValid() const { return MaxMembers >= 2; }
 };
 
 /**

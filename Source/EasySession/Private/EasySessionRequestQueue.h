@@ -56,8 +56,10 @@ public:
 	 * @return The running or waiting request of this type whose requester was not notified yet, running first. Null when there is none.
 	 *         Sub-requests are not searched, only the requests the queue runs.
 	 *         A canceled request that still waits for its online subsystem call is skipped, because its requester already has the result.
+	 *
+	 * @param SessionName The session the request must name. None matches a request of the type on any session.
 	 */
-	TSharedPtr<FEasySessionRequest> Find(FEasySessionRequest::EType Type) const;
+	TSharedPtr<FEasySessionRequest> Find(FEasySessionRequest::EType Type, FName SessionName = NAME_None) const;
 
 	/**
 	 * Build the status line for status UI and bug reports, e.g. "Create (running 2.4s), queued: Start" or "Idle, queued: Find".

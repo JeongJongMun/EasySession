@@ -52,7 +52,7 @@ public:
 	 *
 	 * @return Whether the party beacon runs. False when no player is logged in or the beacon could not start.
 	 */
-	bool StartHosting(const FEasyPartySettings& InPartySettings);
+	bool StartHosting(const FEasySessionSettings& InPartySettings);
 
 	/**
 	 * Connect to the leader's party beacon, after the party session is joined and again after a map change.
@@ -124,7 +124,7 @@ private:
 		FUniqueNetIdRepl LeaderId;
 
 		/** The settings the leader creates the party with again. */
-		FEasyPartySettings Settings;
+		FEasySessionSettings Settings;
 
 		/** Was the party a LAN session. */
 		bool bIsLANMatch = false;
@@ -222,7 +222,7 @@ private:
 	TWeakObjectPtr<AEasySessionPartyBeaconState> BoundState;
 
 	/** The settings of the party this process leads, which a map change starts the party beacon with again. */
-	FEasyPartySettings PartySettings;
+	FEasySessionSettings PartySettings;
 
 	/** The leader of the party this player is in. */
 	FUniqueNetIdRepl LeaderId;

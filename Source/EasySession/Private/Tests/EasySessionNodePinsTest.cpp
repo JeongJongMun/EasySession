@@ -9,7 +9,6 @@
 #include "EasySessionTestWorld.h"
 #include "Engine/GameInstance.h"
 #include "Nodes/EasyCreateSessionNode.h"
-#include "Nodes/EasyDestroySessionNode.h"
 #include "Nodes/EasyEndSessionNode.h"
 #include "Nodes/EasyFindSessionsNode.h"
 #include "Nodes/EasyJoinSessionNode.h"
@@ -152,8 +151,8 @@ bool FEasySessionRunPinCases::Update()
  * Every async node routes a failure to its On Failure pin.
  *
  * No session exists, so the session nodes fail their own checks, and Join Easy Session gets an empty search result.
- * Start Easy Matchmaking finds nothing on the LAN, and the two friend nodes fail because the NULL subsystem has no friends interface.
- * That reaches the failure pin of eight nodes without a second machine or a real online subsystem.
+ * Start Easy Matchmaking finds nothing on the LAN, and Read Easy Friends fails because the NULL subsystem has no friends interface.
+ * That reaches the failure pin of six nodes without a second machine or a real online subsystem.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeFailurePinsTest, "EasySession.Nodes.FailurePinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
@@ -170,15 +169,6 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
 		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 		return false;
 	}
-
-	State->Cases.Add({ TEXT("Destroy Easy Session"),
-		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
-		{
-			UEasyDestroySessionNode* Node = UEasyDestroySessionNode::DestroyEasySession(&GameInstance);
-			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleSuccess);
-			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFailure);
-			Node->Activate();
-		}, EExpectedPin::Failure, EEasySessionResult::NoSessionExists });
 
 	State->Cases.Add({ TEXT("Start Easy Session"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
@@ -251,7 +241,7 @@ bool FEasySessionNodeFailurePinsTest::RunTest(const FString& Parameters)
  * Every async node routes a success to its On Success pin.
  *
  * The cases run in order, and every case after Create Easy Session runs while the session it created exists.
- * This is the session lifecycle of a game: create, search, start the match, update it, end it, destroy it.
+ * This is the session lifecycle of a game: create, search, start the match, update it, end it, leave it.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionNodeSuccessPinsTest, "EasySession.Nodes.SuccessPinsFire", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
@@ -319,10 +309,10 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 			Node->Activate();
 		}, EExpectedPin::Success, EEasySessionResult::Success });
 
-	State->Cases.Add({ TEXT("Destroy Easy Session"),
+	State->Cases.Add({ TEXT("Leave Easy Session"),
 		[](UGameInstance& GameInstance, UEasySessionTestNodePinListener& Listener)
 		{
-			UEasyDestroySessionNode* Node = UEasyDestroySessionNode::DestroyEasySession(&GameInstance);
+			UEasyLeaveSessionNode* Node = UEasyLeaveSessionNode::LeaveEasySession(&GameInstance);
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFailure);
 			Node->Activate();
@@ -404,7 +394,7 @@ bool FEasySessionWaitForLeaveNode::Update()
 
 /**
  * Leave Easy Session destroys the named session and requests the travel to the Game Default Map, both in one node.
- * Destroy Easy Session only destroys the named session, so a client that called it from an exit button stayed on the host's map.
+ * An exit button needs nothing else, because the travel is what takes a client off the host's map.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLeaveNodeTest, "EasySession.Nodes.LeaveReturnsToTheMenu", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionLeaveNodeTest::RunTest(const FString& Parameters)

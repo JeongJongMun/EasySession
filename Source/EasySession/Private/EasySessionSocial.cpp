@@ -63,7 +63,7 @@ EEasySessionResult FEasySessionSocial::SendInviteToFriend(const FEasySessionFrie
 
 	if (Sessions->GetNamedSession(SessionName) == nullptr)
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: there is no %s to invite to."), SessionName == NAME_PartySession ? TEXT("party") : TEXT("session"));
+		UE_LOG(LogEasySession, Warning, TEXT("SendSessionInviteToFriend: there is no %s to invite to."), *SessionName.ToString());
 		return EEasySessionResult::NoSessionExists;
 	}
 

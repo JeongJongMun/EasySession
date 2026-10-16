@@ -14,7 +14,7 @@ Players who stay together between matches, such as friends in the main menu, are
 
 | Field | Default | Notes |
 |---|---|---|
-| Session Display Name | "My Session" | Shown in search results |
+| Session Display Name | (empty) | Shown in search results. Empty names the session after the host |
 | Initial Map Name | (empty) | Required. The host travels there with `?listen` once the session is created, which makes this game the server. Empty fails the create with `InvalidParams`. The map loads from scratch, so players who were connected before the session existed are disconnected and have to join it. The session does not advertise its map |
 | Max Players | 4 | Public connections. The engine's own login cap ("Server full") follows this value |
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
@@ -212,16 +212,14 @@ same event for its own UI. Only the password and its friends exception stay on t
 whenever the session's state changes, so a client sees the host start or end the match
 without polling.
 
-## Destroy Session
+## Leave Session
 
-`Destroy Easy Session` removes this game's named session - and only that. The player
-stays on their current map, which is what a host between matches wants. A client
-leaving the session wants `Leave Easy Session` instead: it destroys the named session and
-then returns to the menu map. A host pressing Leave closes the session for everyone, with
-"The host has left the game." as the reason clients read. After either one you can
-immediately host or join again.
+`Leave Easy Session` destroys this game's named session and returns the player to the menu map (Game Default Map).
+A host pressing Leave closes the session for everyone, and clients read "The host has left the game." as the reason.
+To send a reason of your own, call `Destroy Easy Session For Everyone` instead: it sends that sentence to everyone before taking the session down, and they read it as `HostDestroyedSession`.
+After either one the player can immediately host or join again from the menu.
 
-When the host calls it, clients see the connection drop and return to the menu with `ConnectionLost`. To tell them why it ended, pass a reason to `Destroy Easy Session For Everyone` instead: it sends that sentence to everyone before taking the session down, and they read it as `HostDestroyedSession`.
+There is no Blueprint node that destroys the session and stays on the map, because a player who leaves wants the menu. C++ code that needs it calls `DestroySession` on the subsystem.
 
 ## Traveling mid-session
 

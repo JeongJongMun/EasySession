@@ -14,6 +14,10 @@
 #include "EasySessionTravel.h"
 #include "Engine/World.h"
 #include "HAL/PlatformTime.h"
+#include "Interfaces/OnlineIdentityInterface.h"
+#include "Online/OnlineSessionNames.h"
+#include "OnlineSessionSettings.h"
+#include "OnlineSubsystemUtils.h"
 
 namespace
 {
@@ -22,13 +26,26 @@ namespace
 
 	// Seconds a party leader or a host waits for the group before it joins without the rest.
 	constexpr double GroupWaitTimeoutSeconds = 10.0;
+
+	// Seconds the leader gets to complete the login, from the start of the connection until the member list holds the local player.
+	constexpr float LoginTimeoutSeconds = 10.0f;
 }
 
 FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete)
-	: FEasySessionRequest(EType::Join)
+	: FEasySessionJoinRequest(NAME_GameSession, InTarget, MoveTemp(InOnComplete))
+{
+	Password = InPassword;
+	TravelOptions = InTravelOptions;
+}
+
+FEasySessionJoinRequest::FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, FEasySessionCompleteDelegate InOnComplete)
+	: FEasySessionJoinRequest(NAME_PartySession, InTarget, MoveTemp(InOnComplete))
+{
+}
+
+FEasySessionJoinRequest::FEasySessionJoinRequest(FName InSessionName, const FEasySessionSearchResult& InTarget, FEasySessionCompleteDelegate InOnComplete)
+	: FEasySessionRequest(EType::Join, InSessionName)
 	, Target(InTarget)
-	, Password(InPassword)
-	, TravelOptions(InTravelOptions)
 	, OnComplete(MoveTemp(InOnComplete))
 {
 }
@@ -51,39 +68,16 @@ EEasySessionResult FEasySessionJoinRequest::GetRefusalResult(EEasyReservationRes
 
 void FEasySessionJoinRequest::Execute()
 {
-	if (!Target.IsValid())
+	// A failed check completed the request with the refusal.
+	if (!CheckCanJoin())
 	{
-		Complete(EEasySessionResult::InvalidParams, TEXT("The search result to join is invalid."));
 		return;
 	}
 
-	// A party or a session of another project has no game server to travel to, so the travel would wait for the connect timeout.
-	if (EasySession::GetAdvertisedSessionType(Target.NativeResult.Session.SessionSettings) != NAME_GameSession)
+	// A party has no reservation beacon: the leader decides the join at the login, after the online subsystem joined the party session.
+	if (IsPartyRequest())
 	{
-		Complete(EEasySessionResult::InvalidParams, TEXT("The search result to join is not an EasySession game session. Use one Find Easy Sessions returned, and Join Easy Party for a party."));
-		return;
-	}
-
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	if (!Sessions.IsValid())
-	{
-		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
-		return;
-	}
-
-	// Destroying the session to join it again would only disconnect this player.
-	const FNamedOnlineSession* CurrentSession = Sessions->GetNamedSession(SessionName);
-	if (CurrentSession != nullptr && CurrentSession->SessionInfo.IsValid() && CurrentSession->SessionInfo->GetSessionId().ToString() == Target.NativeResult.GetSessionIdStr())
-	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player is already in this session."));
-		return;
-	}
-
-	// A host that destroys its session to join another would end a match in progress for every player.
-	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
-	if (GetContext().Subsystem.IsSessionAuthority() && (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress))
-	{
-		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
+		JoinOnlineSession();
 		return;
 	}
 
@@ -110,13 +104,16 @@ void FEasySessionJoinRequest::Cleanup()
 	FTSTicker::GetCoreTicker().RemoveTicker(GroupWaitHandle);
 	GroupWaitHandle.Reset();
 
+	FTSTicker::GetCoreTicker().RemoveTicker(TimeoutHandle);
+	TimeoutHandle.Reset();
+
 	// The reservation request may still be waiting for a response.
 	DestroyReservationClient();
 }
 
 void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	// The session this player was in is destroyed, so a failed join would keep them in its map with no session.
+	// The game session this player was in is destroyed, so a failed join would keep them in its map with no session.
 	// Requested before the completion below, the same order every travel in this plugin uses.
 	if (Result != EEasySessionResult::Success && bLeftSession)
 	{
@@ -124,6 +121,79 @@ void FEasySessionJoinRequest::Notify(EEasySessionResult Result, const FString& E
 	}
 
 	OnComplete.ExecuteIfBound(Result, ErrorMessage);
+}
+
+bool FEasySessionJoinRequest::CheckCanJoin()
+{
+	if (!Target.IsValid())
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("The search result to join is invalid."));
+		return false;
+	}
+
+	// A party has no game server to travel to, and a game session no leader to log in with, so the other kind would wait for a timeout.
+	// A session of another project advertises no kind at all.
+	if (EasySession::GetAdvertisedSessionType(Target.NativeResult.Session.SessionSettings) != SessionName)
+	{
+		Complete(EEasySessionResult::InvalidParams, IsPartyRequest()
+			? TEXT("The search result to join is not a party. Use one Find Easy Parties returned.")
+			: TEXT("The search result to join is not an EasySession game session. Use one Find Easy Sessions returned, and Join Easy Party for a party."));
+		return false;
+	}
+
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	if (!Sessions.IsValid())
+	{
+		Complete(EEasySessionResult::NoOnlineSubsystem, EasySession::NoOnlineSubsystemMessage);
+		return false;
+	}
+
+	return IsPartyRequest() ? CheckCanJoinPartySession(Sessions) : CheckCanJoinGameSession(Sessions);
+}
+
+bool FEasySessionJoinRequest::CheckCanJoinGameSession(const IOnlineSessionPtr& Sessions)
+{
+	// Destroying the session to join it again would only disconnect this player.
+	const FNamedOnlineSession* CurrentSession = Sessions->GetNamedSession(NAME_GameSession);
+	if (CurrentSession != nullptr && CurrentSession->SessionInfo.IsValid() && CurrentSession->SessionInfo->GetSessionId().ToString() == Target.NativeResult.GetSessionIdStr())
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player is already in this session."));
+		return false;
+	}
+
+	// A host that destroys its session to join another would end a match in progress for every player.
+	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
+	if (GetContext().Subsystem.IsSessionAuthority() && (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress))
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
+		return false;
+	}
+
+	return true;
+}
+
+bool FEasySessionJoinRequest::CheckCanJoinPartySession(const IOnlineSessionPtr& Sessions)
+{
+	if (Sessions->GetNamedSession(NAME_PartySession) != nullptr)
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a party. Call Leave Easy Party first."));
+		return false;
+	}
+
+	if (Sessions->GetNamedSession(NAME_GameSession) != nullptr)
+	{
+		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A party is joined outside a game session. Call Leave Easy Session first."));
+		return false;
+	}
+
+	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
+	if (!Identity.IsValid() || !Identity->GetUniquePlayerId(0).IsValid())
+	{
+		Complete(EEasySessionResult::JoinFailure, TEXT("No player is logged in to the online subsystem, so the party leader could not tell who joins."));
+		return false;
+	}
+
+	return true;
 }
 
 void FEasySessionJoinRequest::RequestReservation()
@@ -272,6 +342,7 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 	}
 
 	// JoinSession fails while a session with this name exists, so this player destroys theirs first.
+	// A party join never starts inside a party.
 	if (Sessions->GetNamedSession(SessionName) != nullptr)
 	{
 		// The Destroy sub-request destroys the session of a host, so its clients are told why before their connection closes.
@@ -288,7 +359,14 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 	JoinCompleteHandle = Sessions->AddOnJoinSessionCompleteDelegate_Handle(
 		FOnJoinSessionCompleteDelegate::CreateSP(this, &FEasySessionJoinRequest::HandleJoinSessionComplete));
 
-	UE_LOG(LogEasySession, Log, TEXT("Joining session '%s' hosted by '%s'"), *Target.SessionDisplayName, *Target.HostName);
+	if (IsPartyRequest())
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Joining the party of '%s'"), *Target.SessionDisplayName);
+	}
+	else
+	{
+		UE_LOG(LogEasySession, Log, TEXT("Joining session '%s' hosted by '%s'"), *Target.SessionDisplayName, *Target.HostName);
+	}
 
 	if (!Sessions->JoinSession(0, SessionName, Target.NativeResult))
 	{
@@ -298,7 +376,7 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 
 void FEasySessionJoinRequest::HandleDestroyComplete(EEasySessionResult Result, const FString& ErrorMessage)
 {
-	// The session is still there, so this player stays in it and no travel starts.
+	// Joining without having left would fail with AlreadyInSession, so the join ends with the destroy's result instead.
 	if (Result != EEasySessionResult::Success)
 	{
 		Complete(Result, TEXT("This player could not leave the session they were in."));
@@ -316,17 +394,18 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 		return;
 	}
 
+	const FString Kind = SessionName.ToString();
 	switch (JoinResult)
 	{
 		case EOnJoinSessionCompleteResult::Success:
 			break;
 
 		case EOnJoinSessionCompleteResult::SessionIsFull:
-			Complete(EEasySessionResult::JoinSessionFull, TEXT("The session is full."));
+			Complete(EEasySessionResult::JoinSessionFull, FString::Printf(TEXT("The %s is full."), *Kind));
 			return;
 
 		case EOnJoinSessionCompleteResult::SessionDoesNotExist:
-			Complete(EEasySessionResult::JoinSessionDoesNotExist, TEXT("The session no longer exists."));
+			Complete(EEasySessionResult::JoinSessionDoesNotExist, FString::Printf(TEXT("The %s no longer exists."), *Kind));
 			return;
 
 		case EOnJoinSessionCompleteResult::CouldNotRetrieveAddress:
@@ -334,36 +413,46 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 			return;
 
 		case EOnJoinSessionCompleteResult::AlreadyInSession:
-			Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player is already in the session. Destroy the current session before joining it again."));
+			Complete(EEasySessionResult::SessionAlreadyExists, FString::Printf(TEXT("This player is already in the %s. Destroy the current session before joining it again."), *Kind));
 			return;
 
 		// UnknownError, and anything the engine adds to this enum later.
 		default:
-			Complete(EEasySessionResult::JoinFailure, TEXT("The online subsystem failed to join the session."));
+			Complete(EEasySessionResult::JoinFailure, FString::Printf(TEXT("The online subsystem failed to join the %s."), *Kind));
 			return;
 	}
 
-	// Resolve the host address before completing with Success.
-	// A host that is not listening then fails here, instead of the joining player waiting for a connection timeout.
+	// The address is resolved before the request completes, so a host that is not listening fails here instead of the joining player waiting for a timeout.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	FString ConnectString;
-	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(SessionName, ConnectString) && !ConnectString.IsEmpty();
+	const FName PortType = IsPartyRequest() ? NAME_BeaconPort : NAME_GamePort;
+	const bool bResolved = Sessions.IsValid() && Sessions->GetResolvedConnectString(SessionName, ConnectString, PortType) && !ConnectString.IsEmpty();
 
-	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
+	if (IsPartyRequest())
 	{
-		const FString Message = FString::Printf(
-			TEXT("The host address '%s' is not connectable. The host is not running as a listen server, because its travel to Initial Map Name did not open one. Check the map path on the host."),
-			*ConnectString);
+		if (!bResolved)
+		{
+			LeaveAndComplete(EEasySessionResult::ResolveFailure, TEXT("Could not retrieve the address of the party leader."));
+			return;
+		}
 
-		// The joined session stays until it is destroyed, and a retry or the next matchmaking search result would fail against it.
-		RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,
-			[this, Message](EEasySessionResult /*DestroyResult*/, const FString& /*DestroyError*/)
-			{
-				Complete(EEasySessionResult::ResolveFailure, Message);
-			})));
+		ConnectToLeader(ConnectString);
 		return;
 	}
 
+	if (!bResolved || EasySessionAddress::HasZeroPort(ConnectString))
+	{
+		LeaveAndComplete(EEasySessionResult::ResolveFailure, FString::Printf(
+			TEXT("The host address '%s' is not connectable. The host is not running as a listen server, because its travel to Initial Map Name did not open one. Check the map path on the host."),
+			*ConnectString));
+		return;
+	}
+
+	TravelToHost(ConnectString);
+}
+
+void FEasySessionJoinRequest::TravelToHost(const FString& ConnectString)
+{
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
 	// A party lives outside game sessions, so HandlePartyEnded queues a LeaveParty request.
@@ -376,4 +465,61 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 	GetContext().Travel.TravelToJoinedSession(ConnectString, TravelOptions);
 
 	Complete(EEasySessionResult::Success);
+}
+
+void FEasySessionJoinRequest::ConnectToLeader(const FString& ConnectString)
+{
+	const FString PartySessionId = Target.NativeResult.Session.SessionInfo.IsValid() ? Target.NativeResult.Session.SessionInfo->GetSessionId().ToString() : FString();
+	if (!GetContext().Party.ConnectToLeader(ConnectString, PartySessionId, FEasyPartyConnectComplete::CreateSP(this, &FEasySessionJoinRequest::HandleConnectComplete)))
+	{
+		LeaveAndComplete(EEasySessionResult::ResolveFailure, TEXT("Could not reach the party leader."));
+		return;
+	}
+
+	TimeoutHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateSP(this, &FEasySessionJoinRequest::HandleTimeout), LoginTimeoutSeconds);
+}
+
+void FEasySessionJoinRequest::HandleConnectComplete(bool bSuccess, const FText& Reason)
+{
+	if (!IsRunning())
+	{
+		return;
+	}
+
+	if (!bSuccess)
+	{
+		LeaveAndComplete(EEasySessionResult::JoinRefused, Reason.ToString());
+		return;
+	}
+
+	UE_LOG(LogEasySession, Log, TEXT("Joined the party."));
+	Complete(EEasySessionResult::Success);
+}
+
+bool FEasySessionJoinRequest::HandleTimeout(float DeltaTime)
+{
+	TimeoutHandle.Reset();
+	if (IsRunning())
+	{
+		LeaveAndComplete(EEasySessionResult::JoinRefused, TEXT("The party leader did not answer."));
+	}
+	return false;
+}
+
+void FEasySessionJoinRequest::LeaveAndComplete(EEasySessionResult Result, const FString& ErrorMessage)
+{
+	FTSTicker::GetCoreTicker().RemoveTicker(TimeoutHandle);
+	TimeoutHandle.Reset();
+
+	// The joined session stays until it is destroyed, and a retry or the next matchmaking search result would fail against it.
+	if (IsPartyRequest())
+	{
+		GetContext().Party.Close();
+	}
+
+	RunSubRequest(MakeShared<FEasySessionDestroyRequest>(FEasySessionCompleteDelegate::CreateSPLambda(this,
+		[this, Result, ErrorMessage](EEasySessionResult /*DestroyResult*/, const FString& /*DestroyError*/)
+		{
+			Complete(Result, ErrorMessage);
+		})));
 }

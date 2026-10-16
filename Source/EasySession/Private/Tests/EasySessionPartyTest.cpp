@@ -100,10 +100,10 @@ namespace EasySessionPartyTest
 		return HostParams;
 	}
 
-	FEasyPartySettings MakePartySettings(bool bHidden, bool bUseJoinCode, int32 MaxMembers = 4)
+	FEasySessionSettings MakePartySettings(bool bHidden, bool bUseJoinCode, int32 MaxPlayers = 4)
 	{
-		FEasyPartySettings Settings;
-		Settings.MaxMembers = MaxMembers;
+		FEasySessionSettings Settings;
+		Settings.MaxPlayers = MaxPlayers;
 		Settings.bHidden = bHidden;
 		Settings.bUseJoinCode = bUseJoinCode;
 		return Settings;
@@ -201,13 +201,14 @@ bool FEasySessionPartyLifecycleStep::Update()
 				EasySession::GetAdvertisedSessionType(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession).Session.SessionSettings), NAME_PartySession);
 			CurrentTest->TestEqual(TEXT("A join code party is hidden from plain searches"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
 			CurrentTest->TestEqual(TEXT("The party advertises a six character code"), Subsystem->GetPartyJoinCode().Len(), 6);
-			CurrentTest->TestEqual(TEXT("The party reads back its max members"), Subsystem->GetPartySettings().MaxMembers, 3);
+			CurrentTest->TestEqual(TEXT("The party reads back its max players"), Subsystem->GetPartySettings().MaxPlayers, 3);
+			CurrentTest->TestEqual(TEXT("A party with no name is named after its leader"), Subsystem->GetPartySettings().SessionDisplayName, GetIdentity(State)->GetPlayerNickname(0));
 			CurrentTest->TestEqual(TEXT("The leader takes a slot"), FEasySessionSearchResult::FromNative(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession)).OpenSlots, 2);
 			CurrentTest->TestTrue(TEXT("The party reads back as hidden"), Subsystem->GetPartySettings().bHidden);
 			CurrentTest->TestTrue(TEXT("The party reads back its join code"), Subsystem->GetPartySettings().bUseJoinCode);
 			CurrentTest->TestTrue(TEXT("The party code is not a game session code"), Subsystem->GetSessionJoinCode().IsEmpty());
 
-			Subsystem->CreateParty(FEasyPartySettings(), MakeCallback(State));
+			Subsystem->CreateParty(FEasySessionSettings(), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -284,7 +285,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 			CurrentTest->TestEqual(TEXT("Leaving without a party fails"), State->PendingResult.GetValue(), EEasySessionResult::NoSessionExists);
 			CurrentTest->TestEqual(TEXT("A leave that found no party reports nothing"), State->Listener->PartyLeftReasons.Num(), 1);
 
-			Subsystem->CreateParty(MakePartySettings(false, false, 1), MakeCallback(State));
+			Subsystem->CreateParty(MakePartySettings(false, false, 0), MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -296,26 +297,59 @@ bool FEasySessionPartyLifecycleStep::Update()
 				return TimedOut(State, TEXT("the invalid party create"));
 			}
 
-			CurrentTest->TestEqual(TEXT("A party of one is refused"), State->PendingResult.GetValue(), EEasySessionResult::InvalidParams);
+			CurrentTest->TestEqual(TEXT("A party with no room is refused"), State->PendingResult.GetValue(), EEasySessionResult::InvalidParams);
 
-			Subsystem->CreateSession(MakeHostParams(), MakeCallback(State));
+			FEasySessionSettings Locked = MakePartySettings(false, false);
+			Locked.Password = TEXT("secret");
+			Subsystem->CreateParty(Locked, MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
 
 		case 8:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet())
 			{
-				return TimedOut(State, TEXT("the game session create"));
+				return TimedOut(State, TEXT("the password party create"));
 			}
 
-			Subsystem->CreateParty(FEasyPartySettings(), MakeCallback(State));
+			CurrentTest->TestEqual(TEXT("A party with a password is refused"), State->PendingResult.GetValue(), EEasySessionResult::InvalidParams);
+
+			FEasySessionSettings Unlisted = MakePartySettings(false, false);
+			Unlisted.bShouldAdvertise = false;
+			Subsystem->CreateParty(Unlisted, MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
 
 		case 9:
+		{
+			if (!State->PendingResult.IsSet())
+			{
+				return TimedOut(State, TEXT("the unadvertised party create"));
+			}
+
+			CurrentTest->TestEqual(TEXT("An unadvertised party is refused"), State->PendingResult.GetValue(), EEasySessionResult::InvalidParams);
+			CurrentTest->TestFalse(TEXT("No party exists after the refusals"), Subsystem->IsInParty());
+
+			Subsystem->CreateSession(MakeHostParams(), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 10:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the game session create"));
+			}
+
+			Subsystem->CreateParty(FEasySessionSettings(), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 11:
 		{
 			if (!State->PendingResult.IsSet())
 			{
@@ -345,7 +379,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 
 /**
  * A party is created with the local player as its leader and only member, and LeaveParty closes the party beacon and reports Left.
- * A second party, a party of one and a party inside a game session are refused.
+ * A second party, a party with no room, a party with a password, an unadvertised party and a party inside a game session are refused.
  * A search for game sessions skips the party even when the online subsystem returns it.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyLifecycleTest, "EasySession.Party.CreateAndLeave", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

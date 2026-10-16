@@ -48,11 +48,10 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Session authority only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Session authority only |
 | **Update Easy Session** | `NewSettings` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` from a `FEasySessionSettings` and re-advertises. The struct holds exactly the fields a live session can change, so there is nothing here that gets ignored. Session authority only |
-| **Destroy Easy Session** | - | Calls `DestroySession`: removes this game's named session and stays on the current map. Both the host and the client can host or join again right after |
-| **Leave Easy Session** | - | Destroy Easy Session plus the trip home: destroys the named session, then returns to the menu map (Game Default Map). A leaving host closes the session for everyone with "The host has left the game." |
+| **Leave Easy Session** | - | Calls `LeaveSession`: destroys this game's named session, then returns to the menu map (Game Default Map). A leaving host closes the session for everyone with "The host has left the game." |
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: in a lobby of this game, then playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
-| **Create Easy Party** | `PartySettings` | Creates a party with the local player as its leader. Nothing travels ([guide](Guide-Party.en.md)) |
+| **Create Easy Party** | `Settings` | Creates a party with the local player as its leader, advertising the given Easy Session Settings. Nothing travels ([guide](Guide-Party.en.md)) |
 | **Find Easy Parties** | `SearchParams` | Lists the Public parties, or with a Join Code the one party that advertises it. Only parties come back |
 | **Join Easy Party** | `SearchResult` | Joins a party Find Easy Parties returned. The leader decides, and a refusal fails with `JoinRefused` and the leader's reason |
 | **Leave Easy Party** | - | Leaves the party. A leader who leaves ends it for every member |
@@ -127,7 +126,7 @@ node name without spaces.
 | Is In Easy Party | `IsInParty` | Is the local player in a party |
 | Is Easy Party Leader | `IsPartyLeader` | Does the local player lead the party. False outside a party |
 | Get Easy Party Members | `GetPartyMembers` | Every member, the leader included, with leader, local-player and ready flags |
-| Get Easy Party Settings | `GetPartySettings` | Max Members, Hidden and Use Join Code of the party, on the leader and on every member. Default settings outside a party |
+| Get Easy Party Settings | `GetPartySettings` | The Easy Session Settings the party advertises, on the leader and on every member. Default settings outside a party |
 | Get Easy Party Join Code | `GetPartyJoinCode` | The code a Join Code party advertises, or empty |
 | Is Easy Party Restoring | `IsRestoringParty` | Is the party of the last match being created again or looked for. Show a waiting message while it is true |
 
@@ -236,7 +235,8 @@ A widget whose parent class is taken binds them with Assign nodes on `Get Easy S
 `SessionDisplayName` (String), `MaxPlayers` (int), `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `Region` (`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings` (Map String->String)
 
 What a session advertises about itself. `Update Easy Session` takes exactly this struct,
-so every field here is one a live session can change. On a client, `Get Easy Session Settings` leaves `Password` empty and `bFriendsBypassPassword` false, because only the host holds them.
+so every field here is one a live session can change. `Create Easy Party` takes it too, because a party is a session as well ([party guide](Guide-Party.en.md#create-a-party)).
+An empty `SessionDisplayName` names the session after the player who creates it. On a client, `Get Easy Session Settings` leaves `Password` empty and `bFriendsBypassPassword` false, because only the host holds them.
 
 ### 5.2 FEasySessionHostParams *(FEasySessionSettings plus)*
 `InitialMapName` (String, required), `bIsLANMatch`, `bUsePresence`, `AdditionalTravelOptions` (String)
@@ -244,7 +244,7 @@ so every field here is one a live session can change. On a client, `Get Easy Ses
 Hosting is the settings above plus how to bring the server up. These added fields are
 read once, while the session is created, which is why Update cannot change them.
 The rule for the two names: Settings are what a session or a party advertises and can be read back, and HostParams adds what starting a server needs.
-A party starts no server, so it has Settings only ([5.9](#59-feasypartysettings)).
+A party starts no server, so `Create Easy Party` takes Settings alone.
 
 Field behavior is in the [session guide](Guide-Sessions.en.md). `bHidden` advertises the
 session but keeps it out of Find results, so it can only be reached through an invite.
@@ -287,12 +287,7 @@ It is also set for a friend who is only in a party, and a search for that friend
 ### 5.8 FEasyDisconnectInfo *(read-only)*
 `Reason` (`EEasyDisconnectReason`), `ReasonText` (Text)
 
-### 5.9 FEasyPartySettings
-`MaxMembers` (int, at least 2, the leader included), `bHidden` (bool, default true: left out of the Find Easy Parties list), `bUseJoinCode` (bool, default false: advertise a join code)
-
-What `Create Easy Party` takes and `Get Easy Party Settings` returns. A party has no map, password, region or custom data, so these three fields are all of it. `bHidden` and `bUseJoinCode` work like the same fields of a game session, and neither refuses a player ([guide](Guide-Party.en.md#who-may-join)).
-
-### 5.10 FEasyPartyMemberInfo *(read-only)*
+### 5.9 FEasyPartyMemberInfo *(read-only)*
 `PlayerName`, `bIsLocalPlayer`, `bIsLeader`, `bIsReady`, `PlayerId`
 
 Returned by `Get Easy Party Members`; pass one to `Kick Easy Party Member`.
@@ -418,6 +413,6 @@ Sessions: `EasySession.Host <Map>`, `EasySession.Find`, `EasySession.Join [Index
 
 Players: `EasySession.Players` (numbered for Kick), `EasySession.Kick <Index> [Reason]`, `EasySession.Ready <0|1>`
 
-Party: `EasySession.CreateParty [MaxMembers] [public] [code]`, `EasySession.LeaveParty`, `EasySession.Party` (members and join code), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
+Party: `EasySession.CreateParty [MaxPlayers] [hidden] [code]`, `EasySession.LeaveParty`, `EasySession.Party` (members and join code), `EasySession.PartyReady <0|1>`, `EasySession.FindParties [Code]`, `EasySession.JoinParty [Index]`, `EasySession.KickParty <Index> [Reason]`
 
 Friends and diagnostics: `EasySession.Friends`, `EasySession.InviteUI`, `EasySession.PartyInviteUI`, `EasySession.Diagnose`

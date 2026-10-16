@@ -29,7 +29,8 @@ class FEasySessionFindRequest final : public FEasySessionRequest
 
 public:
 
-	FEasySessionFindRequest(const FEasySessionSearchParams& InSearchParams, FEasySessionFindCompleteDelegate InOnFindComplete);
+	/** @param InSessionName The kind of session to search for. None searches for the game session, or for the parent's kind as a sub-request. */
+	FEasySessionFindRequest(const FEasySessionSearchParams& InSearchParams, FEasySessionFindCompleteDelegate InOnFindComplete, FName InSessionName = NAME_None);
 
 protected:
 

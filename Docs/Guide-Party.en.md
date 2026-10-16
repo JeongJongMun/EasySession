@@ -15,13 +15,20 @@ A party is optional. A game that never creates one works exactly as before, and 
 
 ## Create a party
 
-`Create Easy Party` with `FEasyPartySettings`:
+`Create Easy Party` with `FEasySessionSettings`, the struct a game session advertises as well:
 
 | Field | Default | Notes |
 |---|---|---|
-| Max Members | 4 | How many players the party holds, the leader included. At least 2 |
-| Hidden | true | Left out of the `Find Easy Parties` list, see [who may join](#who-may-join) below |
+| Session Display Name | (empty) | Shown in `Find Easy Parties` results. Empty names the party after its leader |
+| Max Players | 4 | How many players the party holds, the leader included |
+| Hidden | false | Left out of the `Find Easy Parties` list, see [who may join](#who-may-join) below |
 | Use Join Code | false | Advertise a six character code that finds the party |
+| Allow Invites | true | Whether members can invite friends to the party |
+| Custom Settings | (empty) | Key-value data advertised with the party, read back with `Get Easy Party Settings` |
+| Password | (empty) | A party has no password, so a non-empty one fails the create with `InvalidParams`. Hide the party or share its join code instead |
+| Should Advertise | true | Every party is advertised, so members find it again after a match. Off fails the create with `InvalidParams`. Use Hidden instead |
+
+Region and Allow Join In Progress are advertised as given and change nothing for a party.
 
 The local player becomes the leader. Creating needs a player logged in to the online subsystem, because members are told apart by their ids. NULL logs in on its own, and Steam logs in the Steam user.
 
@@ -52,7 +59,7 @@ A party with `Use Join Code` advertises a generated six character code. `Get Eas
 
 - With an empty `Join Code`, it lists the parties that are not hidden.
 - With a `Join Code`, it returns the one party that advertises that code, hidden or not.
-- Each result's `Session Display Name` and `Host Name` are the leader's name. `Max Players` and `Open Slots` count members.
+- Each result's `Host Name` is the leader's name, and `Session Display Name` is the party's name: the leader's name unless the leader set one. `Max Players` and `Open Slots` count members.
 - Parties advertise no region, custom settings or match state, so `Region`, `Required Custom Settings` and `Include In Progress Sessions` are ignored. The search params a game uses for game sessions work here too.
 
 `Join Easy Party` takes one of those results. The leader decides the join, and a refusal fails the node with `JoinRefused` and the leader's reason, for example "The party is full." or "The party leader removed you from this party.". On success `Get Easy Party Members` already lists the local player.

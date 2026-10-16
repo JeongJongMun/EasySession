@@ -15,13 +15,20 @@
 
 ## 파티 만들기
 
-`Create Easy Party`에 `FEasyPartySettings`를 넘깁니다.
+`Create Easy Party`에 `FEasySessionSettings`를 넘깁니다. 게임 세션이 광고하는 것과 같은 구조체입니다.
 
 | 필드 | 기본값 | 설명 |
 |---|---|---|
-| Max Members | 4 | 리더를 포함해 파티가 담을 인원. 2 이상 |
-| Hidden | true | `Find Easy Parties` 목록에서 뺍니다. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
+| Session Display Name | (비어 있음) | `Find Easy Parties` 결과에 보이는 이름. 비어 있으면 리더 이름이 됩니다 |
+| Max Players | 4 | 리더를 포함해 파티가 담을 인원 |
+| Hidden | false | `Find Easy Parties` 목록에서 뺍니다. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
 | Use Join Code | false | 파티를 찾을 수 있는 6자리 코드를 광고합니다 |
+| Allow Invites | true | 멤버가 친구를 파티에 초대할 수 있는지 |
+| Custom Settings | (비어 있음) | 파티와 함께 광고하는 키-값 데이터. `Get Easy Party Settings`로 되읽습니다 |
+| Password | (비어 있음) | 파티에는 비밀번호가 없어서, 값을 넣으면 생성이 `InvalidParams`로 실패합니다. 대신 파티를 숨기거나 참가 코드를 공유하세요 |
+| Should Advertise | true | 파티는 항상 광고됩니다. 경기 뒤 멤버가 파티를 다시 찾는 데 필요해서, 끄면 생성이 `InvalidParams`로 실패합니다. 대신 Hidden을 쓰세요 |
+
+Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 아무것도 바꾸지 않습니다.
 
 로컬 플레이어가 리더가 됩니다. 멤버를 id로 구분하기 때문에, 온라인 서브시스템에 로그인한 플레이어가 있어야 만들 수 있습니다. NULL은 알아서 로그인하고, 스팀은 스팀 사용자로 로그인합니다.
 
@@ -52,7 +59,7 @@
 
 - `Join Code`가 비어 있으면 숨기지 않은 파티를 나열합니다.
 - `Join Code`가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 숨긴 파티도 찾습니다.
-- 결과의 `Session Display Name`과 `Host Name`은 리더 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
+- 결과의 `Host Name`은 리더 이름이고, `Session Display Name`은 파티 이름입니다. 리더가 이름을 정하지 않았으면 리더 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
 - 파티는 지역, 커스텀 세팅, 매치 상태를 광고하지 않으므로 `Region`, `Required Custom Settings`, `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
 
 `Join Easy Party`에 그 결과 하나를 넘깁니다. 참가는 리더가 정하고, 거절되면 노드가 `JoinRefused`와 리더의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party leader removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.

@@ -9,13 +9,11 @@
 #include "EasySessionBeaconPort.h"
 #include "EasySessionHost.h"
 #include "EasySessionMatchmakingRequest.h"
-#include "EasySessionCreatePartyRequest.h"
 #include "EasySessionCreateRequest.h"
 #include "EasySessionDestroyRequest.h"
 #include "EasySessionFindRequest.h"
-#include "EasySessionJoinPartyRequest.h"
 #include "EasySessionJoinRequest.h"
-#include "EasySessionLeavePartyRequest.h"
+#include "EasySessionLeaveRequest.h"
 #include "EasySessionMatchStateRequest.h"
 #include "EasySessionOnlineSession.h"
 #include "EasySessionParty.h"
@@ -194,20 +192,8 @@ void UEasySessionSubsystem::DestroySession(FEasySessionCompleteDelegate OnComple
 
 void UEasySessionSubsystem::LeaveSession(FEasySessionCompleteDelegate OnComplete)
 {
-	// A leaving host takes the session with it. Destroying it for everyone tells each client why before the connection closes.
-	if (IsSessionAuthority())
-	{
-		DestroySessionForEveryone(EasySession::GetHostLeftSessionReason(), MoveTemp(OnComplete));
-		return;
-	}
-
-	DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
-		{
-			// Requested before the completion below, the same order every travel in this plugin uses.
-			Travel->ReturnToMainMenu();
-			OnComplete.ExecuteIfBound(Result, ErrorMessage);
-		}));
+	// A leaving host takes the session with it, and the request tells each client why before the connection closes.
+	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EasySession::GetHostLeftSessionReason(), MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
@@ -220,17 +206,7 @@ void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySession
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *Reason.ToString());
-
-	// Send every remote client the reason before the session is destroyed.
-	Host->TellEveryoneToReturnToMainMenu(Reason);
-
-	DestroySession(FEasySessionCompleteDelegate::CreateWeakLambda(this,
-		[this, OnComplete](EEasySessionResult Result, const FString& ErrorMessage)
-		{
-			Travel->ReturnToMainMenu();
-			OnComplete.ExecuteIfBound(Result, ErrorMessage);
-		}));
+	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(Reason, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::UpdateSession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete)
@@ -331,27 +307,27 @@ void UEasySessionSubsystem::CancelMatchmaking()
 	}
 }
 
-void UEasySessionSubsystem::CreateParty(const FEasyPartySettings& PartySettings, FEasySessionCompleteDelegate OnComplete)
+void UEasySessionSubsystem::CreateParty(const FEasySessionSettings& Settings, FEasySessionCompleteDelegate OnComplete)
 {
 	Party->CancelRestore();
-	EnqueueRequest(MakeShared<FEasySessionCreatePartyRequest>(PartySettings, MoveTemp(OnComplete)), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(Settings, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::FindParties(const FEasySessionSearchParams& SearchParams, FEasySessionFindCompleteDelegate OnComplete)
 {
-	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete)), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionFindRequest>(SearchParams, MoveTemp(OnComplete), NAME_PartySession));
 }
 
 void UEasySessionSubsystem::JoinParty(const FEasySessionSearchResult& SearchResult, FEasySessionCompleteDelegate OnComplete)
 {
 	Party->CancelRestore();
-	EnqueueRequest(MakeShared<FEasySessionJoinPartyRequest>(SearchResult, MoveTemp(OnComplete)), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionJoinRequest>(SearchResult, MoveTemp(OnComplete)));
 }
 
 void UEasySessionSubsystem::LeaveParty(FEasySessionCompleteDelegate OnComplete)
 {
 	Party->CancelRestore();
-	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)));
 }
 
 EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason)
@@ -384,28 +360,21 @@ bool UEasySessionSubsystem::IsRestoringParty() const
 	return Party->IsRestoring();
 }
 
-FEasyPartySettings UEasySessionSubsystem::GetPartySettings() const
+FEasySessionSettings UEasySessionSubsystem::GetPartySettings() const
 {
-	FEasyPartySettings PartySettings;
+	FEasySessionSettings Settings;
 
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
 	if (NamedSession == nullptr)
 	{
-		return PartySettings;
+		return Settings;
 	}
 
-	PartySettings.MaxMembers = NamedSession->SessionSettings.NumPublicConnections;
-
 	// Only the leader holds the settings it created the party with, so every member reads them back from the advertised keys.
-	int32 Hidden = 0;
-	FString JoinCode;
-	NamedSession->SessionSettings.Get(EasySession::SettingKey_Hidden, Hidden);
-	NamedSession->SessionSettings.Get(EasySession::SettingKey_JoinCode, JoinCode);
-	PartySettings.bHidden = Hidden != 0;
-	PartySettings.bUseJoinCode = !JoinCode.IsEmpty();
+	Settings.ReadFrom(NamedSession->SessionSettings);
 
-	return PartySettings;
+	return Settings;
 }
 
 FString UEasySessionSubsystem::GetPartyJoinCode() const
@@ -762,18 +731,18 @@ void UEasySessionSubsystem::FollowHost(const FUniqueNetIdRepl& HostId, bool bLAN
 
 void UEasySessionSubsystem::HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText)
 {
-	// A LeaveParty request already on the queue destroys the party session, and its own reason is the one the player asked for.
-	if (RequestQueue->Find(FEasySessionRequest::EType::LeaveParty).IsValid())
+	// A leave of the party already on the queue destroys the party session, and its own reason is the one the player asked for.
+	if (RequestQueue->Find(FEasySessionRequest::EType::Leave, NAME_PartySession).IsValid())
 	{
 		return;
 	}
 
-	EnqueueRequest(MakeShared<FEasySessionLeavePartyRequest>(Reason, ReasonText, FEasySessionCompleteDelegate()), NAME_PartySession);
+	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(Reason, ReasonText, FEasySessionCompleteDelegate()));
 }
 
 void UEasySessionSubsystem::EnqueuePartyRequest(TSharedRef<FEasySessionRequest> Request)
 {
-	EnqueueRequest(Request, NAME_PartySession);
+	EnqueueRequest(Request);
 }
 
 void UEasySessionSubsystem::HandleSessionPlayersChanged()
@@ -849,10 +818,10 @@ IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 	return Online::GetSessionInterface(GetWorld());
 }
 
-void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request, FName SessionName)
+void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
 {
-	// The request and its sub-requests pass this name to every session interface call, so a party request creates, joins or destroys the party session.
-	Request->Initialize(*RequestContext, SessionName);
+	// A party request names the party session itself, and every other request and its sub-requests pass the game session to the session interface.
+	Request->Initialize(*RequestContext, NAME_GameSession);
 
 	// Without the EasySession online session the engine would travel to the menu before a lost session is destroyed, so the request is refused.
 	if (Cast<UEasySessionOnlineSession>(GetGameInstance()->GetOnlineSession()) == nullptr)

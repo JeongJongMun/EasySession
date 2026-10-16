@@ -11,8 +11,8 @@
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
 
-FEasySessionFindRequest::FEasySessionFindRequest(const FEasySessionSearchParams& InSearchParams, FEasySessionFindCompleteDelegate InOnFindComplete)
-	: FEasySessionRequest(EType::Find)
+FEasySessionFindRequest::FEasySessionFindRequest(const FEasySessionSearchParams& InSearchParams, FEasySessionFindCompleteDelegate InOnFindComplete, FName InSessionName)
+	: FEasySessionRequest(EType::Find, InSessionName)
 	, SearchParams(InSearchParams)
 	, OnFindComplete(MoveTemp(InOnFindComplete))
 {

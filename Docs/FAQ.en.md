@@ -111,7 +111,7 @@ Calling `Find Easy Sessions` several times in a row is not the problem - EasySes
 
 ## "SessionAlreadyExists - but I don't think I'm in a session?"
 
-You are - probably a leftover from a previous failed flow. Call `Destroy Easy Session` first (safe even mid-confusion), then retry. EasySession also auto-destroys dead sessions when the network connection fails, so this mostly happens after non-network logic bugs (e.g. double hosting).
+You are - probably a leftover from a previous failed flow. Call `Leave Easy Session` first, which destroys it and takes the player to the menu, then retry from there. EasySession also auto-destroys dead sessions when the network connection fails, so this mostly happens after non-network logic bugs (e.g. double hosting).
 
 ## "I press Create (or Join, or Matchmaking) in a party and nothing happens"
 

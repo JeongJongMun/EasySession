@@ -144,12 +144,12 @@ public:
 	static bool IsEasyPartyRestoring(const UObject* WorldContextObject);
 
 	/**
-	 * The settings the party advertises, as Create Easy Party set them: how many players it holds, whether it is hidden, and whether it uses a join code.
-	 * Works for the leader and every member, for example to show the party as 2/4.
+	 * The settings the party advertises, as Create Easy Party set them, on the leader and on every member.
+	 * Use it to show the party as 2/4.
 	 * Default settings outside a party.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
-	static FEasyPartySettings GetEasyPartySettings(const UObject* WorldContextObject);
+	static FEasySessionSettings GetEasyPartySettings(const UObject* WorldContextObject);
 
 	/**
 	 * The join code the party advertises.

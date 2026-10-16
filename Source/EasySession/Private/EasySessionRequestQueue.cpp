@@ -59,16 +59,21 @@ TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::GetBusyRequest() const
 	return nullptr;
 }
 
-TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::Find(FEasySessionRequest::EType Type) const
+TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::Find(FEasySessionRequest::EType Type, FName SessionName) const
 {
-	if (ActiveRequest.IsValid() && ActiveRequest->Type == Type && !ActiveRequest->HasNotified())
+	const auto Matches = [Type, SessionName](const FEasySessionRequest& Request)
+	{
+		return Request.Type == Type && !Request.HasNotified() && (SessionName.IsNone() || Request.GetSessionName() == SessionName);
+	};
+
+	if (ActiveRequest.IsValid() && Matches(*ActiveRequest))
 	{
 		return ActiveRequest;
 	}
 
 	for (const TSharedRef<FEasySessionRequest>& Request : Pending)
 	{
-		if (Request->Type == Type && !Request->HasNotified())
+		if (Matches(*Request))
 		{
 			return Request;
 		}

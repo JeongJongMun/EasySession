@@ -9,9 +9,10 @@
  * FEasySessionDestroyRequest destroys the session named by SessionName: the game session, or the party session for a party request.
  * On success for the game session, the host side of the session and the state a client received through replication are cleared.
  *
- * The subsystem creates it for DestroySession, which LeaveSession, DestroySessionForEveryone and HandleDisconnect call.
- * Join and matchmaking run it as a sub-request to destroy the current game session, or the one they joined or hosted.
- * CreateParty, JoinParty and LeaveParty run it as a sub-request to destroy the party session.
+ * The subsystem creates it for DestroySession and HandleDisconnect.
+ * Leave runs it as a sub-request for the game session or the party session.
+ * Join and matchmaking run it to destroy the current game session, or the one they joined or hosted.
+ * Create and Join run it to remove a party again.
  */
 class FEasySessionDestroyRequest final : public FEasySessionRequest
 {

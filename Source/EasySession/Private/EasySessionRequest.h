@@ -40,17 +40,20 @@ struct FEasySessionRequestContext
 /** What a request does. The queue reads it for the activity, the status line and the checks for a request that is already running. */
 enum class EEasySessionRequestType : uint8
 {
-	/** Create the session and travel the host to its map. */
+	/** Create the game session and travel the host to its map, or create the party session and start the party beacon. */
 	Create,
 
 	/** Search for sessions. */
 	Find,
 
-	/** Join a session and travel to its host. */
+	/** Join a game session and travel to its host, or join a party session and log in on the leader's party beacon. */
 	Join,
 
 	/** Destroy the game session, or the party session for a party request. */
 	Destroy,
+
+	/** Leave the game session and travel to the Game Default Map, or close the party beacon and leave the party. */
+	Leave,
 
 	/** Advertise new session settings. */
 	Update,
@@ -62,16 +65,7 @@ enum class EEasySessionRequestType : uint8
 	End,
 
 	/** One matchmaking run: searches and joins, then a host fallback. */
-	Matchmaking,
-
-	/** Create the party session and start the party beacon. */
-	CreateParty,
-
-	/** Join a party session and log in on the leader's party beacon. */
-	JoinParty,
-
-	/** Close the party beacon and destroy the party session. */
-	LeaveParty
+	Matchmaking
 };
 
 /**
@@ -108,8 +102,13 @@ public:
 	/** Removes the ticker that starts a sub-request on the next tick. */
 	virtual ~FEasySessionRequest();
 
-	/** Give the request what it may use and the session it acts on. Called before the request is enqueued or run as a sub-request. */
-	void Initialize(FEasySessionRequestContext& InContext, FName InSessionName);
+	/**
+	 * Give the request its FEasySessionRequestContext and its default session name. Called before the request is enqueued or run as a sub-request.
+	 *
+	 * @param DefaultSessionName The session a request that named none passes to the session interface.
+	 *        The game session from the queue, or the parent's session for a sub-request.
+	 */
+	void Initialize(FEasySessionRequestContext& InContext, FName DefaultSessionName);
 
 	/**
 	 * Run the request.
@@ -162,14 +161,23 @@ public:
 	/** @return The status line text of this request and its running sub-requests, e.g. "Matchmaking (Searching, 12s) > Find (running 1.2s)". */
 	FString GetStatusText() const;
 
+	/** @return The session this request passes to the session interface. Only valid after Initialize for a request that named none. */
+	FName GetSessionName() const { return SessionName; }
+
 	/** What this request does. */
 	const EType Type;
 
 protected:
 
-	/** Only the request classes construct a request. */
-	explicit FEasySessionRequest(EType InType)
+	/**
+	 * Only the request classes construct a request.
+	 *
+	 * @param InSessionName The session the request passes to the session interface, for a request made for one kind of session.
+	 *        None takes the default Initialize gives.
+	 */
+	explicit FEasySessionRequest(EType InType, FName InSessionName = NAME_None)
 		: Type(InType)
+		, SessionName(InSessionName)
 	{
 	}
 
@@ -222,6 +230,9 @@ protected:
 	/** @return The session interface of the online subsystem. Null when no online subsystem is loaded. Only valid after Initialize. */
 	IOnlineSessionPtr GetSessionInterface() const;
 
+	/** @return Whether this request names the party session rather than the game session. */
+	bool IsPartyRequest() const;
+
 	/** @return Whether the online subsystem is NULL, which only does LAN, so LAN is forced on. Only valid after Initialize. */
 	bool ShouldForceLAN() const;
 
@@ -236,9 +247,9 @@ protected:
 	void TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery) const;
 
 	/**
-	 * The session this request and its sub-requests act on.
-	 * Set by Initialize and constant afterwards.
-	 * It is the game session, except for the party requests, which act on the party session.
+	 * The session this request and its sub-requests pass to every session interface call.
+	 * A request made for one kind of session names it in its constructor, and Initialize gives every other request its default.
+	 * Constant once the request runs.
 	 */
 	FName SessionName;
 

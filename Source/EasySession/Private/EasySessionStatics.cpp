@@ -131,10 +131,10 @@ bool UEasySessionStatics::IsEasyPartyRestoring(const UObject* WorldContextObject
 	return Subsystem != nullptr && Subsystem->IsRestoringParty();
 }
 
-FEasyPartySettings UEasySessionStatics::GetEasyPartySettings(const UObject* WorldContextObject)
+FEasySessionSettings UEasySessionStatics::GetEasyPartySettings(const UObject* WorldContextObject)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr ? Subsystem->GetPartySettings() : FEasyPartySettings();
+	return Subsystem != nullptr ? Subsystem->GetPartySettings() : FEasySessionSettings();
 }
 
 FString UEasySessionStatics::GetEasyPartyJoinCode(const UObject* WorldContextObject)

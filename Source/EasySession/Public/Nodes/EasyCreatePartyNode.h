@@ -30,10 +30,11 @@ public:
 	 * A party lives outside game sessions and needs no map, so nothing travels.
 	 * It fails with Session Already Exists in a game session or a party, so call Leave Easy Session or Leave Easy Party first.
 	 *
-	 * @param PartySettings How many players the party holds, whether Find Easy Parties lists it, and whether it advertises a join code.
+	 * @param PartySettings What the party advertises. Max Players counts the leader.
+	 *        A Password or Should Advertise off is refused with Invalid Params, because a party has no password and members find it again by its leader.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Create Easy Party", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "PartySettings"))
-	static UEasyCreatePartyNode* CreateEasyParty(UObject* WorldContextObject, const FEasyPartySettings& PartySettings);
+	static UEasyCreatePartyNode* CreateEasyParty(UObject* WorldContextObject, const FEasySessionSettings& PartySettings);
 
 	//~ Begin UBlueprintAsyncActionBase Interface
 	virtual void Activate() override;
@@ -44,6 +45,6 @@ private:
 	/** Called when the subsystem finishes the create request. */
 	void HandleComplete(EEasySessionResult Result, const FString& ErrorMessage);
 
-	/** Parameters to create the party with. */
-	FEasyPartySettings PartySettings;
+	/** The settings to create the party with. */
+	FEasySessionSettings PartySettings;
 };

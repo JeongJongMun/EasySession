@@ -10,6 +10,7 @@
 #include "Engine/GameInstance.h"
 #include "HAL/PlatformTime.h"
 #include "OnlineSubsystem.h"
+#include "Online/OnlineSessionNames.h"
 #include "OnlineSubsystemNames.h"
 #include "OnlineSubsystemUtils.h"
 
@@ -22,10 +23,13 @@ FEasySessionRequest::~FEasySessionRequest()
 	}
 }
 
-void FEasySessionRequest::Initialize(FEasySessionRequestContext& InContext, FName InSessionName)
+void FEasySessionRequest::Initialize(FEasySessionRequestContext& InContext, FName DefaultSessionName)
 {
 	Context = &InContext;
-	SessionName = InSessionName;
+	if (SessionName.IsNone())
+	{
+		SessionName = DefaultSessionName;
+	}
 }
 
 void FEasySessionRequest::Start()
@@ -132,13 +136,11 @@ EEasySessionActivity FEasySessionRequest::GetActivity() const
 		case EType::Find:			return EEasySessionActivity::Searching;
 		case EType::Join:			return EEasySessionActivity::Joining;
 		case EType::Destroy:		return EEasySessionActivity::Leaving;
+		case EType::Leave:			return EEasySessionActivity::Leaving;
 		case EType::Update:			return EEasySessionActivity::Updating;
 		case EType::Start:			return EEasySessionActivity::Starting;
 		case EType::End:			return EEasySessionActivity::Ending;
 		case EType::Matchmaking:	return EEasySessionActivity::Matchmaking;
-		case EType::CreateParty:	return EEasySessionActivity::Creating;
-		case EType::JoinParty:		return EEasySessionActivity::Joining;
-		case EType::LeaveParty:		return EEasySessionActivity::Leaving;
 		default:					return EEasySessionActivity::None;
 	}
 }
@@ -151,13 +153,11 @@ const TCHAR* FEasySessionRequest::GetTypeName() const
 		case EType::Find:			return TEXT("Find");
 		case EType::Join:			return TEXT("Join");
 		case EType::Destroy:		return TEXT("Destroy");
+		case EType::Leave:			return TEXT("Leave");
 		case EType::Update:			return TEXT("Update");
 		case EType::Start:			return TEXT("Start");
 		case EType::End:			return TEXT("End");
 		case EType::Matchmaking:	return TEXT("Matchmaking");
-		case EType::CreateParty:	return TEXT("CreateParty");
-		case EType::JoinParty:		return TEXT("JoinParty");
-		case EType::LeaveParty:		return TEXT("LeaveParty");
 		default:					return TEXT("Unknown");
 	}
 }
@@ -215,6 +215,11 @@ UWorld* FEasySessionRequest::GetWorld() const
 IOnlineSessionPtr FEasySessionRequest::GetSessionInterface() const
 {
 	return Online::GetSessionInterface(GetWorld());
+}
+
+bool FEasySessionRequest::IsPartyRequest() const
+{
+	return SessionName == NAME_PartySession;
 }
 
 bool FEasySessionRequest::ShouldForceLAN() const

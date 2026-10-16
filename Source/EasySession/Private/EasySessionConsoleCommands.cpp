@@ -16,7 +16,7 @@
 //   EasySession.Players         List the players in the session, numbered for EasySession.Kick.
 //   EasySession.Kick <Index> [Reason]  Kick a player listed by EasySession.Players (host only).
 //   EasySession.Ready <0|1>     Change whether the local player is ready in the session.
-//   EasySession.CreateParty [MaxMembers] [public] [code]  Create a party, hidden unless public.
+//   EasySession.CreateParty [MaxPlayers] [hidden] [code]  Create a party, listed unless hidden.
 //   EasySession.LeaveParty      Leave the party.
 //   EasySession.Party           List the members of the party.
 //   EasySession.PartyReady <0|1>  Change whether the local player is ready in the party.
@@ -318,21 +318,21 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GCreatePartyCommand(
 		TEXT("EasySession.CreateParty"),
-		TEXT("Create a party. Args: optional max members, then optional words: public to list it, code to advertise a join code."),
+		TEXT("Create a party. Args: optional max players, then optional words: hidden to keep it out of the list, code to advertise a join code."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
-				FEasyPartySettings PartySettings;
+				FEasySessionSettings PartySettings;
 				if (Args.Num() > 0)
 				{
-					PartySettings.MaxMembers = FCString::Atoi(*Args[0]);
+					PartySettings.MaxPlayers = FCString::Atoi(*Args[0]);
 				}
 				for (int32 Index = 1; Index < Args.Num(); ++Index)
 				{
-					if (Args[Index] == TEXT("public"))
+					if (Args[Index] == TEXT("hidden"))
 					{
-						PartySettings.bHidden = false;
+						PartySettings.bHidden = true;
 					}
 					else if (Args[Index] == TEXT("code"))
 					{
@@ -340,7 +340,7 @@ namespace EasySessionConsole
 					}
 				}
 
-				Print(FString::Printf(TEXT("Creating a party (max %d members)..."), PartySettings.MaxMembers));
+				Print(FString::Printf(TEXT("Creating a party (max %d players)..."), PartySettings.MaxPlayers));
 				Subsystem->CreateParty(PartySettings, MakePrintDelegate(TEXT("CreateParty")));
 			}
 		}));

@@ -270,8 +270,9 @@ public:
 	void EndSession(FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
-	 * Destroy the current session.
+	 * Destroy the current session and stay on the current map.
 	 * Without session authority, this destroys only this game's copy of the session.
+	 * Blueprint has no node for this, because a player who leaves wants Leave Easy Session, which destroys the session and travels to the menu.
 	 *
 	 * @param OnComplete Called when the request completes.
 	 */
@@ -362,10 +363,11 @@ public:
 	 * A party lives outside game sessions and needs no map, so nothing travels.
 	 * Needs a player logged in to the online subsystem, because members are told apart by their ids.
 	 *
-	 * @param PartySettings How many players the party holds, whether FindParties lists it, and whether it advertises a join code.
+	 * @param Settings What the party advertises. MaxPlayers counts the leader.
+	 *        A Password or bShouldAdvertise off is refused with InvalidParams, because a party has no password and members find it again by its leader.
 	 * @param OnComplete Called when the request completes.
 	 */
-	void CreateParty(const FEasyPartySettings& PartySettings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	void CreateParty(const FEasySessionSettings& Settings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
 	 * Search for parties.
@@ -429,10 +431,10 @@ public:
 	bool IsRestoringParty() const;
 
 	/**
-	 * @return The settings the party advertises: how many players it holds, whether it is hidden, and whether it uses a join code.
-	 *         Works for the leader and every member. Default settings outside a party.
+	 * @return The settings the party advertises, read back from the party session on the leader and on every member.
+	 *         Default settings outside a party.
 	 */
-	FEasyPartySettings GetPartySettings() const;
+	FEasySessionSettings GetPartySettings() const;
 
 	/**
 	 * @return The join code the party advertises, or empty when it uses none or there is no party.
@@ -692,10 +694,9 @@ private:
 
 	/**
 	 * Add a request to the queue and start processing if idle.
-	 *
-	 * @param SessionName The session the request acts on: the game session, or the party session for a party request.
+	 * A request that named no session passes the game session to the session interface.
 	 */
-	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request, FName SessionName = NAME_GameSession);
+	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/** Session state as derived from the local online subsystem session copy. */
 	EEasySessionState GetLocalSessionState() const;
