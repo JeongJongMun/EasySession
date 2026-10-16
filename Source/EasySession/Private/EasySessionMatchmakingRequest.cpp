@@ -71,8 +71,7 @@ void FEasySessionMatchmakingRequest::Execute()
 	RunStartTimeSeconds = FPlatformTime::Seconds();
 
 	// A run is meant for a player in no session, so a session the game's own Create or Join or an accepted invite made refuses the run instead of being destroyed.
-	// A follow starts inside a session on purpose, because its join destroys that session only after the reservation beacon approved the join.
-	// So does a host whose match has not started, because each of its joins takes the session's players along.
+	// A host whose match has not started is the exception, because each of its joins takes the session's players along.
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
 	// A party leader takes the party along too, and a party leader is never in a game session.
 	const bool bHostsLobby = GetContext().Subsystem.IsSessionAuthority() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
@@ -80,12 +79,12 @@ void FEasySessionMatchmakingRequest::Execute()
 	{
 		Params.Search.MinOpenSlots = FMath::Max(Params.Search.MinOpenSlots, GetGroupMembers().Num() + 1);
 	}
-	else if (!bFollowsHost && GetContext().Subsystem.IsSessionAuthority())
+	else if (GetContext().Subsystem.IsSessionAuthority())
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
 		return;
 	}
-	else if (!bFollowsHost && GetContext().Subsystem.IsInSession())
+	else if (GetContext().Subsystem.IsInSession())
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a session. Call Leave Easy Session first, or use Join Easy Session to switch to a session you found."));
 		return;

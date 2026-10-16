@@ -626,6 +626,10 @@ void FEasySessionParty::HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bL
 	}
 
 	UE_LOG(LogEasySession, Log, TEXT("The party leader takes the party to host '%s'."), *HostId.ToString());
+
+	// The member leaves the party as soon as it is told to follow, which tells the leader that the notice arrived.
+	// MovedToGameSession keeps the party to restore after the match, as when the leader closes it.
+	Owner.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
 	Owner.FollowHost(HostId, bLANQuery);
 }
 

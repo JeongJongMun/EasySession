@@ -739,6 +739,13 @@ void UEasySessionSubsystem::FollowHost(const FUniqueNetIdRepl& HostId, bool bLAN
 
 	UE_LOG(LogEasySession, Log, TEXT("Following host '%s'."), *HostId.ToString());
 
+	// A player in the lobby of a host who moves leaves that session at once and follows from the Game Default Map.
+	// The host leaves only after its players did, so this player never loses a session the follow is replacing.
+	if (IsInSession())
+	{
+		LeaveSession();
+	}
+
 	UEasyMatchmakingPolicy* Policy = NewObject<UEasyMatchmakingPolicy>(this);
 	EnqueueRequest(FEasySessionMatchmakingRequest::MakeFollow(HostId, bLANQuery, *Policy, FEasySessionCompleteDelegate::CreateWeakLambda(this,
 		[this](EEasySessionResult Result, const FString& ErrorMessage)

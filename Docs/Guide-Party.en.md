@@ -122,7 +122,7 @@ The leader uses the normal session nodes, and the party comes along:
 | `Join Easy Session` | The leader asks the host for room for the whole party. A session without room fails with `JoinSessionFull`, and nobody moves |
 | `Start Easy Matchmaking` | The search only considers sessions with room for the whole party |
 
-The members are told to follow and join the same session by themselves. Each member keeps searching for the leader's session for up to 30 seconds, because a new session appears only once the leader's map has loaded. A member needs no password: the leader's reservation already holds them.
+The members are told to follow and join the same session by themselves. Each member leaves the party as soon as it is told, which receives `OnPartyLeft` with `MovedToGameSession` and tells the leader the notice arrived. Each member keeps searching for the leader's session for up to 30 seconds, because a new session appears only once the leader's map has loaded. A member needs no password: the leader's reservation already holds them.
 
 A member who calls one of those three nodes is refused with `InParty`, and the log says why. Disable those buttons for members:
 

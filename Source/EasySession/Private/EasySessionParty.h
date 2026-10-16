@@ -170,7 +170,10 @@ private:
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
 
-	/** The leader takes the party into a game session. Calls FollowHost on the subsystem, and keeps MovedToGameSession as the reason the party ends. */
+	/**
+	 * The leader takes the party into a game session.
+	 * Leaves the party with MovedToGameSession, which tells the leader the notice arrived, then calls FollowHost.
+	 */
 	void HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
 	/** The leader finished the login of the local player. */

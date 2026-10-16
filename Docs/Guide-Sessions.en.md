@@ -141,7 +141,7 @@ The host of a session whose match has not started can take everyone along to ano
 | `Join Easy Session` | The host asks the new host for room for every player in its session. Without room the join fails with `JoinSessionFull`, and everyone stays |
 | `Start Easy Matchmaking` | The search only considers sessions with room for everyone. The host fallback is skipped, because the host is still in its own session, so a run that finds nothing completes with `NoSessionsFound` and everyone stays |
 
-The other players are told to follow, and each one keeps searching for the new session for up to 30 seconds. They need no password, because the host's reservation already holds them. The host waits up to 10 seconds for them to leave and then leaves too, so its session is not destroyed under them.
+The other players are told to follow. Each one leaves the lobby at once and returns to the Game Default Map, then searches there for the new session for up to 30 seconds, so the menu shows for a moment before the new session's map loads. They need no password, because the host's reservation already holds them. The host waits up to 10 seconds for them to leave and then leaves too.
 
 Only a host brings players. A client that joins another session leaves alone, once the new host approved the join. The host of a match in progress is refused with `SessionAlreadyExists`, because leaving would end the match for every player.
 

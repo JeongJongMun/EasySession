@@ -239,7 +239,7 @@ public:
 	 * A join that fails after that destroy travels the player to the menu.
 	 * Joining the session this player is already in fails with SessionAlreadyExists, and so does a join by the host of a match in progress.
 	 * A player in a session stays in it when the reservation beacon cannot reach the new host.
-	 * A party leader, or the host of a match that has not started, brings the group, which follows before this player joins.
+	 * A party leader, or the host of a match that has not started, brings the group, which is told to follow before this player joins.
 	 * A party member is refused with InParty.
 	 *
 	 * @param SearchResult A search result returned by FindSessions.
@@ -643,6 +643,7 @@ public:
 	/**
 	 * Internal, called when the party leader or the host tells this player to follow: join the session of a host who holds a reservation for this player.
 	 * Runs as a matchmaking run that searches for that host only, so the matchmaking events report its progress and CancelMatchmaking stops it.
+	 * A player in a game session leaves it first and follows from the Game Default Map, so the old host leaving never reaches this player.
 	 *
 	 * @param HostId The player who hosts the session to join.
 	 * @param bLANQuery Whether that session is a LAN session.

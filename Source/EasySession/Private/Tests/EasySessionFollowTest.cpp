@@ -25,7 +25,7 @@ namespace EasySessionFollowTest
 		/** The host's session to follow into. Its info is copied before it is destroyed, so the session the player then holds is a different one. */
 		FOnlineSessionSearchResult HostResult;
 
-		enum class EStep { AwaitingHostCreate, AwaitingHostDestroy, AwaitingCurrentCreate, AwaitingSearch, AwaitingJoin, AwaitingCancel, AwaitingCleanup };
+		enum class EStep { AwaitingHostCreate, AwaitingHostDestroy, AwaitingCurrentCreate, AwaitingLeave, AwaitingSearch, AwaitingJoin, AwaitingCancel };
 		EStep Step = EStep::AwaitingHostCreate;
 		double StartTime = 0.0;
 	};
@@ -107,11 +107,25 @@ bool FEasySessionFollowStep::Update()
 				return TimedOut(State, TEXT("the current create"));
 			}
 
-			// The player joined this session rather than hosting it, so only the follow may start a run from inside it.
+			// The player joined this lobby rather than hosting it, as a player told to follow its host has.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 			CurrentTest->TestFalse(TEXT("The player does not host the session it is in"), Subsystem->IsSessionAuthority());
 
 			Subsystem->FollowHost(State->HostResult.Session.OwningUserId, true);
+			MoveTo(State, FTestState::EStep::AwaitingLeave);
+			return false;
+		}
+
+		case FTestState::EStep::AwaitingLeave:
+		{
+			// The player leaves the lobby first, and then the follow runs.
+			if (Subsystem->IsInSession() || !Run.IsValid() || FEasySessionTestAccess::IsWaitingToTravelToGameDefaultMap(*Subsystem))
+			{
+				return TimedOut(State, TEXT("the player to leave the lobby"));
+			}
+
+			CurrentTest->TestTrue(TEXT("The player travels to the Game Default Map"), FEasySessionTestAccess::IsTraveling(*Subsystem));
+			CurrentTest->TestFalse(TEXT("Leaving to follow records no disconnect"), Subsystem->HasPendingDisconnectInfo());
 			MoveTo(State, FTestState::EStep::AwaitingSearch);
 			return false;
 		}
@@ -126,7 +140,7 @@ bool FEasySessionFollowStep::Update()
 					return TimedOut(State, TEXT("the follow's first search"));
 				}
 
-				CurrentTest->AddError(TEXT("The follow did not run while this player was in a session."));
+				CurrentTest->AddError(TEXT("The follow ended before it searched."));
 				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 				return true;
 			}
@@ -147,15 +161,14 @@ bool FEasySessionFollowStep::Update()
 
 		case FTestState::EStep::AwaitingJoin:
 		{
-			// The copied host session advertises no reservation beacon to check the password, so the join is refused.
-			// The player keeps its session, and the run moves on to its next pass.
+			// No reservation beacon answers for the copied host session, so the join is refused and the run moves on to its next pass.
 			if (!Run.IsValid() || FEasySessionTestAccess::GetFailedJoinCount(*Run) < 1)
 			{
 				return TimedOut(State, TEXT("the follow's join"));
 			}
 
 			CurrentTest->TestTrue(TEXT("The password-protected host was a candidate and its join ran"), FEasySessionTestAccess::GetFailedJoinCount(*Run) == 1);
-			CurrentTest->TestTrue(TEXT("The player is still in the session it was in"), Subsystem->IsInSession());
+			CurrentTest->TestFalse(TEXT("The player is in no session while it follows"), Subsystem->IsInSession());
 
 			Subsystem->CancelMatchmaking();
 			MoveTo(State, FTestState::EStep::AwaitingCancel);
@@ -169,19 +182,6 @@ bool FEasySessionFollowStep::Update()
 				return TimedOut(State, TEXT("the follow to be canceled"));
 			}
 
-			// The canceled run kept the session, and the online subsystem outlives this world, so the next test would find it.
-			Subsystem->DestroySession();
-			MoveTo(State, FTestState::EStep::AwaitingCleanup);
-			return false;
-		}
-
-		case FTestState::EStep::AwaitingCleanup:
-		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
-			{
-				return TimedOut(State, TEXT("the cleanup destroy"));
-			}
-
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;
 		}
@@ -192,7 +192,8 @@ bool FEasySessionFollowStep::Update()
 
 /**
  * A player of the group follows its host with a matchmaking run that searches for that one host and joins it.
- * The run starts while the player is still in a session, because its join destroys that session only after the host approved the join.
+ * A player in the lobby leaves it first and travels to the Game Default Map, where the follow searches.
+ * The old host leaving then never reaches the player, so nothing but the follow decides where the player goes.
  * A password-protected host is still tried, because the reservation the party leader or the host asked for lets the player in without the password.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFollowTest, "EasySession.Group.AFollowSearchesForTheHostAndJoins", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

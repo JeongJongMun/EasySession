@@ -202,6 +202,8 @@ void FEasySessionJoinRequest::JoinOnlineSessionWithGroup()
 	const FUniqueNetIdRepl NewHostId(Target.NativeResult.Session.OwningUserId);
 	TellGroupToFollow(GroupMembers, NewHostId, Target.NativeResult.Session.SessionSettings.bIsLANMatch);
 
+	// A player leaves the old group as soon as the follow notice arrives: a party member leaves the party, and a lobby player leaves the session.
+	// The wait for that confirms the notice arrived, so the party or the session that carried it is not closed before it reached every player.
 	GroupWaitStartSeconds = FPlatformTime::Seconds();
 	GroupWaitHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateSP(this, &FEasySessionJoinRequest::HandleGroupWaitTick), GroupWaitIntervalSeconds);
 }
@@ -365,7 +367,6 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
 	// A party lives outside game sessions, so HandlePartyEnded queues a LeaveParty request.
-	// The leader waiting for this player then no longer lists them in GetGroupMembers.
 	if (GetContext().Party.IsInParty())
 	{
 		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
