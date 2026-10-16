@@ -140,7 +140,7 @@ bool FEasySessionCreateRequest::CheckCanCreatePartySession()
 		return false;
 	}
 
-	if (GetSessionInterface()->GetNamedSession(NAME_GameSession) != nullptr)
+	if (GetContext().Subsystem.IsInSession(EEasySessionType::GameSession))
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A party is created outside a game session. Call Leave Easy Session first."));
 		return false;
@@ -218,7 +218,7 @@ void FEasySessionCreateRequest::HostGameSession()
 
 	// The members search for this host until its map is open, so they are told before the travel.
 	// A party exists only outside game sessions, so HandlePartyEnded queues a Leave request that destroys the party session.
-	if (GetContext().Party.IsInParty())
+	if (GetContext().Subsystem.IsInSession(EEasySessionType::PartySession))
 	{
 		if (!GroupMembers.IsEmpty())
 		{

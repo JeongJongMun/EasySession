@@ -53,7 +53,7 @@ bool FEasySessionFriendsUnsupportedTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("A refused read never made the subsystem busy"), Subsystem->IsBusy());
 
 	// The invite helpers name the reason rather than returning a bare failure.
-	TestEqual(TEXT("ShowInviteUI reports the online subsystem has no overlay"), Subsystem->ShowInviteUI(), EEasySessionResult::NotSupportedByService);
+	TestEqual(TEXT("ShowInviteUI refuses with no session to invite to"), Subsystem->ShowInviteUI(), EEasySessionResult::NoSessionExists);
 	TestEqual(TEXT("ShowProfileUI refuses a friend with no online id"), Subsystem->ShowProfileUI(FEasySessionFriend()), EEasySessionResult::InvalidParams);
 
 	// A friend struct the friends list never returned is a caller mistake, not a missing feature.

@@ -146,7 +146,7 @@ bool FEasySessionJoinRequest::CheckCanJoin()
 		return false;
 	}
 
-	return IsPartyRequest() ? CheckCanJoinPartySession(Sessions) : CheckCanJoinGameSession(Sessions);
+	return IsPartyRequest() ? CheckCanJoinPartySession() : CheckCanJoinGameSession(Sessions);
 }
 
 bool FEasySessionJoinRequest::CheckCanJoinGameSession(const IOnlineSessionPtr& Sessions)
@@ -170,15 +170,15 @@ bool FEasySessionJoinRequest::CheckCanJoinGameSession(const IOnlineSessionPtr& S
 	return true;
 }
 
-bool FEasySessionJoinRequest::CheckCanJoinPartySession(const IOnlineSessionPtr& Sessions)
+bool FEasySessionJoinRequest::CheckCanJoinPartySession()
 {
-	if (Sessions->GetNamedSession(NAME_PartySession) != nullptr)
+	if (GetContext().Subsystem.IsInSession(EEasySessionType::PartySession))
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("Already in a party. Leave it with Leave Easy Session first."));
 		return false;
 	}
 
-	if (Sessions->GetNamedSession(NAME_GameSession) != nullptr)
+	if (GetContext().Subsystem.IsInSession(EEasySessionType::GameSession))
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("A party is joined outside a game session. Call Leave Easy Session first."));
 		return false;
@@ -454,7 +454,7 @@ void FEasySessionJoinRequest::TravelToHost(const FString& ConnectString)
 	UE_LOG(LogEasySession, Log, TEXT("Session joined successfully."));
 
 	// A party exists only outside game sessions, so HandlePartyEnded queues a Leave request.
-	if (GetContext().Party.IsInParty())
+	if (GetContext().Subsystem.IsInSession(EEasySessionType::PartySession))
 	{
 		GetContext().Subsystem.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
 	}

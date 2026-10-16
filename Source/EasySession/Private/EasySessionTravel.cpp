@@ -9,8 +9,6 @@
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
-#include "OnlineSessionSettings.h"
-#include "OnlineSubsystemUtils.h"
 #include "UObject/UObjectGlobals.h"
 
 FEasySessionTravel::FEasySessionTravel(UEasySessionSubsystem& InOwner)
@@ -76,14 +74,7 @@ bool FEasySessionTravel::ServerTravelToMap(const FString& MapName)
 	}
 
 	// The URL of the host's first travel carried MaxPlayers, but an Update request may have changed it since.
-	int32 MaxPlayers = 0;
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
-	if (const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr)
-	{
-		MaxPlayers = NamedSession->SessionSettings.NumPublicConnections;
-	}
-
-	const FString TravelURL = MakeServerTravelURL(MapName, FString(), MaxPlayers);
+	const FString TravelURL = MakeServerTravelURL(MapName, FString(), Owner.GetMaxPlayers());
 
 	UE_LOG(LogEasySession, Log, TEXT("ServerTravel to '%s'"), *TravelURL);
 	if (!World->ServerTravel(TravelURL))

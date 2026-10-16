@@ -347,7 +347,10 @@ EEasySessionResult UEasySessionSubsystem::SetPartyReady(bool bReady)
 
 bool UEasySessionSubsystem::IsPartyLeader() const
 {
-	return Party->IsLeader();
+	// The party create request sets bHosting when the create completes, because Steam never does.
+	const IOnlineSessionPtr Sessions = GetSessionInterface();
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
+	return NamedSession != nullptr && NamedSession->bHosting;
 }
 
 TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
@@ -379,13 +382,8 @@ UEasyMatchmakingPolicy* UEasySessionSubsystem::GetActiveMatchmakingPolicy() cons
 
 bool UEasySessionSubsystem::IsInSession(EEasySessionType Type) const
 {
-	if (Type == EEasySessionType::PartySession)
-	{
-		return Party->IsInParty();
-	}
-
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	return Sessions.IsValid() && Sessions->GetNamedSession(NAME_GameSession) != nullptr;
+	return Sessions.IsValid() && Sessions->GetNamedSession(EasySession::ToSessionName(Type)) != nullptr;
 }
 
 EEasySessionState UEasySessionSubsystem::GetSessionState() const
@@ -558,21 +556,11 @@ FString UEasySessionSubsystem::GetQueueStatus() const
 
 EEasySessionResult UEasySessionSubsystem::SendInviteToFriend(EEasySessionType Type, const FEasySessionFriend& Friend)
 {
-	if (Type == EEasySessionType::PartySession && !Party->IsInParty())
-	{
-		return EEasySessionResult::NoSessionExists;
-	}
-
 	return Social->SendInviteToFriend(Friend, EasySession::ToSessionName(Type));
 }
 
 EEasySessionResult UEasySessionSubsystem::ShowInviteUI(EEasySessionType Type)
 {
-	if (Type == EEasySessionType::PartySession && !Party->IsInParty())
-	{
-		return EEasySessionResult::NoSessionExists;
-	}
-
 	return Social->ShowInviteUI(EasySession::ToSessionName(Type));
 }
 
@@ -783,7 +771,7 @@ void UEasySessionSubsystem::ReturnToMainMenu(EEasyDisconnectReason Reason, const
 bool UEasySessionSubsystem::IsPartyMember() const
 {
 	// The party follows its leader, so only a member who is not the leader is held back.
-	return Party->IsInParty() && !Party->IsLeader();
+	return IsInSession(EEasySessionType::PartySession) && !IsPartyLeader();
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const

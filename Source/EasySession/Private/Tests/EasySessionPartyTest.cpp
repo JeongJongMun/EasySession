@@ -414,10 +414,12 @@ bool FEasySessionPartyAdmissionStep::Update()
 		{
 			FEasyPartyMemberInfo StrangerInfo;
 			StrangerInfo.PlayerId = Stranger;
+			FEasySessionFriend StrangerFriend;
+			StrangerFriend.NativeId = Stranger;
 			CurrentTest->TestEqual(TEXT("Outside a party nobody can kick"), Subsystem->KickPartyMember(StrangerInfo, FText::GetEmpty()), EEasySessionResult::RequiresPartyLeader);
 			CurrentTest->TestEqual(TEXT("Outside a party nobody is ready"), Subsystem->SetPartyReady(true), EEasySessionResult::NoSessionExists);
 			CurrentTest->TestTrue(TEXT("Outside a party there is no party code"), Subsystem->GetJoinCode(EEasySessionType::PartySession).IsEmpty());
-			CurrentTest->TestEqual(TEXT("Outside a party nobody is invited"), Subsystem->SendInviteToFriend(EEasySessionType::PartySession, FEasySessionFriend()), EEasySessionResult::NoSessionExists);
+			CurrentTest->TestEqual(TEXT("Outside a party nobody is invited"), Subsystem->SendInviteToFriend(EEasySessionType::PartySession, StrangerFriend), EEasySessionResult::NoSessionExists);
 			CurrentTest->TestEqual(TEXT("Outside a party no invite overlay opens"), Subsystem->ShowInviteUI(EEasySessionType::PartySession), EEasySessionResult::NoSessionExists);
 
 			Subsystem->CreateParty(MakePartySettings(false, true, 3), MakeCallback(State));

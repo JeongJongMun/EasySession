@@ -28,10 +28,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static UEasySessionSubsystem* GetEasySessionSubsystem(const UObject* WorldContextObject);
 
-	/**
-	 * Whether the local player is in a session of this type.
-	 * For a party, whether the local player is a member on the party beacon: the leader, or a member whose login completed.
-	 */
+	/** Whether this game holds a session of this type: the game session, or the party session of the party the local player is in. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static bool IsInEasySession(const UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 

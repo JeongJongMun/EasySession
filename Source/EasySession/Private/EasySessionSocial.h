@@ -52,7 +52,7 @@ public:
 	 * Open the platform invite overlay for the game session or for the party.
 	 *
 	 * @param SessionName NAME_GameSession or NAME_PartySession.
-	 * @return Success, or why the overlay could not be opened.
+	 * @return Success, NoSessionExists without a session of that name, or NotSupportedByService without an overlay.
 	 */
 	EEasySessionResult ShowInviteUI(FName SessionName) const;
 

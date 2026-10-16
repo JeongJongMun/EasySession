@@ -75,7 +75,7 @@ void FEasySessionMatchmakingRequest::Execute()
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
 	// A party leader takes the party along too, and a party leader is never in a game session.
 	const bool bHostsLobby = GetContext().Subsystem.IsSessionAuthority() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
-	if (bHostsLobby || GetContext().Party.IsLeader())
+	if (bHostsLobby || GetContext().Subsystem.IsPartyLeader())
 	{
 		Params.Search.MinOpenSlots = FMath::Max(Params.Search.MinOpenSlots, GetGroupMembers().Num() + 1);
 	}

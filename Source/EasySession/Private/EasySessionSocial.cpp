@@ -80,7 +80,14 @@ EEasySessionResult FEasySessionSocial::SendInviteToFriend(const FEasySessionFrie
 EEasySessionResult FEasySessionSocial::ShowInviteUI(FName SessionName) const
 {
 	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
-	const IOnlineExternalUIPtr ExternalUI = OnlineSub ? OnlineSub->GetExternalUIInterface() : nullptr;
+	const IOnlineSessionPtr Sessions = OnlineSub ? OnlineSub->GetSessionInterface() : nullptr;
+	if (!Sessions.IsValid() || Sessions->GetNamedSession(SessionName) == nullptr)
+	{
+		UE_LOG(LogEasySession, Warning, TEXT("ShowInviteUI: there is no %s to invite to."), *SessionName.ToString());
+		return EEasySessionResult::NoSessionExists;
+	}
+
+	const IOnlineExternalUIPtr ExternalUI = OnlineSub->GetExternalUIInterface();
 
 	if (!ExternalUI.IsValid() || !ExternalUI->ShowInviteUI(0, SessionName))
 	{

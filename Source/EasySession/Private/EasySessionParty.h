@@ -97,12 +97,6 @@ public:
 	 */
 	EEasySessionResult KickMember(const FUniqueNetIdRepl& PlayerId, const FText& Reason);
 
-	/** @return Whether the local player is in a party. */
-	bool IsInParty() const;
-
-	/** @return Whether the local player leads the party. False outside a party. */
-	bool IsLeader() const;
-
 	/** @return Every member of the party, the leader included. Empty outside a party. */
 	TArray<FEasyPartyMemberInfo> GetMembers() const;
 

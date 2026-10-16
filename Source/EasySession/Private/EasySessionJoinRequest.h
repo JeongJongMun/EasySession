@@ -80,7 +80,7 @@ private:
 	bool CheckCanJoinGameSession(const IOnlineSessionPtr& Sessions);
 
 	/** For a party: refuse a player in a party or a game session, and one with no logged in player the leader can name. */
-	bool CheckCanJoinPartySession(const IOnlineSessionPtr& Sessions);
+	bool CheckCanJoinPartySession();
 
 	/** For a game session: spawn the beacon client actor and ask the host for a reservation. */
 	void RequestReservation();

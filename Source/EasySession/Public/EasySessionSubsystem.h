@@ -423,10 +423,7 @@ public:
 	 */
 	UEasyMatchmakingPolicy* GetActiveMatchmakingPolicy() const;
 
-	/**
-	 * @return Whether the local player is in a session of this type.
-	 *         For a party, whether the local player is a member on the party beacon: the leader, or a member whose login completed.
-	 */
+	/** @return Whether this game holds a session of this type: the game session, or the party session of the party the local player is in. */
 	bool IsInSession(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/**

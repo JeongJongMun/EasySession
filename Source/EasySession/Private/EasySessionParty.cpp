@@ -223,7 +223,7 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 TArray<FUniqueNetIdRepl> FEasySessionParty::GetOtherMemberIds() const
 {
 	TArray<FUniqueNetIdRepl> MemberIds;
-	if (!IsLeader())
+	if (!Owner.IsPartyLeader())
 	{
 		return MemberIds;
 	}
@@ -248,7 +248,7 @@ void FEasySessionParty::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool
 
 EEasySessionResult FEasySessionParty::SetReady(bool bReady)
 {
-	if (!IsInParty())
+	if (!Owner.IsInSession(EEasySessionType::PartySession))
 	{
 		return EEasySessionResult::NoSessionExists;
 	}
@@ -281,7 +281,7 @@ EEasySessionResult FEasySessionParty::SetReady(bool bReady)
 EEasySessionResult FEasySessionParty::KickMember(const FUniqueNetIdRepl& PlayerId, const FText& Reason)
 {
 	AEasySessionPartyBeaconHost* Beacon = BeaconHost.Get();
-	if (Beacon == nullptr || !IsLeader())
+	if (Beacon == nullptr || !Owner.IsPartyLeader())
 	{
 		return EEasySessionResult::RequiresPartyLeader;
 	}
@@ -302,26 +302,12 @@ EEasySessionResult FEasySessionParty::KickMember(const FUniqueNetIdRepl& PlayerI
 	return EEasySessionResult::Success;
 }
 
-bool FEasySessionParty::IsInParty() const
-{
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
-	return Sessions.IsValid() && Sessions->GetNamedSession(NAME_PartySession) != nullptr;
-}
-
-bool FEasySessionParty::IsLeader() const
-{
-	// The party session request sets bHosting when the create completes, because Steam never does.
-	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
-	return NamedSession != nullptr && NamedSession->bHosting;
-}
-
 TArray<FEasyPartyMemberInfo> FEasySessionParty::GetMembers() const
 {
 	TArray<FEasyPartyMemberInfo> Members;
 
 	const AEasySessionPartyBeaconState* State = GetPartyState();
-	if (State == nullptr || !IsInParty())
+	if (State == nullptr || !Owner.IsInSession(EEasySessionType::PartySession))
 	{
 		return Members;
 	}
@@ -373,14 +359,14 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 
 	// The map change destroyed the beacons, and the party session outlives them.
 	// A map with a game session is one the party entered, and the party closes there instead.
-	if (IsInParty())
+	if (Owner.IsInSession(EEasySessionType::PartySession))
 	{
 		if (Owner.IsInSession())
 		{
 			return;
 		}
 
-		if (IsLeader() && !BeaconHost.IsValid())
+		if (Owner.IsPartyLeader() && !BeaconHost.IsValid())
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Starting the party beacon again after the map change."));
 			if (!StartHosting(PartySettings))
@@ -388,7 +374,7 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 				Owner.HandlePartyEnded(EEasyPartyLeaveReason::ConnectionLost, NSLOCTEXT("EasySession", "PartyBeaconRestartFailed", "The party could not continue after the map change."));
 			}
 		}
-		else if (!IsLeader() && !BeaconClient.IsValid())
+		else if (!Owner.IsPartyLeader() && !BeaconClient.IsValid())
 		{
 			StartReconnect();
 		}
