@@ -40,7 +40,7 @@
 
 | 위젯 | 하는 일 | 플러그인 노드와 그것을 부르는 그래프 |
 |---|---|---|
-| `WBP_MainMenu` | 화면을 전환하고, Find 화면이 요청한 결과에 참가합니다 | Join Easy Session (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct) |
+| `WBP_MainMenu` | 화면을 전환하고, Find 화면이 요청한 결과에 참가하고, 세션이나 파티가 끝난 이유를 보여 줍니다 | Join Easy Session (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct); On Party Left |
 | `Screens/WBP_HomeScreen` | Quick Match, Create Session, Find Sessions, Quit | Start Easy Matchmaking, Cancel Easy Matchmaking (OnClicked QuickMatchButton); Is Easy Session Busy, Get Easy Matchmaking State (RefreshInteractable); Get Easy Party Members (ArePartyMembersReady) |
 | `Screens/WBP_CreateSessionScreen` | 설정 폼, LAN 토글, CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
 | `Screens/WBP_FindScreen` | 세션 모드와 파티 모드의 브라우저 | 자체 노드 없음. 브라우저의 참가 요청을 위로 넘깁니다 |

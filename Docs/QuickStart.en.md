@@ -41,7 +41,7 @@ create screens and on the in-game menu, `MatchMap` on the lobby. Point them at y
 
 | Widget | What it does | Plugin nodes, and the graph that calls them |
 |---|---|---|
-| `WBP_MainMenu` | Switches between the screens, and joins what the Find screen asks for | Join Easy Session (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct) |
+| `WBP_MainMenu` | Switches between the screens, joins what the Find screen asks for, and shows why a session or a party ended | Join Easy Session (OnJoinRequested); Consume Pending Easy Disconnect Info (Event Construct); On Party Left |
 | `Screens/WBP_HomeScreen` | Quick Match, Create Session, Find Sessions, Quit | Start Easy Matchmaking, Cancel Easy Matchmaking (OnClicked QuickMatchButton); Is Easy Session Busy, Get Easy Matchmaking State (RefreshInteractable); Get Easy Party Members (ArePartyMembersReady) |
 | `Screens/WBP_CreateSessionScreen` | The settings form, the LAN toggle and CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
 | `Screens/WBP_FindScreen` | The browser in session or party mode | None of its own: it passes the browser's join request up |
