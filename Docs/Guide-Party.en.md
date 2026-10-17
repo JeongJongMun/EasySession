@@ -89,13 +89,13 @@ Every member invites, not only the host:
 
 Both return `NoSessionExists` outside a party and `NotSupportedByService` on NULL/LAN, which has no invites.
 
-When a player accepts a party invite, `OnSessionInviteAccepted` fires with a result whose `Is Party` is true. With **Auto Join Accepted Invites** on, the default, the plugin joins the party right after the event:
+When a player accepts a party invite, `OnSessionInviteAccepted` fires with a result whose `Session Type` is Party Session. With **Auto Join Accepted Invites** on, the default, the plugin joins the party right after the event:
 
 - A running Matchmaking is canceled first. One that is already `Joining` or `Hosting` is not canceled, and the invite is not joined.
 - A player who is already in a party leaves it first.
 - A player in a game session does not join, because one click in the overlay must not end their match. The log says so, and the game can call `Leave Easy Session` and then `Join Easy Session` with the event's result.
 
-A failed join arrives on `OnSessionFailure`, because no node waits for it. With Auto Join Accepted Invites off, only the event fires: call `Join Easy Session` with the result yourself, which joins the party or the game session as `Is Party` says.
+A failed join arrives on `OnSessionFailure`, because no node waits for it. With Auto Join Accepted Invites off, only the event fires: call `Join Easy Session` with the result yourself, which joins the party or the game session as `Session Type` says.
 
 ## Members, ready and kick
 

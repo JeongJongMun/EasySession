@@ -204,7 +204,7 @@ A widget whose parent class is taken binds them with Assign nodes on `Get Easy S
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Host` which |
 | `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), the join of an accepted invite failed for a reason other than a missing password, or the reservation beacon of the host's password-protected session could not start, so nobody can join it. Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player |
 | `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which activity began |
-| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own and cancels a running Matchmaking - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession`. A Matchmaking that is already `Joining` or `Hosting` is not canceled, and the invite is not joined. `Session.bIsParty` is true for a party invite, which Join Easy Session joins as well, and never during a game session ([guide](Guide-Party.en.md#invites)) |
+| `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own and cancels a running Matchmaking - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession`. A Matchmaking that is already `Joining` or `Hosting` is not canceled, and the invite is not joined. `Session.SessionType` is Party Session for a party invite, which Join Easy Session joins as well, and never during a game session ([guide](Guide-Party.en.md#invites)) |
 | `OnInvitePasswordRequired` | `Session` (`FEasySessionSearchResult`) | The automatic join of an accepted invite was refused because the host needs a password from this player - an invite carries none. Ask the player, then call `Join Easy Session` with `Session` and the password ([guide](Guide-Sessions.en.md#joining-a-locked-session)). `OnSessionFailure` does not fire for this refusal |
 | `OnSessionPlayersChanged` | - | A player joined or left the session, or changed whether they are ready, on the host and on every client. Get Easy Session Player Infos already returns the new list |
 | `OnPartyMembersChanged` | - | A member joined or left the party, or changed whether they are ready, on the host and on every member. Get Easy Party Members already returns the new list |
@@ -245,11 +245,11 @@ sections.
 Three of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `FriendId` makes a different call to the service, asking for the session that friend is in; Max Results and LAN Query are then ignored while the filters still apply. It needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones.
 
 ### 5.4 FEasySessionSearchResult *(read-only)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `bIsParty`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `SessionType`, `CustomSettings`
 
 This struct connects the two nodes: `Find Easy Sessions` returns them and
 `Join Easy Session` takes one back. Keep the whole struct - a server-browser row should
-store it, not just the name it displays. A party search returns the same struct with `bIsParty` set, and `Join Easy Session` takes it too.
+store it, not just the name it displays. A party search returns the same struct with `SessionType` set to Party Session, and `Join Easy Session` takes it too.
 
 `bPasswordProtected` is how you decide whether to prompt before `Join Easy Session`.
 

@@ -305,7 +305,7 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		}
 		else if (Setting.Key == EasySession::SettingKey_SessionType)
 		{
-			Result.bIsParty = FName(*Setting.Value.Data.ToString()) == NAME_PartySession;
+			Result.SessionType = FName(*Setting.Value.Data.ToString()) == NAME_PartySession ? EEasySessionType::PartySession : EEasySessionType::GameSession;
 		}
 		else if (Setting.Key == EasySession::SettingKey_MatchInProgress)
 		{

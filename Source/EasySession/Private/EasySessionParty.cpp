@@ -572,7 +572,7 @@ void FEasySessionParty::FinishRestore()
 void FEasySessionParty::RunRestoreRequest(TSharedRef<FEasySessionRequest> Request)
 {
 	RestoreRequest = Request;
-	Owner.EnqueuePartyRequest(Request);
+	Owner.EnqueueRequest(Request);
 }
 
 bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const

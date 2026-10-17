@@ -499,8 +499,8 @@ bool FEasySessionPartyAdmissionStep::Update()
 			GameSession.Session.SessionSettings.Set(EasySession::SettingKey_SessionType, FName(NAME_GameSession).ToString(), EOnlineDataAdvertisementType::ViaOnlineService);
 
 			// An accepted invite can be either kind, and the game reads which from the result.
-			CurrentTest->TestTrue(TEXT("A party result says it is a party"), FEasySessionSearchResult::FromNative(Party).bIsParty);
-			CurrentTest->TestFalse(TEXT("A game session result says it is not"), FEasySessionSearchResult::FromNative(GameSession).bIsParty);
+			CurrentTest->TestEqual(TEXT("A party result says it is a party"), FEasySessionSearchResult::FromNative(Party).SessionType, EEasySessionType::PartySession);
+			CurrentTest->TestEqual(TEXT("A game session result says it is a game session"), FEasySessionSearchResult::FromNative(GameSession).SessionType, EEasySessionType::GameSession);
 
 			NextPhase(State);
 			FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { Party, GameSession });

@@ -89,13 +89,13 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 둘 다 파티 밖에서는 `NoSessionExists`, 초대가 없는 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
 
-플레이어가 파티 초대를 수락하면 `OnSessionInviteAccepted`가 `Is Party`가 true인 결과와 함께 옵니다. **Auto Join Accepted Invites**가 켜져 있으면(기본값) 이벤트 직후 플러그인이 파티에 참가합니다.
+플레이어가 파티 초대를 수락하면 `OnSessionInviteAccepted`가 `Session Type`이 Party Session인 결과와 함께 옵니다. **Auto Join Accepted Invites**가 켜져 있으면(기본값) 이벤트 직후 플러그인이 파티에 참가합니다.
 
 - 돌고 있는 매치메이킹은 먼저 취소됩니다. 이미 `Joining`이나 `Hosting` 상태면 취소되지 않고, 초대에도 참가하지 않습니다.
 - 이미 파티에 있는 플레이어는 먼저 그 파티를 나갑니다.
 - 게임 세션 안에 있는 플레이어는 참가하지 않습니다. 오버레이 클릭 한 번으로 매치가 끝나면 안 되기 때문입니다. 로그에 그 사실이 남고, 게임은 `Leave Easy Session`을 부른 뒤 이벤트의 결과로 `Join Easy Session`을 부를 수 있습니다.
 
-이 참가를 기다리는 노드가 없으므로, 실패는 `OnSessionFailure`로 옵니다. Auto Join Accepted Invites를 끄면 이벤트만 옵니다. 결과를 넘겨 `Join Easy Session`을 직접 부르세요. `Is Party`에 따라 파티나 게임 세션에 참가합니다.
+이 참가를 기다리는 노드가 없으므로, 실패는 `OnSessionFailure`로 옵니다. Auto Join Accepted Invites를 끄면 이벤트만 옵니다. 결과를 넘겨 `Join Easy Session`을 직접 부르세요. `Session Type`에 따라 파티나 게임 세션에 참가합니다.
 
 ## 멤버, 준비, 추방
 

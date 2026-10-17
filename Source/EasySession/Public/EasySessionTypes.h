@@ -576,9 +576,12 @@ struct EASYSESSION_API FEasySessionSearchResult
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bMatchInProgress = false;
 
-	/** Whether this is a party rather than a game session. An accepted invite can be either, and Join Easy Session joins both. */
+	/**
+	 * Which kind of session this is. An accepted invite can be either, and Join Easy Session joins both.
+	 * A session another plugin advertised reads as Game Session, and Join Easy Session refuses it.
+	 */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	bool bIsParty = false;
+	EEasySessionType SessionType = EEasySessionType::GameSession;
 
 	/**
 	 * The session's join code.

@@ -602,10 +602,11 @@ public:
 	void HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
 	/**
-	 * Internal, called by the party to queue the requests that restore the party of the last match.
-	 * The public calls such as CreateParty and JoinSession cancel the restore first, so they cannot be used for this.
+	 * Internal, add a request to the queue and start processing if idle.
+	 * A request that named no session passes the game session to the session interface.
+	 * The party queues the requests that restore the party of the last match here, because the public calls such as CreateParty and JoinSession cancel the restore first.
 	 */
-	void EnqueuePartyRequest(TSharedRef<FEasySessionRequest> Request);
+	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/**
 	 * Internal, called by a player component when its player appears, leaves or changes whether they are ready.
@@ -633,12 +634,6 @@ private:
 
 	/** Resolve the session interface for the current world context. */
 	IOnlineSessionPtr GetSessionInterface() const;
-
-	/**
-	 * Add a request to the queue and start processing if idle.
-	 * A request that named no session passes the game session to the session interface.
-	 */
-	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/** Session state as derived from the local online subsystem session copy. */
 	EEasySessionState GetLocalSessionState() const;

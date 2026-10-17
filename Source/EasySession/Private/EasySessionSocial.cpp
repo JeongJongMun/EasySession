@@ -233,7 +233,7 @@ void FEasySessionSocial::HandleSessionUserInviteAccepted(const bool bWasSuccessf
 	}
 
 	// The invite event carries no session name, so the advertised session type tells the two kinds apart.
-	if (Session.bIsParty)
+	if (Session.SessionType == EEasySessionType::PartySession)
 	{
 		JoinInvitedParty(Session);
 		return;

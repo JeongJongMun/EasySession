@@ -685,9 +685,23 @@ void UEasySessionSubsystem::HandlePartyEnded(EEasyPartyLeaveReason Reason, const
 	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(Reason, ReasonText, FEasySessionCompleteDelegate()));
 }
 
-void UEasySessionSubsystem::EnqueuePartyRequest(TSharedRef<FEasySessionRequest> Request)
+void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
 {
-	EnqueueRequest(Request);
+	// A party request names the party session itself, and every other request and its sub-requests pass the game session to the session interface.
+	Request->Initialize(*RequestContext, NAME_GameSession);
+
+	// Without the EasySession online session the engine would travel to the menu before a lost session is destroyed, so the request is refused.
+	if (Cast<UEasySessionOnlineSession>(GetGameInstance()->GetOnlineSession()) == nullptr)
+	{
+		UE_LOG(LogEasySession, Error, TEXT("%s"), EasySession::NoEasySessionGameInstanceMessage);
+		Request->Refuse(EEasySessionResult::NoEasySessionGameInstance, EasySession::NoEasySessionGameInstanceMessage);
+		return;
+	}
+
+	RequestQueue->Enqueue(Request);
+
+	// Reported inside this call, so the UI disables its buttons on the same frame as the click.
+	RefreshBusyState();
 }
 
 void UEasySessionSubsystem::HandleSessionPlayersChanged()
@@ -761,25 +775,6 @@ bool UEasySessionSubsystem::IsPartyMember() const
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
 {
 	return Online::GetSessionInterface(GetWorld());
-}
-
-void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Request)
-{
-	// A party request names the party session itself, and every other request and its sub-requests pass the game session to the session interface.
-	Request->Initialize(*RequestContext, NAME_GameSession);
-
-	// Without the EasySession online session the engine would travel to the menu before a lost session is destroyed, so the request is refused.
-	if (Cast<UEasySessionOnlineSession>(GetGameInstance()->GetOnlineSession()) == nullptr)
-	{
-		UE_LOG(LogEasySession, Error, TEXT("%s"), EasySession::NoEasySessionGameInstanceMessage);
-		Request->Refuse(EEasySessionResult::NoEasySessionGameInstance, EasySession::NoEasySessionGameInstanceMessage);
-		return;
-	}
-
-	RequestQueue->Enqueue(Request);
-
-	// Reported inside this call, so the UI disables its buttons on the same frame as the click.
-	RefreshBusyState();
 }
 
 EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
