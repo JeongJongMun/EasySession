@@ -140,7 +140,7 @@ void FEasySessionReservations::StartBeacon()
 	}
 
 	// After the registration, because the parent refuses every reservation until the listener owns this actor.
-	// Kept reservations already include the host's, and a dedicated server is not a player, so it reserves none.
+	// Kept reservations already include the host's.
 	if (!bRestoredReservations && Owner.IsHost())
 	{
 		AddHostReservation(*Beacon, *NamedSession);
@@ -178,7 +178,7 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 		return MakeResponse(EEasyReservationResult::Refused, NSLOCTEXT("EasySession", "GroupMemberRemoved", "The host removed a player who travels with you from this session."));
 	}
 
-	// This player was approved before: over this beacon, or as a player of the group whose leader asked for the reservation.
+	// This player was approved before: over this beacon, or as a player of the group whose host asked for the reservation.
 	// Reservations are kept across a map change, so this also lets in the players a hard travel reconnects.
 	if (PlayerHasReservation(Requester))
 	{

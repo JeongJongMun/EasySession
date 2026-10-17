@@ -221,10 +221,10 @@ void UEasySessionSubsystem::LeaveSession(EEasySessionType Type, FEasySessionComp
 void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
 {
 	UWorld* World = GetWorld();
-	if (World == nullptr || !IsSessionAuthority())
+	if (World == nullptr || !IsHost())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresSessionAuthorityMessage);
-		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresSessionAuthority, EasySession::RequiresSessionAuthorityMessage);
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresHostMessage);
+		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresHost, EasySession::RequiresHostMessage);
 		return;
 	}
 
@@ -238,9 +238,9 @@ void UEasySessionSubsystem::UpdateSession(const FEasySessionSettings& NewSetting
 
 EEasySessionResult UEasySessionSubsystem::KickPlayer(const FEasySessionPlayerInfo& Player, const FText& Reason)
 {
-	if (!IsSessionAuthority())
+	if (!IsHost())
 	{
-		return EEasySessionResult::RequiresSessionAuthority;
+		return EEasySessionResult::RequiresHost;
 	}
 
 	return Host->KickPlayer(Player.PlayerId, Reason) ? EEasySessionResult::Success : EEasySessionResult::InvalidParams;
@@ -271,9 +271,9 @@ bool UEasySessionSubsystem::ServerTravel(const FString& MapName)
 
 	// UWorld::ServerTravel does not refuse a client.
 	// With no game mode it still sets NextURL and returns true, so this entry check is the only guard.
-	if (!IsSessionAuthority())
+	if (!IsHost())
 	{
-		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresSessionAuthorityMessage);
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresHostMessage);
 		return false;
 	}
 
@@ -343,14 +343,6 @@ EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMember
 EEasySessionResult UEasySessionSubsystem::SetPartyReady(bool bReady)
 {
 	return Party->SetReady(bReady);
-}
-
-bool UEasySessionSubsystem::IsPartyLeader() const
-{
-	// The party create request sets bHosting when the create completes, because Steam never does.
-	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
-	return NamedSession != nullptr && NamedSession->bHosting;
 }
 
 TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
@@ -441,19 +433,12 @@ FString UEasySessionSubsystem::GetJoinCode(EEasySessionType Type) const
 	return JoinCode;
 }
 
-bool UEasySessionSubsystem::IsHost() const
+bool UEasySessionSubsystem::IsHost(EEasySessionType Type) const
 {
-	// A dedicated server has the authority but no local player, so it can never be the hosting player.
-	const UWorld* World = GetWorld();
-	return IsSessionAuthority() && World != nullptr && World->GetNetMode() != NM_DedicatedServer;
-}
-
-bool UEasySessionSubsystem::IsSessionAuthority() const
-{
-	// FEasySessionHost sets bHosting when this process creates the session, and a joined session keeps the default false.
-	// bHosting is a member of the session object, so the authority ends when the session is destroyed, whatever destroyed it.
+	// The create request sets bHosting when the create completes, because Steam never does, and a joined session keeps the default false.
+	// bHosting is a member of the session object, so hosting ends when the session is destroyed, whatever destroyed it.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
-	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
+	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(EasySession::ToSessionName(Type)) : nullptr;
 	return NamedSession != nullptr && NamedSession->bHosting;
 }
 
@@ -487,7 +472,6 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 
 	// The session owner's id identifies the host player.
 	// Ids are compared instead of names, because the engine truncates player names on login (InitNewPlayer).
-	// Unset on dedicated servers, where no player row gets the host marker.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_GameSession) : nullptr;
 	const FUniqueNetIdPtr HostId = NamedSession ? NamedSession->OwningUserId : nullptr;
@@ -612,7 +596,7 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 {
 	// A default payload means the host has not written one yet.
 	// The authority already holds the real values.
-	if (!Settings.bValid || IsSessionAuthority())
+	if (!Settings.bValid || IsHost())
 	{
 		return;
 	}
@@ -770,8 +754,8 @@ void UEasySessionSubsystem::ReturnToMainMenu(EEasyDisconnectReason Reason, const
 
 bool UEasySessionSubsystem::IsPartyMember() const
 {
-	// The party follows its leader, so only a member who is not the leader is held back.
-	return IsInSession(EEasySessionType::PartySession) && !IsPartyLeader();
+	// The party follows its host, so only a member who is not the host is held back.
+	return IsInSession(EEasySessionType::PartySession) && !IsHost(EEasySessionType::PartySession);
 }
 
 IOnlineSessionPtr UEasySessionSubsystem::GetSessionInterface() const
@@ -880,7 +864,7 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	UE_LOG(LogEasySession, Warning, TEXT("Network failure: %s"), *Reason);
 	OnSessionFailure.Broadcast(Reason);
 
-	if (IsSessionAuthority())
+	if (IsHost())
 	{
 		// On the host this fires for a client whose connection died, not for the host's own.
 		// The session is still alive, so returning keeps the host from traveling to the menu over another player's disconnect.

@@ -6,7 +6,7 @@
 
 모든 요청은 **큐에 들어가 하나씩 실행됩니다.** 어떤 순서로 불러도, 심지어 같은 프레임에 불러도 온라인 서비스가 망가지지 않습니다.
 
-메인 메뉴의 친구들처럼 매치와 매치 사이를 함께 다니는 플레이어 묶음은 파티입니다. 파티 리더가 파티를 데리고 세션에 들어가는 방법까지 [파티 가이드](Guide-Party.ko.md)에 있습니다.
+메인 메뉴의 친구들처럼 매치와 매치 사이를 함께 다니는 플레이어 묶음은 파티입니다. 파티 호스트가 파티를 데리고 세션에 들어가는 방법까지 [파티 가이드](Guide-Party.ko.md)에 있습니다.
 
 ## Create Session
 
@@ -179,7 +179,7 @@ Create Easy Session
 둘 다 광고되는 매치 진행 중 키를 갱신합니다. 검색의 `Include In Progress Sessions` 필터와
 결과의 `bMatchInProgress`가 읽는 값이 바로 이것입니다.
 
-둘 다 호스트 전용입니다. 클라이언트가 부르면 `RequiresSessionAuthority`로 실패하므로, 버튼은 `Is Easy Session Authority`가 true일 때만 보여주세요.
+둘 다 호스트 전용입니다. 클라이언트가 부르면 `RequiresHost`로 실패하므로, 버튼은 `Is Easy Host`가 true일 때만 보여주세요.
 
 ## Update Session
 
@@ -256,7 +256,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 `Set Easy Session Ready`는 로컬 플레이어의 준비 상태를 바꿉니다. 플러그인은 값을 공유하기만 하고, 준비하면 무엇을 할 수 있는지는 게임이 정합니다. 예를 들어 호스트의 Start 버튼을 켜는 식입니다. 세션이 다른 맵으로 이동할 때마다 준비 상태는 다시 풀립니다.
 
-`Kick Easy Session Player`는 플레이어를 세션에서 내보내고, 세션이 없어질 때까지 다시 들어오지 못하게 합니다. 내보내진 플레이어는 메뉴로 이동하고, 거기서 `Consume Pending Easy Disconnect Info`가 `Kicked`와 호스트의 사유를 돌려줍니다. 세션 권한이 있는 게임만 부를 수 있습니다.
+`Kick Easy Session Player`는 플레이어를 세션에서 내보내고, 세션이 없어질 때까지 다시 들어오지 못하게 합니다. 내보내진 플레이어는 메뉴로 이동하고, 거기서 `Consume Pending Easy Disconnect Info`가 `Kicked`와 호스트의 사유를 돌려줍니다. 호스트만 부를 수 있습니다.
 
 ## 이벤트와 상태 조회
 
@@ -270,7 +270,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 - `OnInvitePasswordRequired` - 수락한 초대의 자동 참가에 이 플레이어의 비밀번호가 필요합니다. 비밀번호를 물은 뒤 이벤트의 `Session`과 그 비밀번호로 `Join Easy Session`을 부르세요
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다
 
-어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Display Name`, `Get Easy Session Player Infos`, `Get Easy Player Count`, `Get Easy Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.
+어디서나 쓸 수 있는 순수 조회 노드도 있습니다. 상태는 `Is In Easy Session`, `Is Easy Host`, `Is Easy Session Busy`, `Get Easy Session State`, 내용은 `Get Easy Display Name`, `Get Easy Session Player Infos`, `Get Easy Player Count`, `Get Easy Max Players`, 환경은 `Get Online Subsystem Name (EasySession)`. 전체 목록은 [API 레퍼런스](API.ko.md)에 있습니다.
 
 ## C++ API
 

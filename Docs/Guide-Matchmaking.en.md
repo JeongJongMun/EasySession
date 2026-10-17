@@ -65,13 +65,13 @@ Cancel with `Cancel Easy Matchmaking` while the run is `Searching` - the run fin
 
 An invite the player accepts during a run follows the same rule. While the run is `Searching` it is canceled and the invite is joined. While it is `Joining` or `Hosting` the invite is not joined, and `OnSessionFailure` tells the player to accept it again. To decide this yourself, for example with a confirm dialog, turn **Auto Join Accepted Invites** off, read `Get Easy Matchmaking State` in `OnSessionInviteAccepted`, and call `Cancel Easy Matchmaking` and `Join Easy Session` with the event's result.
 
-After `OnSuccess`, use `Is Easy Session Host` to know whether you joined someone or became the host.
+After `OnSuccess`, use `Is Easy Host` to know whether you joined someone or became the host.
 
 ### Matchmaking with a group
 
 Two players bring others along when they matchmake:
 
-- **A party leader.** The run only considers sessions with room for the whole party, and the party follows into the session the run joins or hosts. A party member who calls Start Easy Matchmaking is refused with `InParty` ([Party guide](Guide-Party.en.md)).
+- **A party host.** The run only considers sessions with room for the whole party, and the party follows into the session the run joins or hosts. A party member who calls Start Easy Matchmaking is refused with `InParty` ([Party guide](Guide-Party.en.md)).
 - **The host of a session whose match has not started**, such as a lobby. The run only considers sessions with room for every player in it, and they follow. The host fallback is skipped, because the host is still in its own session, so a run that finds nothing completes with `NoSessionsFound` ([Sessions guide](Guide-Sessions.en.md#bringing-the-other-players)).
 
 ## How "the best session" is chosen

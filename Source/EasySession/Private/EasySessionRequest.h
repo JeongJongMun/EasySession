@@ -46,7 +46,7 @@ enum class EEasySessionRequestType : uint8
 	/** Search for sessions. */
 	Find,
 
-	/** Join a game session and travel to its host, or join a party session and log in on the leader's party beacon. */
+	/** Join a game session and travel to its host, or join a party session and log in on the host's party beacon. */
 	Join,
 
 	/** Destroy the game session, or the party session for a party request. */
@@ -238,12 +238,12 @@ protected:
 
 	/**
 	 * @return The players who move with the local player when it joins or creates a game session.
-	 *         The other party members on a party leader, and the other players of a lobby on its host, which never overlap.
-	 *         A party leader is never in a game session, because entering one closes the party.
+	 *         The other party members on a party host, and the other players of a lobby on its host, which never overlap.
+	 *         A party host is never in a game session, because entering one closes the party.
 	 */
 	TArray<FUniqueNetIdRepl> GetGroupMembers() const;
 
-	/** Tell the group to follow into the session of this host: over the party beacon on a party leader, through the player components on a lobby host. */
+	/** Tell the group to follow into the session of this host: over the party beacon on a party host, through the player components on a lobby host. */
 	void TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery) const;
 
 	/**

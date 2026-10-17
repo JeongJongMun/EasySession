@@ -8,7 +8,7 @@
 #include "EasyCreatePartyNode.generated.h"
 
 /**
- * Async node that creates a party, with the local player as its leader.
+ * Async node that creates a party, with the local player as its host.
  */
 UCLASS()
 class EASYSESSION_API UEasyCreatePartyNode : public UEasySessionNodeBase
@@ -17,7 +17,7 @@ class EASYSESSION_API UEasyCreatePartyNode : public UEasySessionNodeBase
 
 public:
 
-	/** Called when the party was created. Get Easy Party Members already lists the leader. */
+	/** Called when the party was created. Get Easy Party Members already lists the host. */
 	UPROPERTY(BlueprintAssignable)
 	FEasySessionEvent OnSuccess;
 
@@ -26,12 +26,12 @@ public:
 	FEasySessionEvent OnFailure;
 
 	/**
-	 * Create a party, with the local player as its leader.
+	 * Create a party, with the local player as its host.
 	 * A party lives outside game sessions and needs no map, so nothing travels.
 	 * It fails with Session Already Exists in a game session or a party, so call Leave Easy Session for it first.
 	 *
-	 * @param PartySettings What the party advertises. Max Players counts the leader.
-	 *        A Password or Should Advertise off is refused with Invalid Params, because a party has no password and members find it again by its leader.
+	 * @param PartySettings What the party advertises. Max Players counts the host.
+	 *        A Password or Should Advertise off is refused with Invalid Params, because a party has no password and members find it again by its host.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", DisplayName = "Create Easy Party", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "PartySettings"))
 	static UEasyCreatePartyNode* CreateEasyParty(UObject* WorldContextObject, const FEasySessionSettings& PartySettings);

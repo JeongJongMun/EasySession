@@ -17,19 +17,19 @@ class FOnlineSessionSettings;
 class UEasySessionSubsystem;
 class UWorld;
 
-/** Delegate fired once per ConnectToLeader: with true when the member list holds the local player, with false and the reason otherwise. */
+/** Delegate fired once per ConnectToHost: with true when the member list holds the local player, with false and the reason otherwise. */
 DECLARE_DELEGATE_TwoParams(FEasyPartyConnectComplete, bool /** bSuccess */, const FText& /** Reason */);
 
 /**
  * FEasySessionParty is responsible for the party: a small group of players who stay together outside game sessions.
- * The party is an online session named NAME_PartySession, and its member list lives on the leader's party beacon.
+ * The party is an online session named NAME_PartySession, and its member list lives on the host's party beacon.
  *
- * The leader hosts the party beacon on the shared beacon listener, next to the reservation beacon of a game session.
+ * The host runs the party beacon on the shared beacon listener, next to the reservation beacon of a game session.
  * Each member connects to it with a party beacon client once the member joined the party session.
  * The party session requests call this object once the party session is created or joined, and before it is destroyed.
  *
  * A map change destroys the beacons but keeps the party session.
- * In the new map the leader starts the party beacon again, and each member connects to it again.
+ * In the new map the host starts the party beacon again, and each member connects to it again.
  * Entering a game session closes the party, and with bRestorePartyAfterMatch on, the next map without a game session creates or joins it again.
  *
  * Owned by the subsystem and destroyed with it.
@@ -47,27 +47,27 @@ public:
 	~FEasySessionParty();
 
 	/**
-	 * Start the party beacon of the party this process leads, after the party session is created and again after a map change.
-	 * Spawns the party beacon in the current world and adds the leader to it.
+	 * Start the party beacon of the party this process hosts, after the party session is created and again after a map change.
+	 * Spawns the party beacon in the current world and adds the host to it.
 	 *
 	 * @return Whether the party beacon runs. False when no player is logged in or the beacon could not start.
 	 */
 	bool StartHosting(const FEasySessionSettings& InPartySettings);
 
 	/**
-	 * Connect to the leader's party beacon, after the party session is joined and again after a map change.
+	 * Connect to the host's party beacon, after the party session is joined and again after a map change.
 	 * The login on that beacon adds the local player to the party.
 	 *
-	 * @param ConnectString The address of the leader's party beacon.
-	 * @param PartySessionId The id of the party session, which the leader checks at the login.
+	 * @param ConnectString The address of the host's party beacon.
+	 * @param PartySessionId The id of the party session, which the host checks at the login.
 	 * @param OnComplete Fired once, unless Close runs first.
 	 * @return Whether the connection started.
 	 */
-	bool ConnectToLeader(const FString& ConnectString, const FString& PartySessionId, FEasyPartyConnectComplete OnComplete);
+	bool ConnectToHost(const FString& ConnectString, const FString& PartySessionId, FEasyPartyConnectComplete OnComplete);
 
 	/**
 	 * Close the party beacon, before the party session is destroyed.
-	 * A leader tells every member first that the party ends.
+	 * A host tells every member first that the party ends.
 	 */
 	void Close();
 
@@ -77,14 +77,14 @@ public:
 	 */
 	void HandlePartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
-	/** @return The ids of every member but the local player, on the leader. Empty on a member and outside a party. */
+	/** @return The ids of every member but the local player, on the host. Empty on a member and outside a party. */
 	TArray<FUniqueNetIdRepl> GetOtherMemberIds() const;
 
-	/** Leader only: tell every member to follow into the session of this host, which holds a reservation for each of them. */
-	void TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery);
+	/** Host only: tell every member to follow into the session of this host, which holds a reservation for each of them. */
+	void TellMembersToFollow(const FUniqueNetIdRepl& GameHostId, bool bLANQuery);
 
 	/**
-	 * Change whether the local player is ready: directly on the leader, and through the leader on a member.
+	 * Change whether the local player is ready: directly on the host, and through the host on a member.
 	 *
 	 * @return Success, or NoSessionExists outside a party.
 	 */
@@ -93,14 +93,14 @@ public:
 	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 *
-	 * @return Success, RequiresPartyLeader, or InvalidParams for the local player or a player who is not a connected member.
+	 * @return Success, RequiresHost, or InvalidParams for the local player or a player who is not a connected member.
 	 */
 	EEasySessionResult KickMember(const FUniqueNetIdRepl& PlayerId, const FText& Reason);
 
-	/** @return Every member of the party, the leader included. Empty outside a party. */
+	/** @return Every member of the party, the host included. Empty outside a party. */
 	TArray<FEasyPartyMemberInfo> GetMembers() const;
 
-	/** @return Whether the party of the last match is being restored: created again on the leader, or searched for on a member. */
+	/** @return Whether the party of the last match is being restored: created again on the host, or searched for on a member. */
 	bool IsRestoring() const { return bRestoring; }
 
 	/**
@@ -114,35 +114,35 @@ private:
 	/** The party this player was in before it entered a game session. */
 	struct FLastParty
 	{
-		/** The leader, whose party the members search for. */
-		FUniqueNetIdRepl LeaderId;
+		/** The host, whose party the members search for. */
+		FUniqueNetIdRepl HostId;
 
-		/** The settings the leader creates the party with again. */
+		/** The settings the host creates the party with again. */
 		FEasySessionSettings Settings;
 
 		/** Was the party a LAN session. */
 		bool bIsLANMatch = false;
 	};
 
-	/** A map finished loading. Starts the party beacon again, connects to the leader again, or restores the party of the last match. */
+	/** A map finished loading. Starts the party beacon again, connects to the host again, or restores the party of the last match. */
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 
-	/** Keep connecting to the leader, whose party beacon a map change destroyed, until the reconnect time runs out. */
+	/** Keep connecting to the host, whose party beacon a map change destroyed, until the reconnect time runs out. */
 	void StartReconnect();
 
-	/** Connect to the leader's party beacon once. */
+	/** Connect to the host's party beacon once. */
 	void TryReconnect();
 
 	/** A reconnect finished. Tries again after a second, until the reconnect time runs out. */
 	void HandleReconnectComplete(bool bSuccess, const FText& Reason);
 
-	/** Create the party of the last match again on the leader, or search for it and join it on a member. */
+	/** Create the party of the last match again on the host, or search for it and join it on a member. */
 	void StartRestore();
 
-	/** Create the party of the last match once, on the leader. */
+	/** Create the party of the last match once, on the host. */
 	void TryRestoreCreate();
 
-	/** Look for the leader's party once, and join it when it is found. */
+	/** Look for the host's party once, and join it when it is found. */
 	void TryRestoreJoin();
 
 	/**
@@ -158,28 +158,28 @@ private:
 	void RunRestoreRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/**
-	 * Decide whether a player may join the party this process leads.
+	 * Decide whether a player may join the party this process hosts.
 	 * Refuses a member, a kicked player, and any player while the party is full.
 	 * Hidden and the join code only decide who finds the party, so they refuse nobody here.
 	 */
 	bool ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const;
 
 	/**
-	 * The leader takes the party into a game session.
-	 * Leaves the party with MovedToGameSession, which tells the leader the notice arrived, then calls FollowHost.
+	 * The host takes the party into a game session.
+	 * Leaves the party with MovedToGameSession, which tells the host the notice arrived, then calls FollowHost.
 	 */
-	void HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
+	void HandleFollowHost(const FUniqueNetIdRepl& GameHostId, bool bLANQuery);
 
-	/** The leader finished the login of the local player. */
+	/** The host finished the login of the local player. */
 	void HandleLoginComplete(bool bWasSuccessful);
 
 	/** Wait until the member list holds the local player, then complete the connection. */
 	bool HandleConnectTick(float DeltaTime);
 
-	/** Complete the running ConnectToLeader. */
+	/** Complete the running ConnectToHost. */
 	void FinishConnect(bool bSuccess, const FText& Reason);
 
-	/** The connection to the leader failed or closed. */
+	/** The connection to the host failed or closed. */
 	void HandleConnectionFailure();
 
 	/** Bind the member list events of the party beacon state, once it exists here. */
@@ -206,20 +206,20 @@ private:
 	/** The shared beacon port the party beacon registers on. */
 	FEasySessionBeaconPort& BeaconPort;
 
-	/** The leader's party beacon. Only valid on the leader, while the party exists. */
+	/** The host's party beacon. Only valid on the host, while the party exists. */
 	TWeakObjectPtr<AEasySessionPartyBeaconHost> BeaconHost;
 
-	/** A member's connection to the leader. Only valid on a member, while the party exists. */
+	/** A member's connection to the host. Only valid on a member, while the party exists. */
 	TWeakObjectPtr<AEasySessionPartyBeaconClient> BeaconClient;
 
 	/** The party beacon state whose member list events are bound. */
 	TWeakObjectPtr<AEasySessionPartyBeaconState> BoundState;
 
-	/** The settings of the party this process leads, which a map change starts the party beacon with again. */
+	/** The settings of the party this process hosts, which a map change starts the party beacon with again. */
 	FEasySessionSettings PartySettings;
 
-	/** The leader of the party this player is in. */
-	FUniqueNetIdRepl LeaderId;
+	/** The host of the party this player is in. */
+	FUniqueNetIdRepl HostId;
 
 	/** Is the party this player is in a LAN session. */
 	bool bIsLANParty = false;
@@ -239,16 +239,16 @@ private:
 	/** When the reconnect started, in FPlatformTime seconds. Zero while no reconnect runs. */
 	double ReconnectStartSeconds = 0.0;
 
-	/** Players the leader kicked. They cannot join again while this party exists. */
+	/** Players the host kicked. They cannot join again while this party exists. */
 	TArray<FUniqueNetIdRepl> KickedPlayers;
 
-	/** The completion of the running ConnectToLeader. Unbound while none runs. */
+	/** The completion of the running ConnectToHost. Unbound while none runs. */
 	FEasyPartyConnectComplete ConnectComplete;
 
-	/** Why the leader refused the join, when it said so. */
+	/** Why the host refused the join, when it said so. */
 	FText JoinRefusal;
 
-	/** Why this member's membership ends, when the leader said so before the connection closed. The first reason is kept. */
+	/** Why this member's membership ends, when the host said so before the connection closed. The first reason is kept. */
 	TOptional<TPair<EEasyPartyLeaveReason, FText>> PendingLeave;
 
 	/** Ticker that waits for the local player in the member list. */

@@ -19,10 +19,10 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 
 - **Drops into an existing project** - enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Apart from the GameInstance setting in step 3, keep the game mode and widgets you already have and add the nodes.
 - **Matchmaking in one node** - `Start Easy Matchmaking` searches, joins the best session it finds, and with Allow Host Fallback on hosts one when it finds none.
-- **Parties** - friends gather in a party before they play: hidden or listed, with an optional join code, invites, ready state and kick. When the leader hosts, joins or matchmakes, the whole party follows, and after the match the party comes back on its own.
+- **Parties** - friends gather in a party before they play: hidden or listed, with an optional join code, invites, ready state and kick. When the host creates a session, joins or matchmakes, the whole party follows, and after the match the party comes back on its own.
 - **Moving together** - the host of a lobby session that joins or matchmakes into another session brings every player along, with room reserved for all of them.
 - **The whole session lifecycle in Blueprint** - create, find, join, start the match, end it, leave and update settings, all as async nodes. Session state, the player list and open slots are one node away, and the same API is available from C++.
-- **Ready and kick** - every player and party member shares whether they are ready, and the host or party leader can remove a player with a reason they see.
+- **Ready and kick** - every player and party member shares whether they are ready, and the host of the session or the party can remove a player with a reason they see.
 - **Every request reports its progress and result** - `Is Busy` covers the request running or queued and the level load that follows hosting or joining, so binding it to a button's Is Enabled keeps that button locked for as long as the player is actually waiting. When the request finishes you get a result enum and a message you can show a player.
 - **Overlapping calls are handled in order** - every request goes through a queue and runs one at a time. A call made while another is still running waits its turn instead of failing, and a repeat of the same call ends with a clear result such as `SessionAlreadyExists`.
 - **Passwords and join-in-progress enforced by the host** - checked as the player connects, so a stale search result or a direct connect cannot walk into a running match.

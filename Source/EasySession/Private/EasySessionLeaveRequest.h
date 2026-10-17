@@ -24,7 +24,7 @@ public:
 	FEasySessionLeaveRequest(const FText& InReason, FEasySessionCompleteDelegate InOnComplete);
 
 	/**
-	 * Leave the party. A leader who leaves ends the party for every member, because the member list lives on the leader's beacon.
+	 * Leave the party. A host who leaves ends the party for every member, because the member list lives on the host's beacon.
 	 *
 	 * @param InReason Why the party ends for the local player, which OnPartyLeft reports.
 	 */

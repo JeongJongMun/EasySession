@@ -23,16 +23,10 @@ bool UEasySessionStatics::IsInEasySession(const UObject* WorldContextObject, EEa
 	return Subsystem != nullptr && Subsystem->IsInSession(Type);
 }
 
-bool UEasySessionStatics::IsEasySessionHost(const UObject* WorldContextObject)
+bool UEasySessionStatics::IsEasyHost(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsHost();
-}
-
-bool UEasySessionStatics::IsEasySessionAuthority(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsSessionAuthority();
+	return Subsystem != nullptr && Subsystem->IsHost(Type);
 }
 
 EEasySessionState UEasySessionStatics::GetEasySessionState(const UObject* WorldContextObject)
@@ -105,12 +99,6 @@ int32 UEasySessionStatics::GetEasyMaxPlayers(const UObject* WorldContextObject, 
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
 	return Subsystem != nullptr ? Subsystem->GetMaxPlayers(Type) : 0;
-}
-
-bool UEasySessionStatics::IsEasyPartyLeader(const UObject* WorldContextObject)
-{
-	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->IsPartyLeader();
 }
 
 TArray<FEasyPartyMemberInfo> UEasySessionStatics::GetEasyPartyMembers(const UObject* WorldContextObject)

@@ -109,7 +109,7 @@ bool FEasySessionFollowStep::Update()
 
 			// The player joined this lobby rather than hosting it, as a player told to follow its host has.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
-			CurrentTest->TestFalse(TEXT("The player does not host the session it is in"), Subsystem->IsSessionAuthority());
+			CurrentTest->TestFalse(TEXT("The player does not host the session it is in"), Subsystem->IsHost());
 
 			Subsystem->FollowHost(State->HostResult.Session.OwningUserId, true);
 			MoveTo(State, FTestState::EStep::AwaitingLeave);
@@ -194,7 +194,7 @@ bool FEasySessionFollowStep::Update()
  * A player of the group follows its host with a matchmaking run that searches for that one host and joins it.
  * A player in the lobby leaves it first and travels to the Game Default Map, where the follow searches.
  * The old host leaving then never reaches the player, so nothing but the follow decides where the player goes.
- * A password-protected host is still tried, because the reservation the party leader or the host asked for lets the player in without the password.
+ * A password-protected host is still tried, because the reservation the party host or the game host asked for lets the player in without the password.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionFollowTest, "EasySession.Group.AFollowSearchesForTheHostAndJoins", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionFollowTest::RunTest(const FString& Parameters)

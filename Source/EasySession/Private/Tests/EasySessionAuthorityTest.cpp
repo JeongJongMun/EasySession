@@ -70,7 +70,7 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 			// A test game instance has no local player, which is the state a dedicated server is in.
 			// The process still created the session, so it keeps the authority over it.
 			CurrentTest->TestEqual(TEXT("There is no local player"), State->GameInstance->GetNumLocalPlayers(), 0);
-			CurrentTest->TestTrue(TEXT("The process that created the session has the authority"), Subsystem->IsSessionAuthority());
+			CurrentTest->TestTrue(TEXT("The process that created the session has the authority"), Subsystem->IsHost());
 			CurrentTest->TestTrue(TEXT("Session still exists"), Subsystem->IsInSession());
 
 			Subsystem->DestroySessionForEveryone(FText::FromString(TEXT("Server shutting the match down")));

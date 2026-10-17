@@ -42,8 +42,8 @@ class FEasySessionTestAccess
 public:
 
 	/**
-	 * Pretend this process did or did not create the active session, by writing the bHosting flag IsSessionAuthority reads.
-	 * With NAME_PartySession it pretends the same for the party, which makes the local player a member instead of the leader.
+	 * Pretend this process did or did not create the active session, by writing the bHosting flag IsHost reads.
+	 * With NAME_PartySession it pretends the same for the party, which makes the local player a member instead of the host.
 	 * Creating normally sets it, and a headless test has no second process to join.
 	 * Does nothing while no session exists.
 	 */
@@ -344,14 +344,14 @@ public:
 		return Result;
 	}
 
-	/** @return The leader's party beacon, or null outside a party. */
+	/** @return The host's party beacon, or null outside a party. */
 	static AEasySessionPartyBeaconHost* GetPartyBeacon(const UEasySessionSubsystem& Subsystem)
 	{
 		return Subsystem.Party->BeaconHost.Get();
 	}
 
 	/**
-	 * Ask the party this process leads whether a player may join, as the party beacon does at a login.
+	 * Ask the party this process hosts whether a player may join, as the party beacon does at a login.
 	 *
 	 * @return Whether the player is admitted. OutReason holds the refusal otherwise.
 	 */
@@ -360,7 +360,7 @@ public:
 		return Subsystem.Party->ApproveMember(PlayerId, OutReason);
 	}
 
-	/** Add a member to the member list of the party this process leads, as a login the leader approved does. */
+	/** Add a member to the member list of the party this process hosts, as a login the host approved does. */
 	static void AddPartyMember(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{
 		if (AEasySessionPartyBeaconState* State = Subsystem.Party->GetPartyState())
@@ -369,13 +369,13 @@ public:
 		}
 	}
 
-	/** Keep a player out of the party this process leads, the part of a kick that needs no connected member. */
+	/** Keep a player out of the party this process hosts, the part of a kick that needs no connected member. */
 	static void AddKickedPartyPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{
 		Subsystem.Party->KickedPlayers.AddUnique(PlayerId);
 	}
 
-	/** Destroy the leader's party beacon and release its listener, as a map change does. The party session stays. */
+	/** Destroy the host's party beacon and release its listener, as a map change does. The party session stays. */
 	static void DestroyPartyBeacon(UEasySessionSubsystem& Subsystem)
 	{
 		if (AEasySessionPartyBeaconHost* Beacon = Subsystem.Party->BeaconHost.Get())
@@ -397,11 +397,11 @@ public:
 		return Subsystem.Party->LastParty.IsSet();
 	}
 
-	/** Pretend the local player was a member of this leader's party before the last match. */
-	static void SetLastPartyLeader(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& LeaderId)
+	/** Pretend the local player was a member of this host's party before the last match. */
+	static void SetLastPartyHost(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& HostId)
 	{
 		FEasySessionParty::FLastParty& Last = Subsystem.Party->LastParty.Emplace();
-		Last.LeaderId = LeaderId;
+		Last.HostId = HostId;
 		Last.bIsLANMatch = true;
 	}
 

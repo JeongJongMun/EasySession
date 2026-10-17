@@ -165,7 +165,7 @@ public:
 	/**
 	 * Fired when something fails outside any node's result.
 	 * That is a dropped connection, or an accepted invite that this player does not join or whose join fails for a reason other than a missing password.
-	 * It also fires when following the party leader or the host into a new session fails.
+	 * It also fires when following the party host or the game host into a new session fails.
 	 * It also covers a travel or listen server started by EasySession that fails, for example on a wrong Initial Map Name.
 	 * On the host it fires when the reservation beacon of a password-protected session cannot start, because no player can join that session then.
 	 */
@@ -199,7 +199,7 @@ public:
 	FEasySessionPlayersChangedEvent OnSessionPlayersChanged;
 
 	/**
-	 * Fired when a member joins or leaves the party, or changes whether they are ready, on the leader and on every member.
+	 * Fired when a member joins or leaves the party, or changes whether they are ready, on the host and on every member.
 	 * Get Easy Party Members already returns the new list when this fires, so a UI reads it and refreshes.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
@@ -207,8 +207,8 @@ public:
 
 	/**
 	 * Fired when the local player is no longer in the party.
-	 * They left, the leader kicked them or left, the connection was lost, or the party entered a game session.
-	 * Reason Text is the leader's reason for a kick, and a message for the player otherwise.
+	 * They left, the host kicked them or left, the connection was lost, or the party entered a game session.
+	 * Reason Text is the host's reason for a kick, and a message for the player otherwise.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasyPartyLeftEvent OnPartyLeft;
@@ -218,7 +218,7 @@ public:
 	/**
 	 * Create a new session and travel to Initial Map Name.
 	 * For listen servers the map is opened with the ?listen option automatically.
-	 * A party leader brings the party, whose members follow once the map is open, and a party member is refused with InParty.
+	 * A party host brings the party, whose members follow once the map is open, and a party member is refused with InParty.
 	 *
 	 * @param HostParams Parameters describing the session to create.
 	 * @param OnComplete Called when the request completes.
@@ -243,9 +243,9 @@ public:
 	 * A join that fails after that destroy travels the player to the menu.
 	 * Joining the session this player is already in fails with SessionAlreadyExists, and so does a join by the host of a match in progress.
 	 * A player in a session stays in it when the reservation beacon cannot reach the new host.
-	 * A party leader, or the host of a match that has not started, brings the group, which is told to follow before this player joins.
+	 * A party host, or the host of a match that has not started, brings the group, which is told to follow before this player joins.
 	 * A party member is refused with InParty.
-	 * For a party, the leader decides the join, and a refusal fails with JoinRefused and the leader's reason.
+	 * For a party, the host decides the join, and a refusal fails with JoinRefused and the host's reason.
 	 * A player in a party or a game session fails with SessionAlreadyExists.
 	 * On Success, GetPartyMembers already lists the local player.
 	 *
@@ -290,7 +290,7 @@ public:
 	 * Leave the session of this type: destroy this game's named session, and for a game session travel to the menu map.
 	 * A host that leaves destroys the game session for everyone, and every client receives "The host has left the game." first.
 	 * The menu travel runs whatever the destroy reported, because the player asked to leave.
-	 * A leader who leaves the party ends it for every member, and OnPartyLeft fires with Left once the party is left.
+	 * A host who leaves the party ends it for every member, and OnPartyLeft fires with Left once the party is left.
 	 *
 	 * @param Type The game session or the party session to leave.
 	 * @param OnComplete Called with the destroy's result, for a game session after the menu travel was requested.
@@ -325,7 +325,7 @@ public:
 	 * The player then travels to the menu, where ConsumePendingDisconnectInfo returns Kicked with this reason.
 	 * Needs session authority: only the game that created the session can do this.
 	 *
-	 * @return Success, RequiresSessionAuthority, or InvalidParams for a player who is not a connected remote player.
+	 * @return Success, RequiresHost, or InvalidParams for a player who is not a connected remote player.
 	 */
 	EEasySessionResult KickPlayer(const FEasySessionPlayerInfo& Player, const FText& Reason);
 
@@ -350,7 +350,7 @@ public:
 	/**
 	 * Start Matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.
 	 * The run holds the session queue until it ends, so session requests made meanwhile run after it.
-	 * A party leader, or the host of a match that has not started, searches for open slots for the whole group and brings it.
+	 * A party host, or the host of a match that has not started, searches for open slots for the whole group and brings it.
 	 * A party member is refused with InParty.
 	 *
 	 * @param MatchmakingParams Parameters describing the search and the fallback host session.
@@ -369,12 +369,12 @@ public:
 public:
 
 	/**
-	 * Create a party, with the local player as its leader.
+	 * Create a party, with the local player as its host.
 	 * A party lives outside game sessions and needs no map, so nothing travels.
 	 * Needs a player logged in to the online subsystem, because members are told apart by their ids.
 	 *
-	 * @param Settings What the party advertises. MaxPlayers counts the leader.
-	 *        A Password or bShouldAdvertise off is refused with InvalidParams, because a party has no password and members find it again by its leader.
+	 * @param Settings What the party advertises. MaxPlayers counts the host.
+	 *        A Password or bShouldAdvertise off is refused with InvalidParams, because a party has no password and members find it again by its host.
 	 * @param OnComplete Called when the request completes.
 	 */
 	void CreateParty(const FEasySessionSettings& Settings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
@@ -382,9 +382,9 @@ public:
 	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 * The member receives OnPartyLeft with Kicked and this reason.
-	 * Only the leader can do this.
+	 * Only the host can do this.
 	 *
-	 * @return Success, RequiresPartyLeader, or InvalidParams for a player who is not a connected member.
+	 * @return Success, RequiresHost, or InvalidParams for a player who is not a connected member.
 	 */
 	EEasySessionResult KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason);
 
@@ -396,14 +396,11 @@ public:
 	 */
 	EEasySessionResult SetPartyReady(bool bReady);
 
-	/** @return Whether the local player leads the party. False outside a party. */
-	bool IsPartyLeader() const;
-
-	/** @return Every member of the party, the leader included. Empty outside a party. */
+	/** @return Every member of the party, the host included. Empty outside a party. */
 	TArray<FEasyPartyMemberInfo> GetPartyMembers() const;
 
 	/**
-	 * @return Whether the party of the last match is being restored: created again on the leader, or searched for and joined on a member.
+	 * @return Whether the party of the last match is being restored: created again on the host, or searched for and joined on a member.
 	 *         A member searches until the party is back or Party Restore Wait Seconds ends, and IsInParty stays false meanwhile.
 	 */
 	bool IsRestoringParty() const;
@@ -450,17 +447,11 @@ public:
 	FString GetJoinCode(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/**
-	 * @return Whether the local player is hosting the current session.
-	 *         False on a dedicated server, which has no local player, so ask IsSessionAuthority there.
-	 */
-	bool IsHost() const;
-
-	/**
-	 * @return Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
+	 * @return Whether this game hosts the session of this type: it created the session, so it may Start, End, Update, travel or destroy a game session,
+	 *         and kick from a party. False outside a session of this type.
 	 *         Read from FNamedOnlineSession's bHosting, which this plugin sets when the create completes because Steam never does.
-	 *         Is Host is a different question, and false on a dedicated server.
 	 */
-	bool IsSessionAuthority() const;
+	bool IsHost(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/** @return The display name the session of this type advertises. Empty when no such session exists. */
 	FString GetDisplayName(EEasySessionType Type = EEasySessionType::GameSession) const;
@@ -594,7 +585,7 @@ public:
 	void HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings);
 
 	/**
-	 * Internal, called when the party leader or the host tells this player to follow: join the session of a host who holds a reservation for this player.
+	 * Internal, called when the party host or the game host tells this player to follow: join the session of a host who holds a reservation for this player.
 	 * Runs as a matchmaking run that searches for that host only, so the matchmaking events report its progress and CancelMatchmaking stops it.
 	 * A player in a game session leaves it first and follows from the Game Default Map, so the old host leaving never reaches this player.
 	 *
@@ -605,7 +596,7 @@ public:
 
 	/**
 	 * Internal, called when the party ends for the local player without LeaveSession.
-	 * That is when the leader ended the membership, the connection to the leader was lost, or this player entered a game session.
+	 * That is when the host ended the membership, the connection to the host was lost, or this player entered a game session.
 	 * Queues a leave of the party session unless one is queued already, and that leave broadcasts OnPartyLeft with the reason.
 	 */
 	void HandlePartyEnded(EEasyPartyLeaveReason Reason, const FText& ReasonText);
@@ -637,7 +628,7 @@ public:
 
 private:
 
-	/** @return Whether the local player is in a party they do not lead, so the leader decides where they go. */
+	/** @return Whether the local player is in a party they do not host, so the host decides where they go. */
 	bool IsPartyMember() const;
 
 	/** Resolve the session interface for the current world context. */

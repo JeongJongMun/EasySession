@@ -41,7 +41,7 @@ namespace EasySessionHostTest
 	// Check the four parts of the host side: the authority, the session password, the state actor and the reservation beacon.
 	static void TestHostSide(FAutomationTestBase& Test, UEasySessionSubsystem& Subsystem, bool bExpected, const TCHAR* When)
 	{
-		Test.TestEqual(FString::Printf(TEXT("%s: session authority"), When), Subsystem.IsSessionAuthority(), bExpected);
+		Test.TestEqual(FString::Printf(TEXT("%s: session authority"), When), Subsystem.IsHost(), bExpected);
 		Test.TestEqual(FString::Printf(TEXT("%s: the host holds the password"), When),
 			FEasySessionTestAccess::GetEnforcedSessionPassword(Subsystem), bExpected ? FString(TestPassword) : FString());
 		Test.TestEqual(FString::Printf(TEXT("%s: the state actor exists"), When), FEasySessionTestAccess::HasStateActor(Subsystem), bExpected);

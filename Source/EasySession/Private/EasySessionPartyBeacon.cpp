@@ -25,7 +25,7 @@ void AEasySessionPartyBeaconPlayerState::SetReady(bool bInReady)
 	bReady = bInReady;
 	ForceNetUpdate();
 
-	// OnRep only runs on members, so the leader reports its own change here.
+	// OnRep only runs on members, so the host reports its own change here.
 	OnRep_Ready();
 }
 
@@ -109,30 +109,30 @@ AEasySessionPartyBeaconHost::AEasySessionPartyBeaconHost()
 	LobbyStateClass = AEasySessionPartyBeaconState::StaticClass();
 }
 
-bool AEasySessionPartyBeaconHost::StartParty(int32 MaxMembers, const FUniqueNetIdRepl& InLeaderId, const FString& LeaderName)
+bool AEasySessionPartyBeaconHost::StartParty(int32 MaxMembers, const FUniqueNetIdRepl& InHostId, const FString& HostName)
 {
 	SetupLobbyState(MaxMembers);
-	if (LobbyState == nullptr || !InLeaderId.IsValid())
+	if (LobbyState == nullptr || !InHostId.IsValid())
 	{
 		return false;
 	}
 
-	// The leader plays on this machine and has no beacon connection, so its entry is added here instead of at a login.
-	ALobbyBeaconPlayerState* Leader = LobbyState->AddPlayer(FText::FromString(LeaderName.Left(MaxMemberNameLength)), InLeaderId);
-	if (Leader == nullptr)
+	// The host plays on this machine and has no beacon connection, so its entry is added here instead of at a login.
+	ALobbyBeaconPlayerState* Host = LobbyState->AddPlayer(FText::FromString(HostName.Left(MaxMemberNameLength)), InHostId);
+	if (Host == nullptr)
 	{
 		return false;
 	}
 
-	LeaderId = InLeaderId;
-	Leader->PartyOwnerUniqueId = LeaderId;
+	HostId = InHostId;
+	Host->PartyOwnerUniqueId = HostId;
 
-	// NULL counts the open slots a search reports from the registered players, and the leader has no login that registers it.
+	// NULL counts the open slots a search reports from the registered players, and the host has no login that registers it.
 	// Registering again after a map change changes nothing, because a registered player is not counted twice.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
 	if (Sessions.IsValid())
 	{
-		Sessions->RegisterPlayer(NAME_PartySession, *InLeaderId, false);
+		Sessions->RegisterPlayer(NAME_PartySession, *InHostId, false);
 	}
 	return true;
 }
@@ -157,18 +157,18 @@ void AEasySessionPartyBeaconHost::TellMembersPartyEnds(const FText& ReasonText)
 	{
 		if (AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ExistingClient))
 		{
-			Client->ClientLeftParty(EEasyPartyLeaveReason::LeaderLeft, ReasonText);
+			Client->ClientLeftParty(EEasyPartyLeaveReason::HostLeft, ReasonText);
 		}
 	}
 }
 
-void AEasySessionPartyBeaconHost::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+void AEasySessionPartyBeaconHost::TellMembersToFollow(const FUniqueNetIdRepl& GameHostId, bool bLANQuery)
 {
 	for (AOnlineBeaconClient* ExistingClient : ClientActors)
 	{
 		if (AEasySessionPartyBeaconClient* Client = Cast<AEasySessionPartyBeaconClient>(ExistingClient))
 		{
-			Client->ClientFollowHost(HostId, bLANQuery);
+			Client->ClientFollowHost(GameHostId, bLANQuery);
 		}
 	}
 }
@@ -229,7 +229,7 @@ ALobbyBeaconPlayerState* AEasySessionPartyBeaconHost::HandlePlayerLogin(ALobbyBe
 	{
 		if (Reason.IsEmpty())
 		{
-			Reason = NSLOCTEXT("EasySession", "PartyNotAnswering", "The party leader could not decide the join.");
+			Reason = NSLOCTEXT("EasySession", "PartyNotAnswering", "The party host could not decide the join.");
 		}
 
 		UE_LOG(LogEasySession, Log, TEXT("Party: refusing '%s' - %s"), *InUniqueId.ToString(), *Reason.ToString());
@@ -258,7 +258,7 @@ ALobbyBeaconPlayerState* AEasySessionPartyBeaconHost::HandlePlayerLogin(ALobbyBe
 	ALobbyBeaconPlayerState* NewMember = LobbyState->AddPlayer(FText::FromString(MemberName), InUniqueId);
 	if (NewMember != nullptr)
 	{
-		NewMember->PartyOwnerUniqueId = LeaderId;
+		NewMember->PartyOwnerUniqueId = HostId;
 		UE_LOG(LogEasySession, Log, TEXT("Party: '%s' joined."), *MemberName);
 	}
 	return NewMember;

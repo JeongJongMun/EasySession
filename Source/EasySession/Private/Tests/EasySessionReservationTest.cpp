@@ -183,12 +183,12 @@ namespace EasySessionReservationTest
 
 	// Ask the beacon for one reservation that holds a requester and the group traveling with them, the way the join of a player with a group does.
 	// Returns the parent's result, before this plugin turns it into a response.
-	static EPartyReservationResult::Type AddGroupReservation(APartyBeaconHost& Beacon, const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers)
+	static EPartyReservationResult::Type AddGroupReservation(APartyBeaconHost& Beacon, const FUniqueNetIdRepl& HostId, const TArray<FUniqueNetIdRepl>& GroupMembers)
 	{
 		FPartyReservation Reservation;
 		Reservation.TeamNum = 0;
-		Reservation.PartyLeader = LeaderId;
-		Reservation.PartyMembers = EasySessionReservation::MakeReservations(LeaderId, GroupMembers);
+		Reservation.PartyLeader = HostId;
+		Reservation.PartyMembers = EasySessionReservation::MakeReservations(HostId, GroupMembers);
 		return Beacon.AddPartyReservation(Reservation);
 	}
 
@@ -828,28 +828,28 @@ bool FEasySessionGroupReservationStep::Update()
 	CurrentTest->TestEqual(TEXT("Creating the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
 	FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
 
-	const FUniqueNetIdRepl Leader = MakePlayerId(World, TEXT("EasySessionGroupLeader"));
+	const FUniqueNetIdRepl Host = MakePlayerId(World, TEXT("EasySessionGroupHost"));
 	const FUniqueNetIdRepl MemberA = MakePlayerId(World, TEXT("EasySessionGroupMemberA"));
 	const FUniqueNetIdRepl MemberB = MakePlayerId(World, TEXT("EasySessionGroupMemberB"));
 	const FUniqueNetIdRepl MemberC = MakePlayerId(World, TEXT("EasySessionGroupMemberC"));
 
-	const TArray<FPlayerReservation> Listed = EasySessionReservation::MakeReservations(Leader, { MemberA, Leader, FUniqueNetIdRepl(), MemberA, MemberB });
-	if (CurrentTest->TestEqual(TEXT("The leader, then each member once, with no invalid id"), Listed.Num(), 3))
+	const TArray<FPlayerReservation> Listed = EasySessionReservation::MakeReservations(Host, { MemberA, Host, FUniqueNetIdRepl(), MemberA, MemberB });
+	if (CurrentTest->TestEqual(TEXT("The host, then each member once, with no invalid id"), Listed.Num(), 3))
 	{
-		CurrentTest->TestTrue(TEXT("The leader is listed first"), Listed[0].UniqueId == Leader);
+		CurrentTest->TestTrue(TEXT("The host is listed first"), Listed[0].UniqueId == Host);
 	}
 
 	APartyBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
 	if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
 	{
 		// Four players, and the host already holds one of the four slots.
-		const EPartyReservationResult::Type TooLarge = AddGroupReservation(*Beacon, Leader, { MemberA, MemberB, MemberC });
+		const EPartyReservationResult::Type TooLarge = AddGroupReservation(*Beacon, Host, { MemberA, MemberB, MemberC });
 		CurrentTest->TestEqual(TEXT("A group of four does not fit the three slots left"),
 			AEasySessionReservationBeaconClient::MakeResponseFromReservationResult(TooLarge).Result, EEasyReservationResult::SessionFull);
 		CurrentTest->TestEqual(TEXT("A refused group holds no slot"), Beacon->GetNumConsumedReservations(), 1);
 
 		CurrentTest->TestEqual(TEXT("A group of three takes the three slots left in one reservation"),
-			AddGroupReservation(*Beacon, Leader, { MemberA, MemberB }), EPartyReservationResult::ReservationAccepted);
+			AddGroupReservation(*Beacon, Host, { MemberA, MemberB }), EPartyReservationResult::ReservationAccepted);
 		CurrentTest->TestEqual(TEXT("Every member of the group holds a slot"), Beacon->GetNumConsumedReservations(), 4);
 
 		// A player of the group who follows the requester asks for a reservation of their own, and the parent moves them out of the group's.

@@ -63,9 +63,9 @@ uses a beacon.
 
 ### Parties on Steam
 
-A party is a Steam lobby next to the game session, and the leader runs the party beacon on the same port as the reservation beacon. The two accounts must be Steam friends, because the invite overlay lists only friends. With the console (`~`) on both machines:
+A party is a Steam lobby next to the game session, and the host runs the party beacon on the same port as the reservation beacon. The two accounts must be Steam friends, because the invite overlay lists only friends. With the console (`~`) on both machines:
 
-1. **Invite.** A: `EasySession.CreateParty 4`, a hidden party, then `EasySession.PartyInviteUI` and invite B. B accepts in the overlay and joins. B's log shows the leader's Steam address: `Connecting to the party leader at steam.<id>:...`.
+1. **Invite.** A: `EasySession.CreateParty 4`, a hidden party, then `EasySession.PartyInviteUI` and invite B. B accepts in the overlay and joins. B's log shows the host's Steam address: `Connecting to the party host at steam.<id>:...`.
 2. **Public party.** A: `EasySession.CreateParty 4 public`. B: `EasySession.FindParties`, then `EasySession.JoinParty`.
 3. **Join code.** A: `EasySession.CreateParty 4 code`, then `EasySession.Party` prints the code. B: `EasySession.FindParties <code>`, then `EasySession.JoinParty`.
 4. **Follow.** A: `EasySession.Host <Map>`. B follows into A's session, and both see `OnPartyLeft` with `MovedToGameSession`.

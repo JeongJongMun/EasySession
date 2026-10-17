@@ -96,9 +96,8 @@ namespace EasySession
 			case EEasySessionResult::UpdateFailure:				return TEXT("UpdateFailure");
 			case EEasySessionResult::StateChangeFailure:		return TEXT("StateChangeFailure");
 			case EEasySessionResult::Canceled:					return TEXT("Canceled");
-			case EEasySessionResult::RequiresSessionAuthority:	return TEXT("RequiresSessionAuthority");
+			case EEasySessionResult::RequiresHost:	return TEXT("RequiresHost");
 			case EEasySessionResult::NotSupportedByService:		return TEXT("NotSupportedByService");
-			case EEasySessionResult::RequiresPartyLeader:		return TEXT("RequiresPartyLeader");
 			case EEasySessionResult::InParty:					return TEXT("InParty");
 			default:											return TEXT("UnknownFailure");
 		}

@@ -230,12 +230,12 @@ bool FEasySessionRequest::ShouldForceLAN() const
 
 TArray<FUniqueNetIdRepl> FEasySessionRequest::GetGroupMembers() const
 {
-	return GetContext().Subsystem.IsPartyLeader() ? GetContext().Party.GetOtherMemberIds() : GetContext().Host.GetGroupMembers();
+	return GetContext().Subsystem.IsHost(EEasySessionType::PartySession) ? GetContext().Party.GetOtherMemberIds() : GetContext().Host.GetGroupMembers();
 }
 
 void FEasySessionRequest::TellGroupToFollow(const TArray<FUniqueNetIdRepl>& Members, const FUniqueNetIdRepl& HostId, bool bLANQuery) const
 {
-	if (GetContext().Subsystem.IsPartyLeader())
+	if (GetContext().Subsystem.IsHost(EEasySessionType::PartySession))
 	{
 		GetContext().Party.TellMembersToFollow(HostId, bLANQuery);
 		return;

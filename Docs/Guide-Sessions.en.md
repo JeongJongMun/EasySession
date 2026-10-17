@@ -6,7 +6,7 @@ Everything about creating, finding, joining, starting a match and leaving sessio
 
 All requests are **queued and executed one at a time** - you can call them in any order, even in the same frame, and they will never corrupt the online service.
 
-Players who stay together between matches, such as friends in the main menu, are a party. The [Party guide](Guide-Party.en.md) covers it, including how a party leader brings the party into a session.
+Players who stay together between matches, such as friends in the main menu, are a party. The [Party guide](Guide-Party.en.md) covers it, including how a party host brings the party into a session.
 
 ## Create Session
 
@@ -179,7 +179,7 @@ Only friends of the host get through. A player invited by another member who is 
 Both keep the advertised in-progress flag current, which is what the search's
 `Include In Progress Sessions` filter and the result's `bMatchInProgress` read.
 
-Both are host only. A client gets `RequiresSessionAuthority`, so show the buttons only when `Is Easy Session Authority` is true.
+Both are host only. A client gets `RequiresHost`, so show the buttons only when `Is Easy Host` is true.
 
 ## Update Session
 
@@ -256,7 +256,7 @@ two combine: the code finds the session, the password still gates the door.
 
 `Set Easy Session Ready` changes whether the local player is ready. The plugin only shares the value: the game decides what being ready allows, for example enabling the host's Start button. Ready is unset again in every map the session travels to.
 
-`Kick Easy Session Player` removes a player from the session and keeps them out until the session is destroyed. The player travels to the menu, where `Consume Pending Easy Disconnect Info` returns `Kicked` with the host's reason. Session authority only.
+`Kick Easy Session Player` removes a player from the session and keeps them out until the session is destroyed. The player travels to the menu, where `Consume Pending Easy Disconnect Info` returns `Kicked` with the host's reason. Host only.
 
 ## Events and state queries
 
@@ -270,7 +270,7 @@ subsystem (`Get Easy Session Subsystem`) with Assign nodes when the parent class
 - `OnInvitePasswordRequired` - the automatic join of an accepted invite needs a password from this player. Ask for it, then call `Join Easy Session` with the event's `Session` and the password
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)
 
-Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Session Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Display Name`, `Get Easy Session Player Infos`, `Get Easy Player Count`, `Get Easy Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.
+Pure state queries are usable anywhere: `Is In Easy Session`, `Is Easy Host`, `Is Easy Session Busy` and `Get Easy Session State` for status, `Get Easy Display Name`, `Get Easy Session Player Infos`, `Get Easy Player Count`, `Get Easy Max Players` for contents, and `Get Online Subsystem Name (EasySession)` for the environment. The [API reference](API.en.md) has the full list.
 
 ## C++ API
 

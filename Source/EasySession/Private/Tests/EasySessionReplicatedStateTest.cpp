@@ -116,7 +116,7 @@ bool FEasySessionWaitForReplicatedState::Update()
  * A client only reads the host's match state.
  * It never acts on it.
  * Passing the replicated state to StartSession or EndSession would queue a request the client has no authority to run.
- * That request would fail with RequiresSessionAuthority, although the game asked for no match change.
+ * That request would fail with RequiresHost, although the game asked for no match change.
  *
  * HandleReplicatedSessionState records the host's state in any net mode, and only GetSessionState checks for NM_Client.
  * A headless test world is standalone, so this test only checks the recorded value through FEasySessionTestAccess::GetReplicatedSessionState.

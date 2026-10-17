@@ -24,10 +24,10 @@ namespace
 	// Seconds between two checks whether GetGroupMembers still lists a player of the group.
 	constexpr float GroupWaitIntervalSeconds = 0.1f;
 
-	// Seconds a party leader or a host waits for the group before it joins without the rest.
+	// Seconds a party host or a game host waits for the group before it joins without the rest.
 	constexpr double GroupWaitTimeoutSeconds = 10.0;
 
-	// Seconds the leader gets to complete the login, from the start of the connection until the member list holds the local player.
+	// Seconds the host gets to complete the login, from the start of the connection until the member list holds the local player.
 	constexpr float LoginTimeoutSeconds = 10.0f;
 }
 
@@ -74,14 +74,14 @@ void FEasySessionJoinRequest::Execute()
 		return;
 	}
 
-	// A party has no reservation beacon: the leader decides the join at the login, after the online subsystem joined the party session.
+	// A party has no reservation beacon: the host decides the join at the login, after the online subsystem joined the party session.
 	if (IsPartyRequest())
 	{
 		JoinOnlineSession();
 		return;
 	}
 
-	// A party leader takes the party along, and a host whose match has not started the players of its session, in the same reservation.
+	// A party host takes the party along, and a game host whose match has not started the players of its session, in the same reservation.
 	GroupMembers = GetGroupMembers();
 
 	if (FEasySessionReservations::UsesReservationBeacon(Target.NativeResult.Session.SessionSettings))
@@ -131,7 +131,7 @@ bool FEasySessionJoinRequest::CheckCanJoin()
 		return false;
 	}
 
-	// A party has no game server to travel to, and a game session no leader to log in with, so the other kind would wait for a timeout.
+	// A party has no game server to travel to, and a game session no party beacon to log in to, so the other kind would wait for a timeout.
 	// A session of another project advertises no kind at all.
 	if (EasySession::GetAdvertisedSessionType(Target.NativeResult.Session.SessionSettings) != SessionName)
 	{
@@ -161,7 +161,7 @@ bool FEasySessionJoinRequest::CheckCanJoinGameSession(const IOnlineSessionPtr& S
 
 	// A host that destroys its session to join another would end a match in progress for every player.
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
-	if (GetContext().Subsystem.IsSessionAuthority() && (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress))
+	if (GetContext().Subsystem.IsHost() && (LocalState == EEasySessionState::Starting || LocalState == EEasySessionState::InProgress))
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
 		return false;
@@ -187,7 +187,7 @@ bool FEasySessionJoinRequest::CheckCanJoinPartySession()
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
 	if (!Identity.IsValid() || !Identity->GetUniquePlayerId(0).IsValid())
 	{
-		Complete(EEasySessionResult::JoinFailure, TEXT("No player is logged in to the online subsystem, so the party leader could not tell who joins."));
+		Complete(EEasySessionResult::JoinFailure, TEXT("No player is logged in to the online subsystem, so the party host could not tell who joins."));
 		return false;
 	}
 
@@ -291,7 +291,7 @@ bool FEasySessionJoinRequest::HandleGroupWaitTick(float DeltaTime)
 	}
 
 	// A host destroys its session in JoinOnlineSession, so a player who did not follow in time is sent to the menu with the reason.
-	// A party leader ends the party with a Leave request after the join succeeds, which also ends it for a member who did not follow.
+	// A party host ends the party with a Leave request after the join succeeds, which also ends it for a member who did not follow.
 	if (bAnyStillHere)
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("Not every player left to follow within %.0f seconds. The rest return to the menu when this host leaves."), GroupWaitTimeoutSeconds);
@@ -344,7 +344,7 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 	if (Sessions->GetNamedSession(SessionName) != nullptr)
 	{
 		// The Destroy sub-request destroys the session of a host, so its clients are told why before their connection closes.
-		if (GetContext().Subsystem.IsSessionAuthority())
+		if (GetContext().Subsystem.IsHost())
 		{
 			GetContext().Host.TellEveryoneToReturnToMainMenu(EasySession::GetHostLeftSessionReason());
 		}
@@ -430,11 +430,11 @@ void FEasySessionJoinRequest::HandleJoinSessionComplete(FName InSessionName, EOn
 	{
 		if (!bResolved)
 		{
-			LeaveAndComplete(EEasySessionResult::ResolveFailure, TEXT("Could not retrieve the address of the party leader."));
+			LeaveAndComplete(EEasySessionResult::ResolveFailure, TEXT("Could not retrieve the address of the party host."));
 			return;
 		}
 
-		ConnectToLeader(ConnectString);
+		ConnectToHost(ConnectString);
 		return;
 	}
 
@@ -465,12 +465,12 @@ void FEasySessionJoinRequest::TravelToHost(const FString& ConnectString)
 	Complete(EEasySessionResult::Success);
 }
 
-void FEasySessionJoinRequest::ConnectToLeader(const FString& ConnectString)
+void FEasySessionJoinRequest::ConnectToHost(const FString& ConnectString)
 {
 	const FString PartySessionId = Target.NativeResult.Session.SessionInfo.IsValid() ? Target.NativeResult.Session.SessionInfo->GetSessionId().ToString() : FString();
-	if (!GetContext().Party.ConnectToLeader(ConnectString, PartySessionId, FEasyPartyConnectComplete::CreateSP(this, &FEasySessionJoinRequest::HandleConnectComplete)))
+	if (!GetContext().Party.ConnectToHost(ConnectString, PartySessionId, FEasyPartyConnectComplete::CreateSP(this, &FEasySessionJoinRequest::HandleConnectComplete)))
 	{
-		LeaveAndComplete(EEasySessionResult::ResolveFailure, TEXT("Could not reach the party leader."));
+		LeaveAndComplete(EEasySessionResult::ResolveFailure, TEXT("Could not reach the party host."));
 		return;
 	}
 
@@ -499,7 +499,7 @@ bool FEasySessionJoinRequest::HandleTimeout(float DeltaTime)
 	TimeoutHandle.Reset();
 	if (IsRunning())
 	{
-		LeaveAndComplete(EEasySessionResult::JoinRefused, TEXT("The party leader did not answer."));
+		LeaveAndComplete(EEasySessionResult::JoinRefused, TEXT("The party host did not answer."));
 	}
 	return false;
 }

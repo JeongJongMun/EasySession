@@ -92,7 +92,7 @@ bool FEasySessionCreateRequest::CheckCanCreate()
 		return false;
 	}
 
-	// The session is created for local player 0 in Execute, so a search for this host or leader filters on that player's id.
+	// The session is created for local player 0 in Execute, so a search for this host filters on that player's id.
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(GetWorld());
 	OwnerId = FUniqueNetIdRepl(Identity.IsValid() ? Identity->GetUniquePlayerId(0) : nullptr);
 
@@ -113,7 +113,7 @@ bool FEasySessionCreateRequest::CheckCanCreateGameSession()
 		return false;
 	}
 
-	// A party leader brings the party, and the host's reservation holds every member, so MaxPlayers must count every member and the host.
+	// A party host brings the party, and the host's reservation holds every member, so MaxPlayers must count every member and the host.
 	GroupMembers = GetGroupMembers();
 	if (HostParams.MaxPlayers < GroupMembers.Num() + 1)
 	{
@@ -133,7 +133,7 @@ bool FEasySessionCreateRequest::CheckCanCreatePartySession()
 		return false;
 	}
 
-	// Members find the party again after a match by searching for its leader, and a search returns only advertised sessions.
+	// Members find the party again after a match by searching for its host, and a search returns only advertised sessions.
 	if (!HostParams.bShouldAdvertise)
 	{
 		Complete(EEasySessionResult::InvalidParams, TEXT("Every party is advertised. Set Hidden to keep it out of a party search."));
@@ -148,7 +148,7 @@ bool FEasySessionCreateRequest::CheckCanCreatePartySession()
 
 	if (!OwnerId.IsValid())
 	{
-		Complete(EEasySessionResult::CreateFailure, TEXT("No player is logged in to the online subsystem, so the party would have no leader."));
+		Complete(EEasySessionResult::CreateFailure, TEXT("No player is logged in to the online subsystem, so the party would have no host."));
 		return false;
 	}
 
@@ -236,7 +236,7 @@ void FEasySessionCreateRequest::HostGameSession()
 
 void FEasySessionCreateRequest::HostPartySession()
 {
-	// This process created the party, so it leads it.
+	// This process created the party, so it hosts it.
 	// NULL already sets bHosting in CreateSession, but Steam never does.
 	const IOnlineSessionPtr Sessions = GetSessionInterface();
 	if (FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(SessionName) : nullptr)

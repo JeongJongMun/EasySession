@@ -25,10 +25,10 @@ FPlayerReservation EasySessionReservation::MakeReservation(const FUniqueNetIdRep
 	return Member;
 }
 
-TArray<FPlayerReservation> EasySessionReservation::MakeReservations(const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers)
+TArray<FPlayerReservation> EasySessionReservation::MakeReservations(const FUniqueNetIdRepl& HostId, const TArray<FUniqueNetIdRepl>& GroupMembers)
 {
 	TArray<FPlayerReservation> Members;
-	Members.Add(MakeReservation(LeaderId));
+	Members.Add(MakeReservation(HostId));
 
 	for (const FUniqueNetIdRepl& MemberId : GroupMembers)
 	{

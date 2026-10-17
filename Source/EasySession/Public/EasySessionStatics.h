@@ -33,19 +33,11 @@ public:
 	static bool IsInEasySession(const UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 
 	/**
-	 * Whether the local player is hosting the current session.
-	 * Always false on a dedicated server, which has no local player.
-	 * Use Is Easy Session Authority there instead.
+	 * Whether this game hosts the session of this type: it created the session, so it may Start, End, Update, travel or destroy a game session,
+	 * and kick from a party. False outside a session of this type.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
-	static bool IsEasySessionHost(const UObject* WorldContextObject);
-
-	/**
-	 * Whether this game created the session it is in, so it may Start, End, Update, travel or destroy it.
-	 * Is Easy Session Host is a different question, and false on a dedicated server.
-	 */
-	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
-	static bool IsEasySessionAuthority(const UObject* WorldContextObject);
+	static bool IsEasyHost(const UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 
 	/**
 	 * The lifecycle state of the current session (Pending, InProgress, Ended, ...).
@@ -121,20 +113,16 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasyMaxPlayers(const UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 
-	/** Whether the local player leads the party. False outside a party. */
-	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
-	static bool IsEasyPartyLeader(const UObject* WorldContextObject);
-
 	/**
-	 * Every member of the party, the leader included: name, whether it is the local player, whether it leads the party, and whether it is ready.
+	 * Every member of the party, the host included: name, whether it is the local player, whether it hosts the party, and whether it is ready.
 	 * Empty outside a party.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasyPartyMemberInfo> GetEasyPartyMembers(const UObject* WorldContextObject);
 
 	/**
-	 * Whether the party of the last match is being restored: created again on the leader, or searched for and joined on a member.
-	 * True while a member waits for a leader who stays in the match longer, when Is In Easy Party is still false.
+	 * Whether the party of the last match is being restored: created again on the host, or searched for and joined on a member.
+	 * True while a member waits for a host who stays in the match longer, when Is In Easy Party is still false.
 	 * A menu can show a waiting message then, instead of the buttons that would stop the restore.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
@@ -143,9 +131,9 @@ public:
 	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 * The member receives On Party Left with Kicked and this reason.
-	 * Party leader only.
+	 * Party host only.
 	 *
-	 * @return Success, Requires Party Leader, or Invalid Params for a player who is not a connected member.
+	 * @return Success, Requires Party Host, or Invalid Params for a player who is not a connected member.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult KickEasyPartyMember(const UObject* WorldContextObject, const FEasyPartyMemberInfo& Member, FText Reason);

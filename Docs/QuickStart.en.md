@@ -121,7 +121,7 @@ first. See [asking the host first](Guide-Sessions.en.md#asking-the-host-first).
 
 Matchmaking searches and joins the best session (good ping, fuller sessions first). With
 **Allow Host Fallback** on, it hosts a new session when nothing is found. Use
-`Is Easy Session Host` to check which outcome you got.
+`Is Easy Host` to check which outcome you got.
 
 **Host > Initial Map Name** is required once Allow Host Fallback is on, because the travel to
 that map is what opens the listen server. With it empty, the node fails with `InvalidParams`

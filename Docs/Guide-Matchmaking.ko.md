@@ -64,13 +64,13 @@ Create, Join, Find는 실행이 끝난 뒤에 돌고, 수락한 초대는 기다
 
 실행 도중 플레이어가 수락한 초대도 같은 규칙을 따릅니다. 실행이 `Searching` 상태면 실행을 취소하고 초대에 참가합니다. `Joining`이나 `Hosting` 상태면 초대에 참가하지 않고, `OnSessionFailure`가 초대를 다시 수락하라고 알려 줍니다. 이 판단을 직접 하고 싶다면(예: 확인 창) **Auto Join Accepted Invites**를 끄고, `OnSessionInviteAccepted`에서 `Get Easy Matchmaking State`를 본 뒤 `Cancel Easy Matchmaking`와 이벤트의 결과로 `Join Easy Session`을 부르세요.
 
-`OnSuccess` 뒤에는 `Is Easy Session Host`로 남의 세션에 들어간 건지 자기가 호스트가 된 건지 알 수 있습니다.
+`OnSuccess` 뒤에는 `Is Easy Host`로 남의 세션에 들어간 건지 자기가 호스트가 된 건지 알 수 있습니다.
 
 ### 여럿이 함께 매치메이킹하기
 
 매치메이킹을 할 때 다른 플레이어를 데려가는 경우가 둘 있습니다.
 
-- **파티 리더.** 파티 전체가 들어갈 자리가 있는 세션만 고르고, 실행이 참가하거나 만든 세션으로 파티가 따라옵니다. 파티 멤버가 Start Easy Matchmaking을 부르면 `InParty`로 거절됩니다([파티 가이드](Guide-Party.ko.md)).
+- **파티 호스트.** 파티 전체가 들어갈 자리가 있는 세션만 고르고, 실행이 참가하거나 만든 세션으로 파티가 따라옵니다. 파티 멤버가 Start Easy Matchmaking을 부르면 `InParty`로 거절됩니다([파티 가이드](Guide-Party.ko.md)).
 - **로비처럼 매치가 시작되지 않은 세션의 호스트.** 그 세션의 모든 플레이어가 들어갈 자리가 있는 세션만 고르고, 플레이어들이 따라옵니다. 호스트는 아직 자기 세션에 있으므로 호스트 폴백은 건너뜁니다. 그래서 아무것도 찾지 못하면 `NoSessionsFound`로 끝납니다([세션 가이드](Guide-Sessions.ko.md#다른-플레이어-데려가기)).
 
 ## "가장 좋은 세션"을 고르는 기준

@@ -96,7 +96,7 @@ protected:
 
 	/**
 	 * The local player is no longer in the party.
-	 * Reason Text is the leader's reason for a kick, and a message for the player otherwise.
+	 * Reason Text is the host's reason for a kick, and a message for the player otherwise.
 	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")
 	void OnPartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText);

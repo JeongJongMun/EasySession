@@ -32,9 +32,9 @@ public:
 	 * A join that fails after that destroy travels the player to the menu.
 	 * Joining the session this player is already in fails with Session Already Exists, and so does a join by the host of a match in progress.
 	 * A player in a session stays in it when the reservation beacon cannot reach the new host.
-	 * A party leader, or the host of a match that has not started, brings the group, which follows before this player joins.
+	 * A party host, or the host of a match that has not started, brings the group, which follows before this player joins.
 	 * A party member fails with In Party.
-	 * For a party, the leader decides the join, and a refusal fails with Join Refused and the leader's reason.
+	 * For a party, the host decides the join, and a refusal fails with Join Refused and the host's reason.
 	 * A player in a party or a game session fails with Session Already Exists.
 	 *
 	 * @param SearchResult A search result returned by Find Easy Sessions.

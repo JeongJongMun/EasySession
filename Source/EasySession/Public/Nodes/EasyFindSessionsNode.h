@@ -28,8 +28,8 @@ public:
 	/**
 	 * Search for sessions of one type matching the given filters.
 	 * A party search lists the parties that are not hidden, and with a Join Code it finds the party that advertises it, hidden or not.
-	 * For a party, a result's Host Name is the leader's name.
-	 * Its Session Display Name is the party's name, which is the leader's name unless the leader set one.
+	 * For a party, a result's Host Name is the host's name.
+	 * Its Session Display Name is the party's name, which is the host's name unless the host set one.
 	 *
 	 * @param Type The game sessions or the party sessions to search for.
 	 *        A party advertises no region, custom settings or session state.

@@ -6,8 +6,8 @@
 
 namespace EasySession
 {
-	/** The message of every RequiresSessionAuthority result. */
-	inline constexpr const TCHAR* RequiresSessionAuthorityMessage = TEXT("Only the game that created the session can do this. Show this button only when Is Easy Session Authority is true, so clients do not see it.");
+	/** The message of every RequiresHost result. */
+	inline constexpr const TCHAR* RequiresHostMessage = TEXT("Only the host can do this. Show this button only when Is Easy Host is true, so the other players do not see it.");
 
 	/** The message of every InvalidParams result that refuses host params. */
 	inline constexpr const TCHAR* InvalidHostParamsMessage = TEXT("Host params are invalid: Max Players must be above 0, and Initial Map Name must name the map the session is played on.");
@@ -25,7 +25,7 @@ namespace EasySession
 	inline constexpr const TCHAR* NoFriendsListMessage = TEXT("This online subsystem has no friends list, for example NULL, which only does LAN.");
 
 	/** The message of every InParty result. */
-	inline constexpr const TCHAR* InPartyMessage = TEXT("The party leader decides where the party goes. Leave it with Leave Easy Session to play alone.");
+	inline constexpr const TCHAR* InPartyMessage = TEXT("The party host decides where the party goes. Leave it with Leave Easy Session to play alone.");
 
 	/** The message of every Canceled result of a matchmaking run. */
 	inline constexpr const TCHAR* MatchmakingCanceledMessage = TEXT("Matchmaking was canceled.");

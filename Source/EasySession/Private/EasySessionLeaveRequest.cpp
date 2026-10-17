@@ -59,7 +59,7 @@ void FEasySessionLeaveRequest::Execute()
 		// The beacon closes first, so no member can log in to a party whose session is going away.
 		GetContext().Party.Close();
 	}
-	else if (GetContext().Subsystem.IsSessionAuthority())
+	else if (GetContext().Subsystem.IsHost())
 	{
 		UE_LOG(LogEasySession, Log, TEXT("Destroying the session for everyone: %s"), *ReasonText.ToString());
 

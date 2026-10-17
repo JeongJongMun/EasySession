@@ -22,7 +22,7 @@
 //   EasySession.PartyReady <0|1>  Change whether the local player is ready in the party.
 //   EasySession.FindParties [Code]  Search for parties and list the results.
 //   EasySession.JoinParty [Index]  Join a result of the last EasySession.FindParties (default index 0).
-//   EasySession.KickParty <Index> [Reason]  Kick a member listed by EasySession.Party (leader only).
+//   EasySession.KickParty <Index> [Reason]  Kick a member listed by EasySession.Party (host only).
 //   EasySession.Friends         Read and print the friends list.
 //   EasySession.InviteUI        Open the platform invite overlay.
 //   EasySession.PartyInviteUI   Open the platform invite overlay for the party.
@@ -347,7 +347,7 @@ namespace EasySessionConsole
 
 	static FAutoConsoleCommandWithWorldAndArgs GLeavePartyCommand(
 		TEXT("EasySession.LeaveParty"),
-		TEXT("Leave the party. A leader who leaves ends it for every member."),
+		TEXT("Leave the party. A host who leaves ends it for every member."),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
@@ -379,7 +379,7 @@ namespace EasySessionConsole
 				for (int32 Index = 0; Index < Members.Num(); ++Index)
 				{
 					Print(FString::Printf(TEXT("  [%d] '%s'%s%s%s"), Index, *Members[Index].PlayerName,
-						Members[Index].bIsLeader ? TEXT(" (leader)") : TEXT(""),
+						Members[Index].bIsHost ? TEXT(" (host)") : TEXT(""),
 						Members[Index].bIsLocalPlayer ? TEXT(" (you)") : TEXT(""),
 						Members[Index].bIsReady ? TEXT(" (ready)") : TEXT("")));
 				}

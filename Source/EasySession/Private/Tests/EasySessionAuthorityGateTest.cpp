@@ -118,7 +118,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 
 			// The point of the test: this used to complete with Success while it only changed the state of the local session copy and started nothing.
 			CurrentTest->TestEqual(TEXT("Start without authority is refused"),
-				State->StartWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
+				State->StartWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresHost);
 
 			Subsystem->UpdateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
@@ -134,7 +134,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 				return false;
 			}
 			CurrentTest->TestEqual(TEXT("Update without authority is refused"),
-				State->UpdateWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresSessionAuthority);
+				State->UpdateWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresHost);
 
 			// The synchronous path has to refuse too.
 			// Nothing outside the function stops a client from reaching it.
@@ -163,7 +163,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
  * What it used to get was a Success that only changed its local session copy.
  * The refusal must name the reason, because StateChangeFailure would read as the online subsystem refusing.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAuthorityGateTest, "EasySession.Authority.MatchControlNeedsSessionAuthority", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAuthorityGateTest, "EasySession.Authority.MatchControlNeedsHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionAuthorityGateTest;

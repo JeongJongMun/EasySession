@@ -14,7 +14,7 @@ struct FEasyReservationResponse;
 /**
  * FEasySessionJoinRequest joins a session a search returned: a game session or a party.
  * Both kinds run the same steps: check what may be joined, let the online subsystem join the session, and resolve the address.
- * Then a game session travels the local player to the host, and a party logs the local player in on the leader's beacon.
+ * Then a game session travels the local player to the host, and a party logs the local player in on the host's beacon.
  * A game session adds a step before the join, where the host's reservation beacon decides and the group is told to follow.
  *
  * The subsystem creates it for JoinSession with a result of either type, which an accepted invite also calls.
@@ -27,12 +27,12 @@ struct FEasyReservationResponse;
  * The beacon client actor exists for this request only, from the reservation request to its response or to Cleanup.
  * An unreachable beacon fails the join of a password-protected session, because PreLogin admits no player without a reservation there.
  * It also fails the join of a player in a session, who would otherwise leave it before any host approved the join.
- * The same happens for a party leader with a group, because only a reservation holds the group.
+ * The same happens for a party host with a group, because only a reservation holds the group.
  * Any other join continues, and PreLogin runs ApproveJoin when the joining player arrives.
- * A party leader brings the other party members, and a host whose match has not started brings every other player of its session.
+ * A party host brings the other party members, and a game host whose match has not started brings every other player of its session.
  * The reservation holds this group too, and the group is told to follow before JoinOnlineSession runs.
  *
- * A party needs no reservation and no map: the leader decides the join at the login on the party beacon, and nothing travels.
+ * A party needs no reservation and no map: the host decides the join at the login on the party beacon, and nothing travels.
  * It completes with Success once the member list holds the local player, so Get Easy Party Members already lists them.
  * A refused, unreachable or timed out login destroys the party session again, so the player is in no party afterwards.
  */
@@ -51,7 +51,7 @@ public:
 	 */
 	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, const FString& InPassword, const FString& InTravelOptions, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Join the party InTarget and log the local player in on the leader's party beacon. */
+	/** Join the party InTarget and log the local player in on the host's party beacon. */
 	FEasySessionJoinRequest(const FEasySessionSearchResult& InTarget, FEasySessionCompleteDelegate InOnComplete);
 
 	/** Destroys the beacon client actor if the request is destroyed while it waits for the response. */
@@ -79,7 +79,7 @@ private:
 	/** For a game session: refuse the session this player is in, and any join while this player hosts a match in progress. */
 	bool CheckCanJoinGameSession(const IOnlineSessionPtr& Sessions);
 
-	/** For a party: refuse a player in a party or a game session, and one with no logged in player the leader can name. */
+	/** For a party: refuse a player in a party or a game session, and one with no logged in player the host can name. */
 	bool CheckCanJoinPartySession();
 
 	/** For a game session: spawn the beacon client actor and ask the host for a reservation. */
@@ -118,13 +118,13 @@ private:
 	/** For a game session: travel to the host, and close the party this player led. */
 	void TravelToHost(const FString& ConnectString);
 
-	/** For a party: log in on the leader's party beacon, which decides the join within the login time limit. */
-	void ConnectToLeader(const FString& ConnectString);
+	/** For a party: log in on the host's party beacon, which decides the join within the login time limit. */
+	void ConnectToHost(const FString& ConnectString);
 
-	/** The leader's party beacon admitted the local player, or did not. */
+	/** The host's party beacon admitted the local player, or did not. */
 	void HandleConnectComplete(bool bSuccess, const FText& Reason);
 
-	/** The leader did not complete the login in time. */
+	/** The host did not complete the login in time. */
 	bool HandleTimeout(float DeltaTime);
 
 	/** Destroy the session the online subsystem joined again, then complete with this result. A party closes its beacon first. */
@@ -140,7 +140,7 @@ private:
 	FString TravelOptions;
 
 	/**
-	 * The group, read by GetGroupMembers in Execute: the party members on a party leader, the other players on a host.
+	 * The group, read by GetGroupMembers in Execute: the party members on a party host, the other players on a game host.
 	 * The reservation holds each of them too. Read for a game session only.
 	 */
 	TArray<FUniqueNetIdRepl> GroupMembers;
@@ -157,7 +157,7 @@ private:
 	/** Ticker handle for the wait until the group left this session. */
 	FTSTicker::FDelegateHandle GroupWaitHandle;
 
-	/** Ticker that ends a party join when the leader does not complete the login in time. */
+	/** Ticker that ends a party join when the host does not complete the login in time. */
 	FTSTicker::FDelegateHandle TimeoutHandle;
 
 	/** When the wait for the group started, in FPlatformTime seconds. */

@@ -72,10 +72,10 @@ namespace EasySessionReservation
 	FPlayerReservation MakeReservation(const FUniqueNetIdRepl& PlayerId);
 
 	/**
-	 * Make the reservations for a leader and the group that travels with them, the leader first.
+	 * Make the reservations for a host and the group that travels with them, the host first.
 	 * Invalid ids in GroupMembers and a second entry for the same player are left out, because the parent refuses a reservation that holds either.
 	 */
-	TArray<FPlayerReservation> MakeReservations(const FUniqueNetIdRepl& LeaderId, const TArray<FUniqueNetIdRepl>& GroupMembers);
+	TArray<FPlayerReservation> MakeReservations(const FUniqueNetIdRepl& HostId, const TArray<FUniqueNetIdRepl>& GroupMembers);
 }
 
 /**

@@ -13,13 +13,13 @@
 /** Delegate the party beacon host calls to decide whether a player may join. Returns false and writes the reason to refuse. */
 DECLARE_DELEGATE_RetVal_TwoParams(bool, FEasyPartyApproveMemberDelegate, const FUniqueNetIdRepl& /** PlayerId */, FText& /** OutReason */);
 
-/** Delegate fired on a member when the leader refused the join, with the reason. */
+/** Delegate fired on a member when the host refused the join, with the reason. */
 DECLARE_DELEGATE_OneParam(FEasyPartyJoinRefusedDelegate, const FText& /** Reason */);
 
-/** Delegate fired on a member when the leader takes the party into a game session. */
+/** Delegate fired on a member when the host takes the party into a game session. */
 DECLARE_DELEGATE_TwoParams(FEasyPartyFollowHostDelegate, const FUniqueNetIdRepl& /** HostId */, bool /** bLANQuery */);
 
-/** Delegate fired on a member when the leader ends their membership, before the connection closes. */
+/** Delegate fired on a member when the host ends their membership, before the connection closes. */
 DECLARE_DELEGATE_TwoParams(FEasyPartyLeftDelegate, EEasyPartyLeaveReason /** Reason */, const FText& /** ReasonText */);
 
 /**
@@ -33,13 +33,13 @@ class AEasySessionPartyBeaconPlayerState : public ALobbyBeaconPlayerState
 
 public:
 
-	/** Leader only: change whether this member is ready. */
+	/** Host only: change whether this member is ready. */
 	void SetReady(bool bInReady);
 
 	/** @return Whether this member is ready. */
 	bool IsReady() const { return bReady; }
 
-	/** @return The event fired when the ready state changes, on the leader and on every member. */
+	/** @return The event fired when the ready state changes, on the host and on every member. */
 	FSimpleMulticastDelegate& OnReadyChanged() { return ReadyChangedEvent; }
 
 	//~ Begin AActor Interface
@@ -52,11 +52,11 @@ private:
 	UFUNCTION()
 	void OnRep_Ready();
 
-	/** Is this member ready. Only the leader writes it. */
+	/** Is this member ready. Only the host writes it. */
 	UPROPERTY(ReplicatedUsing = OnRep_Ready)
 	bool bReady = false;
 
-	/** Fired by OnRep_Ready, and by SetReady on the leader. */
+	/** Fired by OnRep_Ready, and by SetReady on the host. */
 	FSimpleMulticastDelegate ReadyChangedEvent;
 };
 
@@ -74,7 +74,7 @@ public:
 	/** Makes the state spawn AEasySessionPartyBeaconPlayerState for each member. */
 	AEasySessionPartyBeaconState();
 
-	/** @return The player state of every member, the leader included. */
+	/** @return The player state of every member, the host included. */
 	TArray<AEasySessionPartyBeaconPlayerState*> GetMembers() const;
 
 	/** Destroy the player state of every member. */
@@ -82,10 +82,10 @@ public:
 };
 
 /**
- * AEasySessionPartyBeaconClient is a member's connection to the party beacon of the leader.
- * FEasySessionParty spawns it in ConnectToLeader and destroys it in Close.
+ * AEasySessionPartyBeaconClient is a member's connection to the party beacon of the host.
+ * FEasySessionParty spawns it in ConnectToHost and destroys it in Close.
  *
- * The leader sends the reason for a refusal or for the end of a membership on this connection, before it closes it.
+ * The host sends the reason for a refusal or for the end of a membership on this connection, before it closes it.
  * The engine's own kick sends a fixed text and its client handler does nothing, so these RPCs carry the reason instead.
  */
 UCLASS(Transient, NotPlaceable)
@@ -96,35 +96,35 @@ class AEasySessionPartyBeaconClient : public ALobbyBeaconClient
 public:
 
 	/**
-	 * Connect to the leader's party beacon and log the local player in to the party session with this id.
+	 * Connect to the host's party beacon and log the local player in to the party session with this id.
 	 *
 	 * @return Whether the connection started. False when the beacon client could not start.
 	 */
 	bool ConnectToParty(const FString& ConnectString, const FString& PartySessionId);
 
-	/** Server: tell this player why the leader refused the join. The leader closes the connection right after. */
+	/** Server: tell this player why the host refused the join. The host closes the connection right after. */
 	UFUNCTION(Client, Reliable)
 	void ClientJoinRefused(const FText& Reason);
 
-	/** Server: tell this member that the membership ends, and why. The leader closes the connection right after. */
+	/** Server: tell this member that the membership ends, and why. The host closes the connection right after. */
 	UFUNCTION(Client, Reliable)
 	void ClientLeftParty(EEasyPartyLeaveReason Reason, const FText& ReasonText);
 
-	/** Server: join the session of the host that holds a reservation for this member, because the leader takes the party there. */
+	/** Server: join the session of the host that holds a reservation for this member, because the host takes the party there. */
 	UFUNCTION(Client, Reliable)
 	void ClientFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery);
 
-	/** Client: the member asks the leader to change whether they are ready. */
+	/** Client: the member asks the host to change whether they are ready. */
 	UFUNCTION(Server, Reliable)
 	void ServerSetReady(bool bInReady);
 
-	/** @return The delegate fired when the leader refused the join. */
+	/** @return The delegate fired when the host refused the join. */
 	FEasyPartyJoinRefusedDelegate& OnJoinRefused() { return JoinRefusedDelegate; }
 
-	/** @return The delegate fired when the leader ends this player's membership. */
+	/** @return The delegate fired when the host ends this player's membership. */
 	FEasyPartyLeftDelegate& OnLeftParty() { return LeftPartyDelegate; }
 
-	/** @return The delegate fired when the leader takes the party into a game session. */
+	/** @return The delegate fired when the host takes the party into a game session. */
 	FEasyPartyFollowHostDelegate& OnFollowHost() { return FollowHostDelegate; }
 
 private:
@@ -140,8 +140,8 @@ private:
 };
 
 /**
- * AEasySessionPartyBeaconHost is the leader's side of the party beacon.
- * It holds the party beacon state, and the leader's own entry in it, which needs no connection.
+ * AEasySessionPartyBeaconHost is the host's side of the party beacon.
+ * It holds the party beacon state, and the host's own entry in it, which needs no connection.
  *
  * FEasySessionParty spawns it in StartHosting, when the party session is created and again after a map change, and registers it on the shared beacon listener.
  * The engine's lobby beacon needs a game mode and logs players out of the game session, and this class works on NAME_PartySession instead.
@@ -157,12 +157,12 @@ public:
 	AEasySessionPartyBeaconHost();
 
 	/**
-	 * Spawn the party beacon state and add the leader to it.
+	 * Spawn the party beacon state and add the host to it.
 	 * Call after the host is registered on a listener, because the state takes the listener's net driver.
 	 *
-	 * @return Whether the state exists and holds the leader.
+	 * @return Whether the state exists and holds the host.
 	 */
-	bool StartParty(int32 MaxMembers, const FUniqueNetIdRepl& InLeaderId, const FString& LeaderName);
+	bool StartParty(int32 MaxMembers, const FUniqueNetIdRepl& InHostId, const FString& HostName);
 
 	/**
 	 * End the membership of a connected member with this reason, and close the connection.
@@ -174,8 +174,8 @@ public:
 	/** Tell every connected member that the party ends, and why. The caller closes the beacon right after. */
 	void TellMembersPartyEnds(const FText& ReasonText);
 
-	/** Tell every connected member to follow the leader into the session of this host. */
-	void TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery);
+	/** Tell every connected member to follow the party host into the game session of GameHostId. */
+	void TellMembersToFollow(const FUniqueNetIdRepl& GameHostId, bool bLANQuery);
 
 	/** @return The party beacon state, or null before StartParty. */
 	AEasySessionPartyBeaconState* GetPartyState() const;
@@ -209,6 +209,6 @@ private:
 	/** Decides every join this actor is asked about. */
 	FEasyPartyApproveMemberDelegate ApproveMemberDelegate;
 
-	/** The leader, the party owner of every member. */
-	FUniqueNetIdRepl LeaderId;
+	/** The host, the party owner of every member. */
+	FUniqueNetIdRepl HostId;
 };

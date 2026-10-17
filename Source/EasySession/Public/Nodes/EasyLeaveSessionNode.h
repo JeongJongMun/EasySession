@@ -29,7 +29,7 @@ public:
 	 * Leave the session of this type: destroy this game's named session, and for a game session travel to the menu map (Game Default Map).
 	 * A leaving host destroys the game session for everyone, and each client receives "The host has left the game." first.
 	 * For a custom reason use Destroy Easy Session For Everyone.
-	 * A leader who leaves the party ends it for every member, and On Party Left fires with Left once the party is left.
+	 * A host who leaves the party ends it for every member, and On Party Left fires with Left once the party is left.
 	 *
 	 * @param Type The game session or the party session to leave.
 	 */

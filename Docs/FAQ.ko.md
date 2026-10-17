@@ -85,7 +85,7 @@ LogEasySession: Not joining the invited party during a game session. Call Leave 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 리더를 따라가는 파티 멤버, 매치가 끝난 뒤 리더의 파티를 찾는 파티 멤버에서 돕니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
+검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 호스트를 따라가는 파티 멤버, 매치가 끝난 뒤 호스트의 파티를 찾는 파티 멤버에서 돕니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
 
 ## "Travel 중에 Warning: Player ... is not part of session (GameSession)이 뜹니다"
 
@@ -115,19 +115,19 @@ EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스�
 
 ## "파티에 있을 때 Create(또는 Join, Matchmaking)를 눌러도 아무 반응이 없어요"
 
-그 플레이어는 리더가 아니라 파티 멤버입니다. 행선지는 리더가 정하므로 요청이 `InParty`로 거절되고, 노드의 `OnFailure`에 사유가 담깁니다.
+그 플레이어는 호스트가 아니라 파티 멤버입니다. 행선지는 호스트가 정하므로 요청이 `InParty`로 거절되고, 노드의 `OnFailure`에 사유가 담깁니다.
 
 ```
-LogEasySession: Warning: The party leader decides where the party goes. Leave it with Leave Easy Session to play alone.
+LogEasySession: Warning: The party host decides where the party goes. Leave it with Leave Easy Session to play alone.
 ```
 
-메뉴에 실패 메시지를 띄우고, 멤버에게는 그 버튼들을 꺼 두세요. 조건은 Type이 Party Session인 `Is In Easy Session`이 true이면서 `Is Easy Party Leader`가 false일 때입니다. 혼자 플레이하려는 멤버는 먼저 `Leave Easy Session`으로 파티를 나갑니다.
+메뉴에 실패 메시지를 띄우고, 멤버에게는 그 버튼들을 꺼 두세요. 조건은 Type이 Party Session인 `Is In Easy Session`이 true이면서 Type이 Party Session인 `Is Easy Host`가 false일 때입니다. 혼자 플레이하려는 멤버는 먼저 `Leave Easy Session`으로 파티를 나갑니다.
 
-## "파티 리더가 다른 맵을 열었는데 멤버는 그대로 남아 있어요"
+## "파티 호스트가 다른 맵을 열었는데 멤버는 그대로 남아 있어요"
 
-파티는 원래 그렇게 동작합니다. 파티에는 맵이 없어서, 각 멤버는 자기 맵에 그대로 있다가 리더의 맵이 로드되면 리더에게 다시 연결합니다. 파티가 따라가는 것은 게임 세션에 들어갈 때뿐입니다.
+파티는 원래 그렇게 동작합니다. 파티에는 맵이 없어서, 각 멤버는 자기 맵에 그대로 있다가 호스트의 맵이 로드되면 호스트에게 다시 연결합니다. 파티가 따라가는 것은 게임 세션에 들어갈 때뿐입니다.
 
-매치 전 로비처럼 모두를 같은 맵에 모으려면, 리더가 `Create Easy Session`으로 게임 세션을 호스트하세요. 파티가 그 세션으로 따라옵니다([파티 가이드](Guide-Party.ko.md#매치-밖에서-맵-바꾸기)).
+매치 전 로비처럼 모두를 같은 맵에 모으려면, 파티 호스트가 `Create Easy Session`으로 게임 세션을 만드세요. 파티가 그 세션으로 따라옵니다([파티 가이드](Guide-Party.ko.md#매치-밖에서-맵-바꾸기)).
 
 ## "진행 중인 Matchmaking를 취소할 수 있나요?"
 

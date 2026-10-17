@@ -119,7 +119,7 @@
 
 Matchmaking는 검색하고, 가장 좋은 세션(핑이 좋고 더 찬 세션 우선)에 참가합니다.
 **Allow Host Fallback**을 켜면 아무것도 없을 때 직접 세션을 만듭니다. 어느 쪽이 됐는지는
-`Is Easy Session Host`로 확인합니다.
+`Is Easy Host`로 확인합니다.
 
 Allow Host Fallback을 켜면 **Host > Initial Map Name**이 필요합니다. 그 맵으로 이동해야 리슨 서버가
 열리기 때문입니다. 비어 있으면 첫 검색 전에 `InvalidParams`로 실패합니다. Allow Host Fallback은

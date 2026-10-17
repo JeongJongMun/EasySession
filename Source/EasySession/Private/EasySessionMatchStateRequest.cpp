@@ -30,9 +30,9 @@ void FEasySessionMatchStateRequest::Execute()
 		return;
 	}
 
-	if (!GetContext().Subsystem.IsSessionAuthority())
+	if (!GetContext().Subsystem.IsHost())
 	{
-		Complete(EEasySessionResult::RequiresSessionAuthority, EasySession::RequiresSessionAuthorityMessage);
+		Complete(EEasySessionResult::RequiresHost, EasySession::RequiresHostMessage);
 		return;
 	}
 

@@ -2,7 +2,7 @@
 
 *[한국어](Guide-Party.ko.md)*
 
-A party is a small group of players that stays together outside game sessions, for example friends gathering in the main menu before they play. The leader decides where the party goes: when the leader creates, joins or matchmakes into a game session, every member follows.
+A party is a small group of players that stays together outside game sessions, for example friends gathering in the main menu before they play. The host decides where the party goes: when the host creates, joins or matchmakes into a game session, every member follows.
 
 A party is optional. A game that never creates one works exactly as before, and every Session node keeps answering about the game session by default. A party is created with `Create Easy Party`, and found, joined, left and queried with the Session nodes, whose `Type` input takes Party Session. The nodes only a party has, such as members and ready, are under **EasySession | Party**.
 
@@ -19,8 +19,8 @@ A party is optional. A game that never creates one works exactly as before, and 
 
 | Field | Default | Notes |
 |---|---|---|
-| Session Display Name | (empty) | Shown in party search results. Empty names the party after its leader |
-| Max Players | 4 | How many players the party holds, the leader included |
+| Session Display Name | (empty) | Shown in party search results. Empty names the party after its host |
+| Max Players | 4 | How many players the party holds, the host included |
 | Hidden | false | Left out of the party search list, see [who may join](#who-may-join) below |
 | Use Join Code | false | Advertise a six character code that finds the party |
 | Allow Invites | true | Whether members can invite friends to the party |
@@ -30,7 +30,7 @@ A party is optional. A game that never creates one works exactly as before, and 
 
 Region and Allow Join In Progress are advertised as given and change nothing for a party.
 
-The local player becomes the leader. Creating needs a player logged in to the online subsystem, because members are told apart by their ids. NULL logs in on its own, and Steam logs in the Steam user.
+The local player becomes the host. Creating needs a player logged in to the online subsystem, because members are told apart by their ids. NULL logs in on its own, and Steam logs in the Steam user.
 
 The create fails with `SessionAlreadyExists` while the player is already in a party, and while they are in a game session, because a party exists only outside game sessions.
 
@@ -38,7 +38,7 @@ On Steam a party is a Steam lobby, so it needs presence and works across the int
 
 ## Who may join
 
-`Hidden` and `Use Join Code` decide how players find the party, the same two flags a game session has. Neither refuses a player who reaches the party: the leader refuses only a kicked player, and anyone while the party is full.
+`Hidden` and `Use Join Code` decide how players find the party, the same two flags a game session has. Neither refuses a player who reaches the party: the host refuses only a kicked player, and anyone while the party is full.
 
 | Hidden | Use Join Code | Party search | Players join through |
 |---|---|---|---|
@@ -47,11 +47,11 @@ On Steam a party is a Steam lobby, so it needs presence and works across the int
 | false | false | Listed | A search, or an invite |
 | false | true | Listed, and found with the code | A search, the code, or an invite |
 
-`Hidden` does not lock the party: a player who finds it another way, for example by the leader's id, is admitted. A party has no password.
+`Hidden` does not lock the party: a player who finds it another way, for example by the host's id, is admitted. A party has no password.
 
-A party with `Use Join Code` advertises a generated six character code. `Get Easy Join Code` with `Type` set to Party Session reads it, for the leader to show and share. Every member can read it too.
+A party with `Use Join Code` advertises a generated six character code. `Get Easy Join Code` with `Type` set to Party Session reads it, for the host to show and share. Every member can read it too.
 
-`Get Easy Session Settings` with `Type` set to Party Session returns the settings the party was created with, on the leader and on every member. Use it to show the party as "2/4", or to label a hidden party.
+`Get Easy Session Settings` with `Type` set to Party Session returns the settings the party was created with, on the host and on every member. Use it to show the party as "2/4", or to label a hidden party.
 
 ## Find and join a party
 
@@ -59,10 +59,10 @@ A party with `Use Join Code` advertises a generated six character code. `Get Eas
 
 - With an empty `Join Code`, it lists the parties that are not hidden.
 - With a `Join Code`, it returns the one party that advertises that code, hidden or not.
-- Each result's `Host Name` is the leader's name, and `Session Display Name` is the party's name: the leader's name unless the leader set one. `Max Players` and `Open Slots` count members.
+- Each result's `Host Name` is the host's name, and `Session Display Name` is the party's name: the host's name unless the host set one. `Max Players` and `Open Slots` count members.
 - Parties advertise no region, custom settings or match state, so `Region`, `Required Custom Settings` and `Include In Progress Sessions` are ignored. The search params a game uses for game sessions work here too.
 
-`Join Easy Session` takes one of those results, and joins the party because the result says it is one. Leave `Password` and `Additional Travel Options` empty, or the join fails with `InvalidParams`. The leader decides the join, and a refusal fails the node with `JoinRefused` and the leader's reason, for example "The party is full." or "The party leader removed you from this party.". On success `Get Easy Party Members` already lists the local player.
+`Join Easy Session` takes one of those results, and joins the party because the result says it is one. Leave `Password` and `Additional Travel Options` empty, or the join fails with `InvalidParams`. The host decides the join, and a refusal fails the node with `JoinRefused` and the host's reason, for example "The party is full." or "The party host removed you from this party.". On success `Get Easy Party Members` already lists the local player.
 
 The join fails with `SessionAlreadyExists` for a player who is already in a party or in a game session. Call `Leave Easy Session` for it first.
 
@@ -78,11 +78,11 @@ A "play with anyone" button needs no extra node. Chain the two nodes above:
     not found -> [Create Easy Party]  (Hidden off, so the next player finds it)
 ```
 
-A party has no region or custom settings to match on, so every listed party is a candidate. Matchmaking for game sessions is a separate node, `Start Easy Matchmaking`, which the leader can run once the party is together.
+A party has no region or custom settings to match on, so every listed party is a candidate. Matchmaking for game sessions is a separate node, `Start Easy Matchmaking`, which the host can run once the party is together.
 
 ## Invites
 
-Every member invites, not only the leader:
+Every member invites, not only the host:
 
 - `Send Easy Invite To Friend` with `Type` set to Party Session invites one friend that `Read Easy Friends` returned.
 - `Show Easy Invite UI` with `Type` set to Party Session opens the platform invite overlay for the party.
@@ -99,60 +99,60 @@ A failed join arrives on `OnSessionFailure`, because no node waits for it. With 
 
 ## Members, ready and kick
 
-`Get Easy Party Members` returns every member, the leader included, as `FEasyPartyMemberInfo`: name, whether it is the local player, whether it leads the party, whether it is ready, and the player id. `OnPartyMembersChanged` fires on the leader and on every member when someone joins, leaves or changes whether they are ready. The list is already updated when it fires, so a party panel reads it and redraws. `Show Easy Profile UI For Party Member` opens a member's platform profile, for example when the player clicks a member row.
+`Get Easy Party Members` returns every member, the host included, as `FEasyPartyMemberInfo`: name, whether it is the local player, whether it hosts the party, whether it is ready, and the player id. `OnPartyMembersChanged` fires on the host and on every member when someone joins, leaves or changes whether they are ready. The list is already updated when it fires, so a party panel reads it and redraws. `Show Easy Profile UI For Party Member` opens a member's platform profile, for example when the player clicks a member row.
 
-`Set Easy Party Ready` changes whether the local player is ready. The plugin only shares the value. The game decides what being ready allows, for example enabling the leader's Play button once everyone is ready.
+`Set Easy Party Ready` changes whether the local player is ready. The plugin only shares the value. The game decides what being ready allows, for example enabling the host's Play button once everyone is ready.
 
-`Kick Easy Party Member` removes a member and keeps them out of this party. The member receives `OnPartyLeft` with `Kicked` and the leader's reason. Leader only: a member gets `RequiresPartyLeader`.
+`Kick Easy Party Member` removes a member and keeps them out of this party. The member receives `OnPartyLeft` with `Kicked` and the host's reason. Host only: a member gets `RequiresHost`.
 
 ## Leaving a party
 
-`Leave Easy Session` with `Type` set to Party Session leaves the party. Nothing travels. A leader who leaves ends the party for every member, because the leader holds it.
+`Leave Easy Session` with `Type` set to Party Session leaves the party. Nothing travels. A host who leaves ends the party for every member, because the host holds it.
 
 `OnPartyLeft` fires on the local player whenever they are no longer in the party, with one of these reasons:
 
 | Reason | When |
 |---|---|
 | `Left` | The local player left the party with `Leave Easy Session` |
-| `Kicked` | The leader removed the local player. `Reason Text` is the leader's reason |
-| `LeaderLeft` | The leader left, which ends the party |
-| `ConnectionLost` | The connection to the leader was lost, or the leader did not come back after a match |
+| `Kicked` | The host removed the local player. `Reason Text` is the host's reason |
+| `HostLeft` | The host left, which ends the party |
+| `ConnectionLost` | The connection to the host was lost, or the host did not come back after a match |
 | `MovedToGameSession` | The party entered a game session, which closes it. This is the normal end of every party that plays a match, so do not show it as an error |
 
-## The leader decides where the party goes
+## The host decides where the party goes
 
-The leader uses the normal session nodes, and the party comes along:
+The host uses the normal session nodes, and the party comes along:
 
-| Leader calls | What happens |
+| Host calls | What happens |
 |---|---|
 | `Create Easy Session` | The host's reservation holds every member. Max Players must fit the party, or the create fails with `InvalidParams` |
-| `Join Easy Session` | The leader asks the host for room for the whole party. A session without room fails with `JoinSessionFull`, and nobody moves |
+| `Join Easy Session` | The party host asks the game host for room for the whole party. A session without room fails with `JoinSessionFull`, and nobody moves |
 | `Start Easy Matchmaking` | The search only considers sessions with room for the whole party |
 
-The members are told to follow and join the same session by themselves. Each member leaves the party as soon as it is told, which receives `OnPartyLeft` with `MovedToGameSession` and tells the leader the notice arrived. Each member keeps searching for the leader's session for up to 30 seconds, because a new session appears only once the leader's map has loaded. A member needs no password: the leader's reservation already holds them.
+The members are told to follow and join the same session by themselves. Each member leaves the party as soon as it is told, which receives `OnPartyLeft` with `MovedToGameSession` and tells the host the notice arrived. Each member keeps searching for the host's session for up to 30 seconds, because a new session appears only once the host's map has loaded. A member needs no password: the host's reservation already holds them.
 
 A member who calls one of those three nodes is refused with `InParty`, and the log says why. Disable those buttons for members:
 
 ```
-Is Enabled = NOT (Is In Easy Session (Party Session) AND NOT Is Easy Party Leader)
+Is Enabled = NOT (Is In Easy Session (Party Session) AND NOT Is Easy Host (Party Session))
 ```
 
-Entering the game session closes the party. Every member, and the leader, receives `OnPartyLeft` with `MovedToGameSession`.
+Entering the game session closes the party. Every member, and the host, receives `OnPartyLeft` with `MovedToGameSession`.
 
 ## After the match
 
 With **Restore Party After Match** on, the default, the party comes back in the first map without a game session after the match:
 
-- The leader creates the party again at once, with the same settings. The members find it by the leader's id, so a hidden party comes back too.
-- Every member looks for the leader's party every two seconds, for up to **Party Restore Wait Seconds** (120 by default), because the leader may stay in the match longer. A member whose leader does not come back in time receives `OnPartyLeft` with `ConnectionLost`.
+- The host creates the party again at once, with the same settings. The members find it by the host's id, so a hidden party comes back too.
+- Every member looks for the host's party every two seconds, for up to **Party Restore Wait Seconds** (120 by default), because the host may stay in the match longer. A member whose host does not come back in time receives `OnPartyLeft` with `ConnectionLost`.
 
 While this runs, `Is Easy Party Restoring` is true, and `Is In Easy Session` with Party Session stays false on a member until the party is found. Show a waiting message then. Calling `Create Easy Party`, `Create Easy Session`, `Join Easy Session`, `Leave Easy Session` or `Start Easy Matchmaking` stops the restore, because the player chose something else.
 
 ## Changing maps outside a match
 
-A party needs no map, so each player stays in their own map. When the leader opens another map, the party continues there, and every member stays where they are and reconnects to the leader within **Party Reconnect Seconds** (15 by default).
+A party needs no map, so each player stays in their own map. When the host opens another map, the party continues there, and every member stays where they are and reconnects to the host within **Party Reconnect Seconds** (15 by default).
 
-A party does not move members between maps. To bring everyone to the same map, such as a lobby map before the match, the leader hosts a game session with `Create Easy Session`, and the party follows like it does for a match.
+A party does not move members between maps. To bring everyone to the same map, such as a lobby map before the match, the party host creates a game session with `Create Easy Session`, and the party follows like it does for a match.
 
 ## Settings
 
@@ -161,10 +161,10 @@ In Project Settings -> Plugins -> EasySession, under Party:
 | Setting | Default | Effect |
 |---|---|---|
 | Restore Party After Match | true | Gets the party back after a match, as described above |
-| Party Restore Wait Seconds | 120 | How long a member looks for the leader's party after a match |
-| Party Reconnect Seconds | 15 | How long a member keeps connecting to the leader after the connection closed without a reason, for example while the leader's next map loads |
+| Party Restore Wait Seconds | 120 | How long a member looks for the host's party after a match |
+| Party Reconnect Seconds | 15 | How long a member keeps connecting to the host after the connection closed without a reason, for example while the host's next map loads |
 
 ## C++ API
 
-The same functions are on `UEasySessionSubsystem`: `CreateParty`, `KickPartyMember`, `SetPartyReady`, `IsPartyLeader`, `GetPartyMembers`, `IsRestoringParty` and `ShowProfileUIForPartyMember`.
-`FindSessions`, `LeaveSession`, `IsInSession`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend` and `ShowInviteUI` take `EEasySessionType::PartySession` for the party, and `JoinSession` reads the type off the search result.
+The same functions are on `UEasySessionSubsystem`: `CreateParty`, `KickPartyMember`, `SetPartyReady`, `GetPartyMembers`, `IsRestoringParty` and `ShowProfileUIForPartyMember`.
+`FindSessions`, `LeaveSession`, `IsInSession`, `IsHost`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend` and `ShowInviteUI` take `EEasySessionType::PartySession` for the party, and `JoinSession` reads the type off the search result.

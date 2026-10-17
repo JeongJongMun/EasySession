@@ -213,7 +213,7 @@ TArray<FUniqueNetIdRepl> FEasySessionHost::GetGroupMembers() const
 
 	// A host that joins another session destroys its own, so the host of a match in progress moves nobody.
 	const EEasySessionState State = Owner.GetSessionState();
-	if (!Owner.IsSessionAuthority() || State == EEasySessionState::Starting || State == EEasySessionState::InProgress)
+	if (!Owner.IsHost() || State == EEasySessionState::Starting || State == EEasySessionState::InProgress)
 	{
 		return Members;
 	}
@@ -288,7 +288,7 @@ void FEasySessionHost::HandleGameModeInitialized(AGameModeBase* GameMode)
 		return;
 	}
 
-	if (!Owner.IsSessionAuthority())
+	if (!Owner.IsHost())
 	{
 		return;
 	}

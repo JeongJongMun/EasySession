@@ -249,7 +249,7 @@ bool FEasySessionKickedPlayerStep::Update()
 	{
 		case 0:
 		{
-			CurrentTest->TestEqual(TEXT("Only the host can kick"), Subsystem->KickPlayer(Kicked, FText::GetEmpty()), EEasySessionResult::RequiresSessionAuthority);
+			CurrentTest->TestEqual(TEXT("Only the host can kick"), Subsystem->KickPlayer(Kicked, FText::GetEmpty()), EEasySessionResult::RequiresHost);
 
 			Subsystem->CreateSession(MakeHostParams(), MakeCallback(State));
 			NextPhase(State);

@@ -24,13 +24,13 @@ namespace
 	// Seconds between two checks whether the member list holds the local player.
 	constexpr float ConnectTickIntervalSeconds = 0.1f;
 
-	// Seconds between two attempts to connect to the leader again.
+	// Seconds between two attempts to connect to the host again.
 	constexpr float ReconnectIntervalSeconds = 1.0f;
 
 	// Seconds between two attempts to restore the party of the last match.
 	constexpr float RestoreIntervalSeconds = 2.0f;
 
-	// The OnPartyLeft text when the connection to the leader was lost.
+	// The OnPartyLeft text when the connection to the host was lost.
 	FText GetLostConnectionReason()
 	{
 		return NSLOCTEXT("EasySession", "LostConnectionToParty", "Lost connection to the party.");
@@ -94,7 +94,7 @@ bool FEasySessionParty::StartHosting(const FEasySessionSettings& InPartySettings
 
 	BeaconHost = Beacon;
 	PartySettings = InPartySettings;
-	LeaderId = LocalId;
+	HostId = LocalId;
 
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
 	const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr;
@@ -106,7 +106,7 @@ bool FEasySessionParty::StartHosting(const FEasySessionSettings& InPartySettings
 	return true;
 }
 
-bool FEasySessionParty::ConnectToLeader(const FString& ConnectString, const FString& PartySessionId, FEasyPartyConnectComplete OnComplete)
+bool FEasySessionParty::ConnectToHost(const FString& ConnectString, const FString& PartySessionId, FEasyPartyConnectComplete OnComplete)
 {
 	UWorld* World = GetWorld();
 	if (World == nullptr)
@@ -130,7 +130,7 @@ bool FEasySessionParty::ConnectToLeader(const FString& ConnectString, const FStr
 	Client->OnLeftParty().BindLambda([this](EEasyPartyLeaveReason Reason, const FText& ReasonText)
 	{
 		// The connection closes right after, and that failure reports this reason instead of a lost connection.
-		// A member told to follow keeps MovedToGameSession, although the leader closes the party right after.
+		// A member told to follow keeps MovedToGameSession, although the host closes the party right after.
 		if (!PendingLeave.IsSet())
 		{
 			PendingLeave.Emplace(Reason, ReasonText);
@@ -149,7 +149,7 @@ bool FEasySessionParty::ConnectToLeader(const FString& ConnectString, const FStr
 		return false;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Connecting to the party leader at %s."), *ConnectString);
+	UE_LOG(LogEasySession, Log, TEXT("Connecting to the party host at %s."), *ConnectString);
 	BeaconClient = Client;
 	return true;
 }
@@ -173,7 +173,7 @@ void FEasySessionParty::Close()
 
 	if (AEasySessionPartyBeaconHost* Beacon = BeaconHost.Get())
 	{
-		Beacon->TellMembersPartyEnds(NSLOCTEXT("EasySession", "PartyLeaderLeft", "The party leader left."));
+		Beacon->TellMembersPartyEnds(NSLOCTEXT("EasySession", "PartyHostLeft", "The party host left."));
 		Beacon->OnApproveMember().Unbind();
 		BeaconPort.Unregister(*Beacon);
 		Beacon->Destroy();
@@ -196,10 +196,10 @@ void FEasySessionParty::Close()
 void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FText& ReasonText)
 {
 	// Only a party that entered a game session comes back, because every other reason means the party is over for this player.
-	if (Reason == EEasyPartyLeaveReason::MovedToGameSession && LeaderId.IsValid())
+	if (Reason == EEasyPartyLeaveReason::MovedToGameSession && HostId.IsValid())
 	{
 		FLastParty& Last = LastParty.Emplace();
-		Last.LeaderId = LeaderId;
+		Last.HostId = HostId;
 		Last.Settings = PartySettings;
 		Last.bIsLANMatch = bIsLANParty;
 	}
@@ -211,7 +211,7 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 	KickedPlayers.Reset();
 	PendingLeave.Reset();
 	PartySettings = FEasySessionSettings();
-	LeaderId = FUniqueNetIdRepl();
+	HostId = FUniqueNetIdRepl();
 	bIsLANParty = false;
 	ReconnectStartSeconds = 0.0;
 
@@ -223,7 +223,7 @@ void FEasySessionParty::HandlePartyLeft(EEasyPartyLeaveReason Reason, const FTex
 TArray<FUniqueNetIdRepl> FEasySessionParty::GetOtherMemberIds() const
 {
 	TArray<FUniqueNetIdRepl> MemberIds;
-	if (!Owner.IsPartyLeader())
+	if (!Owner.IsHost(EEasySessionType::PartySession))
 	{
 		return MemberIds;
 	}
@@ -238,11 +238,11 @@ TArray<FUniqueNetIdRepl> FEasySessionParty::GetOtherMemberIds() const
 	return MemberIds;
 }
 
-void FEasySessionParty::TellMembersToFollow(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+void FEasySessionParty::TellMembersToFollow(const FUniqueNetIdRepl& GameHostId, bool bLANQuery)
 {
 	if (AEasySessionPartyBeaconHost* Beacon = BeaconHost.Get())
 	{
-		Beacon->TellMembersToFollow(HostId, bLANQuery);
+		Beacon->TellMembersToFollow(GameHostId, bLANQuery);
 	}
 }
 
@@ -281,9 +281,9 @@ EEasySessionResult FEasySessionParty::SetReady(bool bReady)
 EEasySessionResult FEasySessionParty::KickMember(const FUniqueNetIdRepl& PlayerId, const FText& Reason)
 {
 	AEasySessionPartyBeaconHost* Beacon = BeaconHost.Get();
-	if (Beacon == nullptr || !Owner.IsPartyLeader())
+	if (Beacon == nullptr || !Owner.IsHost(EEasySessionType::PartySession))
 	{
-		return EEasySessionResult::RequiresPartyLeader;
+		return EEasySessionResult::RequiresHost;
 	}
 
 	if (!PlayerId.IsValid() || PlayerId == GetLocalPlayerId())
@@ -325,7 +325,7 @@ TArray<FEasyPartyMemberInfo> FEasySessionParty::GetMembers() const
 		Info.PlayerName = Member->DisplayName.ToString();
 		Info.PlayerId = Member->UniqueId;
 		Info.bIsLocalPlayer = LocalId.IsValid() && Member->UniqueId == LocalId;
-		Info.bIsLeader = Member->UniqueId == Member->PartyOwnerUniqueId;
+		Info.bIsHost = Member->UniqueId == Member->PartyOwnerUniqueId;
 		Info.bIsReady = Member->IsReady();
 	}
 
@@ -366,7 +366,7 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 			return;
 		}
 
-		if (Owner.IsPartyLeader() && !BeaconHost.IsValid())
+		if (Owner.IsHost(EEasySessionType::PartySession) && !BeaconHost.IsValid())
 		{
 			UE_LOG(LogEasySession, Log, TEXT("Starting the party beacon again after the map change."));
 			if (!StartHosting(PartySettings))
@@ -374,7 +374,7 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 				Owner.HandlePartyEnded(EEasyPartyLeaveReason::ConnectionLost, NSLOCTEXT("EasySession", "PartyBeaconRestartFailed", "The party could not continue after the map change."));
 			}
 		}
-		else if (!Owner.IsPartyLeader() && !BeaconClient.IsValid())
+		else if (!Owner.IsHost(EEasySessionType::PartySession) && !BeaconClient.IsValid())
 		{
 			StartReconnect();
 		}
@@ -395,7 +395,7 @@ void FEasySessionParty::StartReconnect()
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Connecting to the party leader again."));
+	UE_LOG(LogEasySession, Log, TEXT("Connecting to the party host again."));
 	ReconnectStartSeconds = FPlatformTime::Seconds();
 
 	// Started on the next tick, because the failure that leads here runs inside the connection that is going away.
@@ -416,7 +416,7 @@ void FEasySessionParty::TryReconnect()
 	FString ConnectString;
 	const bool bStarted = NamedSession != nullptr && NamedSession->SessionInfo.IsValid()
 		&& Sessions->GetResolvedConnectString(NAME_PartySession, ConnectString, NAME_BeaconPort)
-		&& ConnectToLeader(ConnectString, NamedSession->SessionInfo->GetSessionId().ToString(), FEasyPartyConnectComplete::CreateRaw(this, &FEasySessionParty::HandleReconnectComplete));
+		&& ConnectToHost(ConnectString, NamedSession->SessionInfo->GetSessionId().ToString(), FEasyPartyConnectComplete::CreateRaw(this, &FEasySessionParty::HandleReconnectComplete));
 	if (!bStarted)
 	{
 		HandleReconnectComplete(false, FText::GetEmpty());
@@ -427,12 +427,12 @@ void FEasySessionParty::HandleReconnectComplete(bool bSuccess, const FText& Reas
 {
 	if (bSuccess)
 	{
-		UE_LOG(LogEasySession, Log, TEXT("Connected to the party leader again."));
+		UE_LOG(LogEasySession, Log, TEXT("Connected to the party host again."));
 		ReconnectStartSeconds = 0.0;
 		return;
 	}
 
-	// A leader that refused the login ended the membership on purpose, so no second attempt follows.
+	// A host that refused the login ended the membership on purpose, so no second attempt follows.
 	const bool bRefused = !JoinRefusal.IsEmpty();
 	const bool bOutOfTime = FPlatformTime::Seconds() - ReconnectStartSeconds >= GetDefault<UEasySessionConfig>()->PartyReconnectSeconds;
 	const FText EndReason = bRefused ? Reason : GetLostConnectionReason();
@@ -448,7 +448,7 @@ void FEasySessionParty::HandleReconnectComplete(bool bSuccess, const FText& Reas
 			return false;
 		}
 
-		UE_LOG(LogEasySession, Warning, TEXT("Could not connect to the party leader again: %s"), *EndReason.ToString());
+		UE_LOG(LogEasySession, Warning, TEXT("Could not connect to the party host again: %s"), *EndReason.ToString());
 		ReconnectStartSeconds = 0.0;
 		Close();
 		Owner.HandlePartyEnded(EEasyPartyLeaveReason::ConnectionLost, EndReason);
@@ -461,14 +461,14 @@ void FEasySessionParty::StartRestore()
 	bRestoring = true;
 	RestoreStartSeconds = FPlatformTime::Seconds();
 
-	if (LastParty->LeaderId == GetLocalPlayerId())
+	if (LastParty->HostId == GetLocalPlayerId())
 	{
 		UE_LOG(LogEasySession, Log, TEXT("Creating the party of the last match again."));
 		TryRestoreCreate();
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("Looking for the party of the last match, led by '%s'."), *LastParty->LeaderId.ToString());
+	UE_LOG(LogEasySession, Log, TEXT("Looking for the party of the last match, hosted by '%s'."), *LastParty->HostId.ToString());
 	TryRestoreJoin();
 }
 
@@ -497,7 +497,7 @@ void FEasySessionParty::TryRestoreCreate()
 void FEasySessionParty::TryRestoreJoin()
 {
 	FEasySessionSearchParams Search;
-	Search.OwnerId = LastParty->LeaderId;
+	Search.OwnerId = LastParty->HostId;
 	Search.bLANQuery = LastParty->bIsLANMatch;
 
 	const TWeakPtr<bool> WeakLifetime = Lifetime;
@@ -509,10 +509,10 @@ void FEasySessionParty::TryRestoreJoin()
 				return;
 			}
 
-			// The leader may still be in the match, so not finding the party is no failure yet.
+			// The host may still be in the match, so not finding the party is no failure yet.
 			if (Result != EEasySessionResult::Success || Results.IsEmpty())
 			{
-				RetryRestore(NSLOCTEXT("EasySession", "PartyLeaderNotBack", "The party leader did not come back."));
+				RetryRestore(NSLOCTEXT("EasySession", "PartyHostNotBack", "The party host did not come back."));
 				return;
 			}
 
@@ -548,7 +548,7 @@ void FEasySessionParty::RetryRestore(const FText& Reason)
 	RetryHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float)
 	{
 		RetryHandle.Reset();
-		if (bRestoring && LastParty->LeaderId == GetLocalPlayerId())
+		if (bRestoring && LastParty->HostId == GetLocalPlayerId())
 		{
 			TryRestoreCreate();
 		}
@@ -591,7 +591,7 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 
 	if (KickedPlayers.Contains(PlayerId))
 	{
-		OutReason = NSLOCTEXT("EasySession", "KickedFromParty", "The party leader removed you from this party.");
+		OutReason = NSLOCTEXT("EasySession", "KickedFromParty", "The party host removed you from this party.");
 		return false;
 	}
 
@@ -604,26 +604,26 @@ bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& O
 	return true;
 }
 
-void FEasySessionParty::HandleFollowHost(const FUniqueNetIdRepl& HostId, bool bLANQuery)
+void FEasySessionParty::HandleFollowHost(const FUniqueNetIdRepl& GameHostId, bool bLANQuery)
 {
 	if (!PendingLeave.IsSet())
 	{
 		PendingLeave.Emplace(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("The party leader takes the party to host '%s'."), *HostId.ToString());
+	UE_LOG(LogEasySession, Log, TEXT("The party host takes the party to game host '%s'."), *GameHostId.ToString());
 
-	// The member leaves the party as soon as it is told to follow, which tells the leader that the notice arrived.
-	// MovedToGameSession keeps the party to restore after the match, as when the leader closes it.
+	// The member leaves the party as soon as it is told to follow, which tells the host that the notice arrived.
+	// MovedToGameSession keeps the party to restore after the match, as when the host closes it.
 	Owner.HandlePartyEnded(EEasyPartyLeaveReason::MovedToGameSession, EasySession::GetPartyMovedReason());
-	Owner.FollowHost(HostId, bLANQuery);
+	Owner.FollowHost(GameHostId, bLANQuery);
 }
 
 void FEasySessionParty::HandleLoginComplete(bool bWasSuccessful)
 {
 	if (!bWasSuccessful)
 	{
-		FinishConnect(false, JoinRefusal.IsEmpty() ? NSLOCTEXT("EasySession", "PartyLoginFailed", "The party leader refused the join.") : JoinRefusal);
+		FinishConnect(false, JoinRefusal.IsEmpty() ? NSLOCTEXT("EasySession", "PartyLoginFailed", "The party host refused the join.") : JoinRefusal);
 		return;
 	}
 
@@ -643,11 +643,11 @@ bool FEasySessionParty::HandleConnectTick(float DeltaTime)
 
 	ConnectTickHandle.Reset();
 
-	// The leader's id is what a member looks for when the party comes back after a match.
+	// The host's id is what a member looks for when the party comes back after a match.
 	const IOnlineSessionPtr Sessions = Online::GetSessionInterface(GetWorld());
 	if (const FNamedOnlineSession* NamedSession = Sessions.IsValid() ? Sessions->GetNamedSession(NAME_PartySession) : nullptr)
 	{
-		LeaderId = FUniqueNetIdRepl(NamedSession->OwningUserId);
+		HostId = FUniqueNetIdRepl(NamedSession->OwningUserId);
 		bIsLANParty = NamedSession->SessionSettings.bIsLANMatch;
 	}
 
@@ -666,22 +666,22 @@ void FEasySessionParty::FinishConnect(bool bSuccess, const FText& Reason)
 
 void FEasySessionParty::HandleConnectionFailure()
 {
-	// A failure while ConnectToLeader runs goes to its OnComplete: the join request, or the reconnect.
+	// A failure while ConnectToHost runs goes to its OnComplete: the join request, or the reconnect.
 	if (ConnectComplete.IsBound())
 	{
-		FinishConnect(false, JoinRefusal.IsEmpty() ? NSLOCTEXT("EasySession", "PartyUnreachable", "Could not reach the party leader.") : JoinRefusal);
+		FinishConnect(false, JoinRefusal.IsEmpty() ? NSLOCTEXT("EasySession", "PartyUnreachable", "Could not reach the party host.") : JoinRefusal);
 		return;
 	}
 
-	// Without a reason from the leader the leader may only be changing maps, so the member connects again first.
+	// Without a reason from the host the host may only be changing maps, so the member connects again first.
 	if (!PendingLeave.IsSet())
 	{
-		UE_LOG(LogEasySession, Log, TEXT("The connection to the party leader closed without a reason."));
+		UE_LOG(LogEasySession, Log, TEXT("The connection to the party host closed without a reason."));
 		StartReconnect();
 		return;
 	}
 
-	UE_LOG(LogEasySession, Log, TEXT("The connection to the party leader closed: %s"), *PendingLeave->Value.ToString());
+	UE_LOG(LogEasySession, Log, TEXT("The connection to the party host closed: %s"), *PendingLeave->Value.ToString());
 	Owner.HandlePartyEnded(PendingLeave->Key, PendingLeave->Value);
 }
 

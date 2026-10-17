@@ -85,7 +85,7 @@ On Steam there is one more cause: the engine ignores an invite accepted while a 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-A search runs during Find Easy Sessions for sessions or parties, Matchmaking, a party member following the leader, and a party member looking for the leader's party after a match. Accept the invite again once the search has finished.
+A search runs during Find Easy Sessions for sessions or parties, Matchmaking, a party member following the host, and a party member looking for the host's party after a match. Accept the invite again once the search has finished.
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 
@@ -115,19 +115,19 @@ You are - probably a leftover from a previous failed flow. Call `Leave Easy Sess
 
 ## "I press Create (or Join, or Matchmaking) in a party and nothing happens"
 
-The player is a party member, not the leader. The leader decides where the party goes, so the request is refused with `InParty` and the node's `OnFailure` carries the reason:
+The player is a party member, not the host. The host decides where the party goes, so the request is refused with `InParty` and the node's `OnFailure` carries the reason:
 
 ```
-LogEasySession: Warning: The party leader decides where the party goes. Leave it with Leave Easy Session to play alone.
+LogEasySession: Warning: The party host decides where the party goes. Leave it with Leave Easy Session to play alone.
 ```
 
-Show the failure message in your menu, and disable those buttons for members: `Is In Easy Session` with Type Party Session is true and `Is Easy Party Leader` is false. A member who wants to play alone leaves the party with `Leave Easy Session` first.
+Show the failure message in your menu, and disable those buttons for members: `Is In Easy Session` with Type Party Session is true and `Is Easy Host` with Type Party Session is false. A member who wants to play alone leaves the party with `Leave Easy Session` first.
 
-## "The party leader opened another map, and the members stayed behind"
+## "The party host opened another map, and the members stayed behind"
 
-That is how a party works. A party has no map: each member stays in their own map and reconnects to the leader once the leader's map has loaded. Only entering a game session brings the party along.
+That is how a party works. A party has no map: each member stays in their own map and reconnects to the host once the host's map has loaded. Only entering a game session brings the party along.
 
-To bring everyone into the same map, for example a lobby before the match, the leader hosts a game session with `Create Easy Session`. The party follows into it ([Party guide](Guide-Party.en.md#changing-maps-outside-a-match)).
+To bring everyone into the same map, for example a lobby before the match, the party host creates a game session with `Create Easy Session`. The party follows into it ([Party guide](Guide-Party.en.md#changing-maps-outside-a-match)).
 
 ## "Can I cancel a Matchmaking in progress?"
 

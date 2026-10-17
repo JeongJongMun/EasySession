@@ -89,17 +89,14 @@ enum class EEasySessionResult : uint8
 	/** The request failed for an unknown reason. */
 	UnknownFailure,
 
-	/** Only the game that created the session can do this. Show the button only when Is Easy Session Authority is true. */
-	RequiresSessionAuthority,
+	/** Only the host of the session can do this. Show the button only when Is Easy Host is true. */
+	RequiresHost,
 
 	/** The online subsystem in use does not offer this feature. Friends and invites need Steam. NULL (LAN) has no friends, which is not a configuration problem. */
 	NotSupportedByService,
 
-	/** Only the party leader can do this. Show the button only when Is Easy Party Leader is true. */
-	RequiresPartyLeader,
-
 	/**
-	 * A party member cannot create, join or matchmake alone, because the leader decides where the party goes.
+	 * A party member cannot create, join or matchmake alone, because the host decides where the party goes.
 	 * Leave the party with Leave Easy Session first to play alone.
 	 */
 	InParty
@@ -182,7 +179,7 @@ enum class EEasySessionType : uint8
 	/** The session of a game. The host opens a listen server on a map, and the players connect to it. */
 	GameSession,
 
-	/** The session of a party. The leader runs a party beacon, and the members log in to it. */
+	/** The session of a party. The host runs a party beacon, and the members log in to it. */
 	PartySession
 };
 
@@ -831,9 +828,9 @@ struct EASYSESSION_API FEasyPartyMemberInfo
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsLocalPlayer = false;
 
-	/** Whether this member leads the party. The leader hosts it and decides where the party goes. */
+	/** Whether this member hosts the party: it created the party and decides where the party goes. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	bool bIsLeader = false;
+	bool bIsHost = false;
 
 	/** Whether this member is ready, as Set Easy Party Ready set it. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
@@ -853,15 +850,15 @@ enum class EEasyPartyLeaveReason : uint8
 	/** The local player left the party with Leave Easy Session. */
 	Left,
 
-	/** The leader removed the local player, who cannot join this party again. Reason Text is the leader's reason. */
+	/** The host removed the local player, who cannot join this party again. Reason Text is the host's reason. */
 	Kicked,
 
-	/** The leader left, which ends the party for every member. */
-	LeaderLeft UMETA(DisplayName = "Leader Left"),
+	/** The host left, which ends the party for every member. */
+	HostLeft UMETA(DisplayName = "Host Left"),
 
 	/**
 	 * The party could not continue, and Reason Text says why.
-	 * A member gets it when the connection to the leader is lost, and the leader when the party beacon cannot start again after a map change.
+	 * A member gets it when the connection to the host is lost, and the host when the party beacon cannot start again after a map change.
 	 * Either gets it when the restore after a match still fails once Party Restore Wait Seconds runs out.
 	 */
 	ConnectionLost UMETA(DisplayName = "Connection Lost"),

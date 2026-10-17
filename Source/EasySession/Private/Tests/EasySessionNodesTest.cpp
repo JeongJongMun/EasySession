@@ -45,7 +45,7 @@ bool FEasySessionWaitNodeCreate::Update()
 
 	CurrentTest->TestTrue(TEXT("In session after create node"), Subsystem->IsInSession());
 	CurrentTest->TestTrue(TEXT("Statics report in-session"), UEasySessionStatics::IsInEasySession(State->GameInstance.Get()));
-	CurrentTest->TestTrue(TEXT("Statics report host"), UEasySessionStatics::IsEasySessionHost(State->GameInstance.Get()));
+	CurrentTest->TestTrue(TEXT("Statics report host"), UEasySessionStatics::IsEasyHost(State->GameInstance.Get()));
 
 	// Blueprint has no destroy node, so the session is destroyed through the subsystem, as the C++ API does.
 	Subsystem->DestroySession();

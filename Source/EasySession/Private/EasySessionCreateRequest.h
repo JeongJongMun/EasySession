@@ -27,7 +27,7 @@ public:
 	 */
 	FEasySessionCreateRequest(const FEasySessionHostParams& InHostParams, FEasySessionCompleteDelegate InOnComplete);
 
-	/** Create a party session that advertises InSettings and start the party beacon, with the local player as the leader. */
+	/** Create a party session that advertises InSettings and start the party beacon, with the local player as the host. */
 	FEasySessionCreateRequest(const FEasySessionSettings& InSettings, FEasySessionCompleteDelegate InOnComplete);
 
 protected:
@@ -49,7 +49,7 @@ private:
 	/** For a game session: refuse host params without an Initial Map Name, and Max Players that cannot fit the host and the party it brings. */
 	bool CheckCanCreateGameSession();
 
-	/** For a party: refuse settings a party cannot advertise, a player in a game session, and one with no logged in player to lead. */
+	/** For a party: refuse settings a party cannot advertise, a player in a game session, and one with no logged in player to host. */
 	bool CheckCanCreatePartySession();
 
 	/**
@@ -77,7 +77,7 @@ private:
 	TArray<FUniqueNetIdRepl> GroupMembers;
 
 	/**
-	 * The local player the session is created for: the host, whom the party members search for, or the party leader.
+	 * The local player the session is created for: the host of the game session or of the party, whom the party members search for.
 	 * Invalid when no player is logged in.
 	 */
 	FUniqueNetIdRepl OwnerId;

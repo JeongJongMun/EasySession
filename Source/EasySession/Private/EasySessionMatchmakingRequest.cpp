@@ -73,13 +73,13 @@ void FEasySessionMatchmakingRequest::Execute()
 	// A run is meant for a player in no session, so a session the game's own Create or Join or an accepted invite made refuses the run instead of being destroyed.
 	// A host whose match has not started is the exception, because each of its joins takes the session's players along.
 	const EEasySessionState LocalState = GetContext().Subsystem.GetSessionState();
-	// A party leader takes the party along too, and a party leader is never in a game session.
-	const bool bHostsLobby = GetContext().Subsystem.IsSessionAuthority() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
-	if (bHostsLobby || GetContext().Subsystem.IsPartyLeader())
+	// A party host takes the party along too, and a party host is never in a game session.
+	const bool bHostsLobby = GetContext().Subsystem.IsHost() && LocalState != EEasySessionState::Starting && LocalState != EEasySessionState::InProgress;
+	if (bHostsLobby || GetContext().Subsystem.IsHost(EEasySessionType::PartySession))
 	{
 		Params.Search.MinOpenSlots = FMath::Max(Params.Search.MinOpenSlots, GetGroupMembers().Num() + 1);
 	}
-	else if (GetContext().Subsystem.IsSessionAuthority())
+	else if (GetContext().Subsystem.IsHost())
 	{
 		Complete(EEasySessionResult::SessionAlreadyExists, TEXT("This player hosts a match in progress, and leaving would end it for every player. End the match or call Leave Easy Session first."));
 		return;
