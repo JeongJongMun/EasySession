@@ -27,7 +27,18 @@ Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] Defaul
 
 - A **session** is the advertisement and the online service's record of a running game - the thing Create / Find / Join manage. It says where the game is; it carries no gameplay.
 - A **lobby** means two unrelated things, which is why it confuses everyone. Inside your game it is just a map where players gather before the match (the example's `L_Example_Lobby`) - an ordinary map as far as the online service is concerned. On Steam it is the name of the backend object that stores a presence session - EasySession creates and destroys those for you, so you never handle one directly.
-- A **beacon** is a second, lightweight connection to a host, made for questions that must be answered without loading a map. No pawn spawns and no level loads over it. EasySession uses one so `Join Easy Session` can ask "may this player join?" and fail cleanly before any travel starts, and so the host can hold a reservation for the approved player until they arrive ([guide](Guide-Sessions.en.md#asking-the-host-first)).
+- A **beacon** is a second, lightweight connection to a host, made for questions that must be answered without loading a map. No pawn spawns and no level loads over it. EasySession uses one so `Join Easy Session` can ask "may this player join?" and fail cleanly before any travel starts, and so the host can hold a reservation for the approved player until they arrive ([guide](Guide-Sessions.en.md#asking-the-host-first)). A party also lives on a beacon: its members connect to the host's party beacon instead of loading a map.
+
+## Game session and party: two kinds of session
+
+EasySession creates two kinds of session.
+
+- A **game session** is the match: the host opens a listen server on a map, and the players connect to it. There is one per process.
+- A **party** is a group of players that stays together outside game sessions, such as friends in the main menu. Its host opens a party beacon instead of a map, and the members log in to it. A party exists until it enters a game session, and comes back after the match ([Party guide](Guide-Party.en.md)).
+
+In this plugin, **session without a qualifier means the game session**. `Create Easy Session` creates a game session and `Create Easy Party` creates a party. A node that works on both kinds, such as `Find Easy Sessions` or `Is In Easy Session`, carries a `Type` pin whose default is `Game Session`; set it to `Party Session` to ask about the party. A node for one kind only names it, such as `Start Easy Session` or `Kick Easy Party Member`. The [API reference](API.en.md#2-query-blueprint-nodes) lists which nodes take the pin.
+
+Whoever created a session is its **host**: the player whose game runs the listen server, or the player who created the party. Only the host may Start, End, Update, travel or destroy a game session, or kick from a party. `Is Easy Host` with the matching Type tells you whether this game is the host.
 
 ## What "traveling" means
 
