@@ -177,11 +177,10 @@ Same convention as 2.1: the C++ column is the subsystem method, not the static's
 | Server Travel Easy Session | `ServerTravel` | Moves the whole session to a new map. Host only |
 | Destroy Easy Session For Everyone | `DestroySessionForEveryone` | Ends the session and sends every client back to the menu with a reason. Host only |
 
-The invite, profile, ready and kick nodes return an `EEasySessionResult`. The invite and profile nodes need a platform service, so on NULL/LAN they return `NotSupportedByService`.
+The invite, profile, ready, kick, Server Travel and Destroy For Everyone nodes return an `EEasySessionResult`. The invite and profile nodes need a platform service, so on NULL/LAN they return `NotSupportedByService`.
 
-`Server Travel Easy Session` and `Destroy Easy Session For Everyone` check that this game is the host themselves: a client that calls either one changes
-nothing and gets a warning in the log, so show the button only when
-`Is Easy Host` is true rather than relying on the call being harmless.
+`Server Travel Easy Session` and `Destroy Easy Session For Everyone` return `RequiresHost` on a game that is not the host, and change nothing.
+Show the button only when `Is Easy Host` is true.
 
 ## 4. Events
 

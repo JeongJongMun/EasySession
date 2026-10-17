@@ -138,8 +138,8 @@ bool FEasySessionWaitForHostOnlyGates::Update()
 
 			// The synchronous path has to refuse too.
 			// Nothing outside the function stops a client from reaching it.
-			CurrentTest->TestFalse(TEXT("ServerTravel on a client is refused"),
-				Subsystem->ServerTravel(TEXT("ES13_NoSuchMap")));
+			CurrentTest->TestEqual(TEXT("ServerTravel on a client is refused"),
+				Subsystem->ServerTravel(TEXT("ES13_NoSuchMap")), EEasySessionResult::RequiresHost);
 
 			// DestroySession on a session another process created must stay allowed, because that is how a client destroys its session.
 			// The last phase waits until no session exists, so a refused destroy fails the test on the timeout.

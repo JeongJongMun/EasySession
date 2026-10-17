@@ -262,7 +262,7 @@ public:
 	 * The session moves to InProgress.
 	 * When Allow Join In Progress is off, new players are refused from here until the match ends.
 	 * On Steam they are refused from the first join on, because Steam closes the lobby when the first player joins.
-	 * Needs session authority: only the game that created the session can start the match.
+	 * Only the host can start the match.
 	 *
 	 * @param OnComplete Called when the request completes.
 	 */
@@ -271,7 +271,7 @@ public:
 	/**
 	 * End the match.
 	 * The session moves to Ended, so a new match can be started.
-	 * Needs session authority: only the game that created the session can end the match.
+	 * Only the host can end the match.
 	 *
 	 * @param OnComplete Called when the request completes.
 	 */
@@ -279,7 +279,7 @@ public:
 
 	/**
 	 * Destroy the current session and stay on the current map.
-	 * Without session authority, this destroys only this game's copy of the session.
+	 * On a game that does not host the session, this destroys only this game's copy of it.
 	 * Blueprint has no node for this, because a player who leaves wants Leave Easy Session, which destroys the session and travels to the menu.
 	 *
 	 * @param OnComplete Called when the request completes.
@@ -301,15 +301,15 @@ public:
 	 * Destroy the session for every player.
 	 * Clients record Reason as a HostDestroyedSession disconnect, destroy their copy of the session and travel to the menu.
 	 * There, ConsumePendingDisconnectInfo returns it so the menu can show it to the player.
-	 * Needs session authority: only the game that created the session can do this.
+	 * The host travels to the menu too, whatever the destroy reports.
 	 *
-	 * @param OnComplete Called with the destroy's result, after the host's own menu travel was requested.
+	 * @return Success when the destroy was queued, or RequiresHost when this game does not host the session.
 	 */
-	void DestroySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+	EEasySessionResult DestroySessionForEveryone(const FText& Reason);
 
 	/**
 	 * Update the advertised properties of the current session.
-	 * Needs session authority: only the game that created the session can update it.
+	 * Only the host can update it.
 	 *
 	 * Every field is applied as given, including Password.
 	 * Pass settings from GetSessionSettings and change only what you mean to change.
@@ -323,7 +323,7 @@ public:
 	/**
 	 * Remove a player from the session, and keep them out until the session is destroyed.
 	 * The player then travels to the menu, where ConsumePendingDisconnectInfo returns Kicked with this reason.
-	 * Needs session authority: only the game that created the session can do this.
+	 * Only the host can do this.
 	 *
 	 * @return Success, RequiresHost, or InvalidParams for a player who is not a connected remote player.
 	 */
@@ -342,10 +342,11 @@ public:
 	 * ServerTravel the current session to a new map, bringing every connected player along.
 	 * Extra travel options go after a '?'.
 	 * The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
-	 * Needs session authority: only the game that created the session can travel it.
-	 * Returns false for other games.
+	 *
+	 * @return Success when the travel started, RequiresHost when this game does not host the session,
+	 *         or InvalidParams for an empty map name or one the engine refuses.
 	 */
-	bool ServerTravel(const FString& MapName);
+	EEasySessionResult ServerTravel(const FString& MapName);
 
 	/**
 	 * Start Matchmaking: search for sessions, join the best one, and optionally host a new session when nothing is found.

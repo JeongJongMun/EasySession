@@ -32,8 +32,8 @@ public:
 	 * Steam refused them from the first join onwards already.
 	 *
 	 * Only the game that created the session can start the match.
-	 * Other games get a Requires Session Authority failure.
-	 * Show the button only when Is Easy Session Authority is true.
+	 * Other games get a Requires Host failure.
+	 * Show the button only when Is Easy Host is true.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Start Easy Session", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject"))
 	static UEasyStartSessionNode* StartEasySession(UObject* WorldContextObject);

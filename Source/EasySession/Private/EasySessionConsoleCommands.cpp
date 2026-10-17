@@ -194,8 +194,8 @@ namespace EasySessionConsole
 					return;
 				}
 
-				const bool bStarted = Subsystem->ServerTravel(Args[0]);
-				Print(FString::Printf(TEXT("Travel to '%s': %s"), *Args[0], bStarted ? TEXT("started") : TEXT("failed (host only)")));
+				const EEasySessionResult Result = Subsystem->ServerTravel(Args[0]);
+				Print(FString::Printf(TEXT("Travel to '%s': %s"), *Args[0], *UEnum::GetValueAsString(Result)));
 			}
 		}));
 

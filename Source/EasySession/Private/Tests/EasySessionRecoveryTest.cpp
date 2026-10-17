@@ -347,7 +347,8 @@ bool FEasySessionWaitForTravelFailure::Update()
 			// The engine accepts a travel to a map that does not exist.
 			// Only the next tick's load fails.
 			// The failure broadcast below stands in for that tick.
-			CurrentTest->TestTrue(TEXT("ServerTravel accepted the bad map"), Subsystem->ServerTravel(TEXT("/Game/EasySessionTests/ES_NoSuchMap")));
+			CurrentTest->TestEqual(TEXT("ServerTravel accepted the bad map"),
+				Subsystem->ServerTravel(TEXT("/Game/EasySessionTests/ES_NoSuchMap")), EEasySessionResult::Success);
 			CurrentTest->TestNull(TEXT("The travel stopped the beacon"), FEasySessionTestAccess::GetReservationListener(*Subsystem));
 			CurrentTest->TestTrue(TEXT("OnModifyServerTravelURL received the server travel URL"),
 				State->ModifiedServerTravelURL.Contains(TEXT("ES_NoSuchMap")) && State->ModifiedServerTravelURL.Contains(TEXT("?listen")));

@@ -799,7 +799,7 @@ struct EASYSESSION_API FEasySessionPlayerInfo
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsLocalPlayer = false;
 
-	/** Whether this player is hosting the session. Always false on dedicated servers. */
+	/** Whether this player is hosting the session. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
 	bool bIsHost = false;
 

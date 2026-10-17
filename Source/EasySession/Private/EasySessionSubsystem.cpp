@@ -218,17 +218,17 @@ void UEasySessionSubsystem::LeaveSession(EEasySessionType Type, FEasySessionComp
 	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EasySession::GetHostLeftSessionReason(), MoveTemp(OnComplete)));
 }
 
-void UEasySessionSubsystem::DestroySessionForEveryone(FText Reason, FEasySessionCompleteDelegate OnComplete)
+EEasySessionResult UEasySessionSubsystem::DestroySessionForEveryone(const FText& Reason)
 {
 	UWorld* World = GetWorld();
 	if (World == nullptr || !IsHost())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresHostMessage);
-		OnComplete.ExecuteIfBound(EEasySessionResult::RequiresHost, EasySession::RequiresHostMessage);
-		return;
+		return EEasySessionResult::RequiresHost;
 	}
 
-	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(Reason, MoveTemp(OnComplete)));
+	EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(Reason, FEasySessionCompleteDelegate()));
+	return EEasySessionResult::Success;
 }
 
 void UEasySessionSubsystem::UpdateSession(const FEasySessionSettings& NewSettings, FEasySessionCompleteDelegate OnComplete)
@@ -262,11 +262,11 @@ EEasySessionResult UEasySessionSubsystem::SetSessionReady(bool bReady)
 	return EEasySessionResult::Success;
 }
 
-bool UEasySessionSubsystem::ServerTravel(const FString& MapName)
+EEasySessionResult UEasySessionSubsystem::ServerTravel(const FString& MapName)
 {
 	if (MapName.IsEmpty())
 	{
-		return false;
+		return EEasySessionResult::InvalidParams;
 	}
 
 	// UWorld::ServerTravel does not refuse a client.
@@ -274,16 +274,17 @@ bool UEasySessionSubsystem::ServerTravel(const FString& MapName)
 	if (!IsHost())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::RequiresHostMessage);
-		return false;
+		return EEasySessionResult::RequiresHost;
 	}
 
+	// The game mode refuses a map name that is not a valid package name or holds a character it blocks, and logs why.
 	if (!Travel->ServerTravelToMap(MapName))
 	{
-		return false;
+		return EEasySessionResult::InvalidParams;
 	}
 
 	Host->OnServerTravelStarted();
-	return true;
+	return EEasySessionResult::Success;
 }
 
 void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& MatchmakingParams, TSubclassOf<UEasyMatchmakingPolicy> PolicyClass, FEasySessionCompleteDelegate OnComplete)
@@ -595,7 +596,7 @@ void UEasySessionSubsystem::HandleReplicatedSessionState(EEasySessionState HostS
 void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionReplicatedSettings& Settings)
 {
 	// A default payload means the host has not written one yet.
-	// The authority already holds the real values.
+	// The host already holds the real values.
 	if (!Settings.bValid || IsHost())
 	{
 		return;

@@ -185,10 +185,10 @@ FName UEasySessionStatics::GetOnlineSubsystemName(const UObject* WorldContextObj
 	return OnlineSub ? OnlineSub->GetSubsystemName() : NAME_None;
 }
 
-bool UEasySessionStatics::ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName)
+EEasySessionResult UEasySessionStatics::ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName)
 {
 	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
-	return Subsystem != nullptr && Subsystem->ServerTravel(MapName);
+	return Subsystem != nullptr ? Subsystem->ServerTravel(MapName) : EEasySessionResult::NoOnlineSubsystem;
 }
 
 EEasySessionResult UEasySessionStatics::KickEasySessionPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player, FText Reason)
@@ -197,12 +197,10 @@ EEasySessionResult UEasySessionStatics::KickEasySessionPlayer(const UObject* Wor
 	return Subsystem != nullptr ? Subsystem->KickPlayer(Player, Reason) : EEasySessionResult::NoOnlineSubsystem;
 }
 
-void UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason)
+EEasySessionResult UEasySessionStatics::DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason)
 {
-	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject))
-	{
-		Subsystem->DestroySessionForEveryone(MoveTemp(Reason));
-	}
+	UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);
+	return Subsystem != nullptr ? Subsystem->DestroySessionForEveryone(Reason) : EEasySessionResult::NoOnlineSubsystem;
 }
 
 EEasySessionResult UEasySessionStatics::SendEasyInviteToFriend(const UObject* WorldContextObject, EEasySessionType Type, const FEasySessionFriend& Friend)

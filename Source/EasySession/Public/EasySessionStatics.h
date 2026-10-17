@@ -207,17 +207,19 @@ public:
 	/**
 	 * ServerTravel the current session to a new map, bringing every connected player along.
 	 * Extra travel options go after a '?'. The ?listen option is appended for you, unless this game is a dedicated server or the map name already has it.
-	 * Session authority only: on any other game this does nothing and returns false.
+	 * Only the host can do this.
+	 *
+	 * @return Success when the travel started, Requires Host on any other game, or Invalid Params for an empty map name or one the engine refuses.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Advanced", meta = (WorldContext = "WorldContextObject"))
-	static bool ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName);
+	static EEasySessionResult ServerTravelEasySession(const UObject* WorldContextObject, const FString& MapName);
 
 	/**
 	 * Remove a player from the session, and keep them out until the session is destroyed.
 	 * The player travels to the menu, and Consume Pending Easy Disconnect Info returns Kicked with this reason there.
-	 * Session authority only.
+	 * Only the host can do this.
 	 *
-	 * @return Success, Requires Session Authority, or Invalid Params for a player who is not a connected remote player.
+	 * @return Success, Requires Host, or Invalid Params for a player who is not a connected remote player.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Advanced", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult KickEasySessionPlayer(const UObject* WorldContextObject, const FEasySessionPlayerInfo& Player, FText Reason);
@@ -226,10 +228,12 @@ public:
 	 * Destroy the session for every player.
 	 * Clients record Reason as a Host Destroyed Session disconnect and travel back to the menu.
 	 * There, Consume Pending Easy Disconnect Info returns it so the menu can show it to the player.
-	 * Session authority only: on any other game this does nothing.
+	 * Only the host can do this.
+	 *
+	 * @return Success when the destroy was queued, or Requires Host on any other game.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Advanced", meta = (WorldContext = "WorldContextObject"))
-	static void DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason);
+	static EEasySessionResult DestroyEasySessionForEveryone(const UObject* WorldContextObject, FText Reason);
 
 	/**
 	 * Invite a friend to the session of this type. Any member of a party can do this.

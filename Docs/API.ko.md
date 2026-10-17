@@ -174,9 +174,9 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Server Travel Easy Session | `ServerTravel` | 세션 전체를 새 맵으로 옮깁니다. 호스트 전용 |
 | Destroy Easy Session For Everyone | `DestroySessionForEveryone` | 세션을 끝내고 모든 클라이언트를 사유와 함께 메뉴로 돌려보냅니다. 호스트 전용 |
 
-초대, 프로필, 준비, 추방 노드는 `EEasySessionResult`를 돌려줍니다. 초대와 프로필 노드는 플랫폼 서비스가 필요하므로 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
+초대, 프로필, 준비, 추방, Server Travel, Destroy For Everyone 노드는 `EEasySessionResult`를 돌려줍니다. 초대와 프로필 노드는 플랫폼 서비스가 필요하므로 NULL/LAN에서는 `NotSupportedByService`를 돌려줍니다.
 
-`Server Travel Easy Session`과 `Destroy Easy Session For Everyone`은 자기가 호스트인지 스스로 확인합니다. 클라이언트가 호출하면 아무것도 바뀌지 않고 로그에 경고만 남으므로, 호출이 무해하다는 데 기대지 말고 `Is Easy Host`가 true일 때만 버튼을 보여주세요.
+`Server Travel Easy Session`과 `Destroy Easy Session For Everyone`은 호스트가 아닌 게임에서 `RequiresHost`를 돌려주고 아무것도 바꾸지 않습니다. `Is Easy Host`가 true일 때만 버튼을 보여주세요.
 
 ## 4. 이벤트
 

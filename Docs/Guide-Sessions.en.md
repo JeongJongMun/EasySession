@@ -223,7 +223,7 @@ There is no Blueprint node that destroys the session and stays on the map, becau
 
 ## Traveling mid-session
 
-`Server Travel Easy Session` (host only) moves the whole session to a new map, appending `?listen` unless the server is dedicated or you wrote the option yourself. Clients follow automatically. Unlike the other nodes this one is not async - it returns success as a bool right away.
+`Server Travel Easy Session` (host only) moves the whole session to a new map, appending `?listen` unless the server is dedicated or you wrote the option yourself. Clients follow automatically. Unlike the other nodes this one is not async. It returns its result right away: `Success` when the travel started, `RequiresHost` on a client.
 
 Always change maps with this node: it stops the reservation beacon before the map changes and keeps the reservations for the new map, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
