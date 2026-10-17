@@ -227,7 +227,9 @@ There is no Blueprint node that destroys the session and stays on the map, becau
 
 Always change maps with this node: it stops the reservation beacon before the map changes and keeps the reservations for the new map, and after a plain `ServerTravel` the new map cannot start its own beacon because the port is still held.
 
-If the map fails to load (a typo, a map missing from the cook), the clients fail first, because they were told to travel before the host. The host then destroys its session too, and everyone returns to the Game Default Map with a `TravelFailure` disconnect reason. EasySession does not check that the map exists, so check the map name before you call this node.
+Write the map as a full path, such as `/Game/Maps/Arena`. The engine looks up a short name such as `Arena`, and replaces a name it cannot find with the Game Default Map: the travel succeeds there, and everyone stays in the session.
+
+If a full path fails to load (a typo, a map missing from the cook), the clients fail first, because they were told to travel before the host. The host then destroys its session too, and everyone returns to the Game Default Map with a `TravelFailure` disconnect reason. EasySession does not check that the map exists, so check the map name before you call this node.
 
 ## Regions
 
