@@ -184,6 +184,7 @@ Both are host only. A client gets `RequiresHost`, so show the buttons only when 
 ## Update Session
 
 `Update Easy Session` re-advertises the session from a fresh `FEasySessionSettings`. Host only.
+Max Players cannot go below the players in the session or joining it, the host included: that update fails with `InvalidParams`.
 
 That struct is the answer to "what can I change?" - it holds the display name, max
 players, advertise flag, hidden flag, join-in-progress flag, invites flag, region, join

@@ -5,6 +5,7 @@
 #include "EasySession.h"
 #include "EasySessionHost.h"
 #include "EasySessionMessages.h"
+#include "EasySessionReservations.h"
 #include "EasySessionSubsystem.h"
 #include "OnlineSessionSettings.h"
 
@@ -40,6 +41,16 @@ void FEasySessionUpdateRequest::Execute()
 	if (!GetContext().Subsystem.IsHost())
 	{
 		Complete(EEasySessionResult::RequiresHost, EasySession::RequiresHostMessage);
+		return;
+	}
+
+	// The reservation beacon cannot shrink below the reservations it holds, while the engine's player cap would.
+	// Refusing keeps the two caps equal, so the engine never refuses a player the beacon approved.
+	const int32 Reserved = GetContext().Host.GetReservations().GetNumReservations();
+	if (Settings.MaxPlayers < Reserved)
+	{
+		Complete(EEasySessionResult::InvalidParams,
+			FString::Printf(TEXT("Max Players cannot go below the %d players who are in the session or joining it."), Reserved));
 		return;
 	}
 

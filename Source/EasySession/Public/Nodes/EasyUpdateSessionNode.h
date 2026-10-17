@@ -30,6 +30,7 @@ public:
 	 *
 	 * Only the game that created the session can update it.
 	 * Other games get a Requires Host failure.
+	 * Max Players below the players in the session or joining it fails with Invalid Params.
 	 *
 	 * Every field is applied as given, including Password.
 	 * Pass settings from Get Easy Session Settings and change only what you mean to change.

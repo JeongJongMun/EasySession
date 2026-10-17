@@ -23,6 +23,8 @@ namespace EasySessionSettingsPropagationTest
 		AwaitingCreate,
 		AwaitingUpdate,
 		AwaitingDestroy,
+		AwaitingRecreate,
+		AwaitingSecondDestroy,
 		Done
 	};
 
@@ -32,6 +34,10 @@ namespace EasySessionSettingsPropagationTest
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 		EStep Step = EStep::AwaitingCreate;
 		TOptional<EEasySessionResult> PendingResult;
+
+		/** The settings the apply test sends as the host's, kept to send the same ones again in a new session. */
+		FEasySessionReplicatedSettings Payload;
+
 		double StartTime = 0.0;
 	};
 
@@ -221,7 +227,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 			// That state is set directly here, because a headless test has no second process.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
-			FEasySessionReplicatedSettings Payload;
+			FEasySessionReplicatedSettings& Payload = State->Payload;
 			Payload.SessionDisplayName = TEXT("Renamed By Host");
 			Payload.JoinCode = TEXT("XYZ234");
 			Payload.MaxPlayers = 8;
@@ -274,6 +280,39 @@ bool FEasySessionWaitForSettingsApply::Update()
 		case EStep::AwaitingDestroy:
 		{
 			CurrentTest->TestEqual(TEXT("Session destroyed"), ConsumeResult(*State), EEasySessionResult::Success);
+
+			// A rejoined session can carry the same settings as the last one, and they must still apply.
+			State->Step = EStep::AwaitingRecreate;
+			Subsystem->CreateSession(MakeParams(TEXT("Settings Apply Before")), FEasySessionCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&)
+				{
+					Shared->PendingResult = Result;
+				}));
+			return false;
+		}
+
+		case EStep::AwaitingRecreate:
+		{
+			CurrentTest->TestEqual(TEXT("Session created again"), ConsumeResult(*State), EEasySessionResult::Success);
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
+
+			FEasySessionTestAccess::DriveReplicatedSessionSettings(*Subsystem, State->Payload);
+			CurrentTest->TestEqual(TEXT("The same settings in a new session fired the event again"), State->Listener->SettingsChangedBroadcasts, 2);
+			CurrentTest->TestEqual(TEXT("The new session copy follows the host"), Subsystem->GetDisplayName(), TEXT("Renamed By Host"));
+
+			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true);
+			State->Step = EStep::AwaitingSecondDestroy;
+			Subsystem->LeaveSession(EEasySessionType::GameSession, FEasySessionCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&)
+				{
+					Shared->PendingResult = Result;
+				}));
+			return false;
+		}
+
+		case EStep::AwaitingSecondDestroy:
+		{
+			CurrentTest->TestEqual(TEXT("Second session destroyed"), ConsumeResult(*State), EEasySessionResult::Success);
 			State->Step = EStep::Done;
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;

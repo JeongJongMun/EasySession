@@ -461,6 +461,12 @@ TArray<FEasySessionPlayerInfo> UEasySessionSubsystem::GetSessionPlayerInfos() co
 {
 	TArray<FEasySessionPlayerInfo> Infos;
 
+	// Outside a session the game state still lists the local player, who is no player of any session.
+	if (!IsInSession())
+	{
+		return Infos;
+	}
+
 	const UWorld* World = GetWorld();
 	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
 	if (GameState == nullptr)
@@ -504,6 +510,11 @@ int32 UEasySessionSubsystem::GetPlayerCount(EEasySessionType Type) const
 	if (Type == EEasySessionType::PartySession)
 	{
 		return Party->GetMembers().Num();
+	}
+
+	if (!IsInSession())
+	{
+		return 0;
 	}
 
 	const UWorld* World = GetWorld();
@@ -580,6 +591,9 @@ FEasyDisconnectInfo UEasySessionSubsystem::ConsumePendingDisconnectInfo()
 void UEasySessionSubsystem::ClearReplicatedSessionState()
 {
 	ReplicatedSessionState.Reset();
+
+	// A later session can replicate the same settings, and they must still reach its session copy and OnSessionSettingsChanged.
+	AppliedReplicatedSessionSettings = FEasySessionReplicatedSettings();
 }
 
 void UEasySessionSubsystem::HandleReplicatedSessionState(EEasySessionState HostState)

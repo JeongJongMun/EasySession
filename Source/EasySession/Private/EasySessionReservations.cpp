@@ -241,6 +241,12 @@ FEasyReservationResponse FEasySessionReservations::ApproveJoin(const FString& Pa
 	return MakeResponse(EEasyReservationResult::WrongPassword, NSLOCTEXT("EasySession", "WrongPassword", "Wrong session password."));
 }
 
+int32 FEasySessionReservations::GetNumReservations() const
+{
+	const AEasySessionReservationBeaconHost* Beacon = BeaconHost.Get();
+	return Beacon != nullptr ? Beacon->GetNumConsumedReservations() : 0;
+}
+
 void FEasySessionReservations::AddKickedPlayer(const FUniqueNetIdRepl& PlayerId)
 {
 	if (PlayerId.IsValid())

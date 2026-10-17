@@ -91,7 +91,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static FString GetEasyDisplayName(const UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 
-	/** Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host. */
+	/**
+	 * Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host.
+	 * Empty when no game session exists.
+	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static TArray<FEasySessionPlayerInfo> GetEasySessionPlayerInfos(const UObject* WorldContextObject);
 
@@ -105,7 +108,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static EEasySessionResult SetEasySessionReady(const UObject* WorldContextObject, bool bReady);
 
-	/** The number of players in the session of this type: the players of the game, or the members of the party. */
+	/** The number of players in the session of this type: the players of the game, or the members of the party. 0 when no such session exists. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetEasyPlayerCount(const UObject* WorldContextObject, EEasySessionType Type = EEasySessionType::GameSession);
 

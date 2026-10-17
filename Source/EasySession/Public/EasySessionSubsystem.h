@@ -310,6 +310,7 @@ public:
 	/**
 	 * Update the advertised properties of the current session.
 	 * Only the host can update it.
+	 * Fails with InvalidParams when MaxPlayers is below the players in the session or joining it, who each hold a reservation.
 	 *
 	 * Every field is applied as given, including Password.
 	 * Pass settings from GetSessionSettings and change only what you mean to change.
@@ -457,10 +458,13 @@ public:
 	/** @return The display name the session of this type advertises. Empty when no such session exists. */
 	FString GetDisplayName(EEasySessionType Type = EEasySessionType::GameSession) const;
 
-	/** @return Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host. */
+	/**
+	 * @return Per-player info for everyone in the session: name, whether it is the local player on this machine, and whether it is the session host.
+	 *         Empty when no game session exists.
+	 */
 	TArray<FEasySessionPlayerInfo> GetSessionPlayerInfos() const;
 
-	/** @return The number of players in the session of this type: the players of the game, or the members of the party. */
+	/** @return The number of players in the session of this type: the players of the game, or the members of the party. 0 when no such session exists. */
 	int32 GetPlayerCount(EEasySessionType Type = EEasySessionType::GameSession) const;
 
 	/** @return The maximum number of players the session of this type allows. 0 when no such session exists. */
@@ -570,7 +574,7 @@ public:
 	 */
 	void RefreshSessionState();
 
-	/** Internal, called by the Destroy request: clear the host state a client received through replication. */
+	/** Internal, called by the Destroy request: clear the host state and settings a client received through replication. */
 	void ClearReplicatedSessionState();
 
 	/**

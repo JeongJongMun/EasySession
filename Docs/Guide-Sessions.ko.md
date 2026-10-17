@@ -184,6 +184,7 @@ Create Easy Session
 ## Update Session
 
 `Update Easy Session`에 호스트 파라미터를 다시 넘기면 세션이 새 값으로 광고됩니다. 호스트 전용입니다.
+Max Players는 세션에 있거나 들어오는 중인 인원(호스트 포함)보다 낮출 수 없고, 그러면 `InvalidParams`로 실패합니다.
 
 무엇을 바꿀 수 있는지는 `FEasySessionSettings`가 답합니다. 표시 이름, 최대 인원, 광고 여부,
 숨김 여부, 난입 허용 여부, 초대 허용 여부, 지역, 참가 코드, 비밀번호(와 친구 예외), 커스텀

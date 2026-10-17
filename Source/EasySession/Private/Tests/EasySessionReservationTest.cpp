@@ -492,6 +492,99 @@ bool FEasySessionReservationResizeTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionReservationFloorStep, TSharedPtr<EasySessionReservationTest::FTestState>, State);
+bool FEasySessionReservationFloorStep::Update()
+{
+	using namespace EasySessionReservationTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	UWorld* World = State->GameInstance->GetWorld();
+
+	const TCHAR* What = TEXT("create");
+	switch (State->Step)
+	{
+		case EStep::AwaitingUpdate: What = TEXT("update"); break;
+		case EStep::AwaitingDestroy: What = TEXT("destroy"); break;
+		default: break;
+	}
+
+	const EWait Wait = WaitForRequest(*State, *CurrentTest, What);
+	if (Wait != EWait::Ready)
+	{
+		return Wait == EWait::TimedOut;
+	}
+
+	switch (State->Step)
+	{
+		case EStep::AwaitingCreate:
+		{
+			CurrentTest->TestEqual(TEXT("Creating the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
+
+			AEasySessionReservationBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
+			if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
+			{
+				CurrentTest->TestTrue(TEXT("An approved player holds a reservation"), AddReservationFor(*Beacon, MakePlayerId(World, TEXT("EasySessionReservedPlayer"))));
+				CurrentTest->TestEqual(TEXT("The host and that player hold one each"), Beacon->GetNumConsumedReservations(), 2);
+			}
+
+			FEasySessionSettings Lowered = Subsystem->GetSessionSettings();
+			Lowered.MaxPlayers = 1;
+
+			State->Step = EStep::AwaitingUpdate;
+			Subsystem->UpdateSession(Lowered, MakeCallback(State));
+			return false;
+		}
+
+		case EStep::AwaitingUpdate:
+		{
+			CurrentTest->TestEqual(TEXT("Lowering Max Players below the reservations is refused"), ConsumeResult(*State), EEasySessionResult::InvalidParams);
+			CurrentTest->TestEqual(TEXT("The session keeps its Max Players"), Subsystem->GetMaxPlayers(), 4);
+
+			const AEasySessionReservationBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
+			if (CurrentTest->TestNotNull(TEXT("The session still runs the reservation beacon"), Beacon))
+			{
+				CurrentTest->TestEqual(TEXT("The beacon keeps its Max Players"), Beacon->GetMaxReservations(), 4);
+			}
+
+			StartDestroy(State, *Subsystem);
+			return false;
+		}
+
+		case EStep::AwaitingDestroy:
+		{
+			CurrentTest->TestEqual(TEXT("The cleanup destroy succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
+			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+			return true;
+		}
+
+		default:
+			break;
+	}
+
+	return true;
+}
+
+/**
+ * The reservation beacon cannot shrink below the reservations it holds, while the engine's player cap would.
+ * An update that tries is refused, so the beacon never approves a player the engine then turns away as full.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservationFloorTest, "EasySession.Reservation.MaxPlayersCannotGoBelowTheReservations", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionReservationFloorTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionReservationTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this, 4) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionReservationFloorStep(State));
+	return true;
+}
+
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionRemovedReservationStep, TSharedPtr<EasySessionReservationTest::FTestState>, State);
 bool FEasySessionRemovedReservationStep::Update()
 {

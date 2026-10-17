@@ -92,6 +92,9 @@ public:
 	/** @return Whether friends of the host may join a password session without it. */
 	bool GetFriendsBypassPassword() const { return bFriendsBypassPassword; }
 
+	/** @return The reservations the reservation beacon holds, one for each player in the session or joining it. 0 while the beacon is not running. */
+	int32 GetNumReservations() const;
+
 	/** Keep this player out until the session is destroyed, and remove their reservation. The list is kept across a map change. */
 	void AddKickedPlayer(const FUniqueNetIdRepl& PlayerId);
 
