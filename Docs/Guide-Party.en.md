@@ -49,7 +49,7 @@ On Steam a party is a Steam lobby, so it needs presence and works across the int
 
 `Hidden` does not lock the party: a player who finds it another way, for example by the host's id, is admitted. A party has no password.
 
-A party with `Use Join Code` advertises a generated six character code. `Get Easy Join Code` with `Type` set to Party Session reads it, for the host to show and share. Every member can read it too.
+A party with `Use Join Code` advertises a generated six character code. `Get Easy Join Code` with `Type` set to Party Session reads it, for the host to show and share. Every member can read it too. In the example, a player enters the code in the Find screen's CODE tab while the browser shows parties.
 
 `Get Easy Session Settings` with `Type` set to Party Session returns the settings the party was created with, on the host and on every member. Use it to show the party as "2/4", or to label a hidden party.
 

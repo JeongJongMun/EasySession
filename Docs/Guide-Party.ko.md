@@ -49,7 +49,7 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 `Hidden`은 파티를 잠그지 않습니다. 호스트의 ID처럼 다른 경로로 파티를 찾은 플레이어도 받습니다. 파티에는 비밀번호가 없습니다.
 
-`Use Join Code`를 켠 파티는 자동으로 만든 6자리 코드를 광고합니다. 호스트는 `Type`을 Party Session으로 둔 `Get Easy Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다.
+`Use Join Code`를 켠 파티는 자동으로 만든 6자리 코드를 광고합니다. 호스트는 `Type`을 Party Session으로 둔 `Get Easy Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다. 예제에서는 Find 화면이 파티를 보여 줄 때 CODE 탭에 코드를 넣습니다.
 
 `Type`을 Party Session으로 둔 `Get Easy Session Settings`는 파티를 만들 때 쓴 설정을 돌려줍니다. 호스트와 모든 멤버에서 동작합니다. 파티를 "2/4"로 보여 주거나, 숨긴 파티라고 표시할 때 씁니다.
 
