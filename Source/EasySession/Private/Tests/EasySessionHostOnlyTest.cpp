@@ -11,7 +11,7 @@
 #include "Engine/GameInstance.h"
 #include "UObject/StrongObjectPtr.h"
 
-namespace EasySessionAuthorityGateTest
+namespace EasySessionHostOnlyTest
 {
 	/** Maximum time to wait for the whole sequence before failing. */
 	static constexpr double TimeoutSeconds = 20.0;
@@ -23,8 +23,8 @@ namespace EasySessionAuthorityGateTest
 		TOptional<EEasySessionResult> CreateResult;
 		TOptional<EEasySessionResult> StartResult;
 		TOptional<EEasySessionResult> EndResult;
-		TOptional<EEasySessionResult> StartWithoutAuthorityResult;
-		TOptional<EEasySessionResult> UpdateWithoutAuthorityResult;
+		TOptional<EEasySessionResult> StartOnClientResult;
+		TOptional<EEasySessionResult> UpdateOnClientResult;
 		double StartTime = 0.0;
 	};
 
@@ -44,10 +44,10 @@ namespace EasySessionAuthorityGateTest
 	}
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForAuthorityGates, TSharedPtr<EasySessionAuthorityGateTest::FTestState>, State);
-bool FEasySessionWaitForAuthorityGates::Update()
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForHostOnlyGates, TSharedPtr<EasySessionHostOnlyTest::FTestState>, State);
+bool FEasySessionWaitForHostOnlyGates::Update()
 {
-	using namespace EasySessionAuthorityGateTest;
+	using namespace EasySessionHostOnlyTest;
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -82,7 +82,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			{
 				return false;
 			}
-			CurrentTest->TestEqual(TEXT("Authority can start the match"), State->StartResult.GetValue(), EEasySessionResult::Success);
+			CurrentTest->TestEqual(TEXT("The host can start the match"), State->StartResult.GetValue(), EEasySessionResult::Success);
 
 			Subsystem->EndSession(FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
@@ -97,7 +97,7 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			{
 				return false;
 			}
-			CurrentTest->TestEqual(TEXT("Authority can end the match"), State->EndResult.GetValue(), EEasySessionResult::Success);
+			CurrentTest->TestEqual(TEXT("The host can end the match"), State->EndResult.GetValue(), EEasySessionResult::Success);
 
 			// Now the same calls from a game that holds a session it did not create, which is what a joined client looks like.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
@@ -105,40 +105,40 @@ bool FEasySessionWaitForAuthorityGates::Update()
 			Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
 				{
-					State->StartWithoutAuthorityResult = Result;
+					State->StartOnClientResult = Result;
 				}));
 			State->Phase = 3;
 			return false;
 
 		case 3:
-			if (!State->StartWithoutAuthorityResult.IsSet())
+			if (!State->StartOnClientResult.IsSet())
 			{
 				return false;
 			}
 
 			// The point of the test: this used to complete with Success while it only changed the state of the local session copy and started nothing.
-			CurrentTest->TestEqual(TEXT("Start without authority is refused"),
-				State->StartWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresHost);
+			CurrentTest->TestEqual(TEXT("Start on a client is refused"),
+				State->StartOnClientResult.GetValue(), EEasySessionResult::RequiresHost);
 
 			Subsystem->UpdateSession(MakeParams(), FEasySessionCompleteDelegate::CreateLambda(
 				[State = State](EEasySessionResult Result, const FString&)
 				{
-					State->UpdateWithoutAuthorityResult = Result;
+					State->UpdateOnClientResult = Result;
 				}));
 			State->Phase = 4;
 			return false;
 
 		case 4:
-			if (!State->UpdateWithoutAuthorityResult.IsSet())
+			if (!State->UpdateOnClientResult.IsSet())
 			{
 				return false;
 			}
-			CurrentTest->TestEqual(TEXT("Update without authority is refused"),
-				State->UpdateWithoutAuthorityResult.GetValue(), EEasySessionResult::RequiresHost);
+			CurrentTest->TestEqual(TEXT("Update on a client is refused"),
+				State->UpdateOnClientResult.GetValue(), EEasySessionResult::RequiresHost);
 
 			// The synchronous path has to refuse too.
 			// Nothing outside the function stops a client from reaching it.
-			CurrentTest->TestFalse(TEXT("ServerTravel without authority is refused"),
+			CurrentTest->TestFalse(TEXT("ServerTravel on a client is refused"),
 				Subsystem->ServerTravel(TEXT("ES13_NoSuchMap")));
 
 			// DestroySession on a session another process created must stay allowed, because that is how a client destroys its session.
@@ -158,15 +158,15 @@ bool FEasySessionWaitForAuthorityGates::Update()
 }
 
 /**
- * Match control needs session authority, not a hosting player.
+ * Match control needs the host, the game that created the session.
  * A game that did not create the session is a joined client, and it must get a clear refusal.
  * What it used to get was a Success that only changed its local session copy.
  * The refusal must name the reason, because StateChangeFailure would read as the online subsystem refusing.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionAuthorityGateTest, "EasySession.Authority.MatchControlNeedsHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostOnlyTest, "EasySession.Host.MatchControlNeedsHost", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionHostOnlyTest::RunTest(const FString& Parameters)
 {
-	using namespace EasySessionAuthorityGateTest;
+	using namespace EasySessionHostOnlyTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
@@ -186,7 +186,7 @@ bool FEasySessionAuthorityGateTest::RunTest(const FString& Parameters)
 		}));
 
 	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForAuthorityGates(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForHostOnlyGates(State));
 	return true;
 }
 

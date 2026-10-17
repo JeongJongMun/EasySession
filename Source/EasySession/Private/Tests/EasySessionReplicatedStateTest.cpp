@@ -115,7 +115,7 @@ bool FEasySessionWaitForReplicatedState::Update()
 /**
  * A client only reads the host's match state.
  * It never acts on it.
- * Passing the replicated state to StartSession or EndSession would queue a request the client has no authority to run.
+ * Passing the replicated state to StartSession or EndSession would queue a request only the host may run.
  * That request would fail with RequiresHost, although the game asked for no match change.
  *
  * HandleReplicatedSessionState records the host's state in any net mode, and only GetSessionState checks for NM_Client.

@@ -12,7 +12,7 @@
 #include "OnlineSubsystemUtils.h"
 #include "UObject/StrongObjectPtr.h"
 
-namespace EasySessionAuthorityTest
+namespace EasySessionHostWithoutPlayerTest
 {
 	/** Maximum time to wait for the session to be created and destroyed before failing. */
 	static constexpr double TimeoutSeconds = 20.0;
@@ -29,7 +29,7 @@ namespace EasySessionAuthorityTest
 	static FEasySessionHostParams MakeParams()
 	{
 		FEasySessionHostParams Params;
-		Params.SessionDisplayName = TEXT("EasySession Authority Host");
+		Params.SessionDisplayName = TEXT("EasySession Host Without Player");
 		Params.bIsLANMatch = true;
 		Params.InitialMapName = EasySessionTest::SessionMapName;
 		return Params;
@@ -41,10 +41,10 @@ namespace EasySessionAuthorityTest
 	}
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForAuthorityTeardown, TSharedPtr<EasySessionAuthorityTest::FTestState>, State);
-bool FEasySessionWaitForAuthorityTeardown::Update()
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionWaitForHostWithoutPlayer, TSharedPtr<EasySessionHostWithoutPlayerTest::FTestState>, State);
+bool FEasySessionWaitForHostWithoutPlayer::Update()
 {
-	using namespace EasySessionAuthorityTest;
+	using namespace EasySessionHostWithoutPlayerTest;
 
 	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
@@ -52,7 +52,7 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 	if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 	{
 		CurrentTest->AddError(FString::Printf(
-			TEXT("Timed out in phase %d. A server that created the session must still be able to destroy it when it has no hosting player."),
+			TEXT("Timed out in phase %d. A game that created the session must still be able to destroy it when it has no local player."),
 			State->Phase));
 		Finish(*State);
 		return true;
@@ -67,10 +67,9 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 			}
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-			// A test game instance has no local player, which is the state a dedicated server is in.
-			// The process still created the session, so it keeps the authority over it.
+			// A test game instance has no local player, and the process still created the session, so it hosts it.
 			CurrentTest->TestEqual(TEXT("There is no local player"), State->GameInstance->GetNumLocalPlayers(), 0);
-			CurrentTest->TestTrue(TEXT("The process that created the session has the authority"), Subsystem->IsHost());
+			CurrentTest->TestTrue(TEXT("The process that created the session is the host"), Subsystem->IsHost());
 			CurrentTest->TestTrue(TEXT("Session still exists"), Subsystem->IsInSession());
 
 			Subsystem->DestroySessionForEveryone(FText::FromString(TEXT("Server shutting the match down")));
@@ -78,7 +77,7 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 			return false;
 
 		default:
-			// The point of the test: this used to be refused with a warning, because the authority check asked whether a local player owned the session.
+			// The point of the test: this used to be refused with a warning, because the host check asked whether a local player owned the session.
 			if (Subsystem->IsInSession())
 			{
 				return false;
@@ -91,14 +90,14 @@ bool FEasySessionWaitForAuthorityTeardown::Update()
 }
 
 /**
- * Session authority must not depend on there being a hosting player.
- * A dedicated server has no local player, yet that process is still the host of the session it created.
- * The authority is FNamedOnlineSession's bHosting, which FEasySessionHost sets when the create completes, so no local player is involved.
+ * Hosting must not depend on a local player.
+ * A test game instance has none, and the process that created the session still hosts it.
+ * The host is FNamedOnlineSession's bHosting, which the create request sets when the create completes, so no local player is involved.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDedicatedAuthorityTest, "EasySession.Authority.ServerKeepsAuthorityWithoutHostingPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostWithoutPlayerTest, "EasySession.Host.HostingNeedsNoLocalPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionHostWithoutPlayerTest::RunTest(const FString& Parameters)
 {
-	using namespace EasySessionAuthorityTest;
+	using namespace EasySessionHostWithoutPlayerTest;
 
 	TSharedPtr<FTestState> State = MakeShared<FTestState>();
 	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
@@ -118,7 +117,7 @@ bool FEasySessionDedicatedAuthorityTest::RunTest(const FString& Parameters)
 		}));
 
 	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForAuthorityTeardown(State));
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForHostWithoutPlayer(State));
 	return true;
 }
 

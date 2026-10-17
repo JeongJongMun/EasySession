@@ -38,10 +38,10 @@ namespace EasySessionHostTest
 		double StartTime = 0.0;
 	};
 
-	// Check the four parts of the host side: the authority, the session password, the state actor and the reservation beacon.
+	// Check the four parts of the host side: the host flag, the session password, the state actor and the reservation beacon.
 	static void TestHostSide(FAutomationTestBase& Test, UEasySessionSubsystem& Subsystem, bool bExpected, const TCHAR* When)
 	{
-		Test.TestEqual(FString::Printf(TEXT("%s: session authority"), When), Subsystem.IsHost(), bExpected);
+		Test.TestEqual(FString::Printf(TEXT("%s: host flag"), When), Subsystem.IsHost(), bExpected);
 		Test.TestEqual(FString::Printf(TEXT("%s: the host holds the password"), When),
 			FEasySessionTestAccess::GetEnforcedSessionPassword(Subsystem), bExpected ? FString(TestPassword) : FString());
 		Test.TestEqual(FString::Printf(TEXT("%s: the state actor exists"), When), FEasySessionTestAccess::HasStateActor(Subsystem), bExpected);
@@ -78,7 +78,7 @@ bool FEasySessionHostStep::Update()
 
 			CurrentTest->TestEqual(TEXT("Session created"), State->CreateResult.GetValue(), EEasySessionResult::Success);
 
-			// The create sets the authority and the credentials.
+			// The create sets the host flag and the credentials.
 			// The world actors are spawned in the session's map.
 			CurrentTest->TestFalse(TEXT("The create alone spawns no state actor"), FEasySessionTestAccess::HasStateActor(*Subsystem));
 			FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
@@ -174,7 +174,7 @@ namespace EasySessionHostTest
 
 /**
  * Hosting a session sets four things on the host.
- * The create sets the authority and the session password, and the session's map spawns the state actor and the reservation beacon.
+ * The create sets the host flag and the session password, and the session's map spawns the state actor and the reservation beacon.
  * Destroying the session has to undo all four, because a later session would otherwise start with the previous one's password or actors.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHostDestroyTest, "EasySession.Host.DestroyUndoesWhatCreateDid", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)

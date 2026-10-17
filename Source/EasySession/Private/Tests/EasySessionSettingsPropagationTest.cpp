@@ -217,7 +217,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
 
-			// A joined client holds a local session copy but no authority.
+			// A joined client holds a local session copy but does not host it.
 			// That state is set directly here, because a headless test has no second process.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
@@ -260,7 +260,7 @@ bool FEasySessionWaitForSettingsApply::Update()
 			FEasySessionTestAccess::DriveReplicatedSessionSettings(*Subsystem, Payload);
 			CurrentTest->TestEqual(TEXT("A repeated payload fired no second event"), State->Listener->SettingsChangedBroadcasts, 1);
 
-			// Give authority back so the cleanup runs the host's destroy path.
+			// Make this game the host again so the cleanup runs the host's destroy path.
 			FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, true);
 			State->Step = EStep::AwaitingDestroy;
 			Subsystem->LeaveSession(EEasySessionType::GameSession, FEasySessionCompleteDelegate::CreateLambda(
