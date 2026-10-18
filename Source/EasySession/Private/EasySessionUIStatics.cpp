@@ -97,7 +97,22 @@ FText UEasySessionUIStatics::FormatSessionSlots(const FEasySessionSearchResult& 
 
 FText UEasySessionUIStatics::GetRegionDisplayName(EEasySessionRegion Region)
 {
-	return StaticEnum<EEasySessionRegion>()->GetDisplayNameTextByValue(static_cast<int64>(Region));
+	// The enum's DisplayName metadata is read only in the editor, so a packaged game would show the raw names.
+	switch (Region)
+	{
+		case EEasySessionRegion::NorthAmericaEast: return LOCTEXT("Region_NorthAmericaEast", "North America East");
+		case EEasySessionRegion::NorthAmericaWest: return LOCTEXT("Region_NorthAmericaWest", "North America West");
+		case EEasySessionRegion::SouthAmerica: return LOCTEXT("Region_SouthAmerica", "South America");
+		case EEasySessionRegion::Europe: return LOCTEXT("Region_Europe", "Europe");
+		case EEasySessionRegion::MiddleEastAfrica: return LOCTEXT("Region_MiddleEastAfrica", "Middle East & Africa");
+		case EEasySessionRegion::SouthAsia: return LOCTEXT("Region_SouthAsia", "South Asia");
+		case EEasySessionRegion::SoutheastAsia: return LOCTEXT("Region_SoutheastAsia", "Southeast Asia");
+		case EEasySessionRegion::EastAsia: return LOCTEXT("Region_EastAsia", "East Asia");
+		case EEasySessionRegion::Oceania: return LOCTEXT("Region_Oceania", "Oceania");
+		case EEasySessionRegion::Any:
+		default:
+			return LOCTEXT("Region_Any", "Any");
+	}
 }
 
 TArray<FText> UEasySessionUIStatics::GetRegionOptions()
@@ -110,7 +125,7 @@ TArray<FText> UEasySessionUIStatics::GetRegionOptions()
 	Options.Reserve(Count);
 	for (int32 Index = 0; Index < Count; ++Index)
 	{
-		Options.Add(Enum->GetDisplayNameTextByIndex(Index));
+		Options.Add(GetRegionDisplayName(static_cast<EEasySessionRegion>(Enum->GetValueByIndex(Index))));
 	}
 	return Options;
 }

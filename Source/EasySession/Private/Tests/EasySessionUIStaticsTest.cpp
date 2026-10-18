@@ -67,6 +67,10 @@ bool FEasySessionUIStaticsTest::RunTest(const FString& Parameters)
 	{
 		const EEasySessionRegion Region = UEasySessionUIStatics::RegionFromIndex(Index);
 		TestEqual(FString::Printf(TEXT("Option %d names its region"), Index), Options[Index].ToString(), UEasySessionUIStatics::GetRegionDisplayName(Region).ToString());
+
+		// In the editor the enum still reads its DisplayName metadata, so every region needs the same text in the table packaged games use.
+		TestEqual(FString::Printf(TEXT("Region %d matches its enum display name"), Index),
+			UEasySessionUIStatics::GetRegionDisplayName(Region).ToString(), RegionEnum->GetDisplayNameTextByIndex(Index).ToString());
 	}
 	TestEqual(TEXT("North America East display name"), UEasySessionUIStatics::GetRegionDisplayName(EEasySessionRegion::NorthAmericaEast).ToString(), FString(TEXT("North America East")));
 	TestEqual(TEXT("Out of range index falls back to Any"), UEasySessionUIStatics::RegionFromIndex(Options.Num() + 3), EEasySessionRegion::Any);
