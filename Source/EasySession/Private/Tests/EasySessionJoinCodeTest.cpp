@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionConfig.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
 #include "EasySessionTestWorld.h"
@@ -11,15 +12,21 @@
 #include "UObject/StrongObjectPtr.h"
 
 /**
- * The generated code is safe to read aloud and type: six characters with no look-alikes (0, O, 1, I, L and B are left out), and two codes in a row differ.
+ * The generated code is safe to read aloud and type: no look-alikes (0, O, 1, I, L and B are left out), and two codes in a row differ.
+ * Its length follows Join Code Length in the project settings, kept between 4 and 12 even when the ini holds a value outside that range.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinCodeAlphabetTest, "EasySession.JoinCode.GeneratedCodeIsReadable", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionJoinCodeAlphabetTest::RunTest(const FString& Parameters)
 {
 	const FString Alphabet = TEXT("23456789ACDEFGHJKMNPQRSTUVWXYZ");
 
+	// The project's own value comes back at the end, so the test does not depend on what the project set.
+	UEasySessionConfig* Config = GetMutableDefault<UEasySessionConfig>();
+	const int32 SavedLength = Config->JoinCodeLength;
+
+	Config->JoinCodeLength = 6;
 	const FString First = EasySession::GenerateJoinCode();
-	TestEqual(TEXT("The code has six characters"), First.Len(), 6);
+	TestEqual(TEXT("The code has as many characters as Join Code Length"), First.Len(), 6);
 	for (const TCHAR Char : First)
 	{
 		TestTrue(FString::Printf(TEXT("'%c' comes from the unambiguous alphabet"), Char), Alphabet.Contains(FString::Chr(Char)));
@@ -27,6 +34,15 @@ bool FEasySessionJoinCodeAlphabetTest::RunTest(const FString& Parameters)
 
 	// A collision is one in seven hundred million, so two equal codes mean the generator is broken, not unlucky.
 	TestNotEqual(TEXT("Two generated codes differ"), First, EasySession::GenerateJoinCode());
+
+	Config->JoinCodeLength = 5;
+	TestEqual(TEXT("A shorter Join Code Length makes a shorter code"), EasySession::GenerateJoinCode().Len(), 5);
+	Config->JoinCodeLength = 99;
+	TestEqual(TEXT("A length above the range makes the longest code"), EasySession::GenerateJoinCode().Len(), 12);
+	Config->JoinCodeLength = 1;
+	TestEqual(TEXT("A length below the range makes the shortest code"), EasySession::GenerateJoinCode().Len(), 4);
+
+	Config->JoinCodeLength = SavedLength;
 	return true;
 }
 
@@ -84,7 +100,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			}
 
 			State->JoinCode = Subsystem->GetJoinCode();
-			CurrentTest->TestEqual(TEXT("The hidden session advertises a six character code"), State->JoinCode.Len(), 6);
+			CurrentTest->TestEqual(TEXT("The hidden session advertises a code of Join Code Length"), State->JoinCode.Len(), GetDefault<UEasySessionConfig>()->JoinCodeLength);
 
 			const FEasySessionSettings ReadBack = Subsystem->GetSessionSettings();
 			CurrentTest->TestTrue(TEXT("The code toggle reads back"), ReadBack.bUseJoinCode);

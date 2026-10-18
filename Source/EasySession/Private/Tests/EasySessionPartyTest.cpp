@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionConfig.h"
 #include "EasySessionPartyBeacon.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestAccess.h"
@@ -200,7 +201,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 			CurrentTest->TestEqual(TEXT("The session is marked as a party"),
 				EasySession::GetAdvertisedSessionType(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession).Session.SessionSettings).ToString(), FName(NAME_PartySession).ToString());
 			CurrentTest->TestEqual(TEXT("A join code party is hidden from plain searches"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
-			CurrentTest->TestEqual(TEXT("The party advertises a six character code"), Subsystem->GetJoinCode(EEasySessionType::PartySession).Len(), 6);
+			CurrentTest->TestEqual(TEXT("The party advertises a code of Join Code Length"), Subsystem->GetJoinCode(EEasySessionType::PartySession).Len(), GetDefault<UEasySessionConfig>()->JoinCodeLength);
 			CurrentTest->TestEqual(TEXT("The party reads back its max players"), Subsystem->GetSessionSettings(EEasySessionType::PartySession).MaxPlayers, 3);
 			CurrentTest->TestEqual(TEXT("A party with no name is named after its host"), Subsystem->GetSessionSettings(EEasySessionType::PartySession).SessionDisplayName, GetIdentity(State)->GetPlayerNickname(0));
 			CurrentTest->TestEqual(TEXT("The host takes a slot"), FEasySessionSearchResult::FromNative(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession)).OpenSlots, 2);

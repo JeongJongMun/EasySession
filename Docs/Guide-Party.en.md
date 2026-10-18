@@ -22,7 +22,7 @@ A party is optional. A game that never creates one works exactly as before, and 
 | Session Display Name | (empty) | Shown in party search results. Empty names the party after its host |
 | Max Players | 4 | How many players the party holds, the host included |
 | Hidden | false | Left out of the party search list, see [who may join](#who-may-join) below |
-| Use Join Code | false | Advertise a six character code that finds the party |
+| Use Join Code | false | Advertise a code that finds the party, as long as **Join Code Length** says (6 by default) |
 | Allow Invites | true | Whether members can invite friends to the party |
 | Custom Settings | (empty) | Key-value data advertised with the party, read back with `Get Easy Session Settings` |
 | Password | (empty) | A party has no password, so a non-empty one fails the create with `InvalidParams`. Hide the party or share its join code instead |
@@ -49,7 +49,7 @@ On Steam a party is a Steam lobby, so it needs presence and works across the int
 
 `Hidden` does not lock the party: a player who finds it another way, for example by the host's id, is admitted. A party has no password.
 
-A party with `Use Join Code` advertises a generated six character code. `Get Easy Join Code` with `Type` set to Party Session reads it, for the host to show and share. Every member can read it too. In the example, a player enters the code in the Find screen's CODE tab while the browser shows parties.
+A party with `Use Join Code` advertises a generated code of **Join Code Length** characters (6 by default). `Get Easy Join Code` with `Type` set to Party Session reads it, for the host to show and share. Every member can read it too. In the example, a player enters the code in the Find screen's CODE tab while the browser shows parties.
 
 `Get Easy Session Settings` with `Type` set to Party Session returns the settings the party was created with, on the host and on every member. Use it to show the party as "2/4", or to label a hidden party.
 

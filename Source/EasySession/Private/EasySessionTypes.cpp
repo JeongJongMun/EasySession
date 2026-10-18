@@ -3,6 +3,7 @@
 #include "EasySessionTypes.h"
 
 #include "EasySession.h"
+#include "EasySessionConfig.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "OnlineBeaconHost.h"
@@ -63,8 +64,11 @@ namespace EasySession
 		static const TCHAR Alphabet[] = TEXT("23456789ACDEFGHJKMNPQRSTUVWXYZ");
 		static constexpr int32 AlphabetSize = UE_ARRAY_COUNT(Alphabet) - 1;
 
+		// The ini can hold a value the Project Settings clamp never saw.
+		const int32 Length = FMath::Clamp(GetDefault<UEasySessionConfig>()->JoinCodeLength, 4, 12);
+
 		FString Code;
-		for (int32 Index = 0; Index < 6; ++Index)
+		for (int32 Index = 0; Index < Length; ++Index)
 		{
 			Code.AppendChar(Alphabet[FMath::RandRange(0, AlphabetSize - 1)]);
 		}

@@ -22,7 +22,7 @@
 | Session Display Name | (비어 있음) | 파티 검색 결과에 보이는 이름. 비어 있으면 호스트 이름이 됩니다 |
 | Max Players | 4 | 호스트를 포함해 파티가 담을 인원 |
 | Hidden | false | 파티 검색 목록에서 뺍니다. 아래 [누가 들어올 수 있나](#누가-들어올-수-있나) 참고 |
-| Use Join Code | false | 파티를 찾을 수 있는 6자리 코드를 광고합니다 |
+| Use Join Code | false | 파티를 찾을 수 있는 코드를 광고합니다. 길이는 **Join Code Length** 설정을 따르고 기본 6자리입니다 |
 | Allow Invites | true | 멤버가 친구를 파티에 초대할 수 있는지 |
 | Custom Settings | (비어 있음) | 파티와 함께 광고하는 키-값 데이터. `Get Easy Session Settings`로 되읽습니다 |
 | Password | (비어 있음) | 파티에는 비밀번호가 없어서, 값을 넣으면 생성이 `InvalidParams`로 실패합니다. 대신 파티를 숨기거나 참가 코드를 공유하세요 |
@@ -49,7 +49,7 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 
 `Hidden`은 파티를 잠그지 않습니다. 호스트의 ID처럼 다른 경로로 파티를 찾은 플레이어도 받습니다. 파티에는 비밀번호가 없습니다.
 
-`Use Join Code`를 켠 파티는 자동으로 만든 6자리 코드를 광고합니다. 호스트는 `Type`을 Party Session으로 둔 `Get Easy Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다. 예제에서는 Find 화면이 파티를 보여 줄 때 CODE 탭에 코드를 넣습니다.
+`Use Join Code`를 켠 파티는 자동으로 만든 코드를 광고합니다. 길이는 **Join Code Length** 설정을 따르고 기본 6자리입니다. 호스트는 `Type`을 Party Session으로 둔 `Get Easy Join Code`로 코드를 읽어 화면에 띄우고 공유합니다. 멤버도 모두 읽을 수 있습니다. 예제에서는 Find 화면이 파티를 보여 줄 때 CODE 탭에 코드를 넣습니다.
 
 `Type`을 Party Session으로 둔 `Get Easy Session Settings`는 파티를 만들 때 쓴 설정을 돌려줍니다. 호스트와 모든 멤버에서 동작합니다. 파티를 "2/4"로 보여 주거나, 숨긴 파티라고 표시할 때 씁니다.
 

@@ -243,8 +243,9 @@ with a `Custom Settings` key through `Required Custom Settings` instead.
 
 ## Join codes
 
-Turn on `Use Join Code` when hosting and the session advertises a generated six character
-code, readable with `Get Easy Join Code` by everyone in the session. Joining is a
+Turn on `Use Join Code` when hosting and the session advertises a generated code of
+**Join Code Length** characters (6 by default), readable with `Get Easy Join Code` by
+everyone in the session. Joining is a
 search away: `Find Easy Sessions` with `Join Code` set returns that one session, hidden or
 not - show it, then pass it to `Join Easy Session`. Matchmaking with the same `Join
 Code` does both in one call, retrying while the session comes up. `Hidden` plus a code is

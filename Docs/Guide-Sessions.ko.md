@@ -240,7 +240,7 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 ## 참가 코드
 
-호스팅할 때 `Use Join Code`를 켜면 생성된 6자리 코드가 세션에 광고되고, 세션에 있는 누구나
+호스팅할 때 `Use Join Code`를 켜면 생성된 코드(**Join Code Length** 설정의 길이, 기본 6자리)가 세션에 광고되고, 세션에 있는 누구나
 `Get Easy Join Code`로 읽을 수 있습니다. 참가는 검색 한 번 거리입니다.
 `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도 그 세션 하나가 결과로 오니, 보여준
 뒤 `Join Easy Session`에 넘기면 됩니다. 같은 `Join Code`로 매치메이킹을 돌리면 찾기와

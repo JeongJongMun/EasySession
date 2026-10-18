@@ -209,7 +209,7 @@ namespace EasySession
 	/** Custom session setting key holding the shareable join code. Empty when the host advertises none. */
 	EASYSESSION_API extern const FName SettingKey_JoinCode;
 
-	/** Make a six character join code from an alphabet without look-alike characters (no 0, O, 1, I, L or B). */
+	/** Make a join code of UEasySessionConfig::JoinCodeLength characters from an alphabet without look-alike characters (no 0, O, 1, I, L or B). */
 	EASYSESSION_API FString GenerateJoinCode();
 
 	/**
@@ -370,7 +370,8 @@ struct EASYSESSION_API FEasySessionSettings
 	EEasySessionRegion Region = EEasySessionRegion::Any;
 
 	/**
-	 * Whether the session advertises a generated six character join code, readable with Get Easy Session Join Code or Get Easy Party Join Code.
+	 * Whether the session advertises a generated join code, readable with Get Easy Join Code.
+	 * The code is as long as Join Code Length in the EasySession project settings, 6 characters by default.
 	 * A search with the code in Join Code returns the session, hidden or not, so Find Easy Sessions lists it and matchmaking joins it.
 	 * Anyone with the code can find the session, so set Password as well to keep others out.
 	 */

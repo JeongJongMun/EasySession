@@ -347,6 +347,7 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 | `bRestorePartyAfterMatch` | true | 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티를 되돌립니다. 호스트가 다시 만들고 모든 멤버가 찾습니다 ([가이드](Guide-Party.ko.md#매치가-끝난-뒤)) |
 | `PartyRestoreWaitSeconds` | 120 | 매치가 끝난 뒤 멤버가 호스트의 파티를 찾는 시간 |
 | `PartyReconnectSeconds` | 15 | 사유 없이 연결이 닫힌 뒤 멤버가 호스트에게 계속 연결을 시도하는 시간. 예를 들어 호스트의 다음 맵이 로드되는 동안입니다 |
+| `JoinCodeLength` | 6 | 자동으로 만드는 참가 코드의 글자 수. 4~12 사이입니다. 세션은 만들 때 받은 코드를 계속 씁니다 |
 | `bAcceptInvitesWhileInSession` | false | 자동 참가가 지금 있는 세션을 파괴하고 초대받은 세션에 참가해도 되는지 정합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로, 먼저 물어본 뒤 `Join Easy Session`을 직접 부르면 됩니다. 이 호출은 새 호스트가 승인한 뒤에 지금 세션을 나갑니다 |
 
 ## 9. C++ 참고

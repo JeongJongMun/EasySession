@@ -38,6 +38,14 @@ public:
 	bool bAcceptInvitesWhileInSession = false;
 
 	/**
+	 * Characters in a generated join code, for a session or a party.
+	 * A shorter code is quicker to read aloud and type, and a longer one is harder to guess.
+	 * Changing it affects codes generated after the change, and a session keeps the code it was created with.
+	 */
+	UPROPERTY(config, EditAnywhere, Category = "Join Code", meta = (ClampMin = "4", ClampMax = "12"))
+	int32 JoinCodeLength = 6;
+
+	/**
 	 * Restore the party in the first map without a game session that this player reaches after the match the party entered.
 	 * The host creates the party again when that map loads, and every member searches for it until Party Restore Wait Seconds runs out.
 	 * Calling Create Easy Party, Create, Join or Leave Easy Session, or Start Easy Matchmaking stops it, because the player chose something else.

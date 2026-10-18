@@ -351,6 +351,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 | `bRestorePartyAfterMatch` | true | Gets the party back in the first map without a game session after a match. The host creates it again and every member looks for it ([guide](Guide-Party.en.md#after-the-match)) |
 | `PartyRestoreWaitSeconds` | 120 | How long a member looks for the host's party after a match |
 | `PartyReconnectSeconds` | 15 | How long a member keeps connecting to the host after the connection closed without a reason, for example while the host's next map loads |
+| `JoinCodeLength` | 6 | Characters in a generated join code, from 4 to 12. A session keeps the code it was created with |
 | `bAcceptInvitesWhileInSession` | false | An automatically accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first and call `Join Easy Session` yourself, which leaves the current session once the new host approved |
 
 ## 9. C++ notes
