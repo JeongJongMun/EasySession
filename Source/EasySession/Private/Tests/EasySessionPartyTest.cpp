@@ -198,7 +198,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 			}
 
 			CurrentTest->TestEqual(TEXT("The session is marked as a party"),
-				EasySession::GetAdvertisedSessionType(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession).Session.SessionSettings), NAME_PartySession);
+				EasySession::GetAdvertisedSessionType(FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_PartySession).Session.SessionSettings).ToString(), FName(NAME_PartySession).ToString());
 			CurrentTest->TestEqual(TEXT("A join code party is hidden from plain searches"), GetPartySettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
 			CurrentTest->TestEqual(TEXT("The party advertises a six character code"), Subsystem->GetJoinCode(EEasySessionType::PartySession).Len(), 6);
 			CurrentTest->TestEqual(TEXT("The party reads back its max players"), Subsystem->GetSessionSettings(EEasySessionType::PartySession).MaxPlayers, 3);

@@ -74,13 +74,13 @@ bool FEasySessionSessionTypeStep::Update()
 
 			State->GameSession = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem, NAME_GameSession);
 			CurrentTest->TestEqual(TEXT("A game session advertises its session type"),
-				EasySession::GetAdvertisedSessionType(State->GameSession.Session.SessionSettings), NAME_GameSession);
+				EasySession::GetAdvertisedSessionType(State->GameSession.Session.SessionSettings).ToString(), FName(NAME_GameSession).ToString());
 			CurrentTest->TestTrue(TEXT("The session type key is kept out of Custom Settings"), EasySession::IsReservedSettingKey(EasySession::SettingKey_SessionType));
 
 			State->OtherProjectSession = State->GameSession;
 			State->OtherProjectSession.Session.SessionSettings.Remove(EasySession::SettingKey_SessionType);
 			CurrentTest->TestEqual(TEXT("A session without the key has no session type"),
-				EasySession::GetAdvertisedSessionType(State->OtherProjectSession.Session.SessionSettings), NAME_None);
+				EasySession::GetAdvertisedSessionType(State->OtherProjectSession.Session.SessionSettings).ToString(), FName(NAME_None).ToString());
 
 			FEasySessionSearchParams Params;
 			Params.bLANQuery = true;
