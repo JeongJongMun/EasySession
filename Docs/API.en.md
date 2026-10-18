@@ -11,10 +11,9 @@ Behavior lives in the guides - this page gives you the names and shapes, and lin
 **New to the plugin?** [Quick Start](QuickStart.en.md) gets a host and a joiner talking with
 three nodes; come back here for the rest.
 
-**Where the nodes are.** Most of them appear when you right-click in a Blueprint graph and
-type the name - nothing to set up first. The rest are called on the subsystem: place a
-`Get Easy Session Subsystem` node and drag off its output pin. The tables below separate
-the two.
+**Where the nodes are.** Every node appears when you right-click in a Blueprint graph and
+type its name - nothing to set up first. The events live on the subsystem: place a
+`Get Easy Session Subsystem` node and drag off its output pin to bind them.
 
 **In C++**, get the subsystem with
 `GetGameInstance()->GetSubsystem<UEasySessionSubsystem>()`; it carries the same queries
@@ -100,11 +99,12 @@ node name without spaces.
 | Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking or Traveling. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
 | Get Easy Display Name | `GetDisplayName` | The name the session of the given Type is advertised under |
 | Get Easy Password | `GetSessionSettings(Type).Password` | The password this game is hosting the game session with, to show the host. **Empty on clients** - it never leaves the host. Always empty for a party, which has none |
-| Get Easy Session Player Infos | `GetSessionPlayerInfos` | Everyone in the session with host, local-player and ready flags, for a player list UI |
-| Get Easy Player Count | `GetPlayerCount` | How many players are in the session of the given Type right now: the players of the game, or the members of the party |
+| Get Easy Session Player Infos | `GetSessionPlayerInfos` | Everyone in the session with host, local-player and ready flags, for a player list UI. Empty outside a game session |
+| Get Easy Player Count | `GetPlayerCount` | How many players are in the session of the given Type right now: the players of the game, or the members of the party. 0 when there is no such session |
 | Get Easy Max Players | `GetMaxPlayers` | How many it holds. 0 when there is no such session |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Is a Matchmaking run in progress |
 | Get Easy Matchmaking State | `GetMatchmakingState` | Which state it is in: Searching, Joining, Hosting, Complete |
+| Get Active Easy Matchmaking Policy | `GetActiveMatchmakingPolicy` | The scoring policy of the running matchmaking, or none when nothing runs. Progress is broadcast on the subsystem's On Matchmaking events, not on the policy |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | Is a disconnect reason waiting. Check this on the menu's Event Construct |
 | Get Online Subsystem Name (EasySession) | - | Which service is active: `NULL` for LAN, `STEAM`, ... |
 | Is Online Subsystem Available (EasySession) | - | Is a subsystem loaded with a valid session interface |
@@ -114,15 +114,6 @@ node name without spaces.
 | Make Easy Session Host Params From Settings | - | Host params that advertise the given settings, plus Initial Map Name and the LAN choice. Blueprint cannot copy a Settings struct into Host Params, so a settings form goes through this to reach Create Easy Session |
 | Get Easy Party Members | `GetPartyMembers` | Every member, the host included, with host, local-player and ready flags |
 | Is Easy Party Restoring | `IsRestoringParty` | Is the party of the last match being created again or looked for. Show a waiting message while it is true |
-
-### 2.2 On the subsystem (`UEasySessionSubsystem`)
-
-Call these on `Get Easy Session Subsystem`. The name is the same in Blueprint and C++, so
-there is no C++ column.
-
-| Node | Answers |
-|---|---|
-| Get Active Easy Matchmaking Policy | The scoring policy of the running matchmaking. Progress is broadcast on the subsystem's On Matchmaking events, not on the policy |
 
 > **Which session are these about?** A node with a `Type` input answers about the game session or the party session,
 > whichever you pick; the default is Game Session. The game session is the one players find, join and play in,
@@ -135,7 +126,7 @@ there is no C++ column.
 > `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)` and
 > `Is Online Subsystem Available (EasySession)` describe the process. Those keep their meaning whatever sessions exist.
 
-### 2.3 UI text helpers (`UEasySessionUIStatics`)
+### 2.2 UI text helpers (`UEasySessionUIStatics`)
 
 Pure functions for the text a session UI shows. None of them touch session state, so a menu needs no string assembly of its own.
 

@@ -61,7 +61,7 @@ friends list itself, this is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess`.
 
-Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, region, in-progress flag, party flag, and the custom settings map.
+Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, region, in-progress flag, session type (game session or party), and the custom settings map.
 
 ## Join Session
 

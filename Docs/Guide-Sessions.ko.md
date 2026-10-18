@@ -61,7 +61,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 결과는 `OnSuccess`로 옵니다.
 
-각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 지역, 매치 진행 중 여부, 파티 여부, 커스텀 세팅 맵을 담고 있습니다.
+각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 지역, 매치 진행 중 여부, 세션 종류(게임 세션 또는 파티), 커스텀 세팅 맵을 담고 있습니다.
 
 ## Join Session
 

@@ -10,10 +10,9 @@
 **플러그인이 처음이신가요?** [Quick Start](QuickStart.ko.md)가 노드 세 개로 호스트와 참가자를
 연결해줍니다. 나머지는 여기로 돌아와서 보세요.
 
-**노드가 어디에 있는가.** 대부분은 블루프린트 그래프에서 우클릭해 이름을 검색하면 바로
-나옵니다. 미리 준비할 것은 없습니다. 나머지는 서브시스템에서 호출합니다.
-`Get Easy Session Subsystem` 노드를 놓고 그 출력 핀에서 선을 끌어내면 됩니다.
-아래 표는 이 둘을 나눠 두었습니다.
+**노드가 어디에 있는가.** 모든 노드는 블루프린트 그래프에서 우클릭해 이름을 검색하면 바로
+나옵니다. 미리 준비할 것은 없습니다. 이벤트는 서브시스템에 있습니다.
+`Get Easy Session Subsystem` 노드를 놓고 그 출력 핀에서 선을 끌어내 바인딩하면 됩니다.
 
 **C++에서는** `GetGameInstance()->GetSubsystem<UEasySessionSubsystem>()`으로 서브시스템을
 얻습니다. 같은 조회 기능을 아래 C++ 열의 더 짧은 이름으로 갖고 있습니다. 바로 쓰는 노드는
@@ -99,11 +98,12 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Easy Session Activity | `GetActivity` | 지금 무엇이 도는지: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling. Is Easy Session Busy가 false일 때만 None. 메뉴가 시작하지 않은 초대 참가나 복구도 이름을 붙입니다 |
 | Get Easy Display Name | `GetDisplayName` | 넘긴 Type의 세션이 광고되는 이름 |
 | Get Easy Password | `GetSessionSettings(Type).Password` | 이 게임이 호스팅 중인 게임 세션의 비밀번호. 호스트에게 보여주기 위한 것으로, **클라이언트에서는 빈 값**입니다. 비밀번호는 호스트를 떠나지 않습니다. 파티에는 비밀번호가 없어 항상 빈 값입니다 |
-| Get Easy Session Player Infos | `GetSessionPlayerInfos` | 세션의 모든 플레이어와 호스트/로컬 플레이어/준비 여부. 참가자 목록 UI용 |
-| Get Easy Player Count | `GetPlayerCount` | 넘긴 Type의 세션에 지금 있는 플레이어 수. 게임의 플레이어 수, 또는 파티의 멤버 수 |
+| Get Easy Session Player Infos | `GetSessionPlayerInfos` | 세션의 모든 플레이어와 호스트/로컬 플레이어/준비 여부. 참가자 목록 UI용. 게임 세션 밖에서는 빈 목록 |
+| Get Easy Player Count | `GetPlayerCount` | 넘긴 Type의 세션에 지금 있는 플레이어 수. 게임의 플레이어 수, 또는 파티의 멤버 수. 그 세션이 없으면 0 |
 | Get Easy Max Players | `GetMaxPlayers` | 정원. 그 세션이 없으면 0 |
 | Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
 | Get Easy Matchmaking State | `GetMatchmakingState` | 어느 상태인가. Searching, Joining, Hosting, Complete |
+| Get Active Easy Matchmaking Policy | `GetActiveMatchmakingPolicy` | 실행 중인 Matchmaking의 점수 정책 객체. 아무것도 돌지 않으면 없음. 진행 상황은 정책이 아니라 서브시스템의 On Matchmaking 이벤트로 방송됩니다 |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | - | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | - | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
@@ -113,14 +113,6 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Make Easy Session Host Params From Settings | - | 주어진 설정에 Initial Map Name과 LAN 여부를 더한 호스트 파라미터. 블루프린트는 Settings 구조체를 Host Params에 복사하지 못하므로, 설정 폼의 값은 이 노드를 거쳐 Create Easy Session으로 갑니다 |
 | Get Easy Party Members | `GetPartyMembers` | 호스트를 포함한 모든 멤버와 호스트/로컬 플레이어/준비 여부 |
 | Is Easy Party Restoring | `IsRestoringParty` | 지난 매치의 파티를 다시 만들거나 찾는 중인가. true인 동안 대기 메시지를 띄우세요 |
-
-### 2.2 서브시스템에서 호출하는 노드 (`UEasySessionSubsystem`)
-
-`Get Easy Session Subsystem`에서 호출합니다. 블루프린트와 C++ 이름이 같아 C++ 열이 없습니다.
-
-| 노드 | 무엇을 답하는가 |
-|---|---|
-| Get Active Easy Matchmaking Policy | 실행 중인 Matchmaking의 점수 정책 객체. 진행 상황은 정책이 아니라 서브시스템의 On Matchmaking 이벤트로 방송됩니다 |
 
 > **이 함수들은 어떤 세션에 대해 답하는가?** `Type` 입력이 있는 노드는 게임 세션과 파티 세션 중 고른 쪽에 대해 답합니다. 기본값은 Game Session입니다.
 > 게임 세션은 플레이어가 찾고, 참가하고, 플레이하는 세션이고, 프로세스당 정확히 하나만 존재합니다(README의 제약 사항 참고).
@@ -132,7 +124,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 > `Get Easy Matchmaking State`, `Get Online Subsystem Name (EasySession)`,
 > `Is Online Subsystem Available (EasySession)`은 프로세스를 설명합니다. 이들은 세션이 무엇이든 의미가 그대로입니다.
 
-### 2.3 UI 텍스트 헬퍼 (`UEasySessionUIStatics`)
+### 2.2 UI 텍스트 헬퍼 (`UEasySessionUIStatics`)
 
 세션 UI가 보여줄 텍스트를 만드는 순수 함수들입니다. 세션 상태를 건드리지 않으므로 메뉴가 문자열을 직접 조립할 필요가 없습니다.
 
