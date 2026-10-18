@@ -146,7 +146,7 @@ bool FEasySessionWaitForPasswordUpdate::Update()
 			CurrentTest->TestFalse(TEXT("An unlocked session stops advertising a password"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
 			CurrentTest->TestEqual(TEXT("An unlocked session enforces no password"), FEasySessionTestAccess::GetEnforcedSessionPassword(*Subsystem), FString());
 
-			// The online subsystem holds sessions per process, so one left behind fails the next test's create.
+			// Destroyed through the plugin and waited on, so a failed destroy shows up as this test's failure.
 			State->Step = EStep::AwaitingDestroy;
 			Subsystem->DestroySession(FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)

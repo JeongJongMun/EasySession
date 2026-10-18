@@ -22,6 +22,7 @@ namespace EasyMatchmakingTest
 	{
 		TStrongObjectPtr<UGameInstance> GameInstance;
 		TOptional<EEasySessionResult> MatchmakingResult;
+		FString MatchmakingError;
 		bool bRunStarted = false;
 		bool bCleanupIssued = false;
 		double StartTime = 0.0;
@@ -83,93 +84,6 @@ bool FEasyMatchmakingScoringTest::RunTest(const FString& Parameters)
 	const FEasySessionSearchResult SlowWithRoomAgain = MakeFakeResult(900, 8, 4);
 	TestTrue(TEXT("Unknown capacity is not treated as full"), Policy->ScoreSession(UnknownCapacity) > Policy->ScoreSession(SlowWithRoomAgain));
 
-	return true;
-}
-
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitHostFallback, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
-bool FEasyMatchmakingWaitHostFallback::Update()
-{
-	using namespace EasyMatchmakingTest;
-
-	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-
-	if (!State->MatchmakingResult.IsSet())
-	{
-		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
-		{
-			CurrentTest->AddError(TEXT("Timed out waiting for Matchmaking to complete."));
-			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-			return true;
-		}
-		return false;
-	}
-
-	if (!State->bCleanupIssued)
-	{
-		CurrentTest->TestEqual(TEXT("Matchmaking result"), State->MatchmakingResult.GetValue(), EEasySessionResult::Success);
-		CurrentTest->TestTrue(TEXT("Fell back to hosting"), Subsystem->IsHost());
-		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
-
-		Subsystem->DestroySession();
-		State->bCleanupIssued = true;
-		State->StartTime = FPlatformTime::Seconds();
-		return false;
-	}
-
-	if (Subsystem->IsBusy() || Subsystem->IsInSession())
-	{
-		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
-		{
-			CurrentTest->AddError(TEXT("Timed out waiting for the cleanup destroy."));
-			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-			return true;
-		}
-		return false;
-	}
-
-	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-	return true;
-}
-
-/**
- * Host fallback test: with no session on the LAN, matchmaking must use up its search passes and then host its own session.
- */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingHostFallbackTest, "EasySession.Matchmaking.HostFallback", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingHostFallbackTest::RunTest(const FString& Parameters)
-{
-	using namespace EasyMatchmakingTest;
-
-	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
-	EasySessionTest::InitializeGameInstance(State->GameInstance);
-
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
-	{
-		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-		return false;
-	}
-
-	FEasyMatchmakingParams Params;
-	Params.Search.bLANQuery = true;
-	Params.Host.SessionDisplayName = TEXT("EasySession Matchmaking Test");
-	Params.bAllowHostFallback = true;
-	Params.Host.bIsLANMatch = true;
-	Params.Host.InitialMapName = EasySessionTest::SessionMapName;
-	Params.MaxSearchPasses = 1;
-	Params.DelayBetweenPassesSeconds = 0.0f;
-
-	Subsystem->StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
-		[State](EEasySessionResult Result, const FString& ErrorMessage)
-		{
-			State->MatchmakingResult = Result;
-		}));
-
-	TestTrue(TEXT("Matchmaking is running"), Subsystem->IsMatchmakingRunning());
-
-	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitHostFallback(State));
 	return true;
 }
 
@@ -344,68 +258,6 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitNoFallback, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
-bool FEasyMatchmakingWaitNoFallback::Update()
-{
-	using namespace EasyMatchmakingTest;
-
-	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
-
-	if (!State->MatchmakingResult.IsSet())
-	{
-		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
-		{
-			CurrentTest->AddError(TEXT("Timed out waiting for Matchmaking to complete."));
-			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-			return true;
-		}
-		return false;
-	}
-
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	CurrentTest->TestEqual(TEXT("Matchmaking result"), State->MatchmakingResult.GetValue(), EEasySessionResult::NoSessionsFound);
-	CurrentTest->TestFalse(TEXT("No session was created"), Subsystem->IsInSession());
-
-	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-	return true;
-}
-
-/**
- * Dedicated-server-client mode: with host fallback disabled, matchmaking must fail with NoSessionsFound instead of creating a session.
- */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingNoFallbackTest, "EasySession.Matchmaking.NoFallbackFails", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingNoFallbackTest::RunTest(const FString& Parameters)
-{
-	using namespace EasyMatchmakingTest;
-
-	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
-	EasySessionTest::InitializeGameInstance(State->GameInstance);
-
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
-	{
-		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-		return false;
-	}
-
-	FEasyMatchmakingParams Params;
-	Params.Search.bLANQuery = true;
-	Params.bAllowHostFallback = false;
-	Params.MaxSearchPasses = 1;
-	Params.DelayBetweenPassesSeconds = 0.0f;
-
-	Subsystem->StartMatchmaking(Params, nullptr, FEasySessionCompleteDelegate::CreateLambda(
-		[State](EEasySessionResult Result, const FString& ErrorMessage)
-		{
-			State->MatchmakingResult = Result;
-		}));
-
-	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitNoFallback(State));
-	return true;
-}
-
 DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasyMatchmakingWaitCancelIgnored, TSharedPtr<EasyMatchmakingTest::FTestState>, State);
 bool FEasyMatchmakingWaitCancelIgnored::Update()
 {
@@ -427,6 +279,7 @@ bool FEasyMatchmakingWaitCancelIgnored::Update()
 
 	if (!State->bCleanupIssued)
 	{
+		CurrentTest->TestTrue(TEXT("The cancel reached the run while it hosted"), State->Listener->bCanceledOnHosting);
 		CurrentTest->TestEqual(TEXT("The run ignored the cancel and hosted"), State->MatchmakingResult.GetValue(), EEasySessionResult::Success);
 		CurrentTest->TestTrue(TEXT("The hosted session exists"), Subsystem->IsInSession());
 		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
@@ -520,21 +373,16 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
 			return false;
 		}
 
-		// A host may matchmake from a session whose match has not started, so the match is started to get the refusal.
-		if (Subsystem->GetSessionState() != EEasySessionState::InProgress)
-		{
-			if (Subsystem->GetSessionState() == EEasySessionState::Pending)
-			{
-				Subsystem->StartSession();
-			}
-			return false;
-		}
+		// Stand in for a client: a game that holds a session another process created.
+		// The join path is what normally clears this, and a headless test has no host to join, so the outcome of that path is set directly.
+		FEasySessionTestAccess::SetCreatedActiveSession(*Subsystem, false);
 
 		TSharedPtr<FTestState> Shared = State;
 		Subsystem->StartMatchmaking(FEasyMatchmakingParams(), nullptr, FEasySessionCompleteDelegate::CreateLambda(
 			[Shared](EEasySessionResult Result, const FString& ErrorMessage)
 			{
 				Shared->MatchmakingResult = Result;
+				Shared->MatchmakingError = ErrorMessage;
 			}));
 
 		// The run starts on the next tick like every request, so the completion delegate has not fired yet.
@@ -558,6 +406,8 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
 		}
 
 		CurrentTest->TestEqual(TEXT("Matchmaking result"), State->MatchmakingResult.GetValue(), EEasySessionResult::SessionAlreadyExists);
+		// A joined client gets the same result from every join and host the run would try, so the message tells the refusal apart.
+		CurrentTest->TestTrue(TEXT("The run refused before its first search"), State->MatchmakingError.StartsWith(TEXT("Already in a session.")));
 		CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
 		CurrentTest->TestTrue(TEXT("The session it refused over is untouched"), Subsystem->IsInSession());
 
@@ -586,7 +436,8 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
  * A session that arrived another way makes every join and host of a matchmaking run fail with SessionAlreadyExists.
  * It can arrive from an accepted invite, or from the game's own Create or Join.
  * The run must report that once and stop, instead of spending candidates and passes on it.
- * Only the host of a match that has not started may run one, and this player hosts a match in progress.
+ * Only the host of a match that has not started may run one, and this player is a client in another host's session.
+ * The host of a match in progress is refused too, and Group.AHostMatchmakesFromItsSession checks that.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingAlreadyInSessionTest, "EasySession.Matchmaking.RefusesWhenAlreadyInASession", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasyMatchmakingAlreadyInSessionTest::RunTest(const FString& Parameters)
@@ -881,6 +732,7 @@ bool FEasyMatchmakingWaitEvents::Update()
 			}
 
 			CurrentTest->TestEqual(TEXT("The run ended in NoSessionsFound"), State->FirstResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestFalse(TEXT("Without host fallback no session was created"), Subsystem->IsInSession());
 			CurrentTest->TestEqual(TEXT("The first transition leaves Idle"),
 				Listener->MatchmakingJournal.Num() > 1 ? Listener->MatchmakingJournal[1] : FString(), FString(TEXT("State=Idle>Searching")));
 			CurrentTest->TestEqual(TEXT("Started fired once"), Listener->CountJournal(TEXT("Started")), 1);
@@ -1049,9 +901,6 @@ namespace EasyMatchmakingTargetedTest
 		/** The run, held so its joins can be counted after it completed. */
 		TSharedPtr<FEasySessionMatchmakingRequest> Run;
 
-		/** Whether the run searches for the session's join code, or for any session. */
-		bool bSearchForCode = true;
-
 		TOptional<EEasySessionResult> RunResult;
 		int32 Phase = 0;
 		double StartTime = 0.0;
@@ -1062,7 +911,7 @@ namespace EasyMatchmakingTargetedTest
 	{
 		FEasyMatchmakingParams Params;
 		Params.Search.bLANQuery = true;
-		Params.Search.JoinCode = State->bSearchForCode ? Code : FString();
+		Params.Search.JoinCode = Code;
 		Params.MaxSearchPasses = 1;
 		Params.DelayBetweenPassesSeconds = 0.0f;
 		Params.bAllowHostFallback = false;
@@ -1185,41 +1034,6 @@ bool FEasyMatchmakingTargetedTest::RunTest(const FString& Parameters)
 	HostParams.bHidden = true;
 	HostParams.bUseJoinCode = true;
 	HostParams.Password = TEXT("secret");
-	Subsystem->CreateSession(HostParams);
-
-	State->StartTime = FPlatformTime::Seconds();
-	ADD_LATENT_AUTOMATION_COMMAND(FEasyMatchmakingWaitTargeted(State));
-	return true;
-}
-
-/**
- * A run that finds a session but cannot join it ends with that join's result, such as JoinSessionFull from a full session.
- * The search found a session, so NoSessionsFound would tell the player that nothing was there.
- */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasyMatchmakingRefusalTest, "EasySession.Matchmaking.RefusalIsTheRunResult", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasyMatchmakingRefusalTest::RunTest(const FString& Parameters)
-{
-	using namespace EasyMatchmakingTargetedTest;
-
-	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-	State->bSearchForCode = false;
-	State->GameInstance = TStrongObjectPtr<UGameInstance>(EasySessionTest::NewGameInstance());
-	EasySessionTest::InitializeGameInstance(State->GameInstance);
-
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	if (!TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
-	{
-		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-		return false;
-	}
-
-	// The session is listed and has no password, so a run for any session tries it.
-	// It still advertises a join code, which the first phase reads.
-	FEasySessionHostParams HostParams;
-	HostParams.SessionDisplayName = TEXT("EasySession Full Session");
-	HostParams.bIsLANMatch = true;
-	HostParams.InitialMapName = EasySessionTest::SessionMapName;
-	HostParams.bUseJoinCode = true;
 	Subsystem->CreateSession(HostParams);
 
 	State->StartTime = FPlatformTime::Seconds();

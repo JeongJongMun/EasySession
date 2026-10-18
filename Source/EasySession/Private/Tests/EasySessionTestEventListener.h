@@ -72,6 +72,10 @@ public:
 	UPROPERTY()
 	TObjectPtr<UEasySessionSubsystem> CancelMatchmakingOnHosting;
 
+	/** Has the listener called CancelMatchmaking on the Hosting transition. */
+	UPROPERTY()
+	bool bCanceledOnHosting = false;
+
 	/** Bind to the subsystem's OnMatchmakingStateChanged. */
 	UFUNCTION()
 	void HandleMatchmakingState(EEasyMatchmakingState OldState, EEasyMatchmakingState NewState)
@@ -79,6 +83,7 @@ public:
 		if (NewState == EEasyMatchmakingState::Hosting && CancelMatchmakingOnHosting)
 		{
 			CancelMatchmakingOnHosting->CancelMatchmaking();
+			bCanceledOnHosting = true;
 		}
 	}
 

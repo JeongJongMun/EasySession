@@ -46,12 +46,15 @@ bool FEasySessionFriendOrderTest::RunTest(const FString& Parameters)
 	Friends.Add(MakeFriend(TEXT("Amy"), true, true, false));        // playing, in no lobby
 	Friends.Add(MakeFriend(TEXT("Kai"), false, false, false));      // offline
 	Friends.Add(MakeFriend(TEXT("Ada"), true, true, true));         // in a lobby
+	Friends.Add(MakeFriend(TEXT("abe"), true, true, true));         // in a lobby, before Ada only when case is ignored
+	Friends.Add(MakeFriend(TEXT("sam"), false, false, false));      // offline, the same name as the next one when case is ignored
+	Friends.Add(MakeFriend(TEXT("Sam"), false, false, false));      // offline
 
 	FEasySessionSocial::SortFriends(Friends);
-	TestEqual(TEXT("Lobbies first, then playing, online, offline; names sorted case-insensitively inside each rank"),
-		Names(Friends), FString(TEXT("Ada,bob,Amy,Mia,Kai,zed")));
+	TestEqual(TEXT("Lobbies first, then playing, online, offline; names sorted case-insensitively inside each rank, equal names in arrival order"),
+		Names(Friends), FString(TEXT("abe,Ada,bob,Amy,Mia,Kai,sam,Sam,zed")));
 
-	// Sorting again changes nothing. A refresh must not shuffle rows the player is looking at.
+	// Sorting again changes nothing, the two Sams included. A refresh must not shuffle rows the player is looking at.
 	const FString Before = Names(Friends);
 	FEasySessionSocial::SortFriends(Friends);
 	TestEqual(TEXT("The order is stable under a second sort"), Names(Friends), Before);

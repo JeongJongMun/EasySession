@@ -24,28 +24,6 @@ namespace EasySessionDiagnosticsTest
 }
 
 /**
- * Diagnostics smoke test: the checks must run to completion on any subsystem (NULL or Steam) without crashing, including a null world.
- * Logging the report of the standalone world must not crash either.
- */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsSmokeTest, "EasySession.Diagnostics.RunsToCompletion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasySessionDiagnosticsSmokeTest::RunTest(const FString& Parameters)
-{
-	// Null world: must not crash, and must still name the active online subsystem.
-	const EasySessionDiagnostics::FReport NullWorldReport = EasySessionDiagnostics::RunDiagnostics(nullptr);
-	TestTrue(TEXT("The summary names the services even without a world"), NullWorldReport.Summary.Contains(TEXT("active:")));
-
-	// Real (standalone) world: must run all checks to completion.
-	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
-	EasySessionTest::InitializeGameInstance(GameInstance);
-	const EasySessionDiagnostics::FReport Report = EasySessionDiagnostics::RunDiagnostics(GameInstance->GetWorld());
-	TestTrue(TEXT("The summary names the services"), Report.Summary.Contains(TEXT("configured:")));
-	EasySessionDiagnostics::LogReport(Report);
-	EasySessionTest::DestroyGameInstance(GameInstance.Get());
-
-	return true;
-}
-
-/**
  * The findings follow the config.
  * The online subsystem mismatch appears exactly when the configured online subsystem is not the one that loaded, and its causes name bEnabled=false.
  * DiagnoseSteam does not check bEnabled, so the causes of the mismatch are where the report names it.
@@ -55,6 +33,10 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsFindingsTest, "EasySessi
 bool FEasySessionDiagnosticsFindingsTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionDiagnosticsTest;
+
+	// RunDiagnostics takes a null world too, and reads the default online subsystem for it.
+	const EasySessionDiagnostics::FReport NullWorldReport = EasySessionDiagnostics::RunDiagnostics(nullptr);
+	TestTrue(TEXT("The summary names the services even without a world"), NullWorldReport.Summary.Contains(TEXT("active:")));
 
 	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
 	EasySessionTest::InitializeGameInstance(GameInstance);
@@ -87,6 +69,7 @@ bool FEasySessionDiagnosticsFindingsTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Its causes name bEnabled=false"), Mismatch->Postscript.Contains(TEXT("bEnabled=false")));
 	}
 	TestTrue(TEXT("The summary names the configured service"), MismatchReport.Summary.Contains(TEXT("configured: Steam")));
+	EasySessionDiagnostics::LogReport(MismatchReport);
 
 	// The engine ships a BeaconNetDriver definition, so a project that kept it draws no finding.
 	TestFalse(TEXT("No BeaconNetDriver finding on a stock driver list"), MismatchReport.Findings.ContainsByPredicate(

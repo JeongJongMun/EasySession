@@ -9,6 +9,9 @@
 #include "EasySessionTestWorld.h"
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
+#include "Interfaces/OnlineIdentityInterface.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSubsystemUtils.h"
 #include "UObject/StrongObjectPtr.h"
 
 namespace EasySessionOpenSlotsUpdateTest
@@ -82,6 +85,21 @@ bool FEasySessionWaitForOpenSlotsUpdate::Update()
 		case EStep::AwaitingCreate:
 		{
 			CurrentTest->TestEqual(TEXT("Session created"), ConsumeResult(*State), EEasySessionResult::Success);
+
+			// A headless create registers no player, so two are registered here.
+			// Without them the recompute has no occupancy to subtract, and the lowering step below never runs.
+			const IOnlineSessionPtr Sessions = Online::GetSessionInterface(State->GameInstance->GetWorld());
+			const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(State->GameInstance->GetWorld());
+			if (!CurrentTest->TestTrue(TEXT("Session and identity interfaces are available"), Sessions.IsValid() && Identity.IsValid()))
+			{
+				EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
+				return true;
+			}
+			for (const TCHAR* PlayerName : { TEXT("EasySessionRosterA"), TEXT("EasySessionRosterB") })
+			{
+				Sessions->RegisterPlayer(NAME_GameSession, *Identity->CreateUniquePlayerId(PlayerName), false);
+			}
+			CurrentTest->TestEqual(TEXT("Two players are registered"), FEasySessionTestAccess::GetRegisteredPlayerCount(*Subsystem), 2);
 
 			// The occupancy this whole test reasons about: however many players creation registered, that many slots must be missing from the cap.
 			const int32 Registered = FEasySessionTestAccess::GetRegisteredPlayerCount(*Subsystem);

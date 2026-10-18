@@ -11,6 +11,9 @@
 #include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
+#include "OnlineSubsystemUtils.h"
 
 namespace EasySessionTest
 {
@@ -56,6 +59,10 @@ namespace EasySessionTest
 	 * That is followed by an access violation on shutdown, so a test that starts an instance must undo both halves.
 	 * The order mirrors the engine's own test helper, FTestWorldInstance::Teardown in NetTestHelpers.cpp.
 	 * Drop the net driver, destroy the world, then remove its context.
+	 *
+	 * The sessions and the search the test left in the online subsystem are released too.
+	 * Every test in the process shares one online subsystem, and Shutdown leaves both in it.
+	 * A test that ends early would otherwise fail the next test's create with SessionAlreadyExists, or its search with SearchFailure.
 	 */
 	inline void DestroyGameInstance(UGameInstance* GameInstance)
 	{
@@ -66,7 +73,31 @@ namespace EasySessionTest
 
 		// Capture the world first. Shutdown clears the instance's world context.
 		UWorld* World = GameInstance->GetWorld();
+		const IOnlineSessionPtr Sessions = Online::GetSessionInterface(World);
+
+		// Read the search before Shutdown destroys the request that holds it.
+		const UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
+		const TSharedPtr<FOnlineSessionSearch> Search = Subsystem != nullptr ? FEasySessionTestAccess::GetActiveSearch(*Subsystem) : nullptr;
+		const bool bSearchRunning = Search.IsValid() && Search->SearchState == EOnlineAsyncTaskState::InProgress;
+
 		GameInstance->Shutdown();
+
+		// Released after Shutdown, so the completions they trigger reach no request of the destroyed subsystem.
+		if (Sessions.IsValid())
+		{
+			if (bSearchRunning)
+			{
+				Sessions->CancelFindSessions();
+			}
+
+			for (const FName SessionName : { NAME_GameSession, NAME_PartySession })
+			{
+				if (Sessions->GetNamedSession(SessionName) != nullptr)
+				{
+					Sessions->DestroySession(SessionName);
+				}
+			}
+		}
 
 		if (World == nullptr || GEngine == nullptr)
 		{

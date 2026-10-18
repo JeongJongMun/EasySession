@@ -289,12 +289,6 @@ public:
 		return Beacon != nullptr && PlayerId.IsValid() && Beacon->PlayerHasReservation(*PlayerId.GetUniqueNetId());
 	}
 
-	/** The part of a player's logout that removes their reservation, which a headless test cannot drive with a real controller. */
-	static void RemovePlayerReservation(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
-	{
-		Subsystem.Host->Reservations->RemovePlayerReservation(PlayerId);
-	}
-
 	/** Keep a player out of the session, the part of a kick that needs no connected player. */
 	static void AddKickedPlayer(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& PlayerId)
 	{

@@ -145,7 +145,7 @@ bool FEasySessionSessionTypeStep::Update()
 			CurrentTest->TestEqual(TEXT("Join Easy Session refuses a session of another project"), State->JoinResult.GetValue(), EEasySessionResult::InvalidParams);
 			CurrentTest->TestTrue(TEXT("The refused join leaves this player in the session"), Subsystem->IsInSession());
 
-			// NULL keeps one session interface for every test game instance, so a session left behind fails the next test's create.
+			// Destroyed through the plugin and waited on, so a failed destroy shows up as this test's failure.
 			Subsystem->DestroySession();
 			NextStep(State, FTestState::EStep::AwaitingDestroy);
 			return false;

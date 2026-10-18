@@ -22,13 +22,17 @@ namespace EasySessionLifecycleTest
 		TStrongObjectPtr<UGameInstance> GameInstance;
 		TStrongObjectPtr<UEasySessionTestEventListener> Listener;
 		TOptional<EEasySessionResult> CreateResult;
+		TOptional<EEasySessionResult> UpdateResult;
 		TOptional<EEasySessionResult> StartResult;
 		TOptional<EEasySessionResult> EndResult;
 		TOptional<EEasySessionResult> DestroyResult;
+		TArray<FString> CompletionOrder;
 		EEasySessionState StateAfterCreate = EEasySessionState::NoSession;
 		EEasySessionState StateAfterStart = EEasySessionState::NoSession;
 		EEasySessionState StateAfterEnd = EEasySessionState::NoSession;
+		int32 MaxPlayersAfterUpdate = 0;
 		double StartTime = 0.0;
+		bool bWasHostAfterCreate = false;
 	};
 }
 
@@ -51,6 +55,7 @@ bool FEasySessionWaitForLifecycle::Update()
 	}
 
 	CurrentTest->TestEqual(TEXT("Create result"), State->CreateResult.Get(EEasySessionResult::UnknownFailure), EEasySessionResult::Success);
+	CurrentTest->TestEqual(TEXT("Update result"), State->UpdateResult.Get(EEasySessionResult::UnknownFailure), EEasySessionResult::Success);
 	CurrentTest->TestEqual(TEXT("Start result"), State->StartResult.Get(EEasySessionResult::UnknownFailure), EEasySessionResult::Success);
 	CurrentTest->TestEqual(TEXT("End result"), State->EndResult.Get(EEasySessionResult::UnknownFailure), EEasySessionResult::Success);
 	CurrentTest->TestEqual(TEXT("Destroy result"), State->DestroyResult.Get(EEasySessionResult::UnknownFailure), EEasySessionResult::Success);
@@ -58,6 +63,12 @@ bool FEasySessionWaitForLifecycle::Update()
 	CurrentTest->TestEqual(TEXT("Pending after create"), State->StateAfterCreate, EEasySessionState::Pending);
 	CurrentTest->TestEqual(TEXT("InProgress after start"), State->StateAfterStart, EEasySessionState::InProgress);
 	CurrentTest->TestEqual(TEXT("Ended after end"), State->StateAfterEnd, EEasySessionState::Ended);
+
+	CurrentTest->TestTrue(TEXT("The creator is the host"), State->bWasHostAfterCreate);
+	CurrentTest->TestEqual(TEXT("The update changed Max Players before its completion was reported"), State->MaxPlayersAfterUpdate, 8);
+
+	const TArray<FString> ExpectedOrder = { TEXT("Create"), TEXT("Update"), TEXT("Start"), TEXT("End"), TEXT("Destroy") };
+	CurrentTest->TestEqual(TEXT("The requests completed in the order they were queued"), State->CompletionOrder, ExpectedOrder);
 
 	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
 	if (Subsystem != nullptr)
@@ -83,7 +94,8 @@ bool FEasySessionWaitForLifecycle::Update()
 }
 
 /**
- * Lifecycle test: create, start, end and destroy are enqueued in a single frame and the session state must transition Pending -> InProgress -> Ended -> NoSession.
+ * Lifecycle test: create, update, start, end and destroy are enqueued in a single frame and complete in that order.
+ * The session state must transition Pending -> InProgress -> Ended -> NoSession.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionLifecycleTest, "EasySession.Subsystem.StartEndLifecycle", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
@@ -106,6 +118,7 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 
 	FEasySessionHostParams HostParams;
 	HostParams.SessionDisplayName = TEXT("EasySession Lifecycle Test");
+	HostParams.MaxPlayers = 4;
 	HostParams.bIsLANMatch = true;
 	HostParams.InitialMapName = EasySessionTest::SessionMapName;
 
@@ -113,13 +126,26 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 		[State, Subsystem](EEasySessionResult Result, const FString&)
 		{
 			State->CreateResult = Result;
+			State->CompletionOrder.Add(TEXT("Create"));
 			State->StateAfterCreate = Subsystem->GetSessionState();
+			State->bWasHostAfterCreate = Subsystem->IsHost();
+		}));
+
+	FEasySessionHostParams UpdateParams = HostParams;
+	UpdateParams.MaxPlayers = 8;
+	Subsystem->UpdateSession(UpdateParams, FEasySessionCompleteDelegate::CreateLambda(
+		[State, Subsystem](EEasySessionResult Result, const FString&)
+		{
+			State->UpdateResult = Result;
+			State->CompletionOrder.Add(TEXT("Update"));
+			State->MaxPlayersAfterUpdate = Subsystem->GetSessionSettings().MaxPlayers;
 		}));
 
 	Subsystem->StartSession(FEasySessionCompleteDelegate::CreateLambda(
 		[State, Subsystem](EEasySessionResult Result, const FString&)
 		{
 			State->StartResult = Result;
+			State->CompletionOrder.Add(TEXT("Start"));
 			State->StateAfterStart = Subsystem->GetSessionState();
 		}));
 
@@ -127,6 +153,7 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 		[State, Subsystem](EEasySessionResult Result, const FString&)
 		{
 			State->EndResult = Result;
+			State->CompletionOrder.Add(TEXT("End"));
 			State->StateAfterEnd = Subsystem->GetSessionState();
 		}));
 
@@ -134,6 +161,7 @@ bool FEasySessionLifecycleTest::RunTest(const FString& Parameters)
 		[State](EEasySessionResult Result, const FString&)
 		{
 			State->DestroyResult = Result;
+			State->CompletionOrder.Add(TEXT("Destroy"));
 		}));
 
 	State->StartTime = FPlatformTime::Seconds();

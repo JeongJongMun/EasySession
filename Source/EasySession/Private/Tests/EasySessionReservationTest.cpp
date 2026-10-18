@@ -13,6 +13,8 @@
 #include "EasySessionTypes.h"
 #include "Engine/GameInstance.h"
 #include "GameFramework/GameModeBase.h"
+#include "GameFramework/PlayerController.h"
+#include "GameFramework/PlayerState.h"
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
@@ -104,7 +106,7 @@ namespace EasySessionReservationTest
 	}
 
 	// Destroy the session, which every test does before it destroys its world.
-	// The online subsystem outlives these worlds, so a session left behind makes the next test's create fail with SessionAlreadyExists.
+	// The destroy goes through the plugin and is waited on, so a failed destroy shows up as the failure of the test that ran it.
 	static void StartDestroy(TSharedPtr<FTestState> State, UEasySessionSubsystem& Subsystem)
 	{
 		State->Step = EStep::AwaitingDestroy;
@@ -264,73 +266,6 @@ bool FEasySessionHostReservationTest::RunTest(const FString& Parameters)
 	}
 
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionHostReservationStep(State));
-	return true;
-}
-
-DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionHeldReservationStep, TSharedPtr<EasySessionReservationTest::FTestState>, State);
-bool FEasySessionHeldReservationStep::Update()
-{
-	using namespace EasySessionReservationTest;
-
-	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
-	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
-	UWorld* World = State->GameInstance->GetWorld();
-
-	const EWait Wait = WaitForRequest(*State, *CurrentTest, State->Step == EStep::AwaitingCreate ? TEXT("create") : TEXT("destroy"));
-	if (Wait != EWait::Ready)
-	{
-		return Wait == EWait::TimedOut;
-	}
-
-	if (State->Step == EStep::AwaitingDestroy)
-	{
-		CurrentTest->TestEqual(TEXT("The cleanup destroy succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
-		EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
-		return true;
-	}
-
-	CurrentTest->TestEqual(TEXT("Creating the session succeeded"), ConsumeResult(*State), EEasySessionResult::Success);
-	FEasySessionTestAccess::ArriveInSessionMap(*Subsystem);
-
-	AEasySessionReservationBeaconHost* Beacon = FEasySessionTestAccess::GetReservationBeacon(*Subsystem);
-	if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
-	{
-		CurrentTest->TestEqual(TEXT("The last reservation is free while only the host holds one"),
-			FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString()), EEasyReservationResult::Approved);
-
-		CurrentTest->TestTrue(TEXT("An approved player takes the last reservation"),
-			AddReservationFor(*Beacon, MakePlayerId(World, TEXT("EasySessionApprovedPlayer"))));
-		CurrentTest->TestEqual(TEXT("Both reservations are held"), Beacon->GetNumConsumedReservations(), 2);
-
-		// The player holding the reservation never arrived, so counting the players in the session would find an open slot and let this one in.
-		CurrentTest->TestTrue(TEXT("Fewer players arrived than Max Players"), FEasySessionTestAccess::GetRegisteredPlayerCount(*Subsystem) < 2);
-		CurrentTest->TestEqual(TEXT("The next player is refused while the reservation is held"),
-			FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString()), EEasyReservationResult::SessionFull);
-	}
-
-	StartDestroy(State, *Subsystem);
-	return false;
-}
-
-/**
- * A reservation is added when a join is approved and stays held while that player travels, so the next player is refused meanwhile.
- * The game mode counts a player only after that player arrives.
- * Before the beacon held reservations, two players traveling to a session with one open slot left were both approved.
- */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionHeldReservationTest, "EasySession.Reservation.AReservationRefusesTheNextPlayer", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
-bool FEasySessionHeldReservationTest::RunTest(const FString& Parameters)
-{
-	using namespace EasySessionReservationTest;
-
-	TSharedPtr<FTestState> State = MakeShared<FTestState>();
-
-	// Two players: the host, and one reservation for someone to hold.
-	if (Begin(State, *this, 2) == nullptr)
-	{
-		return false;
-	}
-
-	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionHeldReservationStep(State));
 	return true;
 }
 
@@ -615,11 +550,23 @@ bool FEasySessionRemovedReservationStep::Update()
 	if (CurrentTest->TestNotNull(TEXT("The session runs the reservation beacon"), Beacon))
 	{
 		CurrentTest->TestTrue(TEXT("A player takes the last reservation"), AddReservationFor(*Beacon, LeavingPlayer));
-		CurrentTest->TestEqual(TEXT("The session is full"),
+		CurrentTest->TestEqual(TEXT("Both reservations are held"), Beacon->GetNumConsumedReservations(), 2);
+		CurrentTest->TestEqual(TEXT("The next player is refused while the reservation is held"),
 			FEasySessionTestAccess::AskApproveJoin(*Subsystem, FString()), EEasyReservationResult::SessionFull);
 
-		// What the host does when that player's controller logs out.
-		FEasySessionTestAccess::RemovePlayerReservation(*Subsystem, LeavingPlayer);
+		// That player's controller logs out, sent the way the engine's game mode sends it.
+		// The world has no authority game mode, so the controller spawns without a player state and gets one here.
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.ObjectFlags |= RF_Transient;
+		AGameModeBase* GameMode = World->SpawnActor<AGameModeBase>(SpawnParams);
+		APlayerController* Controller = World->SpawnActor<APlayerController>(SpawnParams);
+		APlayerState* PlayerState = World->SpawnActor<APlayerState>(SpawnParams);
+		if (CurrentTest->TestTrue(TEXT("The game mode, controller and player state spawned"), GameMode && Controller && PlayerState))
+		{
+			PlayerState->SetUniqueId(LeavingPlayer);
+			Controller->SetPlayerState(PlayerState);
+			FGameModeEvents::GameModeLogoutEvent.Broadcast(GameMode, Controller);
+		}
 
 		CurrentTest->TestFalse(TEXT("The player who left holds no reservation"), FEasySessionTestAccess::PlayerHasReservation(*Subsystem, LeavingPlayer));
 		CurrentTest->TestEqual(TEXT("Only the host's reservation is left"), Beacon->GetNumConsumedReservations(), 1);
@@ -635,6 +582,10 @@ bool FEasySessionRemovedReservationStep::Update()
 }
 
 /**
+ * A reservation is added when a join is approved and stays held while that player travels, so the next player is refused meanwhile.
+ * The game mode counts a player only after that player arrives.
+ * Before the beacon held reservations, two players traveling to a session with one open slot left were both approved.
+ *
  * A player whose controller logs out loses their reservation, so the next player is let in without waiting for a timeout.
  * The player is also removed from PlayersPendingJoin, or their next join would be refused as a player already in the session.
  */

@@ -29,14 +29,20 @@ namespace EasySessionInProgressTest
 		double StartTime = 0.0;
 	};
 
-	/** Start a find whose completion is written to State->Delivered. The injection happens in the wait that follows. */
-	void StartFind(UEasySessionSubsystem& Subsystem, const TSharedPtr<FTestState>& State, bool bIncludeInProgress)
+	/**
+	 * Start a find whose completion is written to State->Delivered. The injection happens in the wait that follows.
+	 * Without IncludeInProgress the search keeps the default of FEasySessionSearchParams, which is what the default search case checks.
+	 */
+	void StartFind(UEasySessionSubsystem& Subsystem, const TSharedPtr<FTestState>& State, TOptional<bool> IncludeInProgress = {})
 	{
 		State->Delivered.Reset();
 
 		FEasySessionSearchParams Params;
 		Params.bLANQuery = true;
-		Params.bIncludeInProgressSessions = bIncludeInProgress;
+		if (IncludeInProgress.IsSet())
+		{
+			Params.bIncludeInProgressSessions = IncludeInProgress.GetValue();
+		}
 		Subsystem.FindSessions(EEasySessionType::GameSession, Params, FEasySessionFindCompleteDelegate::CreateLambda(
 			[State](EEasySessionResult Result, const FString&, const TArray<FEasySessionSearchResult>& Results)
 			{
@@ -89,7 +95,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_MatchInProgress), 1);
 
 			State->BaseResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);
-			StartFind(*Subsystem, State, /*bIncludeInProgress*/ true);
+			StartFind(*Subsystem, State);
 			State->Phase = 2;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -109,7 +115,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 				CurrentTest->TestTrue(TEXT("And the result says the match is running"), (*State->Delivered)[0].bMatchInProgress);
 			}
 
-			StartFind(*Subsystem, State, /*bIncludeInProgress*/ false);
+			StartFind(*Subsystem, State, /*IncludeInProgress*/ false);
 			State->Phase = 3;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -142,7 +148,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_MatchInProgress), 0);
 
 			State->BaseResult = FEasySessionTestAccess::MakeSearchResultFromCurrentSession(*Subsystem);
-			StartFind(*Subsystem, State, /*bIncludeInProgress*/ false);
+			StartFind(*Subsystem, State, /*IncludeInProgress*/ false);
 			State->Phase = 5;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;

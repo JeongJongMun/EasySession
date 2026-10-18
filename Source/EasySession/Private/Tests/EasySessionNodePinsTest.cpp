@@ -4,6 +4,7 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
+#include "EasySessionStatics.h"
 #include "EasySessionSubsystem.h"
 #include "EasySessionTestEventListener.h"
 #include "EasySessionTestWorld.h"
@@ -46,6 +47,9 @@ namespace EasySessionNodePinsTest
 
 		/** The result the pin has to carry. */
 		EEasySessionResult ExpectedResult = EEasySessionResult::Success;
+
+		/** Checks run after the pin fired, on what the node left behind. Empty for most nodes. */
+		TFunction<void(UGameInstance&, FAutomationTestBase&)> Check;
 	};
 
 	/** State shared between the test body and the latent command that walks the cases. */
@@ -140,6 +144,11 @@ bool FEasySessionRunPinCases::Update()
 				State->Listener->FailureResults[0], Case.ExpectedResult);
 		}
 		break;
+	}
+
+	if (Case.Check)
+	{
+		Case.Check(*State->GameInstance, *CurrentTest);
 	}
 
 	++State->CaseIndex;
@@ -266,7 +275,12 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFailure);
 			Node->Activate();
-		}, EExpectedPin::Success, EEasySessionResult::Success });
+		}, EExpectedPin::Success, EEasySessionResult::Success,
+		[](UGameInstance& GameInstance, FAutomationTestBase& Test)
+		{
+			Test.TestTrue(TEXT("Is In Easy Session reports the created session"), UEasySessionStatics::IsInEasySession(&GameInstance));
+			Test.TestTrue(TEXT("Is Easy Host reports the creator as the host"), UEasySessionStatics::IsEasyHost(&GameInstance));
+		} });
 
 	// A LAN search finds nothing here and still succeeds, with an empty result array.
 	// It is the slow case: the NULL subsystem completes only once its own LAN timeout passes.
@@ -316,7 +330,11 @@ bool FEasySessionNodeSuccessPinsTest::RunTest(const FString& Parameters)
 			Node->OnSuccess.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleSuccess);
 			Node->OnFailure.AddDynamic(&Listener, &UEasySessionTestNodePinListener::HandleFailure);
 			Node->Activate();
-		}, EExpectedPin::Success, EEasySessionResult::Success });
+		}, EExpectedPin::Success, EEasySessionResult::Success,
+		[](UGameInstance& GameInstance, FAutomationTestBase& Test)
+		{
+			Test.TestFalse(TEXT("Is In Easy Session reports no session after leaving"), UEasySessionStatics::IsInEasySession(&GameInstance));
+		} });
 
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionRunPinCases(State));
 	return true;
@@ -383,8 +401,9 @@ bool FEasySessionWaitForLeaveNode::Update()
 			CurrentTest->TestEqual(TEXT("Leave fires exactly one pin"), State->Listener->TotalFired(), 1);
 			CurrentTest->TestEqual(TEXT("And it is On Success"), State->Listener->SuccessResults.Num(), 1);
 			CurrentTest->TestFalse(TEXT("The named session is gone"), Subsystem->IsInSession());
-			// The menu travel was requested and has not finished in this headless world, so busy is correct.
-			CurrentTest->TestTrue(TEXT("The trip to the menu is on its way"), Subsystem->IsBusy());
+			// The menu travel was requested and has not finished in this headless world.
+			// Busy alone would also hold for a request still waiting in the queue, so the activity names the travel.
+			CurrentTest->TestEqual(TEXT("The trip to the menu is on its way"), Subsystem->GetActivity(), EEasySessionActivity::Traveling);
 
 			EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 			return true;

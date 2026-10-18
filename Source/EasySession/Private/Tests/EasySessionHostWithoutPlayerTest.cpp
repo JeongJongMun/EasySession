@@ -72,7 +72,8 @@ bool FEasySessionWaitForHostWithoutPlayer::Update()
 			CurrentTest->TestTrue(TEXT("The process that created the session is the host"), Subsystem->IsHost());
 			CurrentTest->TestTrue(TEXT("Session still exists"), Subsystem->IsInSession());
 
-			Subsystem->DestroySessionForEveryone(FText::FromString(TEXT("Server shutting the match down")));
+			CurrentTest->TestEqual(TEXT("The host may destroy the session for everyone"),
+				Subsystem->DestroySessionForEveryone(FText::FromString(TEXT("Server shutting the match down"))), EEasySessionResult::Success);
 			State->Phase = 1;
 			return false;
 

@@ -89,6 +89,8 @@ bool FEasySessionWaitForReplicatedState::Update()
 
 	CurrentTest->TestEqual(TEXT("A replicated match start is cached for the client to read"),
 		FEasySessionTestAccess::GetReplicatedSessionState(*Subsystem), EEasySessionState::InProgress);
+	CurrentTest->TestEqual(TEXT("The client queues no match start of its own"),
+		FEasySessionTestAccess::CountRequests(*Subsystem, FEasySessionRequest::EType::Start), 0);
 
 	// And then the host ended it.
 	// A client that never saw InProgress locally records Ended directly, without replaying the states in between.
@@ -96,9 +98,10 @@ bool FEasySessionWaitForReplicatedState::Update()
 
 	CurrentTest->TestEqual(TEXT("A replicated match end is cached for the client to read"),
 		FEasySessionTestAccess::GetReplicatedSessionState(*Subsystem), EEasySessionState::Ended);
+	CurrentTest->TestEqual(TEXT("The client queues no match end of its own"),
+		FEasySessionTestAccess::CountRequests(*Subsystem, FEasySessionRequest::EType::End), 0);
 
-	// Destroying the game instance does not take the session with it.
-	// The online subsystem holds sessions per process, so one left behind fails the next test's create with SessionAlreadyExists.
+	// Destroyed through the plugin and waited on, so a failed destroy shows up as this test's failure.
 	// Waited on rather than started and ignored: requests start on a later tick, so returning here would end the test first.
 	TSharedPtr<FTestState> Shared = State;
 	State->bCleanupIssued = true;
@@ -119,8 +122,9 @@ bool FEasySessionWaitForReplicatedState::Update()
  * That request would fail with RequiresHost, although the game asked for no match change.
  *
  * HandleReplicatedSessionState records the host's state in any net mode, and only GetSessionState checks for NM_Client.
- * A headless test world is standalone, so this test only checks the recorded value through FEasySessionTestAccess::GetReplicatedSessionState.
- * The failure itself needs two connected games and is checked by hand.
+ * A headless test world is standalone, so the recorded value is read through FEasySessionTestAccess::GetReplicatedSessionState.
+ * A queued Start or End request does not depend on the net mode, so the test checks that none is queued after each state.
+ * The RequiresHost failure that request would end with needs two connected games and is checked by hand.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReplicatedStateTest, "EasySession.Replication.ClientDoesNotActOnTheHostsMatchState", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReplicatedStateTest::RunTest(const FString& Parameters)

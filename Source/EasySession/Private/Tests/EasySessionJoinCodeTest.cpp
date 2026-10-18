@@ -50,6 +50,7 @@ namespace EasySessionJoinCodeTest
 
 		TOptional<int32> NormalSearchCount;
 		bool bPreviewDelivered = false;
+		TOptional<EEasySessionResult> UpdateResult;
 		TOptional<EEasySessionResult> JoinResult;
 		TOptional<int32> WrongCodeCount;
 		int32 Phase = 0;
@@ -153,7 +154,11 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 			}
 
 			// A read-modify-write update must not lose the code.
-			Subsystem->UpdateSession(Subsystem->GetSessionSettings());
+			Subsystem->UpdateSession(Subsystem->GetSessionSettings(), FEasySessionCompleteDelegate::CreateLambda(
+				[Shared](EEasySessionResult Result, const FString&)
+				{
+					Shared->UpdateResult = Result;
+				}));
 			State->Phase = 3;
 			State->StartTime = FPlatformTime::Seconds();
 			return false;
@@ -161,11 +166,13 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 
 		case 3:
 		{
-			if (Subsystem->IsBusy())
+			if (!State->UpdateResult.IsSet())
 			{
 				return false;
 			}
 
+			// A failed update would leave the code as it was, so the code alone does not show that the update kept it.
+			CurrentTest->TestEqual(TEXT("The update succeeded"), State->UpdateResult.GetValue(), EEasySessionResult::Success);
 			CurrentTest->TestEqual(TEXT("The update kept the code"), Subsystem->GetJoinCode(), State->JoinCode);
 
 			// The record must be gone before joining the preview, or the join is refused for being in a session already.
