@@ -38,6 +38,7 @@ bInitServerOnClient=true
 !NetDriverDefinitions=ClearArray
 +NetDriverDefinitions=(DefName="GameNetDriver",DriverClassName="/Script/SteamSockets.SteamSocketsNetDriver",DriverClassNameFallback="/Script/OnlineSubsystemUtils.IpNetDriver")
 +NetDriverDefinitions=(DefName="BeaconNetDriver",DriverClassName="/Script/SteamSockets.SteamSocketsNetDriver",DriverClassNameFallback="/Script/OnlineSubsystemUtils.IpNetDriver")
++NetDriverDefinitions=(DefName="DemoNetDriver",DriverClassName="/Script/Engine.DemoNetDriver",DriverClassNameFallback="/Script/Engine.DemoNetDriver")
 ```
 
 `SteamDevAppId` is only read in Development builds. A Shipping build wants the same value in
@@ -51,6 +52,8 @@ puts it back. Beacons are separate lightweight connections - the engine and othe
 create them for lobbies, seat reservations and queries - and creating one fails outright
 when no definition is left. Drop the line only if you are certain nothing in your project
 uses a beacon.
+
+It wipes the engine's `DemoNetDriver` as well, which records and plays replays, so the block puts that back too.
 
 > Watch the fallback when you test. If SteamSockets cannot start, the engine quietly drops
 > to `IpNetDriver` instead of failing. That passes on a LAN and then breaks over the

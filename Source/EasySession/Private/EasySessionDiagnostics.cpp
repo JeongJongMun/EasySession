@@ -74,7 +74,9 @@ namespace
 			const TArray<FString> SteamSocketsFix =
 				{ TEXT("[/Script/Engine.GameEngine]"),
 				  TEXT("!NetDriverDefinitions=ClearArray"),
-				  TEXT("+NetDriverDefinitions=(DefName=\"GameNetDriver\",DriverClassName=\"/Script/SteamSockets.SteamSocketsNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") };
+				  TEXT("+NetDriverDefinitions=(DefName=\"GameNetDriver\",DriverClassName=\"/Script/SteamSockets.SteamSocketsNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")"),
+				  TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"/Script/SteamSockets.SteamSocketsNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")"),
+				  TEXT("+NetDriverDefinitions=(DefName=\"DemoNetDriver\",DriverClassName=\"/Script/Engine.DemoNetDriver\",DriverClassNameFallback=\"/Script/Engine.DemoNetDriver\")") };
 			const FString SteamSocketsAdvice = TEXT("Also enable the 'SteamSockets' plugin in the .uproject.");
 
 			const FString DriverClass = GameDriver ? GameDriver->DriverClassName.ToString() : FString();
