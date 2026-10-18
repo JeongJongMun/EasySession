@@ -27,7 +27,7 @@ Sessions are advertised by UDP broadcast on the local network. Anything that blo
 
 Two instances on the same PC can host and join each other:
 
-- **PIE**: Number of Players = 2, Net Mode = Play Standalone, and turn *Run Under One Process* off. With it on, both instances share one process and one LAN beacon port, so discovery works only some of the time.
+- **PIE**: Number of Players = 2, Net Mode = Play Standalone.
 - **Packaged / `-game`**: launch two instances. `-game` runs the editor binary as a game, so this needs no packaging:
 
   ```

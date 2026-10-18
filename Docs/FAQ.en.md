@@ -9,7 +9,7 @@ Real problems, in the order people usually hit them.
 Checked in order of likelihood:
 
 1. **Is anyone actually hosting?** The host must have completed `Create Easy Session` with `Should Advertise = true`.
-2. **PIE on one machine** - set Number of Players = 2, Net Mode = *Play Standalone*, and turn *Run Under One Process* off. Sharing one process means sharing the LAN beacon port, which makes discovery unreliable.
+2. **PIE on one machine** - set Number of Players = 2 and Net Mode = *Play Standalone*.
 3. **Firewall / VPN** - LAN discovery is UDP broadcast; allow the game in Windows Firewall, disable VPNs, or pass `-MultiHome=<LAN IP>`.
 4. **Steam: same account or same-machine test** - two different Steam accounts on two machines are required. With AppId 480, filter out strangers' test sessions using a custom setting (see [Steam setup](Setup-Steam.en.md)).
 5. **Wrong subsystem is running** - check the log: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM`. Packaged builds read the packaged ini, not your editor state.
@@ -24,7 +24,7 @@ The host is not running as a listen server, because its travel to Initial Map Na
 Check the map path on the host.)
 ```
 
-Fix on the **host** side: the host travels to `Initial Map Name` with `?listen`, and that travel is what opens the server. If the host still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`) and, in PIE, that *Run Under One Process* is off.
+Fix on the **host** side: the host travels to `Initial Map Name` with `?listen`, and that travel is what opens the server. If the host still is not a server, the travel failed - check the map path (`/Game/Maps/YourMap`).
 
 ## "The session shows a free slot, but joining fails with JoinSessionFull"
 

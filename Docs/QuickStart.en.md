@@ -135,10 +135,6 @@ searches and joins.
 2. Press Play - you get two windows.
 3. Host in window 1, find and join in window 2.
 
-Turn off **Run Under One Process** in the same settings. With it on, both windows share
-one process and one LAN beacon port, so they find each other only some of the time.
-Separate processes use the same networking path as packaged builds.
-
 > Tip: you can test everything without any UI using console commands (`~` key):
 > `EasySession.Host /Game/Maps/Lobby`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,
 > `EasySession.Destroy`, `EasySession.Status`. They exist in development builds and are

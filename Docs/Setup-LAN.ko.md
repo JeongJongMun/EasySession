@@ -27,7 +27,7 @@ DefaultPlatformService=NULL
 
 같은 PC의 두 인스턴스가 서로 호스팅하고 참가할 수 있습니다.
 
-- **PIE**: Number of Players = 2, Net Mode = Play Standalone으로 두고 *Run Under One Process*를 끄세요. 켜면 두 인스턴스가 한 프로세스와 하나의 LAN 비콘 포트를 공유해서, 검색이 될 때도 있고 안 될 때도 있습니다.
+- **PIE**: Number of Players = 2, Net Mode = Play Standalone으로 두세요.
 - **패키지 / `-game`**: 인스턴스를 두 개 실행하세요. `-game`은 에디터 실행 파일을 게임으로 띄우므로 패키징이 필요 없습니다.
 
   ```

@@ -132,10 +132,6 @@ Allow Host Fallback을 켜면 **Host > Initial Map Name**이 필요합니다. �
 2. Play를 누르면 창이 두 개 뜹니다.
 3. 1번 창에서 세션을 만들고, 2번 창에서 찾아 참가합니다.
 
-같은 설정에서 **Run Under One Process**를 끄세요. 켜면 두 창이 한 프로세스와 하나의 LAN 비콘
-포트를 공유해서, 서로를 찾을 때도 있고 못 찾을 때도 있습니다. 프로세스를 분리하면 패키징된
-빌드와 같은 네트워크 경로를 씁니다.
-
 > 팁: UI 없이 콘솔 명령(`~` 키)만으로도 전부 테스트할 수 있습니다.
 > `EasySession.Host /Game/Maps/Lobby`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,
 > `EasySession.Destroy`, `EasySession.Status`. 개발 빌드에만 있고 Shipping 빌드에서는
