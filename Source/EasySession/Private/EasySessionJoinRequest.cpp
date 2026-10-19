@@ -17,6 +17,7 @@
 #include "Interfaces/OnlineIdentityInterface.h"
 #include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
+#include "OnlineSubsystemNames.h"
 #include "OnlineSubsystemUtils.h"
 
 namespace
@@ -366,7 +367,16 @@ void FEasySessionJoinRequest::JoinOnlineSession()
 		UE_LOG(LogEasySession, Log, TEXT("Joining session '%s' hosted by '%s'"), *Target.SessionDisplayName, *Target.HostName);
 	}
 
-	if (!Sessions->JoinSession(0, SessionName, Target.NativeResult))
+	// The Steam online subsystem of UE 5.5 restores bUsesPresence from a lobby search result but leaves bUseLobbiesIfAvailable false.
+	// Its JoinSession refuses a result where the two differ, and Steam treats them as one setting, so the copy joined here gets them equal.
+	FOnlineSessionSearchResult JoinTarget = Target.NativeResult;
+	const IOnlineSubsystem* OnlineSub = Online::GetSubsystem(GetWorld());
+	if (OnlineSub != nullptr && OnlineSub->GetSubsystemName() == STEAM_SUBSYSTEM)
+	{
+		JoinTarget.Session.SessionSettings.bUseLobbiesIfAvailable = JoinTarget.Session.SessionSettings.bUsesPresence;
+	}
+
+	if (!Sessions->JoinSession(0, SessionName, JoinTarget))
 	{
 		Complete(EEasySessionResult::JoinFailure, TEXT("JoinSession request was rejected by the online subsystem."));
 	}
