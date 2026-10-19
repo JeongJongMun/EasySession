@@ -19,7 +19,7 @@ Edit -> Plugins에서 둘 다 켜세요(재시작 필요).
 
 스팀 세션 주소는 `steam.7656...` 형태라, 넷드라이버가 이 형식을 이해해야 접속할 수 있습니다. 그 일을 하는 것이 Steam Sockets입니다.
 
-> 오래된 가이드는 대신 `SteamNetDriver`를 지목합니다. 그건 다른 플러그인인 Socket Subsystem Steam (IP)의 것이니 켜지 마세요. 설정에 그 드라이버를 가리키는 줄이 남아 있으면 엔진이 **조용히** IP 드라이버로 폴백하고 모든 참가가 실패합니다.
+> 오래된 가이드는 대신 `SteamNetDriver`를 지목합니다. 스팀의 예전 네트워킹 API를 쓰는 드라이버이고, 엔진 버전에 따라 있는 곳이 다릅니다. UE 5.5에서는 Online Subsystem Steam 안에 `/Script/OnlineSubsystemSteam.SteamNetDriver`로 들어 있고, UE 5.8에서는 별도 플러그인인 Socket Subsystem Steam (IP)으로 옮겨졌습니다. 설정이 엔진이 불러올 수 없는 드라이버 클래스를 가리키면 엔진이 **조용히** IP 드라이버로 폴백하고 모든 참가가 실패합니다. 이미 `SteamNetDriver`로 접속되는 프로젝트는 그대로 써도 되지만, 새 프로젝트는 스팀의 현재 네트워킹 API를 쓰는 Steam Sockets를 쓰세요.
 
 ## 2. DefaultEngine.ini
 
@@ -43,11 +43,15 @@ bInitServerOnClient=true
 
 `SteamDevAppId`는 Development 빌드에서만 읽힙니다. Shipping 빌드라면 실행 파일 옆, 즉 `Windows\<프로젝트>\Binaries\Win64\`에 `steam_appid.txt`를 두고 같은 값을 적으세요. **480**은 Valve가 공개한 테스트용 AppId(Spacewar)라 그대로 써도 됩니다.
 
-`!NetDriverDefinitions=ClearArray` 줄이 중요합니다. 엔진 기본 설정에 이미 `GameNetDriver` 항목이 있고 **먼저 일치하는 항목이 이기므로**, 비우지 않고 덧붙이면 스팀 드라이버가 죽은 설정으로 남습니다.
+`[/Script/Engine.GameEngine]`에 적은 줄은 엔진 기본 드라이버 목록을 통째로 대체합니다.
+기본값은 엔진 기본 설정의 `[/Script/Engine.Engine]`에 있고, 게임 엔진 자신의 섹션에 `NetDriverDefinitions`가 하나라도 있으면 물려받은 목록은 버려집니다.
+그래서 위 블록은 스팀 드라이버만이 아니라 게임에 필요한 드라이버를 모두 적습니다.
 
-같은 줄이 엔진 기본 `BeaconNetDriver`도 함께 지웁니다. 그래서 위 블록이 그걸 다시 넣어 줍니다. 비콘은 별도의 가벼운 연결로, 엔진과 다른 플러그인들이 로비, 좌석 예약, 질의에 사용합니다. 정의가 하나도 남지 않으면 비콘 생성 자체가 실패합니다. 프로젝트의 어떤 것도 비콘을 쓰지 않는다고 확신할 때만 이 줄을 빼세요.
+- `GameNetDriver`는 게임 연결을 맡습니다.
+- `BeaconNetDriver`는 비콘을 맡습니다. 비콘은 엔진과 플러그인이 로비, 좌석 예약, 질의에 쓰는 별도의 가벼운 연결입니다. EasySession의 예약 비콘에 필요하고, 정의가 하나도 없으면 비콘 생성 자체가 실패합니다.
+- `DemoNetDriver`는 리플레이를 녹화하고 재생합니다.
 
-같은 줄이 리플레이를 녹화하고 재생하는 엔진의 `DemoNetDriver`도 지우므로, 위 블록이 그것도 다시 넣어 줍니다.
+`!NetDriverDefinitions=ClearArray`는 다른 설정 파일이 같은 섹션에 넣은 항목까지 비워서, 위 세 줄만 남게 합니다.
 
 > 테스트할 때 폴백을 주의하세요. SteamSockets가 시작하지 못하면 엔진은 실패시키는 대신 조용히 `IpNetDriver`로 내려갑니다. 그러면 LAN에서는 통과하고 인터넷에서 깨지므로, 접속됐다는 사실만 믿지 말고 로그에서 드라이버 클래스를 확인하세요.
 

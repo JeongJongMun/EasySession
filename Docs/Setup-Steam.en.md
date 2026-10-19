@@ -19,7 +19,7 @@ Enable both in Edit -> Plugins (restart required):
 
 Steam session addresses look like `steam.7656...`, and a net driver has to understand that form to connect. Steam Sockets is the one that does it.
 
-> Older guides name `SteamNetDriver` instead. It belongs to another plugin, Socket Subsystem Steam (IP), so leave that plugin off. If a config line still points at that driver, the engine **silently** falls back to the IP driver and every join fails.
+> Older guides name `SteamNetDriver` instead. It is the driver for Steam's older networking API, and where it lives depends on the engine version: UE 5.5 ships it inside Online Subsystem Steam as `/Script/OnlineSubsystemSteam.SteamNetDriver`, and UE 5.8 moved it to a separate plugin, Socket Subsystem Steam (IP). If a config line names a driver class the engine cannot load, the engine **silently** falls back to the IP driver and every join fails. A project that already connects with `SteamNetDriver` can keep it, but a new project should use Steam Sockets, which runs on Steam's current networking API.
 
 ## 2. DefaultEngine.ini
 
@@ -45,15 +45,15 @@ bInitServerOnClient=true
 a `steam_appid.txt` next to its executable, in `Windows\<Project>\Binaries\Win64\`. **480**
 is Valve's public test AppId (Spacewar), so you can leave it as is.
 
-The `!NetDriverDefinitions=ClearArray` line matters: the engine's base config already defines a `GameNetDriver` entry and the **first** matching entry wins, so appending without clearing leaves your Steam driver as dead config.
+The lines in `[/Script/Engine.GameEngine]` replace the engine's default driver list as a whole.
+The defaults live in `[/Script/Engine.Engine]` of the engine's base config, and once the game engine's own section names `NetDriverDefinitions`, the inherited list is dropped.
+So the block lists every driver the game needs, not only the Steam one:
 
-That same line also wipes the engine's default `BeaconNetDriver`, which is why the block
-puts it back. Beacons are separate lightweight connections - the engine and other plugins
-create them for lobbies, seat reservations and queries - and creating one fails outright
-when no definition is left. Drop the line only if you are certain nothing in your project
-uses a beacon.
+- `GameNetDriver` carries the game connection.
+- `BeaconNetDriver` carries beacons, the separate lightweight connections the engine and plugins open for lobbies, seat reservations and queries. EasySession's reservation beacon needs it, and creating a beacon fails outright when no definition is left.
+- `DemoNetDriver` records and plays replays.
 
-It wipes the engine's `DemoNetDriver` as well, which records and plays replays, so the block puts that back too.
+`!NetDriverDefinitions=ClearArray` also empties the entries another config file added to this same section, so these three lines are all that remain.
 
 > Watch the fallback when you test. If SteamSockets cannot start, the engine quietly drops
 > to `IpNetDriver` instead of failing. That passes on a LAN and then breaks over the
