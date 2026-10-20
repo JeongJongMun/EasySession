@@ -28,7 +28,7 @@ A party is optional. A game that never creates one works exactly as before, and 
 | Password | (empty) | A party has no password, so a non-empty one fails the create with `InvalidParams`. Hide the party or share its join code instead |
 | Should Advertise | true | Every party is advertised, so members find it again after a match. Off fails the create with `InvalidParams`. Use Hidden instead |
 
-Region and Allow Join In Progress are advertised as given and change nothing for a party.
+Allow Join In Progress is advertised as given and changes nothing for a party.
 
 The local player becomes the host. Creating needs a player logged in to the online subsystem, because members are told apart by their ids. NULL logs in on its own, and Steam logs in the Steam user.
 
@@ -60,7 +60,7 @@ A party with `Use Join Code` advertises a generated code of **Join Code Length**
 - With an empty `Join Code`, it lists the parties that are not hidden.
 - With a `Join Code`, it returns the one party that advertises that code, hidden or not.
 - Each result's `Host Name` is the host's name, and `Session Display Name` is the party's name: the host's name unless the host set one. `Max Players` and `Open Slots` count members.
-- Parties advertise no region, custom settings or match state, so `Region`, `Required Custom Settings` and `Include In Progress Sessions` are ignored. The search params a game uses for game sessions work here too.
+- `Required Custom Settings` and `Include In Progress Sessions` are ignored, because a party has no match state and its custom settings are not for searching. The search params a game uses for game sessions work here too.
 
 `Join Easy Session` takes one of those results, and joins the party because the result says it is one. Leave `Password` and `Additional Travel Options` empty, or the join fails with `InvalidParams`. The host decides the join, and a refusal fails the node with `JoinRefused` and the host's reason, for example "The party is full." or "The party host removed you from this party.". On success `Get Easy Party Members` already lists the local player.
 
@@ -78,7 +78,7 @@ A "play with anyone" button needs no extra node. Chain the two nodes above:
     not found -> [Create Easy Party]  (Hidden off, so the next player finds it)
 ```
 
-A party has no region or custom settings to match on, so every listed party is a candidate. Matchmaking for game sessions is a separate node, `Start Easy Matchmaking`, which the host can run once the party is together.
+A party search does not filter on custom settings, so every listed party is a candidate. Matchmaking for game sessions is a separate node, `Start Easy Matchmaking`, which the host can run once the party is together.
 
 ## Invites
 

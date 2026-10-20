@@ -135,9 +135,6 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | Get Activity Message | `GetActivityMessage` | Get Easy Session Activity 값을 "Creating the session..." 같은 상태 줄로. None은 빈 텍스트라 상태 줄을 지우는 데 그대로 씁니다 |
 | Format Matchmaking Status | `FormatMatchmakingStatus` | 매치메이킹 상태와 경과 초로 "Searching... 12s" 같은 상태 줄. Idle은 "Ready" |
 | Format Session Slots | `FormatSessionSlots` | 검색 결과의 "1/4   ping 32ms" |
-| Get Region Display Name | `GetRegionDisplayName` | 리전의 표시명. 예: "North America East" |
-| Get Region Options | `GetRegionOptions` | 모든 리전의 표시명을 열거형 순서대로. 콤보 박스용 |
-| Region From Index | `RegionFromIndex` | 콤보 박스 인덱스의 리전. 범위를 벗어나면 Any |
 
 ## 3. 동작 블루프린트 노드
 
@@ -201,7 +198,7 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 ## 5. 구조체
 
 ### 5.1 FEasySessionSettings
-`SessionDisplayName`(String), `MaxPlayers`(int), `bShouldAdvertise`, `bHidden`, `Password`(String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `Region`(`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings`(Map String->String)
+`SessionDisplayName`(String), `MaxPlayers`(int), `bShouldAdvertise`, `bHidden`, `Password`(String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `bUseJoinCode`, `CustomSettings`(Map String->`FEasySessionSettingValue`)
 
 세션이 자기 자신에 대해 광고하는 값들입니다. `Update Easy Session`이 받는 구조체가 정확히
 이것이라, 여기 있는 필드는 전부 살아있는 세션이 바꿀 수 있습니다. 파티도 세션이므로 `Create Easy Party`도 이 구조체를 받습니다 ([파티 가이드](Guide-Party.ko.md#파티-만들기)).
@@ -220,15 +217,16 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 [같은 가이드의 비밀번호 절](Guide-Sessions.ko.md#비밀번호로-잠근-세션)에서 다룹니다.
 `AdditionalTravelOptions`는 호스트의 Travel URL 뒤에
 붙으며(예: `GameMode=Deathmatch?MyOption=1`), 서버에서 `Parse Option`으로 읽습니다.
-`Region`과 `bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 지역 절과 참가 코드 절에서 다룹니다.
+`bUseJoinCode`는 [세션 가이드](Guide-Sessions.ko.md)의 참가 코드 절에서, `CustomSettings`는 [커스텀 세션 데이터](Guide-Sessions.ko.md#커스텀-세션-데이터) 절에서 다룹니다.
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults`(int), `bLANQuery`, `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->String), `Region`(`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode`(String), `FriendId`(Unique Net Id), `OwnerId`(Unique Net Id)
+`MaxResults`(int), `bLANQuery`, `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->`FEasySessionSettingValue`), `bIncludeInProgressSessions`, `JoinCode`(String), `FriendId`(Unique Net Id), `OwnerId`(Unique Net Id)
 
 이 중 셋은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `FriendId`는 서비스에 다른 호출을 해서 그 친구가 있는 세션을 묻습니다. 이때 Max Results와 LAN Query는 무시되고, 필터는 그대로 적용됩니다. 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 봅니다.
+어떤 필터를 온라인 서비스가 거르고 어떤 필터를 돌려받은 세션에서 확인하는지는 [세션 가이드](Guide-Sessions.ko.md#온라인-서비스가-거르는-필터)에 있습니다.
 
 ### 5.4 FEasySessionSearchResult *(읽기 전용)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `SessionType`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `bMatchInProgress`, `SessionType`, `CustomSettings`
 
 두 노드를 잇는 구조체입니다. `Find Easy Sessions`가 돌려주고 `Join Easy Session`이 받습니다.
 구조체를 통째로 들고 계세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
@@ -257,6 +255,21 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`, `bIsReady`, `PlayerId`
 
 `Get Easy Party Members`가 돌려주며, `Kick Easy Party Member`에 그대로 넘깁니다.
+
+### 5.10 FEasySessionSettingValue
+
+커스텀 세팅 값 하나입니다. 텍스트나 정수를 그 타입과 함께 담습니다 ([가이드](Guide-Sessions.ko.md#커스텀-세션-데이터)).
+블루프린트에서는 EasySession > Custom Settings 카테고리의 다음 노드로 만들고 읽습니다.
+
+| 노드 | C++ | 하는 일 |
+|---|---|---|
+| Make Easy Setting (String) | `MakeEasySettingString` | 텍스트를 담은 값 |
+| Make Easy Setting (Int) | `MakeEasySettingInt` | 정수를 담은 값 |
+| Make Easy Setting (Bool) | `MakeEasySettingBool` | 참이나 거짓을 담은 값. 1이나 0으로 저장합니다 |
+| Get Easy Setting String | `GetEasySettingString` | 담긴 텍스트. 값이 정수면 `Success`가 false이고 빈 텍스트를 돌려줍니다 |
+| Get Easy Setting Int | `GetEasySettingInt` | 담긴 정수. 값이 텍스트면 `Success`가 false이고 0을 돌려줍니다 |
+| Get Easy Setting Bool | `GetEasySettingBool` | 정수가 0이 아닌지. 값이 텍스트면 `Success`가 false입니다 |
+| To String (Easy Setting) | `Conv_EasySettingToString` | 타입과 상관없이 값을 텍스트로. UI용이며, 값을 String 핀에 연결하면 자동으로 들어갑니다 |
 
 ## 6. 열거형
 
@@ -310,9 +323,9 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 `Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnMatchmakingStateChanged`로 알려줍니다. `Cancel Easy Matchmaking`는 `Searching` 상태에서만 동작합니다.
 
-### 6.5 EEasySessionRegion
+### 6.5 EEasySessionSettingType
 
-`Any`에 `NorthAmericaEast`부터 `Oceania`까지 큰 단위의 세계 지역 아홉 개를 더한 열거형입니다. 한 지역 안이면 쾌적한 핑으로 플레이할 수 있도록 나눴습니다. 게임 고유의 분할이 필요하면 `Any`로 두고 `CustomSettings` 키로 필터하세요 ([가이드](Guide-Sessions.ko.md)).
+`String`, `Integer` - `FEasySessionSettingValue`가 담는 값의 타입입니다. Details 패널에서는 값을 입력하기 전에 타입부터 고릅니다.
 
 ### 6.6 EEasySessionActivity
 

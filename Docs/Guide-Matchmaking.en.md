@@ -26,8 +26,7 @@ The bundled example leaves it off and only searches and joins.
 
 When the fallback does host, it inherits the search's filters: the session is created on
 the network the search looked at (`LAN Query`), and every `Required Custom Settings` pair
-is advertised on it, overwriting the same key in Host > Custom Settings. A searched
-`Region` is advertised the same way. The session a run opens is one its own search would
+is advertised on it, overwriting the same key in Host > Custom Settings. The session a run opens is one its own search would
 have found, so Host `Password`, `Hidden` and `Should Advertise` do not apply to it: the
 fallback always opens a public session.
 

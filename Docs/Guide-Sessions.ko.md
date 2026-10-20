@@ -29,13 +29,26 @@
 
 ### 커스텀 세션 데이터
 
-`Custom Settings`는 세션과 함께 광고되는 문자열 맵입니다. 게임 모드, 지역, 난이도처럼 찾는 쪽이 걸러내거나 화면에 띄울 값을 넣으세요.
+`Custom Settings`는 키마다 값을 하나씩 담아 세션과 함께 광고하는 맵입니다. 게임 모드, 난이도, 게임이 정한 지역처럼 찾는 쪽이 걸러내거나 화면에 띄울 값을 넣으세요.
+
+값마다 텍스트나 정수 중 하나의 타입이 있고, 온라인 서비스에서도 그 타입을 유지합니다. 값은 다음 노드로 만듭니다.
+
+| 노드 | 값 |
+|---|---|
+| Make Easy Setting (String) | 텍스트. 예: `CTF` |
+| Make Easy Setting (Int) | 정수. 예: `5` |
+| Make Easy Setting (Bool) | 참 또는 거짓. 모든 서비스가 정수로 검색할 수 있으므로 정수 1이나 0으로 저장합니다 |
 
 ```
-CustomSettings = { "GameMode": "CTF", "Region": "AS" }
+CustomSettings = { "GameMode": "CTF" (String), "Rounds": 5 (Int) }
 ```
 
-찾는 쪽은 각 `FEasySessionSearchResult.CustomSettings`에서 이 값을 다시 읽고, `Required Custom Settings`로 검색 단계에서 걸러낼 수도 있습니다(모든 쌍이 정확히 일치해야 합니다).
+찾는 쪽은 각 `FEasySessionSearchResult.CustomSettings`에서 값을 다시 읽습니다.
+`Get Easy Setting String`, `Get Easy Setting Int`, `Get Easy Setting Bool`은 값의 타입이 다르면 변환하지 않고 `Success`를 false로 돌려줍니다.
+UI에 값을 띄울 때는 String 핀에 연결하면 `To String (Easy Setting)`이 자동으로 들어갑니다.
+
+`Required Custom Settings`로 검색하면 모든 쌍을 키, 타입, 값까지 똑같이 광고하는 세션만 돌려줍니다.
+텍스트는 대소문자를 구분하고, 숫자 3은 텍스트 "3"과 일치하지 않습니다.
 
 `Update Easy Session`에 넘긴 맵이 세션의 커스텀 데이터를 그대로 대신합니다. 맵에서 뺀 키는 세션에서도 사라지므로, `Get Easy Session Settings`로 받은 맵을 고쳐서 넘기세요.
 
@@ -49,9 +62,21 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 | LAN Query | false | NULL에서는 자동으로 켜집니다 |
 | Min Open Slots | 0 | 빈 자리가 이만큼 이상인 세션만 |
 | Max Ping Ms | 0 | 0이면 제한 없음 |
-| Required Custom Settings | (비어 있음) | 광고된 커스텀 데이터와 정확히 일치하는 것만 통과 |
-| Region | Any | 이 지역을 광고하는 세션만 (지역 절 참고) |
+| Required Custom Settings | (비어 있음) | 모든 쌍을 키, 타입, 값까지 똑같이 광고하는 세션만 ([커스텀 세션 데이터](#커스텀-세션-데이터)) |
 | Include In Progress Sessions | true | 끄면 매치가 이미 시작된 세션을 숨깁니다. 난입을 거절하는 세션은 어차피 검색에 응답하지 않아 보이지 않습니다 |
+
+### 온라인 서비스가 거르는 필터
+
+온라인 서비스는 세션을 최대 `Max Results`개까지만 돌려줍니다.
+돌려받은 세션만 거르는 필터는 서비스가 돌려주지 않은 세션 중 조건에 맞는 것을 놓치므로, EasySession은 다음 필터를 검색과 함께 서비스에 보냅니다.
+
+- `Required Custom Settings`의 모든 쌍. 텍스트가 빈 쌍은 빼고
+- 꺼 둔 `Include In Progress Sessions`, 그리고 숨긴 세션 제외
+- `Join Code`와 `Owner Id`
+
+`Min Open Slots`, `Max Ping Ms`, 텍스트가 빈 쌍은 스팀이 거르지 않으므로 돌려받은 세션에서만 확인합니다.
+기대보다 세션이 적게 나오면 `Max Results`를 늘리세요.
+LAN(NULL)에서는 서비스가 보낸 필터를 무시하고, EasySession이 돌려받은 세션에서 모든 필터를 확인합니다.
 
 친구 한 명이 있는 세션을 찾으려면, `Read Easy Friends`가 돌려준 그 친구의 `Native Id`를
 `Friend Id`에 넣고 검색합니다. 친구 목록에는 누가 이 게임의 로비에 있는지(`Is In Lobby`)가
@@ -61,7 +86,7 @@ CustomSettings = { "GameMode": "CTF", "Region": "AS" }
 
 결과는 `OnSuccess`로 옵니다.
 
-각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 지역, 매치 진행 중 여부, 세션 종류(게임 세션 또는 파티), 커스텀 세팅 맵을 담고 있습니다.
+각 `FEasySessionSearchResult`는 표시 이름, 호스트 이름, 핑, 최대 인원, 빈 자리, 데디케이티드 여부, 비밀번호 여부, 매치 진행 중 여부, 세션 종류(게임 세션 또는 파티), 커스텀 세팅 맵을 담고 있습니다.
 
 ## Join Session
 
@@ -187,7 +212,7 @@ Create Easy Session
 Max Players는 세션에 있거나 들어오는 중인 인원(호스트 포함)보다 낮출 수 없고, 그러면 `InvalidParams`로 실패합니다.
 
 무엇을 바꿀 수 있는지는 `FEasySessionSettings`가 답합니다. 표시 이름, 최대 인원, 광고 여부,
-숨김 여부, 난입 허용 여부, 초대 허용 여부, 지역, 참가 코드, 비밀번호(와 친구 예외), 커스텀
+숨김 여부, 난입 허용 여부, 초대 허용 여부, 참가 코드, 비밀번호(와 친구 예외), 커스텀
 세팅이 전부입니다. `Get Easy Session Settings`로 현재 값을 받아 고치면 됩니다.
 
 호스팅 전용 필드는 한 단계 위인 `FEasySessionHostParams`에 있고, Update에는 아예 닿지
@@ -203,7 +228,7 @@ Max Players는 세션에 있거나 들어오는 중인 인원(호스트 포함)�
 > LAN(NULL)에서는 광고 여부를 바꿔도 LAN 비콘이 그대로입니다. 엔진의 `FOnlineSessionNull::UpdateSession`이 설정만 갈아끼우고 비콘을 다시 계산하지 않기 때문입니다.
 
 참가 중인 플레이어는 업데이트를 자동으로 전달받습니다. 플러그인이 멤버에게 보여도 되는
-설정(표시 이름, 최대 인원, 플래그들, 리전, 참가 코드, 커스텀 설정)을 모든 클라이언트에
+설정(표시 이름, 최대 인원, 플래그들, 참가 코드, 커스텀 설정)을 모든 클라이언트에
 복제하고, 로컬 세션 사본을 고쳐서 일반 게터가 새 값을 돌려주게 만든 뒤
 `OnSessionSettingsChanged`를 발화합니다. 호스트도 자기 UI를 위해 같은 이벤트를 발화합니다.
 UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친구 예외만 호스트에 남습니다.
@@ -232,11 +257,9 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 ## 지역
 
-호스팅은 `Region`을 광고하고(기본값 `Any`) 검색은 그걸로 거릅니다. 양쪽에 같은 지역을
-넣으면 플레이어는 쾌적하게 플레이할 수 있는 세션만 보게 됩니다. 검색의 `Any`는 모든 지역을
-나열하고, 호스트의 `Any`는 지역 필터가 없는 검색에만 걸립니다. 지역은 일부러 큰 단위입니다.
-한 지역 안이면 플레이할 만한 핑이라는 뜻이 되도록요. 게임 고유의 분할(국가 서버, 단일 지역)이
-필요하면 `Any`로 두고 `Required Custom Settings`로 거르는 `Custom Settings` 키를 쓰세요.
+EasySession에는 따로 지역 설정이 없습니다. 스팀은 검색할 때 플레이어와 가까운 로비부터 돌려주므로, 대부분의 게임은 더 할 일이 없습니다.
+지역을 나눠야 하는 게임은 `Custom Settings`에 `Region` = `EU` 같은 자기 키를 광고하고, `Required Custom Settings`에 같은 쌍을 넣어 검색합니다.
+예제 메뉴도 게임 모드를 같은 방식으로 다룹니다. 세션 생성 폼이 `GameMode`를 광고하고, 브라우저의 필터가 그 값으로 검색하고, 각 세션 행이 그 값을 보여 줍니다.
 
 ## 참가 코드
 

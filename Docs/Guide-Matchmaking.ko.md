@@ -26,8 +26,7 @@ Initial Map Name이 필요합니다. 그 맵으로 이동하는 것이 리슨 �
 
 폴백이 실제로 호스트할 때는 검색의 필터를 물려받습니다. 검색이 본 네트워크(`LAN Query`)에서
 세션을 만들고, `Required Custom Settings`의 모든 키-값을 그 세션에 광고하며, Host >
-Custom Settings에 같은 키가 있으면 덮어씁니다. 검색에 지역 필터가 있었다면 그 지역도 같은
-방식으로 광고됩니다. 폴백이 여는 세션은 방금 한 검색으로도 찾을 수 있는 세션입니다. 그래서 Host의
+Custom Settings에 같은 키가 있으면 덮어씁니다. 폴백이 여는 세션은 방금 한 검색으로도 찾을 수 있는 세션입니다. 그래서 Host의
 `Password`, `Hidden`, `Should Advertise`는 폴백 세션에 적용되지 않습니다. 폴백은 항상 공개 세션을
 엽니다.
 

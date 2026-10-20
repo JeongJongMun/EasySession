@@ -28,7 +28,7 @@
 | Password | (비어 있음) | 파티에는 비밀번호가 없어서, 값을 넣으면 생성이 `InvalidParams`로 실패합니다. 대신 파티를 숨기거나 참가 코드를 공유하세요 |
 | Should Advertise | true | 파티는 항상 광고됩니다. 경기 뒤 멤버가 파티를 다시 찾는 데 필요해서, 끄면 생성이 `InvalidParams`로 실패합니다. 대신 Hidden을 쓰세요 |
 
-Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 아무것도 바꾸지 않습니다.
+Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 아무것도 바꾸지 않습니다.
 
 로컬 플레이어가 호스트가 됩니다. 멤버를 id로 구분하기 때문에, 온라인 서브시스템에 로그인한 플레이어가 있어야 만들 수 있습니다. NULL은 알아서 로그인하고, 스팀은 스팀 사용자로 로그인합니다.
 
@@ -60,7 +60,7 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
 - `Join Code`가 비어 있으면 숨기지 않은 파티를 나열합니다.
 - `Join Code`가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 숨긴 파티도 찾습니다.
 - 결과의 `Host Name`은 호스트 이름이고, `Session Display Name`은 파티 이름입니다. 호스트가 이름을 정하지 않았으면 호스트 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
-- 파티는 지역, 커스텀 세팅, 매치 상태를 광고하지 않으므로 `Region`, `Required Custom Settings`, `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
+- 파티에는 매치 상태가 없고 커스텀 세팅은 검색용이 아니므로 `Required Custom Settings`와 `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
 
 `Join Easy Session`에 그 결과 하나를 넘깁니다. 결과가 파티라고 알려 주므로 파티에 참가합니다. `Password`와 `Additional Travel Options`는 비워 두세요. 값이 있으면 `InvalidParams`로 실패합니다. 참가는 호스트가 정하고, 거절되면 노드가 `JoinRefused`와 호스트의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party host removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
 
@@ -78,7 +78,7 @@ Region과 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티�
     없음 -> [Create Easy Party]  (Hidden 끔. 다음 플레이어가 찾을 수 있게)
 ```
 
-파티에는 맞춰 볼 지역이나 커스텀 세팅이 없으므로, 목록에 보이는 파티는 모두 후보입니다. 게임 세션 매치메이킹은 별도 노드인 `Start Easy Matchmaking`이 맡고, 파티가 모이면 호스트가 부르면 됩니다.
+파티 검색은 커스텀 세팅으로 거르지 않으므로, 목록에 보이는 파티는 모두 후보입니다. 게임 세션 매치메이킹은 별도 노드인 `Start Easy Matchmaking`이 맡고, 파티가 모이면 호스트가 부르면 됩니다.
 
 ## 초대
 

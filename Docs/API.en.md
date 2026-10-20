@@ -137,9 +137,6 @@ Pure functions for the text a session UI shows. None of them touch session state
 | Get Activity Message | `GetActivityMessage` | "Creating the session..." style line for a Get Easy Session Activity value. None gives empty text, so a status line clears itself with it |
 | Format Matchmaking Status | `FormatMatchmakingStatus` | "Searching... 12s" style line from a matchmaking state and elapsed seconds. Idle reads "Ready" |
 | Format Session Slots | `FormatSessionSlots` | "1/4   ping 32ms" for a search result |
-| Get Region Display Name | `GetRegionDisplayName` | "North America East" for a region |
-| Get Region Options | `GetRegionOptions` | Every region's display name in enum order, for a combo box |
-| Region From Index | `RegionFromIndex` | The region behind a combo box index. Out of range gives Any |
 
 ## 3. Action Blueprint nodes
 
@@ -205,7 +202,7 @@ A widget whose parent class is taken binds them with Assign nodes on `Get Easy S
 ## 5. Structs
 
 ### 5.1 FEasySessionSettings
-`SessionDisplayName` (String), `MaxPlayers` (int), `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `Region` (`EEasySessionRegion`), `bUseJoinCode`, `CustomSettings` (Map String->String)
+`SessionDisplayName` (String), `MaxPlayers` (int), `bShouldAdvertise`, `bHidden`, `Password` (String), `bFriendsBypassPassword`, `bAllowJoinInProgress`, `bAllowInvites`, `bUseJoinCode`, `CustomSettings` (Map String->`FEasySessionSettingValue`)
 
 What a session advertises about itself. `Update Easy Session` takes exactly this struct,
 so every field here is one a live session can change. `Create Easy Party` takes it too, because a party is a session as well ([party guide](Guide-Party.en.md#create-a-party)).
@@ -225,17 +222,17 @@ session but keeps it out of Find results, so it can only be reached through an i
 [password protected sessions](Guide-Sessions.en.md#password-protected-sessions).
 `AdditionalTravelOptions` is appended
 to the host's travel URL (e.g. `GameMode=Deathmatch?MyOption=1`), readable on the server
-with `Parse Option`. `Region` and `bUseJoinCode` are covered in the guide's
-[regions](Guide-Sessions.en.md#regions) and [join codes](Guide-Sessions.en.md#join-codes)
-sections.
+with `Parse Option`. `bUseJoinCode` is covered in the guide's [join codes](Guide-Sessions.en.md#join-codes)
+section, and `CustomSettings` under [custom session data](Guide-Sessions.en.md#custom-session-data).
 
 ### 5.3 FEasySessionSearchParams
-`MaxResults` (int), `bLANQuery`, `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->String), `Region` (`EEasySessionRegion`), `bIncludeInProgressSessions`, `JoinCode` (String), `FriendId` (Unique Net Id), `OwnerId` (Unique Net Id)
+`MaxResults` (int), `bLANQuery`, `MinOpenSlots` (int), `MaxPingMs` (int), `RequiredCustomSettings` (Map String->`FEasySessionSettingValue`), `bIncludeInProgressSessions`, `JoinCode` (String), `FriendId` (Unique Net Id), `OwnerId` (Unique Net Id)
 
 Three of these name one specific session instead of describing what to look for. `JoinCode` and `OwnerId` are filters over a normal search, so they combine with everything above. `FriendId` makes a different call to the service, asking for the session that friend is in; Max Results and LAN Query are then ignored while the filters still apply. It needs a service with friends such as Steam, and fails with `NotSupportedByService` on NULL/LAN. A search naming one session also sees hidden ones.
+Which filters the online service applies, and which are checked on the returned sessions, is in the [session guide](Guide-Sessions.en.md#which-filters-the-online-service-applies).
 
 ### 5.4 FEasySessionSearchResult *(read-only)*
-`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `Region`, `bMatchInProgress`, `SessionType`, `CustomSettings`
+`SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `bMatchInProgress`, `SessionType`, `CustomSettings`
 
 This struct connects the two nodes: `Find Easy Sessions` returns them and
 `Join Easy Session` takes one back. Keep the whole struct - a server-browser row should
@@ -264,6 +261,21 @@ It is also set for a friend who is only in a party, and a search for that friend
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`, `bIsReady`, `PlayerId`
 
 Returned by `Get Easy Party Members`; pass one to `Kick Easy Party Member`.
+
+### 5.10 FEasySessionSettingValue
+
+One custom setting value: text or a whole number, with its type ([guide](Guide-Sessions.en.md#custom-session-data)).
+Blueprint makes and reads it with these nodes, in the EasySession > Custom Settings category:
+
+| Node | C++ | Does |
+|---|---|---|
+| Make Easy Setting (String) | `MakeEasySettingString` | A value holding text |
+| Make Easy Setting (Int) | `MakeEasySettingInt` | A value holding a whole number |
+| Make Easy Setting (Bool) | `MakeEasySettingBool` | A value holding true or false, stored as 1 or 0 |
+| Get Easy Setting String | `GetEasySettingString` | The text. `Success` is false, with empty text, when the value holds a number |
+| Get Easy Setting Int | `GetEasySettingInt` | The number. `Success` is false, with 0, when the value holds text |
+| Get Easy Setting Bool | `GetEasySettingBool` | Whether the number is not 0. `Success` is false when the value holds text |
+| To String (Easy Setting) | `Conv_EasySettingToString` | The value as text whatever its type, for a UI. Inserted when you connect a value to a string pin |
 
 ## 6. Enums
 
@@ -317,9 +329,9 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 `Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - the phases of one Matchmaking run, reported through `OnMatchmakingStateChanged`. `Cancel Easy Matchmaking` works while the run is `Searching`.
 
-### 6.5 EEasySessionRegion
+### 6.5 EEasySessionSettingType
 
-`Any` plus nine coarse world regions, from `NorthAmericaEast` to `Oceania`, cut so that one region means playable latency. A game that needs its own split leaves this at `Any` and filters with a `CustomSettings` key instead ([guide](Guide-Sessions.en.md#regions)).
+`String`, `Integer` - the type a `FEasySessionSettingValue` holds. In a Details panel, pick it before typing the value.
 
 ### 6.6 EEasySessionActivity
 

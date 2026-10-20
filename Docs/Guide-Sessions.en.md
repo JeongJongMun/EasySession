@@ -29,13 +29,26 @@ Players who stay together between matches, such as friends in the main menu, are
 
 ### Custom session data
 
-`Custom Settings` is a string map advertised with the session. Use it for game mode, region, difficulty - anything searchers should filter or display:
+`Custom Settings` maps a key to a value advertised with the session. Use it for anything searchers should filter on or display: game mode, difficulty, a region of your own.
+
+Each value has a type, text or a whole number, and keeps it on the online service. Make values with these nodes:
+
+| Node | Value |
+|---|---|
+| Make Easy Setting (String) | Text, such as `CTF` |
+| Make Easy Setting (Int) | A whole number, such as `5` |
+| Make Easy Setting (Bool) | True or false, stored as the whole number 1 or 0, because every service can search on a whole number |
 
 ```
-CustomSettings = { "GameMode": "CTF", "Region": "AS" }
+CustomSettings = { "GameMode": "CTF" (String), "Rounds": 5 (Int) }
 ```
 
-Searchers read it back from each `FEasySessionSearchResult.CustomSettings`, and can filter them out as part of the search with `Required Custom Settings` (exact match on every pair).
+Searchers read the values back from each `FEasySessionSearchResult.CustomSettings`.
+`Get Easy Setting String`, `Get Easy Setting Int` and `Get Easy Setting Bool` return `Success` false when the value holds the other type, instead of converting it.
+To show any value in a UI, connect it to a string pin, and `To String (Easy Setting)` is inserted for you.
+
+A search with `Required Custom Settings` returns only the sessions that advertise every pair with the same key, type and value.
+Text is compared case-sensitively, and the number 3 does not match the text "3".
 
 The map you hand to `Update Easy Session` replaces the session's custom data: a key you leave out is removed from the session too. Change the map you got from `Get Easy Session Settings` rather than building a new one.
 
@@ -49,9 +62,21 @@ The map you hand to `Update Easy Session` replaces the session's custom data: a 
 | LAN Query | false | Forced on automatically under NULL |
 | Min Open Slots | 0 | Only sessions with at least this many free slots |
 | Max Ping Ms | 0 | 0 = no limit |
-| Required Custom Settings | (empty) | Exact-match filters against advertised custom data |
-| Region | Any | Only sessions advertising this region ([regions](#regions)) |
+| Required Custom Settings | (empty) | Only sessions advertising every pair with the same key, type and value ([custom session data](#custom-session-data)) |
 | Include In Progress Sessions | true | Turn off to hide sessions whose match already started. Sessions refusing join-in-progress never appear either way |
+
+### Which filters the online service applies
+
+The online service returns at most `Max Results` sessions.
+A filter checked only on the returned sessions would miss matching sessions the service did not return, so EasySession sends these filters with the search:
+
+- every `Required Custom Settings` pair, except a pair with empty text
+- `Include In Progress Sessions` when it is off, and the exclusion of hidden sessions
+- `Join Code` and `Owner Id`
+
+`Min Open Slots`, `Max Ping Ms` and a pair with empty text are checked on the returned sessions only, because Steam does not filter on them.
+If a search finds fewer sessions than you expect, raise `Max Results`.
+On LAN (NULL) the service ignores the filters it is sent, and EasySession checks every filter on the returned sessions.
 
 To find the session one friend is in, set `Friend Id` to that friend's `Native Id` from
 `Read Easy Friends` and search. The friends list already says who is in a lobby of this
@@ -61,7 +86,7 @@ friends list itself, this is not supported on NULL/LAN.
 
 Results arrive on `OnSuccess`.
 
-Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, region, in-progress flag, session type (game session or party), and the custom settings map.
+Each `FEasySessionSearchResult` exposes: display name, host name, ping, max players, open slots, dedicated flag, password flag, in-progress flag, session type (game session or party), and the custom settings map.
 
 ## Join Session
 
@@ -187,7 +212,7 @@ Both are host only. A client gets `RequiresHost`, so show the buttons only when 
 Max Players cannot go below the players in the session or joining it, the host included: that update fails with `InvalidParams`.
 
 That struct is the answer to "what can I change?" - it holds the display name, max
-players, advertise flag, hidden flag, join-in-progress flag, invites flag, region, join
+players, advertise flag, hidden flag, join-in-progress flag, invites flag, join
 code, the password (and its friends exception) and custom settings, and nothing else.
 `Get Easy Session Settings` hands you the current ones to edit.
 
@@ -204,7 +229,7 @@ Update:
 > On LAN (NULL), changing the advertise flag leaves the LAN beacon as it was: the engine's `FOnlineSessionNull::UpdateSession` swaps the settings without recomputing the beacon.
 
 Joined players receive the update automatically. The plugin replicates the member-visible
-settings - display name, max players, the flags, region, join code and custom settings -
+settings - display name, max players, the flags, join code and custom settings -
 to every client, patches their local session copy so the regular getters return the new
 values, and fires `OnSessionSettingsChanged` for the UI to refresh on. The host fires the
 same event for its own UI. Only the password and its friends exception stay on the host.
@@ -234,12 +259,9 @@ If a full path fails to load (a typo, a map missing from the cook), the clients 
 
 ## Regions
 
-Hosting advertises `Region` (`Any` by default) and searching filters by it: set the same
-region in both places and players only see sessions they can play in. `Any` on the search
-lists every region; `Any` on the host matches only searches that do not filter. The
-regions are coarse on purpose - one region means playable latency. A game that needs its
-own split (country servers, a single home region) leaves the field at `Any` and filters
-with a `Custom Settings` key through `Required Custom Settings` instead.
+EasySession has no region setting of its own. On Steam a search returns the lobbies near the player first, so most games need nothing more.
+A game that keeps regions apart advertises a key of its own, such as `Region` = `EU` in `Custom Settings`, and searches with the same pair in `Required Custom Settings`.
+The example menus use the same pattern for the game mode: the create form advertises `GameMode`, the browser's filter searches for it, and each session row shows it.
 
 ## Join codes
 
