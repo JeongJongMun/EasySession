@@ -1,19 +1,25 @@
 # EasySession
 
-Beginner-friendly sessions and matchmaking for Unreal Engine, built on the Online Subsystem (OSS).
+Beginner-friendly sessions, parties and matchmaking for Unreal Engine, built on the Online Subsystem (OSS).
 
 Host, find, join and quick-play with a few Blueprint nodes - no C++ and no config files to start.
 
 *[한국어 README](README.ko.md)*
 
+<br/>
+
 ## Install
 
-1. Copy this folder into your project's `Plugins/` directory, so you have `YourProject/Plugins/EasySession/`.
+1. Get the plugin:
+   - **From Fab** - install it to your engine from your Fab library in the Epic Games Launcher.
+   - **From GitHub** - copy this folder into your project's `Plugins/` directory, so you have `YourProject/Plugins/EasySession/`.
 2. Open the project, go to **Edit -> Plugins**, search for **EasySession**, enable it and restart.
 3. In **Project Settings -> Maps & Modes**, set **Game Instance Class** to `EasySessionGameInstance`. If the project already has a GameInstance Blueprint, set its **Parent Class** to `EasySessionGameInstance` instead.
 4. For C++ projects, add `"EasySession"` to `PublicDependencyModuleNames` in your `.Build.cs`.
 
 That is the whole setup for LAN play. The NULL online subsystem needs no accounts or keys. For Steam, follow [Steam setup](Docs/Setup-Steam.en.md).
+
+<br/>
 
 ## Features
 
@@ -22,6 +28,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **Parties** - friends gather in a party before they play: hidden or listed, with an optional join code, invites, ready state and kick. When the host creates a session, joins or matchmakes, the whole party follows, and after the match the party comes back on its own.
 - **Moving together** - the host of a lobby session that joins or matchmakes into another session brings every player along, with room reserved for all of them.
 - **The whole session lifecycle in Blueprint** - create, find, join, start the match, end it, leave and update settings, all as async nodes. Session state, the player list and open slots are one node away, and the same API is available from C++.
+- **Custom settings and search filters** - advertise typed settings such as a game mode, and search on them. The filters go to the online service, so matching sessions are found however many others exist. A session can also be hidden from searches or carry a join code.
 - **Ready and kick** - every player and party member shares whether they are ready, and the host of the session or the party can remove a player with a reason they see.
 - **Every request reports its progress and result** - `Is Busy` covers the request running or queued and the level load that follows hosting or joining, so binding it to a button's Is Enabled keeps that button locked for as long as the player is actually waiting. When the request finishes you get a result enum and a message you can show a player.
 - **Overlapping calls are handled in order** - every request goes through a queue and runs one at a time. A call made while another is still running waits its turn instead of failing, and a repeat of the same call ends with a clear result such as `SessionAlreadyExists`.
@@ -31,6 +38,8 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **Steam invites and friends** - accepting Join Game from the overlay joins automatically, plus friend invites, the invite and profile overlays, and the friends list.
 - **A working example** - example maps and widgets with the full main menu -> lobby -> match cycle.
 - **Extensible matchmaking** - override one `ScoreSession` function to pick sessions your way.
+
+<br/>
 
 ## Example
 
@@ -45,6 +54,8 @@ The plugin ships example maps and widgets with the full main menu -> lobby -> ma
 
 [Quick Start](Docs/QuickStart.en.md#2-play-the-example-first) shows how to run it and lists the nodes each widget calls.
 
+<br/>
+
 ## Limitations
 
 - **One game session at a time, plus an optional party.** Game sessions use the engine's `NAME_GameSession` slot and the party uses `NAME_PartySession`, so running more than one game session side by side is not supported.
@@ -55,6 +66,8 @@ The plugin ships example maps and widgets with the full main menu -> lobby -> ma
 - **Password sessions are joined through the plugin only.** The password goes to the host over the reservation beacon and never into the travel URL, so a direct connect or your own `ClientTravel` into a password session is refused.
 - **Dedicated servers** are not supported yet - sessions are hosted on listen servers.
 
+<br/>
+
 ## Supported online subsystems
 
 | Subsystem | Status |
@@ -63,14 +76,16 @@ The plugin ships example maps and widgets with the full main menu -> lobby -> ma
 | Steam | Supported |
 | EOS | Not supported |
 
+<br/>
+
 ## Engine support
 
 - **UE 5.8** only. This is the version the plugin is built and tested against.
 - Support for earlier versions is planned.
 
-## Documentation
+<br/>
 
-These guides are still being written and do not yet cover every feature.
+## Documentation
 
 - [Quick Start](Docs/QuickStart.en.md) - host and join in 5 minutes
 - [Concepts](Docs/Concepts.en.md) - sessions, OSS, travel, listen vs dedicated, and how they fit together
@@ -79,9 +94,13 @@ These guides are still being written and do not yet cover every feature.
 - [API Reference](Docs/API.en.md)
 - [FAQ & Troubleshooting](Docs/FAQ.en.md)
 
+<br/>
+
 ## Modules
 
 One runtime module, `EasySession`: the core subsystem, the session/matchmaking API, and the Blueprint nodes.
+
+<br/>
 
 ## Support
 
@@ -92,6 +111,8 @@ One runtime module, `EasySession`: the core subsystem, the session/matchmaking A
 When reporting a problem, include your engine version, the online subsystem you use
 (NULL or Steam), and the relevant log lines. `EasySession.Status` in the console prints
 the session state and the request queue, which answers most of the first questions.
+
+<br/>
 
 ## License
 
