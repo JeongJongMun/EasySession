@@ -480,7 +480,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 			FEasySessionSearchParams Search;
 			Search.bLANQuery = true;
 			Search.Region = EEasySessionRegion::Europe;
-			Search.RequiredCustomSettings.Add(TEXT("GameMode"), TEXT("CTF"));
+			Search.RequiredCustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("CTF")));
 			Search.bIncludeInProgressSessions = false;
 			Subsystem->FindSessions(EEasySessionType::PartySession, Search, MakeFindCallback(State));
 			NextPhase(State);

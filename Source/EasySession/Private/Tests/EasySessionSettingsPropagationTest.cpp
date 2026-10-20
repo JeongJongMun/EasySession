@@ -108,7 +108,8 @@ bool FEasySessionWaitForSettingsPush::Update()
 			Updated.MaxPlayers = 6;
 			Updated.bHidden = true;
 			Updated.Region = EEasySessionRegion::SouthAmerica;
-			Updated.CustomSettings.Add(TEXT("GameMode"), TEXT("Conquest"));
+			Updated.CustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("Conquest")));
+			Updated.CustomSettings.Add(TEXT("Rounds"), FEasySessionSettingValue::MakeInt(5));
 			State->Step = EStep::AwaitingUpdate;
 			Subsystem->UpdateSession(Updated, FEasySessionCompleteDelegate::CreateLambda(
 				[Shared](EEasySessionResult Result, const FString&)
@@ -133,7 +134,14 @@ bool FEasySessionWaitForSettingsPush::Update()
 				[](const FEasySessionReplicatedSetting& Setting) { return Setting.Key == TEXT("GameMode"); });
 			if (CurrentTest->TestNotNull(TEXT("Payload carries the custom setting"), Custom))
 			{
-				CurrentTest->TestEqual(TEXT("Custom setting value survived"), Custom->Value, TEXT("Conquest"));
+				CurrentTest->TestTrue(TEXT("Custom setting value survived"), Custom->Value == FEasySessionSettingValue::MakeString(TEXT("Conquest")));
+			}
+
+			const FEasySessionReplicatedSetting* Rounds = Payload.CustomSettings.FindByPredicate(
+				[](const FEasySessionReplicatedSetting& Setting) { return Setting.Key == TEXT("Rounds"); });
+			if (CurrentTest->TestNotNull(TEXT("Payload carries the number setting"), Rounds))
+			{
+				CurrentTest->TestTrue(TEXT("The number setting stays a number"), Rounds->Value == FEasySessionSettingValue::MakeInt(5));
 			}
 
 			// The plugin's own keys stay out of the custom list.
@@ -236,8 +244,12 @@ bool FEasySessionWaitForSettingsApply::Update()
 			Payload.Region = EEasySessionRegion::SouthAmerica;
 			FEasySessionReplicatedSetting Custom;
 			Custom.Key = TEXT("GameMode");
-			Custom.Value = TEXT("Conquest");
+			Custom.Value = FEasySessionSettingValue::MakeString(TEXT("Conquest"));
 			Payload.CustomSettings.Add(Custom);
+			FEasySessionReplicatedSetting Rounds;
+			Rounds.Key = TEXT("Rounds");
+			Rounds.Value = FEasySessionSettingValue::MakeInt(5);
+			Payload.CustomSettings.Add(Rounds);
 
 			// A default payload means the host wrote nothing yet. It must change nothing.
 			FEasySessionReplicatedSettings NotWritten = Payload;
@@ -260,6 +272,9 @@ bool FEasySessionWaitForSettingsApply::Update()
 			CurrentTest->TestEqual(TEXT("The client's region follows the host"),
 				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_Region),
 				static_cast<int32>(EEasySessionRegion::SouthAmerica));
+			const FEasySessionSettings ClientSettings = Subsystem->GetSessionSettings();
+			CurrentTest->TestTrue(TEXT("The client's text setting follows the host"), ClientSettings.CustomSettings.FindRef(TEXT("GameMode")) == FEasySessionSettingValue::MakeString(TEXT("Conquest")));
+			CurrentTest->TestTrue(TEXT("The client reads the number setting as a number"), ClientSettings.CustomSettings.FindRef(TEXT("Rounds")) == FEasySessionSettingValue::MakeInt(5));
 			CurrentTest->TestEqual(TEXT("The settings changed event fired once"), State->Listener->SettingsChangedBroadcasts, 1);
 
 			// The same payload can arrive twice, through PostNetInit and the OnRep, and it must apply once.

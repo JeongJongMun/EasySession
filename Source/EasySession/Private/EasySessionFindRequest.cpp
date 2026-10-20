@@ -166,17 +166,7 @@ void FEasySessionFindRequest::FindSessions()
 	// Parties and game sessions are both advertised, so the query asks for the kind of session this request searches for.
 	Search->QuerySettings.Set(EasySession::SettingKey_SessionType, SessionName.ToString(), EOnlineComparisonOp::Equals);
 
-	// A search for one session filters inside the online subsystem, so that session is found however many others exist.
-	// The filter on the returned results still runs, because NULL (LAN) ignores these query settings.
-	if (SearchParams.OwnerId.IsValid())
-	{
-		Search->QuerySettings.Set(EasySession::SettingKey_OwnerId, SearchParams.OwnerId.ToString(), EOnlineComparisonOp::Equals);
-	}
-	if (!SearchParams.JoinCode.IsEmpty())
-	{
-		// Codes are advertised in upper case, and the online subsystem compares them as written.
-		Search->QuerySettings.Set(EasySession::SettingKey_JoinCode, SearchParams.JoinCode.ToUpper(), EOnlineComparisonOp::Equals);
-	}
+	SearchParams.ApplyTo(*Search);
 
 	FindCompleteHandle = Sessions->AddOnFindSessionsCompleteDelegate_Handle(
 		FOnFindSessionsCompleteDelegate::CreateSP(this, &FEasySessionFindRequest::HandleFindSessionsComplete));

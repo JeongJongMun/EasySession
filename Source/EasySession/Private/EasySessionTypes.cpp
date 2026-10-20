@@ -108,6 +108,75 @@ namespace EasySession
 	}
 }
 
+FEasySessionSettingValue FEasySessionSettingValue::MakeString(const FString& Value)
+{
+	FEasySessionSettingValue Result;
+	Result.Type = EEasySessionSettingType::String;
+	Result.StringValue = Value;
+	return Result;
+}
+
+FEasySessionSettingValue FEasySessionSettingValue::MakeInt(const int32 Value)
+{
+	FEasySessionSettingValue Result;
+	Result.Type = EEasySessionSettingType::Integer;
+	Result.IntValue = Value;
+	return Result;
+}
+
+FEasySessionSettingValue FEasySessionSettingValue::FromOnlineData(const FVariantData& Data)
+{
+	if (Data.GetType() == EOnlineKeyValuePairDataType::Int32)
+	{
+		int32 Value = 0;
+		Data.GetValue(Value);
+		return MakeInt(Value);
+	}
+
+	return MakeString(Data.ToString());
+}
+
+FString FEasySessionSettingValue::ToString() const
+{
+	return Type == EEasySessionSettingType::Integer ? FString::FromInt(IntValue) : StringValue;
+}
+
+void FEasySessionSettingValue::WriteTo(FOnlineSessionSettings& Settings, const FName Key) const
+{
+	if (Type == EEasySessionSettingType::Integer)
+	{
+		Settings.Set(Key, IntValue, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+	else
+	{
+		Settings.Set(Key, StringValue, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+	}
+}
+
+void FEasySessionSettingValue::WriteQueryTo(FOnlineSearchSettings& QuerySettings, const FName Key) const
+{
+	if (Type == EEasySessionSettingType::Integer)
+	{
+		QuerySettings.Set(Key, IntValue, EOnlineComparisonOp::Equals);
+	}
+	else
+	{
+		QuerySettings.Set(Key, StringValue, EOnlineComparisonOp::Equals);
+	}
+}
+
+bool FEasySessionSettingValue::operator==(const FEasySessionSettingValue& Other) const
+{
+	if (Type != Other.Type)
+	{
+		return false;
+	}
+
+	return Type == EEasySessionSettingType::Integer
+		? IntValue == Other.IntValue
+		: StringValue.Equals(Other.StringValue, ESearchCase::CaseSensitive);
+}
+
 bool FEasySessionSettings::IsValid() const
 {
 	return MaxPlayers > 0;
@@ -146,7 +215,7 @@ void FEasySessionSettings::ReadFrom(const FOnlineSessionSettings& Settings)
 		}
 		else if (!EasySession::IsReservedSettingKey(Setting.Key))
 		{
-			CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
+			CustomSettings.Add(Setting.Key.ToString(), FEasySessionSettingValue::FromOnlineData(Setting.Value.Data));
 		}
 	}
 }
@@ -195,7 +264,7 @@ void FEasySessionSettings::ApplyTo(FOnlineSessionSettings& OutSettings) const
 		OutSettings.Remove(Key);
 	}
 
-	for (const TPair<FString, FString>& Custom : CustomSettings)
+	for (const TPair<FString, FEasySessionSettingValue>& Custom : CustomSettings)
 	{
 		const FName Key(*Custom.Key);
 		if (EasySession::IsReservedSettingKey(Key))
@@ -204,7 +273,7 @@ void FEasySessionSettings::ApplyTo(FOnlineSessionSettings& OutSettings) const
 			continue;
 		}
 
-		OutSettings.Set(Key, Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+		Custom.Value.WriteTo(OutSettings, Key);
 	}
 }
 
@@ -251,9 +320,9 @@ bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Res
 		return false;
 	}
 
-	for (const TPair<FString, FString>& Required : RequiredCustomSettings)
+	for (const TPair<FString, FEasySessionSettingValue>& Required : RequiredCustomSettings)
 	{
-		const FString* FoundValue = Result.CustomSettings.Find(Required.Key);
+		const FEasySessionSettingValue* FoundValue = Result.CustomSettings.Find(Required.Key);
 		if (FoundValue == nullptr || *FoundValue != Required.Value)
 		{
 			return false;
@@ -261,6 +330,48 @@ bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Res
 	}
 
 	return true;
+}
+
+void FEasySessionSearchParams::ApplyTo(FOnlineSessionSearch& OutSearch) const
+{
+	FOnlineSearchSettings& Query = OutSearch.QuerySettings;
+
+	if (OwnerId.IsValid())
+	{
+		Query.Set(EasySession::SettingKey_OwnerId, OwnerId.ToString(), EOnlineComparisonOp::Equals);
+	}
+
+	// Codes are advertised in upper case, and the online subsystem compares them as written.
+	if (!JoinCode.IsEmpty())
+	{
+		Query.Set(EasySession::SettingKey_JoinCode, JoinCode.ToUpper(), EOnlineComparisonOp::Equals);
+	}
+
+	// Every game session advertises these keys from the moment it is created.
+	// A condition on a key a session does not advertise would exclude that session on Steam.
+	if (!bIncludeHiddenSessions)
+	{
+		Query.Set(EasySession::SettingKey_Hidden, 0, EOnlineComparisonOp::Equals);
+	}
+	if (Region != EEasySessionRegion::Any)
+	{
+		Query.Set(EasySession::SettingKey_Region, static_cast<int32>(Region), EOnlineComparisonOp::Equals);
+	}
+	if (!bIncludeInProgressSessions)
+	{
+		Query.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineComparisonOp::Equals);
+	}
+
+	for (const TPair<FString, FEasySessionSettingValue>& Required : RequiredCustomSettings)
+	{
+		// The Steam online subsystem skips a condition on empty text with a warning, so that pair is only checked on the returned results.
+		if (Required.Value.GetType() == EEasySessionSettingType::String && Required.Value.GetString().IsEmpty())
+		{
+			continue;
+		}
+
+		Required.Value.WriteQueryTo(Query, FName(*Required.Key));
+	}
 }
 
 bool FEasySessionSearchResult::IsValid() const
@@ -319,7 +430,7 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 		}
 		else if (!EasySession::IsReservedSettingKey(Setting.Key))
 		{
-			Result.CustomSettings.Add(Setting.Key.ToString(), Setting.Value.Data.ToString());
+			Result.CustomSettings.Add(Setting.Key.ToString(), FEasySessionSettingValue::FromOnlineData(Setting.Value.Data));
 		}
 	}
 

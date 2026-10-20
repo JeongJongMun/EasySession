@@ -650,7 +650,7 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 		}
 		for (const FEasySessionReplicatedSetting& Custom : Settings.CustomSettings)
 		{
-			Local.Set(FName(*Custom.Key), Custom.Value, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
+			Custom.Value.WriteTo(Local, FName(*Custom.Key));
 		}
 
 		OnSessionSettingsChanged.Broadcast();

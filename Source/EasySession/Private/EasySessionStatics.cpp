@@ -164,6 +164,47 @@ FEasySessionHostParams UEasySessionStatics::MakeEasySessionHostParamsFromSetting
 	return HostParams;
 }
 
+FEasySessionSettingValue UEasySessionStatics::MakeEasySettingString(const FString& Value)
+{
+	return FEasySessionSettingValue::MakeString(Value);
+}
+
+FEasySessionSettingValue UEasySessionStatics::MakeEasySettingInt(const int32 Value)
+{
+	return FEasySessionSettingValue::MakeInt(Value);
+}
+
+FEasySessionSettingValue UEasySessionStatics::MakeEasySettingBool(const bool Value)
+{
+	return FEasySessionSettingValue::MakeInt(Value ? 1 : 0);
+}
+
+bool UEasySessionStatics::GetEasySettingString(const FEasySessionSettingValue& Setting, FString& Value)
+{
+	const bool bIsString = Setting.GetType() == EEasySessionSettingType::String;
+	Value = bIsString ? Setting.GetString() : FString();
+	return bIsString;
+}
+
+bool UEasySessionStatics::GetEasySettingInt(const FEasySessionSettingValue& Setting, int32& Value)
+{
+	const bool bIsInteger = Setting.GetType() == EEasySessionSettingType::Integer;
+	Value = bIsInteger ? Setting.GetInt() : 0;
+	return bIsInteger;
+}
+
+bool UEasySessionStatics::GetEasySettingBool(const FEasySessionSettingValue& Setting, bool& Value)
+{
+	const bool bIsInteger = Setting.GetType() == EEasySessionSettingType::Integer;
+	Value = bIsInteger && Setting.GetInt() != 0;
+	return bIsInteger;
+}
+
+FString UEasySessionStatics::Conv_EasySettingToString(const FEasySessionSettingValue& Setting)
+{
+	return Setting.ToString();
+}
+
 FString UEasySessionStatics::GetEasyJoinCode(const UObject* WorldContextObject, EEasySessionType Type)
 {
 	const UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem(WorldContextObject);

@@ -25,7 +25,7 @@ bool FEasySessionHostParamsFromSettingsTest::RunTest(const FString& Parameters)
 	Settings.bAllowInvites = false;
 	Settings.Region = EEasySessionRegion::EastAsia;
 	Settings.bUseJoinCode = true;
-	Settings.CustomSettings.Add(TEXT("Mode"), TEXT("Deathmatch"));
+	Settings.CustomSettings.Add(TEXT("Mode"), FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 
 	const FEasySessionHostParams HostParams = UEasySessionStatics::MakeEasySessionHostParamsFromSettings(Settings, TEXT("/Game/Maps/Lobby"), true);
 
@@ -39,7 +39,7 @@ bool FEasySessionHostParamsFromSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Allow invites"), HostParams.bAllowInvites, Settings.bAllowInvites);
 	TestEqual(TEXT("Region"), HostParams.Region, Settings.Region);
 	TestEqual(TEXT("Use join code"), HostParams.bUseJoinCode, Settings.bUseJoinCode);
-	TestEqual(TEXT("Custom setting"), HostParams.CustomSettings.FindRef(TEXT("Mode")), FString(TEXT("Deathmatch")));
+	TestTrue(TEXT("Custom setting"), HostParams.CustomSettings.FindRef(TEXT("Mode")) == FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 	TestEqual(TEXT("Initial map"), HostParams.InitialMapName, FString(TEXT("/Game/Maps/Lobby")));
 	TestTrue(TEXT("LAN match"), HostParams.bIsLANMatch);
 	TestTrue(TEXT("Presence keeps its default"), HostParams.bUsePresence);

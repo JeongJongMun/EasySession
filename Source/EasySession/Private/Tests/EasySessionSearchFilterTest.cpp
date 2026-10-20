@@ -192,4 +192,80 @@ bool FEasySessionSearchFilterTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * The search filters reach the online subsystem's query with the key, type and value each session advertises.
+ * Steam returns at most MaxResults sessions, so a filter checked only on the returned results misses matching sessions past that limit.
+ * A pair with empty text stays out of the query, because the Steam online subsystem skips such a condition.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionSearchQueryTest, "EasySession.Search.FiltersGoToTheOnlineSubsystem", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionSearchQueryTest::RunTest(const FString& Parameters)
+{
+	const auto FindParam = [](const FOnlineSessionSearch& Search, const FName Key)
+	{
+		return Search.QuerySettings.SearchParams.Find(Key);
+	};
+
+	{
+		FEasySessionSearchParams Params;
+		Params.Region = EEasySessionRegion::EastAsia;
+		Params.bIncludeInProgressSessions = false;
+		Params.RequiredCustomSettings.Add(TEXT("Mode"), FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
+		Params.RequiredCustomSettings.Add(TEXT("Rounds"), FEasySessionSettingValue::MakeInt(3));
+		Params.RequiredCustomSettings.Add(TEXT("Note"), FEasySessionSettingValue::MakeString(FString()));
+
+		FOnlineSessionSearch Search;
+		Params.ApplyTo(Search);
+
+		int32 Hidden = -1;
+		TestTrue(TEXT("A browse search asks for sessions that are not hidden"), Search.QuerySettings.Get(EasySession::SettingKey_Hidden, Hidden));
+		TestEqual(TEXT("It asks for hidden 0"), Hidden, 0);
+
+		int32 Region = -1;
+		TestTrue(TEXT("The region filter goes to the online subsystem"), Search.QuerySettings.Get(EasySession::SettingKey_Region, Region));
+		TestEqual(TEXT("It asks for the searched region"), Region, static_cast<int32>(EEasySessionRegion::EastAsia));
+
+		int32 InProgress = -1;
+		TestTrue(TEXT("The match state filter goes to the online subsystem"), Search.QuerySettings.Get(EasySession::SettingKey_MatchInProgress, InProgress));
+		TestEqual(TEXT("It asks for sessions whose match has not started"), InProgress, 0);
+
+		const FOnlineSessionSearchParam* Mode = FindParam(Search, TEXT("Mode"));
+		if (TestNotNull(TEXT("A text custom setting goes to the online subsystem"), Mode))
+		{
+			TestEqual(TEXT("It is queried as a string"), Mode->Data.GetType(), EOnlineKeyValuePairDataType::String);
+			TestEqual(TEXT("It asks for the text"), Mode->Data.ToString(), FString(TEXT("Deathmatch")));
+			TestEqual(TEXT("It asks for an equal value"), Mode->ComparisonOp, EOnlineComparisonOp::Equals);
+		}
+
+		const FOnlineSessionSearchParam* Rounds = FindParam(Search, TEXT("Rounds"));
+		if (TestNotNull(TEXT("A number custom setting goes to the online subsystem"), Rounds))
+		{
+			TestEqual(TEXT("It is queried as an Int32, the type it is advertised with"), Rounds->Data.GetType(), EOnlineKeyValuePairDataType::Int32);
+		}
+
+		TestNull(TEXT("Empty text stays out of the query"), FindParam(Search, TEXT("Note")));
+	}
+
+	{
+		FEasySessionSearchParams Params;
+
+		FOnlineSessionSearch Search;
+		Params.ApplyTo(Search);
+
+		TestNull(TEXT("Region Any adds no region condition"), FindParam(Search, EasySession::SettingKey_Region));
+		TestNull(TEXT("Including matches in progress adds no match state condition"), FindParam(Search, EasySession::SettingKey_MatchInProgress));
+	}
+
+	{
+		FEasySessionSearchParams Params;
+		Params.bIncludeHiddenSessions = true;
+
+		FOnlineSessionSearch Search;
+		Params.ApplyTo(Search);
+
+		TestNull(TEXT("A search that includes hidden sessions adds no hidden condition"), FindParam(Search, EasySession::SettingKey_Hidden));
+	}
+
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

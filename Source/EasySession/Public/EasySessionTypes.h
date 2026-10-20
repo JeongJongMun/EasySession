@@ -246,7 +246,7 @@ namespace EasySession
 	/**
 	 * Whether this key is one the plugin writes for itself rather than one the game put in Custom Settings.
 	 * Reserved keys are kept out of Custom Settings in both directions.
-	 * A game that read them back and passed them to Update Easy Session would rewrite them as strings, and the code that reads them as numbers would break.
+	 * A game that read them back and passed them to UpdateSession would write over the values the plugin keeps for itself.
 	 */
 	EASYSESSION_API bool IsReservedSettingKey(FName Key);
 }
@@ -290,6 +290,80 @@ enum class EEasySessionRegion : uint8
 
 	/** Australia and New Zealand. */
 	Oceania
+};
+
+/** The type of a custom setting value, which decides how the session advertises it and how a search compares it. */
+UENUM(BlueprintType)
+enum class EEasySessionSettingType : uint8
+{
+	/** Text. */
+	String,
+
+	/** A whole number. Make Easy Setting (Bool) stores true as 1 and false as 0. */
+	Integer
+};
+
+/**
+ * The value of one custom setting: text or a whole number.
+ * Make it with Make Easy Setting (String), (Int) or (Bool), and read it with Get Easy Setting String, Int or Bool.
+ * Two values are equal only when their types are equal too, so the number 3 and the text "3" do not match.
+ * Text is compared case-sensitively, so a search for "Deathmatch" does not return a session advertising "deathmatch".
+ */
+USTRUCT(BlueprintType)
+struct EASYSESSION_API FEasySessionSettingValue
+{
+	GENERATED_BODY()
+
+	/** @return A value holding this text. */
+	static FEasySessionSettingValue MakeString(const FString& Value);
+
+	/** @return A value holding this whole number. */
+	static FEasySessionSettingValue MakeInt(int32 Value);
+
+	/**
+	 * @return The value the online subsystem holds for a custom setting.
+	 *         A whole number reads back as Integer and anything else as String, so a type another project advertised is kept as its text.
+	 */
+	static FEasySessionSettingValue FromOnlineData(const FVariantData& Data);
+
+	/** @return Whether this value holds text or a whole number. */
+	EEasySessionSettingType GetType() const { return Type; }
+
+	/** @return The text. Read it only when the type is String. */
+	const FString& GetString() const { return StringValue; }
+
+	/** @return The whole number. Read it only when the type is Integer. */
+	int32 GetInt() const { return IntValue; }
+
+	/** @return The value as text whatever its type, for display. */
+	FString ToString() const;
+
+	/** Advertise this value under Key, as text or as a whole number by its type. */
+	void WriteTo(FOnlineSessionSettings& Settings, FName Key) const;
+
+	/** Add a search condition that the setting under Key equals this value. */
+	void WriteQueryTo(FOnlineSearchSettings& QuerySettings, FName Key) const;
+
+	bool operator==(const FEasySessionSettingValue& Other) const;
+	bool operator!=(const FEasySessionSettingValue& Other) const { return !(*this == Other); }
+
+private:
+
+	//~ Not visible to Blueprint, so Blueprint makes a value only with the Make Easy Setting nodes.
+	//~ Editable in the Details panel, which hides the field of the other type.
+	//~ Every function reads only the field of Type, so a field left over from a type change is ignored.
+
+	/** Whether the value is text or a whole number. */
+	UPROPERTY(EditAnywhere, Category = "EasySession")
+	EEasySessionSettingType Type = EEasySessionSettingType::String;
+
+	/** The text, when the type is String. */
+	UPROPERTY(EditAnywhere, Category = "EasySession", meta = (EditCondition = "Type == EEasySessionSettingType::String", EditConditionHides))
+	FString StringValue;
+
+	/** The whole number, when the type is Integer. */
+	UPROPERTY(EditAnywhere, Category = "EasySession", meta = (EditCondition = "Type == EEasySessionSettingType::Integer", EditConditionHides))
+	int32 IntValue = 0;
 };
 
 /**
@@ -378,9 +452,12 @@ struct EASYSESSION_API FEasySessionSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bUseJoinCode = false;
 
-	/** Custom key-value data advertised with the session (e.g. GameMode = Deathmatch). */
+	/**
+	 * Custom key-value data advertised with the session (e.g. GameMode = Deathmatch).
+	 * Make each value with Make Easy Setting (String), (Int) or (Bool).
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	TMap<FString, FString> CustomSettings;
+	TMap<FString, FEasySessionSettingValue> CustomSettings;
 
 	/** @return Whether these settings can be advertised as they stand. */
 	bool IsValid() const;
@@ -477,9 +554,13 @@ struct EASYSESSION_API FEasySessionSearchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession", meta = (ClampMin = 0))
 	int32 MaxPingMs = 0;
 
-	/** Only return sessions whose custom settings match all of these key-value pairs exactly. */
+	/**
+	 * Only return sessions whose custom settings match all of these key-value pairs exactly, type included.
+	 * The online subsystem filters on them, so matching sessions are found however many other sessions exist.
+	 * On NULL (LAN), and for a pair with empty text, the returned results are filtered instead.
+	 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	TMap<FString, FString> RequiredCustomSettings;
+	TMap<FString, FEasySessionSettingValue> RequiredCustomSettings;
 
 	/** Only return sessions advertising this region. Any applies no region filter. */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
@@ -527,6 +608,14 @@ struct EASYSESSION_API FEasySessionSearchParams
 
 	/** @return Whether this search result passes every filter above. */
 	bool ShouldInclude(const FEasySessionSearchResult& Result) const;
+
+	/**
+	 * Add these filters to the online subsystem's query.
+	 * Steam returns at most MaxResults sessions, so a filter applied only to the returned sessions would miss matching sessions it did not return.
+	 * NULL (LAN) ignores the query, so ShouldInclude checks every filter again on the returned results.
+	 * MinOpenSlots, MaxPingMs and a RequiredCustomSettings pair with empty text stay out of the query, because Steam does not filter on them.
+	 */
+	void ApplyTo(FOnlineSessionSearch& OutSearch) const;
 };
 
 /**
@@ -591,9 +680,9 @@ struct EASYSESSION_API FEasySessionSearchResult
 	 */
 	FString JoinCode;
 
-	/** Custom key-value data advertised with the session. */
+	/** Custom key-value data advertised with the session. Read each value with Get Easy Setting String, Int or Bool. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	TMap<FString, FString> CustomSettings;
+	TMap<FString, FEasySessionSettingValue> CustomSettings;
 
 	/** The underlying online subsystem search result. Not exposed to Blueprint. */
 	FOnlineSessionSearchResult NativeResult;
@@ -715,7 +804,7 @@ struct EASYSESSION_API FEasySessionReplicatedSetting
 	FString Key;
 
 	UPROPERTY()
-	FString Value;
+	FEasySessionSettingValue Value;
 
 	bool operator==(const FEasySessionReplicatedSetting& Other) const
 	{

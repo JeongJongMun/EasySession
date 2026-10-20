@@ -40,8 +40,8 @@ namespace EasySessionReservedKeysTest
 		Params.SessionDisplayName = TEXT("EasySession Reserved Keys Test");
 		Params.bIsLANMatch = true;
 		Params.InitialMapName = EasySessionTest::SessionMapName;
-		Params.CustomSettings.Add(TEXT("GameMode"), TEXT("CTF"));
-		Params.CustomSettings.Add(TEXT("Mods"), TEXT("ModA"));
+		Params.CustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("CTF")));
+		Params.CustomSettings.Add(TEXT("Mods"), FEasySessionSettingValue::MakeString(TEXT("ModA")));
 		return Params;
 	}
 }
@@ -159,8 +159,8 @@ bool FEasySessionRunReservedKeySteps::Update()
 /**
  * Reading the host params and passing them back to Update leaves the plugin's own keys alone.
  *
- * The keys are advertised as numbers and CustomSettings is a string map, so a key that leaks into that map comes back as a string.
- * The key stays present, so every reader gets zero instead of a missing key, and the host quietly stops running the reservation beacon.
+ * A reserved key copied into CustomSettings would be written back as the game's own value, over the one the plugin keeps.
+ * The reservations key is one of them, and a wrong value there makes joining players skip the reservation beacon.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionReservedKeysTest, "EasySession.Subsystem.SettingsRoundTripKeepsReservedKeys", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionReservedKeysTest::RunTest(const FString& Parameters)

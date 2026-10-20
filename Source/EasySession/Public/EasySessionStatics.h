@@ -192,6 +192,41 @@ public:
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session")
 	static FEasySessionHostParams MakeEasySessionHostParamsFromSettings(const FEasySessionSettings& Settings, const FString& InitialMapName, bool bIsLANMatch = false);
 
+	/** A custom setting value holding text, for Custom Settings and Required Custom Settings. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (DisplayName = "Make Easy Setting (String)"))
+	static FEasySessionSettingValue MakeEasySettingString(const FString& Value);
+
+	/** A custom setting value holding a whole number, for Custom Settings and Required Custom Settings. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (DisplayName = "Make Easy Setting (Int)"))
+	static FEasySessionSettingValue MakeEasySettingInt(int32 Value);
+
+	/**
+	 * A custom setting value holding true or false, for Custom Settings and Required Custom Settings.
+	 * It is stored as the whole number 1 or 0, because every online subsystem can search on a whole number.
+	 * Get Easy Setting Int reads it too.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (DisplayName = "Make Easy Setting (Bool)"))
+	static FEasySessionSettingValue MakeEasySettingBool(bool Value);
+
+	/** The text a custom setting value holds. Fails and returns empty text when the value holds a whole number. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (ReturnDisplayName = "Success"))
+	static bool GetEasySettingString(const FEasySessionSettingValue& Setting, FString& Value);
+
+	/** The whole number a custom setting value holds. Fails and returns 0 when the value holds text. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (ReturnDisplayName = "Success"))
+	static bool GetEasySettingInt(const FEasySessionSettingValue& Setting, int32& Value);
+
+	/**
+	 * Whether a custom setting value made with Make Easy Setting (Bool) holds true, which is any whole number other than 0.
+	 * Fails when the value holds text.
+	 */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (ReturnDisplayName = "Success"))
+	static bool GetEasySettingBool(const FEasySessionSettingValue& Setting, bool& Value);
+
+	/** A custom setting value as text whatever its type, for showing it in a UI. */
+	UFUNCTION(BlueprintPure, Category = "EasySession|Custom Settings", meta = (DisplayName = "To String (Easy Setting)", CompactNodeTitle = "->", BlueprintAutocast))
+	static FString Conv_EasySettingToString(const FEasySessionSettingValue& Setting);
+
 	/**
 	 * The join code the session of this type advertises, or empty when it advertises none or no such session exists.
 	 * Works for every player in the session, so any of them can share the code.

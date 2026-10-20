@@ -388,7 +388,7 @@ FEasySessionReplicatedSettings FEasySessionHost::MakeReplicatedSettings(const FO
 		{
 			FEasySessionReplicatedSetting Custom;
 			Custom.Key = Setting.Key.ToString();
-			Custom.Value = Setting.Value.Data.ToString();
+			Custom.Value = FEasySessionSettingValue::FromOnlineData(Setting.Value.Data);
 			Payload.CustomSettings.Add(MoveTemp(Custom));
 		}
 	}
