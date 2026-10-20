@@ -374,12 +374,6 @@ FEasySessionReplicatedSettings FEasySessionHost::MakeReplicatedSettings(const FO
 			Setting.Value.Data.GetValue(Protected);
 			Payload.bPasswordProtected = Protected != 0;
 		}
-		else if (Setting.Key == EasySession::SettingKey_Region)
-		{
-			int32 RegionValue = 0;
-			Setting.Value.Data.GetValue(RegionValue);
-			Payload.Region = static_cast<EEasySessionRegion>(RegionValue);
-		}
 		else if (Setting.Key == EasySession::SettingKey_JoinCode)
 		{
 			Setting.Value.Data.GetValue(Payload.JoinCode);

@@ -107,7 +107,6 @@ bool FEasySessionWaitForSettingsPush::Update()
 			Updated.SessionDisplayName = TEXT("Settings Push After");
 			Updated.MaxPlayers = 6;
 			Updated.bHidden = true;
-			Updated.Region = EEasySessionRegion::SouthAmerica;
 			Updated.CustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("Conquest")));
 			Updated.CustomSettings.Add(TEXT("Rounds"), FEasySessionSettingValue::MakeInt(5));
 			State->Step = EStep::AwaitingUpdate;
@@ -128,7 +127,6 @@ bool FEasySessionWaitForSettingsPush::Update()
 			CurrentTest->TestEqual(TEXT("Payload carries the updated display name"), Payload.SessionDisplayName, TEXT("Settings Push After"));
 			CurrentTest->TestEqual(TEXT("Payload carries the updated cap"), Payload.MaxPlayers, 6);
 			CurrentTest->TestTrue(TEXT("Payload carries the hidden flag"), Payload.bHidden);
-			CurrentTest->TestEqual(TEXT("Payload carries the region"), Payload.Region, EEasySessionRegion::SouthAmerica);
 
 			const FEasySessionReplicatedSetting* Custom = Payload.CustomSettings.FindByPredicate(
 				[](const FEasySessionReplicatedSetting& Setting) { return Setting.Key == TEXT("GameMode"); });
@@ -241,7 +239,6 @@ bool FEasySessionWaitForSettingsApply::Update()
 			Payload.MaxPlayers = 8;
 			Payload.bHidden = true;
 			Payload.bPasswordProtected = true;
-			Payload.Region = EEasySessionRegion::SouthAmerica;
 			FEasySessionReplicatedSetting Custom;
 			Custom.Key = TEXT("GameMode");
 			Custom.Value = FEasySessionSettingValue::MakeString(TEXT("Conquest"));
@@ -269,9 +266,6 @@ bool FEasySessionWaitForSettingsApply::Update()
 				Subsystem->GetJoinCode(), TEXT("XYZ234"));
 			CurrentTest->TestEqual(TEXT("The client's hidden flag follows the host"),
 				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_Hidden), 1);
-			CurrentTest->TestEqual(TEXT("The client's region follows the host"),
-				FEasySessionTestAccess::GetAdvertisedSettingInt(*Subsystem, EasySession::SettingKey_Region),
-				static_cast<int32>(EEasySessionRegion::SouthAmerica));
 			const FEasySessionSettings ClientSettings = Subsystem->GetSessionSettings();
 			CurrentTest->TestTrue(TEXT("The client's text setting follows the host"), ClientSettings.CustomSettings.FindRef(TEXT("GameMode")) == FEasySessionSettingValue::MakeString(TEXT("Conquest")));
 			CurrentTest->TestTrue(TEXT("The client reads the number setting as a number"), ClientSettings.CustomSettings.FindRef(TEXT("Rounds")) == FEasySessionSettingValue::MakeInt(5));

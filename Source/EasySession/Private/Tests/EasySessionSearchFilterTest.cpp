@@ -207,7 +207,6 @@ bool FEasySessionSearchQueryTest::RunTest(const FString& Parameters)
 
 	{
 		FEasySessionSearchParams Params;
-		Params.Region = EEasySessionRegion::EastAsia;
 		Params.bIncludeInProgressSessions = false;
 		Params.RequiredCustomSettings.Add(TEXT("Mode"), FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 		Params.RequiredCustomSettings.Add(TEXT("Rounds"), FEasySessionSettingValue::MakeInt(3));
@@ -219,10 +218,6 @@ bool FEasySessionSearchQueryTest::RunTest(const FString& Parameters)
 		int32 Hidden = -1;
 		TestTrue(TEXT("A browse search asks for sessions that are not hidden"), Search.QuerySettings.Get(EasySession::SettingKey_Hidden, Hidden));
 		TestEqual(TEXT("It asks for hidden 0"), Hidden, 0);
-
-		int32 Region = -1;
-		TestTrue(TEXT("The region filter goes to the online subsystem"), Search.QuerySettings.Get(EasySession::SettingKey_Region, Region));
-		TestEqual(TEXT("It asks for the searched region"), Region, static_cast<int32>(EEasySessionRegion::EastAsia));
 
 		int32 InProgress = -1;
 		TestTrue(TEXT("The match state filter goes to the online subsystem"), Search.QuerySettings.Get(EasySession::SettingKey_MatchInProgress, InProgress));
@@ -251,7 +246,6 @@ bool FEasySessionSearchQueryTest::RunTest(const FString& Parameters)
 		FOnlineSessionSearch Search;
 		Params.ApplyTo(Search);
 
-		TestNull(TEXT("Region Any adds no region condition"), FindParam(Search, EasySession::SettingKey_Region));
 		TestNull(TEXT("Including matches in progress adds no match state condition"), FindParam(Search, EasySession::SettingKey_MatchInProgress));
 	}
 

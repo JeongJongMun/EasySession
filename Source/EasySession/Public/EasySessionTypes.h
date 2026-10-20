@@ -200,9 +200,6 @@ namespace EasySession
 	/** Custom session setting key marking a password protected session. The password itself is never advertised. */
 	EASYSESSION_API extern const FName SettingKey_PasswordProtected;
 
-	/** Custom session setting key holding the advertised region, as an EEasySessionRegion value. */
-	EASYSESSION_API extern const FName SettingKey_Region;
-
 	/** Custom session setting key marking a session whose match is in progress. Kept current by Start and End. */
 	EASYSESSION_API extern const FName SettingKey_MatchInProgress;
 
@@ -253,44 +250,6 @@ namespace EasySession
 
 /** Native delegate fired before a travel URL is used, so C++ code can change it in place. */
 DECLARE_MULTICAST_DELEGATE_OneParam(FEasyModifyTravelURLDelegate, FString& /*TravelURL*/);
-
-/**
- * Coarse world regions a session can advertise and a search can filter by, sized so that players in one region have playable latency.
- * A game that needs its own split (country servers, one home region) leaves this at Any and filters with a Custom Settings key instead.
- */
-UENUM(BlueprintType)
-enum class EEasySessionRegion : uint8
-{
-	/** No region: the session matches only searches that do not filter by region. */
-	Any,
-
-	/** USA and Canada, eastern half. */
-	NorthAmericaEast UMETA(DisplayName = "North America East"),
-
-	/** USA and Canada, western half. */
-	NorthAmericaWest UMETA(DisplayName = "North America West"),
-
-	/** South and Central America. */
-	SouthAmerica UMETA(DisplayName = "South America"),
-
-	/** Europe. */
-	Europe,
-
-	/** Middle East and Africa. */
-	MiddleEastAfrica UMETA(DisplayName = "Middle East & Africa"),
-
-	/** India and its neighbors. */
-	SouthAsia UMETA(DisplayName = "South Asia"),
-
-	/** Singapore and its neighbors. */
-	SoutheastAsia UMETA(DisplayName = "Southeast Asia"),
-
-	/** Korea, Japan, Hong Kong. */
-	EastAsia UMETA(DisplayName = "East Asia"),
-
-	/** Australia and New Zealand. */
-	Oceania
-};
 
 /** The type of a custom setting value, which decides how the session advertises it and how a search compares it. */
 UENUM(BlueprintType)
@@ -439,10 +398,6 @@ struct EASYSESSION_API FEasySessionSettings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	bool bAllowInvites = true;
 
-	/** The region advertised with the session. Searches filtering by region only see sessions advertising the same one. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	EEasySessionRegion Region = EEasySessionRegion::Any;
-
 	/**
 	 * Whether the session advertises a generated join code, readable with Get Easy Join Code.
 	 * The code is as long as Join Code Length in the EasySession project settings, 6 characters by default.
@@ -562,10 +517,6 @@ struct EASYSESSION_API FEasySessionSearchParams
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
 	TMap<FString, FEasySessionSettingValue> RequiredCustomSettings;
 
-	/** Only return sessions advertising this region. Any applies no region filter. */
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, AdvancedDisplay, Category = "EasySession")
-	EEasySessionRegion Region = EEasySessionRegion::Any;
-
 	/**
 	 * Whether sessions whose match already started are returned.
 	 * Sessions that refuse join-in-progress stop being advertised once their match starts, so they never appear either way.
@@ -657,10 +608,6 @@ struct EASYSESSION_API FEasySessionSearchResult
 
 	/** Whether the session is hidden from searches. Hidden sessions are filtered out of Find results, so Blueprint never receives one. */
 	bool bIsHidden = false;
-
-	/** The region the session advertises. */
-	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
-	EEasySessionRegion Region = EEasySessionRegion::Any;
 
 	/** Whether the session's match is in progress right now. */
 	UPROPERTY(BlueprintReadOnly, Category = "EasySession")
@@ -848,9 +795,6 @@ struct EASYSESSION_API FEasySessionReplicatedSettings
 	bool bPasswordProtected = false;
 
 	UPROPERTY()
-	EEasySessionRegion Region = EEasySessionRegion::Any;
-
-	UPROPERTY()
 	TArray<FEasySessionReplicatedSetting> CustomSettings;
 
 	/** Whether the host wrote this payload. False on the property's defaults. */
@@ -867,7 +811,6 @@ struct EASYSESSION_API FEasySessionReplicatedSettings
 			&& bAllowInvites == Other.bAllowInvites
 			&& bHidden == Other.bHidden
 			&& bPasswordProtected == Other.bPasswordProtected
-			&& Region == Other.Region
 			&& CustomSettings == Other.CustomSettings
 			&& bValid == Other.bValid;
 	}

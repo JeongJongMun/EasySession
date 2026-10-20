@@ -14,7 +14,6 @@ namespace EasySession
 	const FName SettingKey_DisplayName = TEXT("EASYDISPLAYNAME");
 	const FName SettingKey_Hidden = TEXT("EASYHIDDEN");
 	const FName SettingKey_PasswordProtected = TEXT("EASYPASSWORDPROTECTED");
-	const FName SettingKey_Region = TEXT("EASYREGION");
 	const FName SettingKey_MatchInProgress = TEXT("EASYINPROGRESS");
 	const FName SettingKey_JoinCode = TEXT("EASYJOINCODE");
 	const FName SettingKey_Reservations = TEXT("EASYRESERVATIONS");
@@ -38,7 +37,6 @@ namespace EasySession
 		return Key == SettingKey_DisplayName
 			|| Key == SettingKey_Hidden
 			|| Key == SettingKey_PasswordProtected
-			|| Key == SettingKey_Region
 			|| Key == SettingKey_MatchInProgress
 			|| Key == SettingKey_JoinCode
 			|| Key == SettingKey_Reservations
@@ -201,12 +199,6 @@ void FEasySessionSettings::ReadFrom(const FOnlineSessionSettings& Settings)
 			Setting.Value.Data.GetValue(Hidden);
 			bHidden = Hidden != 0;
 		}
-		else if (Setting.Key == EasySession::SettingKey_Region)
-		{
-			int32 RegionValue = 0;
-			Setting.Value.Data.GetValue(RegionValue);
-			Region = static_cast<EEasySessionRegion>(RegionValue);
-		}
 		else if (Setting.Key == EasySession::SettingKey_JoinCode)
 		{
 			FString JoinCode;
@@ -230,7 +222,6 @@ void FEasySessionSettings::ApplyTo(FOnlineSessionSettings& OutSettings) const
 	// Every key is written even at its default value, because an advertised key cannot be deleted later.
 	OutSettings.Set(EasySession::SettingKey_DisplayName, SessionDisplayName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 	OutSettings.Set(EasySession::SettingKey_Hidden, bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-	OutSettings.Set(EasySession::SettingKey_Region, static_cast<int32>(Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	// Only the flag is advertised, and the host keeps the password.
 	// A whitespace-only password counts as none in both.
@@ -294,10 +285,6 @@ bool FEasySessionSearchParams::ShouldInclude(const FEasySessionSearchResult& Res
 	{
 		return false;
 	}
-	if (Region != EEasySessionRegion::Any && Result.Region != Region)
-	{
-		return false;
-	}
 	if (!bIncludeInProgressSessions && Result.bMatchInProgress)
 	{
 		return false;
@@ -353,10 +340,6 @@ void FEasySessionSearchParams::ApplyTo(FOnlineSessionSearch& OutSearch) const
 	{
 		Query.Set(EasySession::SettingKey_Hidden, 0, EOnlineComparisonOp::Equals);
 	}
-	if (Region != EEasySessionRegion::Any)
-	{
-		Query.Set(EasySession::SettingKey_Region, static_cast<int32>(Region), EOnlineComparisonOp::Equals);
-	}
 	if (!bIncludeInProgressSessions)
 	{
 		Query.Set(EasySession::SettingKey_MatchInProgress, 0, EOnlineComparisonOp::Equals);
@@ -407,12 +390,6 @@ FEasySessionSearchResult FEasySessionSearchResult::FromNative(const FOnlineSessi
 			int32 Protected = 0;
 			Setting.Value.Data.GetValue(Protected);
 			Result.bPasswordProtected = Protected != 0;
-		}
-		else if (Setting.Key == EasySession::SettingKey_Region)
-		{
-			int32 RegionValue = 0;
-			Setting.Value.Data.GetValue(RegionValue);
-			Result.Region = static_cast<EEasySessionRegion>(RegionValue);
 		}
 		else if (Setting.Key == EasySession::SettingKey_JoinCode)
 		{

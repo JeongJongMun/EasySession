@@ -46,16 +46,4 @@ public:
 	/** The occupancy line of a search result, e.g. "1/4   ping 32ms". Players are Max Players minus Open Slots. */
 	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
 	static FText FormatSessionSlots(const FEasySessionSearchResult& Result);
-
-	/** The region's display name, e.g. "North America East". */
-	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
-	static FText GetRegionDisplayName(EEasySessionRegion Region);
-
-	/** Every region's display name in enum order, ready for a combo box. Region From Index maps the selection back. */
-	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
-	static TArray<FText> GetRegionOptions();
-
-	/** The region at a combo box index from Get Region Options. Out of range indices give Any. */
-	UFUNCTION(BlueprintPure, Category = "EasySession|UI")
-	static EEasySessionRegion RegionFromIndex(int32 Index);
 };

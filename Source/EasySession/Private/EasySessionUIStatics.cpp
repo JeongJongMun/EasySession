@@ -95,49 +95,4 @@ FText UEasySessionUIStatics::FormatSessionSlots(const FEasySessionSearchResult& 
 		FText::AsNumber(Players), FText::AsNumber(Result.MaxPlayers), FText::AsNumber(Result.PingInMs));
 }
 
-FText UEasySessionUIStatics::GetRegionDisplayName(EEasySessionRegion Region)
-{
-	// The enum's DisplayName metadata is read only in the editor, so a packaged game would show the raw names.
-	switch (Region)
-	{
-		case EEasySessionRegion::NorthAmericaEast: return LOCTEXT("Region_NorthAmericaEast", "North America East");
-		case EEasySessionRegion::NorthAmericaWest: return LOCTEXT("Region_NorthAmericaWest", "North America West");
-		case EEasySessionRegion::SouthAmerica: return LOCTEXT("Region_SouthAmerica", "South America");
-		case EEasySessionRegion::Europe: return LOCTEXT("Region_Europe", "Europe");
-		case EEasySessionRegion::MiddleEastAfrica: return LOCTEXT("Region_MiddleEastAfrica", "Middle East & Africa");
-		case EEasySessionRegion::SouthAsia: return LOCTEXT("Region_SouthAsia", "South Asia");
-		case EEasySessionRegion::SoutheastAsia: return LOCTEXT("Region_SoutheastAsia", "Southeast Asia");
-		case EEasySessionRegion::EastAsia: return LOCTEXT("Region_EastAsia", "East Asia");
-		case EEasySessionRegion::Oceania: return LOCTEXT("Region_Oceania", "Oceania");
-		case EEasySessionRegion::Any:
-		default:
-			return LOCTEXT("Region_Any", "Any");
-	}
-}
-
-TArray<FText> UEasySessionUIStatics::GetRegionOptions()
-{
-	const UEnum* Enum = StaticEnum<EEasySessionRegion>();
-	TArray<FText> Options;
-
-	// The last entry is the hidden _MAX the engine appends.
-	const int32 Count = Enum->NumEnums() - 1;
-	Options.Reserve(Count);
-	for (int32 Index = 0; Index < Count; ++Index)
-	{
-		Options.Add(GetRegionDisplayName(static_cast<EEasySessionRegion>(Enum->GetValueByIndex(Index))));
-	}
-	return Options;
-}
-
-EEasySessionRegion UEasySessionUIStatics::RegionFromIndex(int32 Index)
-{
-	const UEnum* Enum = StaticEnum<EEasySessionRegion>();
-	if (Index < 0 || Index >= Enum->NumEnums() - 1)
-	{
-		return EEasySessionRegion::Any;
-	}
-	return static_cast<EEasySessionRegion>(Enum->GetValueByIndex(Index));
-}
-
 #undef LOCTEXT_NAMESPACE

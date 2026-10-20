@@ -23,7 +23,6 @@ bool FEasySessionHostParamsFromSettingsTest::RunTest(const FString& Parameters)
 	Settings.bFriendsBypassPassword = true;
 	Settings.bAllowJoinInProgress = false;
 	Settings.bAllowInvites = false;
-	Settings.Region = EEasySessionRegion::EastAsia;
 	Settings.bUseJoinCode = true;
 	Settings.CustomSettings.Add(TEXT("Mode"), FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 
@@ -37,7 +36,6 @@ bool FEasySessionHostParamsFromSettingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Friends bypass password"), HostParams.bFriendsBypassPassword, Settings.bFriendsBypassPassword);
 	TestEqual(TEXT("Allow join in progress"), HostParams.bAllowJoinInProgress, Settings.bAllowJoinInProgress);
 	TestEqual(TEXT("Allow invites"), HostParams.bAllowInvites, Settings.bAllowInvites);
-	TestEqual(TEXT("Region"), HostParams.Region, Settings.Region);
 	TestEqual(TEXT("Use join code"), HostParams.bUseJoinCode, Settings.bUseJoinCode);
 	TestTrue(TEXT("Custom setting"), HostParams.CustomSettings.FindRef(TEXT("Mode")) == FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 	TestEqual(TEXT("Initial map"), HostParams.InitialMapName, FString(TEXT("/Game/Maps/Lobby")));

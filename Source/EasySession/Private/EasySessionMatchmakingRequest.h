@@ -97,7 +97,7 @@ private:
 	/** Host a session as a sub-request, because no session could be joined. */
 	void HostFallbackSession();
 
-	/** @return The run's host params with the search's LAN flag, region and required custom settings copied in, and the password and hidden flag cleared. */
+	/** @return The run's host params with the search's LAN flag and required custom settings copied in, and the password and hidden flag cleared. */
 	FEasySessionHostParams MakeFallbackHostParams() const;
 
 	/** The fallback host completed. */

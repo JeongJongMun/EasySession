@@ -479,7 +479,6 @@ bool FEasySessionPartyAdmissionStep::Update()
 			// The game session filters a game may pass along are ignored, because a party advertises none of them.
 			FEasySessionSearchParams Search;
 			Search.bLANQuery = true;
-			Search.Region = EEasySessionRegion::Europe;
 			Search.RequiredCustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("CTF")));
 			Search.bIncludeInProgressSessions = false;
 			Subsystem->FindSessions(EEasySessionType::PartySession, Search, MakeFindCallback(State));

@@ -32,8 +32,7 @@ public:
 	 * Its Session Display Name is the party's name, which is the host's name unless the host set one.
 	 *
 	 * @param Type The game sessions or the party sessions to search for.
-	 *        A party advertises no region, custom settings or session state.
-	 *        A party search ignores Region, Required Custom Settings and Include In Progress Sessions.
+	 *        A party search ignores Required Custom Settings and Include In Progress Sessions, so the search params used for game sessions work here too.
 	 * @param SearchParams Parameters describing what to search for.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "EasySession", DisplayName = "Find Easy Sessions", meta = (BlueprintInternalUseOnly = "true", WorldContext = "WorldContextObject", AutoCreateRefTerm = "SearchParams"))

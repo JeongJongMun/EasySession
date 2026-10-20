@@ -230,7 +230,7 @@ public:
 	 * A party search lists the parties that are not hidden, and with a join code it finds the party that advertises it, hidden or not.
 	 *
 	 * @param Type The game sessions or the party sessions to search for.
-	 *        A party advertises no region, custom settings or session state, so a party search ignores those filters.
+	 *        A party search ignores Required Custom Settings and Include In Progress Sessions, so a game can pass the search params it uses for game sessions.
 	 * @param SearchParams Parameters describing what to search for.
 	 * @param OnComplete Called with the filtered results when the search completes.
 	 */

@@ -167,7 +167,6 @@ bool FEasyMatchmakingWaitFallbackFilters::Update()
 		CurrentTest->TestTrue(TEXT("The filtered key overwrote the host value"), ReadBack.CustomSettings.FindRef(TEXT("GameMode")) == FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 		CurrentTest->TestTrue(TEXT("The filter-only key was added"), ReadBack.CustomSettings.FindRef(TEXT("Region")) == FEasySessionSettingValue::MakeString(TEXT("KR")));
 		CurrentTest->TestTrue(TEXT("The host-only key survived"), ReadBack.CustomSettings.FindRef(TEXT("MOTD")) == FEasySessionSettingValue::MakeString(TEXT("Hello")));
-		CurrentTest->TestEqual(TEXT("The fallback session advertises the searched region"), ReadBack.Region, EEasySessionRegion::EastAsia);
 		CurrentTest->TestFalse(TEXT("The fallback session advertises no password"), FEasySessionTestAccess::GetAdvertisedPasswordProtected(*Subsystem));
 		CurrentTest->TestFalse(TEXT("The fallback session is not hidden"), ReadBack.bHidden);
 
@@ -219,7 +218,6 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 	Params.Search.bLANQuery = true;
 	Params.Search.RequiredCustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
 	Params.Search.RequiredCustomSettings.Add(TEXT("Region"), FEasySessionSettingValue::MakeString(TEXT("KR")));
-	Params.Search.Region = EEasySessionRegion::EastAsia;
 	Params.Host.SessionDisplayName = TEXT("EasySession Fallback Filters Test");
 	// On purpose: the search filter must win over this stale host value.
 	Params.Host.CustomSettings.Add(TEXT("GameMode"), FEasySessionSettingValue::MakeString(TEXT("Warmup")));
@@ -247,7 +245,6 @@ bool FEasyMatchmakingFallbackFiltersTest::RunTest(const FString& Parameters)
 		const FEasySessionHostParams Folded = FEasySessionTestAccess::MakeMatchmakingFallbackHostParams(*Subsystem);
 		TestTrue(TEXT("The LAN search pulls the fallback onto the LAN"), Folded.bIsLANMatch);
 		TestTrue(TEXT("The folded params carry the filtered value"), Folded.CustomSettings.FindRef(TEXT("GameMode")) == FEasySessionSettingValue::MakeString(TEXT("Deathmatch")));
-		TestEqual(TEXT("The folded params carry the searched region"), Folded.Region, EEasySessionRegion::EastAsia);
 		TestTrue(TEXT("The folded params drop the host password"), Folded.Password.IsEmpty());
 		TestFalse(TEXT("The folded params are not hidden"), Folded.bHidden);
 		TestTrue(TEXT("The folded params are advertised"), Folded.bShouldAdvertise);

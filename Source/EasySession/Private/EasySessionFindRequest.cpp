@@ -31,11 +31,10 @@ void FEasySessionFindRequest::Execute()
 		return;
 	}
 
-	// A party advertises no region, custom settings or match state, so these game session filters would exclude every party.
+	// A party has no match state and usually lacks the game's custom keys, so these game session filters would exclude it.
 	// Ignoring them lets a game pass the search params it uses for game sessions.
 	if (IsPartySearch())
 	{
-		SearchParams.Region = EEasySessionRegion::Any;
 		SearchParams.RequiredCustomSettings.Reset();
 		SearchParams.bIncludeInProgressSessions = true;
 	}

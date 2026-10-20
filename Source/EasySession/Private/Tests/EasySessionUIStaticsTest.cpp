@@ -9,9 +9,9 @@
 
 /**
  * The UI helpers are pure text functions, so they are checked without a session.
- * Every result must have a sentence of its own, the region helpers must agree with the enum, and the formats must read as the row shows them.
+ * Every result must have a sentence of its own, and the formats must read as the row shows them.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionUIStaticsTest, "EasySession.UI.HelpersCoverEveryResultAndRegion", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionUIStaticsTest, "EasySession.UI.HelpersCoverEveryResult", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionUIStaticsTest::RunTest(const FString& Parameters)
 {
 	// Every result gets a non-empty sentence, and no two results share one apart from the unknown fallback.
@@ -58,23 +58,6 @@ bool FEasySessionUIStaticsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Slots line"), UEasySessionUIStatics::FormatSessionSlots(Result).ToString(), FString(TEXT("1/4   ping 32ms")));
 	Result.OpenSlots = 9;
 	TestEqual(TEXT("Stale open count clamps to zero players"), UEasySessionUIStatics::FormatSessionSlots(Result).ToString(), FString(TEXT("0/4   ping 32ms")));
-
-	// Region options mirror the enum, and the index round-trips.
-	const UEnum* RegionEnum = StaticEnum<EEasySessionRegion>();
-	const TArray<FText> Options = UEasySessionUIStatics::GetRegionOptions();
-	TestEqual(TEXT("One option per region"), Options.Num(), RegionEnum->NumEnums() - 1);
-	for (int32 Index = 0; Index < Options.Num(); ++Index)
-	{
-		const EEasySessionRegion Region = UEasySessionUIStatics::RegionFromIndex(Index);
-		TestEqual(FString::Printf(TEXT("Option %d names its region"), Index), Options[Index].ToString(), UEasySessionUIStatics::GetRegionDisplayName(Region).ToString());
-
-		// In the editor the enum still reads its DisplayName metadata, so every region needs the same text in the table packaged games use.
-		TestEqual(FString::Printf(TEXT("Region %d matches its enum display name"), Index),
-			UEasySessionUIStatics::GetRegionDisplayName(Region).ToString(), RegionEnum->GetDisplayNameTextByIndex(Index).ToString());
-	}
-	TestEqual(TEXT("North America East display name"), UEasySessionUIStatics::GetRegionDisplayName(EEasySessionRegion::NorthAmericaEast).ToString(), FString(TEXT("North America East")));
-	TestEqual(TEXT("Out of range index falls back to Any"), UEasySessionUIStatics::RegionFromIndex(Options.Num() + 3), EEasySessionRegion::Any);
-	TestEqual(TEXT("Negative index falls back to Any"), UEasySessionUIStatics::RegionFromIndex(-1), EEasySessionRegion::Any);
 
 	return true;
 }

@@ -638,7 +638,6 @@ void UEasySessionSubsystem::HandleReplicatedSessionSettings(const FEasySessionRe
 		Local.Set(EasySession::SettingKey_JoinCode, Settings.JoinCode, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 		Local.Set(EasySession::SettingKey_Hidden, Settings.bHidden ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 		Local.Set(EasySession::SettingKey_PasswordProtected, Settings.bPasswordProtected ? 1 : 0, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
-		Local.Set(EasySession::SettingKey_Region, static_cast<int32>(Settings.Region), EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 		// Replace the custom settings wholesale, so a key the host removed disappears here too.
 		for (auto It = Local.Settings.CreateIterator(); It; ++It)

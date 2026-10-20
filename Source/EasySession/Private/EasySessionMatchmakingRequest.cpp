@@ -339,10 +339,6 @@ FEasySessionHostParams FEasySessionMatchmakingRequest::MakeFallbackHostParams() 
 	FEasySessionHostParams FallbackParams = Params.Host;
 	FallbackParams.bIsLANMatch = Params.Search.bLANQuery;
 	FallbackParams.CustomSettings.Append(Params.Search.RequiredCustomSettings);
-	if (Params.Search.Region != EEasySessionRegion::Any)
-	{
-		FallbackParams.Region = Params.Search.Region;
-	}
 
 	// The fallback session is public, so players running the same search can find and join it.
 	FallbackParams.Password.Empty();
