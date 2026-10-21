@@ -46,13 +46,14 @@ create screens and on the in-game menu, `MatchMap` on the lobby. Point them at y
 | `Screens/WBP_CreateSessionScreen` | The settings form, the LAN toggle and CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
 | `Screens/WBP_FindScreen` | The browser in session or party mode | None of its own: it passes the browser's join request up |
 | `Screens/WBP_CreatePartyScreen` | Name, max players, hidden and join code of a new party, and CREATE PARTY | Make Easy Session Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
-| `Modules/WBP_SessionSettingsForm` | The session settings inputs, shared by Create Session and the update popup | Make Easy Session Settings (GetSettings), Break Easy Session Settings (SetSettings) |
-| `Modules/WBP_SessionBrowser` | Finds sessions or parties with the Public, Friends and Code tabs. The mode picks the Type pin of every search | Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); Find Easy Sessions with the friend as Friend Id (OnFriendJoinRequested ResultList); Find Easy Sessions by join code (OnClicked CodeSearchButton) |
+| `Modules/WBP_SessionSettingsForm` | The session settings inputs, shared by Create Session and the update popup. The game mode is the custom setting example | Make Easy Session Settings, Make Easy Setting (String) (GetSettings); Break Easy Session Settings, Get Easy Setting String (SetSettings) |
+| `Modules/WBP_SessionBrowser` | Finds sessions or parties with the Public, Friends and Code tabs. The mode picks the Type pin of every search | Make Easy Setting (String) for the game mode filter (BuildSearchParams); Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); Find Easy Sessions with the friend as Friend Id (OnFriendJoinRequested ResultList); Find Easy Sessions by join code (OnClicked CodeSearchButton) |
+| `Modules/WBP_SessionRow` | One search result: name, host, players, game mode badge and JOIN | Format Session Slots, To String (Easy Setting) (InitRow) |
 | `Modules/WBP_PartyCard` | The local party: create, find, ready and leave | Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty) |
 | `Modules/WBP_PartyMemberList` | The party members. An open slot opens the invite overlay, a member opens their profile | Get Easy Party Members (RefreshMemberList); Show Easy Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
 | `Screens/WBP_LobbyScreen` | The lobby: ready, start the match, session settings, leave | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
 | `Modules/WBP_SessionPlayerList` | The session players, with the same open slot and profile clicks | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
-| `Modules/WBP_SessionInfo` | The session settings at a glance | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State (RefreshSessionInfo) |
+| `Modules/WBP_SessionInfo` | The session settings at a glance, with every custom setting | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State, To String (Easy Setting) (RefreshSessionInfo) |
 | `Modules/WBP_SessionStatus` | The status line | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
 | `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | The match and its Esc menu: leave, return to the lobby, end the session | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (Event Graph of WBP_InGameMenu) |
 | `Popups/WBP_UpdateSessionPopup` | Changes the session settings from the lobby | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
@@ -147,5 +148,6 @@ searches and joins.
 - [Steam setup](Setup-Steam.en.md) - the two plugins and the ini block internet play needs
 - [Session guide](Guide-Sessions.en.md) - custom session data, filters, passwords, updating sessions
 - [Matchmaking guide](Guide-Matchmaking.en.md) - how Matchmaking picks a session, custom scoring
+- [Party guide](Guide-Party.en.md) - parties, invites, and taking the party into a session
 - [API reference](API.en.md) - every node, query, struct and setting
 - [FAQ](FAQ.en.md) - the problems people run into

@@ -2,7 +2,7 @@
 
 *[한국어](Guide-Matchmaking.ko.md)*
 
-`Start Easy Matchmaking` is the one-node path into a game: **search -> join the best session -> host a new one if nothing is found**.
+`Start Easy Matchmaking` is the one-node path into a game: **search -> join the best session -> host a new one if nothing is found and Allow Host Fallback is on**.
 
 ## Parameters (`FEasyMatchmakingParams`)
 
@@ -12,7 +12,7 @@
 | Host | (defaults) | Used when falling back to hosting. Initial Map Name is covered below |
 | Allow Host Fallback | false | The default only searches and joins, failing with `NoSessionsFound` when nothing is there, or with the search's own result such as `SearchFailure` when the search itself failed. A run that found sessions but was refused by them ends with the host's reason for the last one, such as `JoinSessionFull`. Turn it on to host instead |
 | Max Search Passes | 3 | How many search passes to run before giving up or hosting. 3 means three searches |
-| Delay Between Passes | 2.0s | How long to rest before the next search |
+| Delay Between Passes Seconds | 2.0 | How long to rest before the next search |
 
 ### Host > Initial Map Name
 
@@ -22,7 +22,7 @@ With `Allow Host Fallback` on and Initial Map Name empty, matchmaking fails with
 before the first search.
 
 `Allow Host Fallback` is off by default, so Initial Map Name does not matter until you turn it on.
-The bundled example leaves it off and only searches and joins.
+The bundled example turns it on, so its Quick Match button hosts a session when it finds none.
 
 When the fallback does host, it inherits the search's filters: the session is created on
 the network the search looked at (`LAN Query`), and every `Required Custom Settings` pair
@@ -102,7 +102,7 @@ Example - prefer sessions running your favorite mode, on top of the default beha
 ```
 Override ScoreSession:
     base = Parent: ScoreSession(Session)
-    if Session.CustomSettings["GameMode"] == "CTF": return base + 50
+    if GetEasySettingString(Session.CustomSettings["GameMode"]) == "CTF": return base + 50
     return base
 ```
 

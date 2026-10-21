@@ -2,7 +2,7 @@
 
 *[English](QuickStart.en.md)*
 
-빈 프로젝트에서 두 게임 인스턴스가 LAN으로 함께 플레이하는 데까지, 블루프린트만으로 갑니다. C++도, 설정 파일을 직접 고칠 일도 없습니다.
+이 가이드는 블루프린트만으로, 빈 프로젝트에서 게임 두 개가 LAN으로 함께 플레이하는 데까지 안내합니다. C++도, 설정 파일을 직접 고칠 일도 없습니다.
 
 ## 1. 플러그인 켜기
 
@@ -16,26 +16,26 @@
 
 ## 2. 먼저 예제를 실행해보기
 
-플러그인에 메인 메뉴, 로비, 매치가 완성된 예제가 들어 있습니다. 첫 노드를 배선하는 것보다
-빠르고, 완성된 흐름이 어떤 모습인지 보여줍니다.
+플러그인에 메인 메뉴, 로비, 매치가 완성된 예제가 들어 있습니다. 노드를 직접 연결해 보는 것보다
+빠르고, 완성된 흐름을 바로 볼 수 있습니다.
 
 1. 콘텐츠 브라우저에서 **Settings -> Show Plugin Content**를 켭니다.
 2. **Project Settings -> Maps & Modes -> Game Default Map**을 `L_Example_MainMenu`로
    설정합니다. 세션을 나가거나 연결이 끊기면 플레이어는 Game Default Map으로
-   돌아옵니다. 예제 메뉴를 가리켜야 왕복이 출발한 곳에서 끝납니다. 나중에 자기
-   게임에서도 같은 원리입니다 - 메뉴 맵이 이 자리에 들어갑니다.
-3. `/EasySession/Examples/Maps/L_Example_MainMenu`을 엽니다.
+   돌아옵니다. 예제 메뉴로 지정해 두어야 세션을 나왔을 때 메뉴로 돌아옵니다. 직접 만든
+   게임에서도 같아서, 여기에는 메뉴 맵을 지정합니다.
+3. `/EasySession/Examples/Maps/L_Example_MainMenu`를 엽니다.
 4. [6단계](#6-pie로-테스트하기)대로 플레이어를 2명으로 맞추고 Play를 누릅니다.
 5. 한쪽 창에서 **CREATE SESSION**을 눌러 세션을 만듭니다. 다른 창에서 **FIND SESSIONS**, **SEARCH**, **JOIN** 순서로 누릅니다.
 
 이 예제를 구성하는 위젯은 `/EasySession/Examples/UI/`에 있습니다. 위젯마다 한 가지 일을 맡고
 그 일에 필요한 노드를 직접 부르므로, 아래 표에 적힌 그래프를 열면 그 노드가 바로 보입니다.
 `WBP_MainMenu`는 Widget Switcher에 화면 네 개를 담고 팝업을 띄우는 일만 합니다. 화면 아래 상태 줄은
-`Modules/WBP_SessionStatus`입니다. 누가 시작했든 지금 도는 요청을 서술하는 위젯이라 세션 진행을
-보여줄 화면 어디에나 올려놓으면 됩니다.
+`Modules/WBP_SessionStatus`입니다. 누가 시작했든 지금 진행 중인 요청을 보여 주는 위젯이라, 세션 진행 상황을
+보여 줄 화면 어디에나 올려 두면 됩니다.
 
-세션에 반응하는 위젯은 모두 부모 클래스가 `EasySessionWidget`이라, 플러그인 이벤트가 Assign 노드 없이
-오버라이드 이벤트로 들어옵니다. 예제가 이동하는 맵은 **EasySessionExample** 카테고리의 변수입니다.
+세션에 반응하는 위젯은 모두 부모 클래스가 `EasySessionWidget`이라, Assign 노드 없이 플러그인 이벤트를
+오버라이드 이벤트로 받을 수 있습니다. 예제가 이동하는 맵은 **EasySessionExample** 카테고리의 변수입니다.
 홈 화면, 세션 생성 화면, 인게임 메뉴의 `LobbyMap`과 로비의 `MatchMap`을 자기 맵으로 바꾸면 됩니다.
 
 | 위젯 | 하는 일 | 플러그인 노드와 그것을 부르는 그래프 |
@@ -45,20 +45,21 @@
 | `Screens/WBP_CreateSessionScreen` | 설정 폼, LAN 토글, CREATE SESSION | Create Easy Session (OnClicked CreateConfirmButton); Make Easy Session Host Params From Settings (BuildHostParams) |
 | `Screens/WBP_FindScreen` | 세션 모드와 파티 모드의 브라우저 | 자체 노드 없음. 브라우저의 참가 요청을 위로 넘깁니다 |
 | `Screens/WBP_CreatePartyScreen` | 새 파티의 이름, 최대 인원, 숨김, 참가 코드, 그리고 CREATE PARTY | Make Easy Session Settings (GetPartySettings); Create Easy Party (OnClicked CreatePartyConfirmButton) |
-| `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다 | Make Easy Session Settings (GetSettings), Break Easy Session Settings (SetSettings) |
-| `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭으로 세션이나 파티를 찾습니다. 모드가 모든 검색의 Type 핀을 정합니다 | Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); 친구를 Friend Id로 넣은 Find Easy Sessions (OnFriendJoinRequested ResultList); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
+| `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다. 게임 모드가 커스텀 세팅 예시입니다 | Make Easy Session Settings, Make Easy Setting (String) (GetSettings); Break Easy Session Settings, Get Easy Setting String (SetSettings) |
+| `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭으로 세션이나 파티를 찾습니다. 모드가 모든 검색의 Type 핀을 정합니다 | 게임 모드 필터용 Make Easy Setting (String) (BuildSearchParams); Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); 친구를 Friend Id로 넣은 Find Easy Sessions (OnFriendJoinRequested ResultList); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
+| `Modules/WBP_SessionRow` | 검색 결과 한 줄: 이름, 호스트, 인원, 게임 모드 배지, JOIN | Format Session Slots, To String (Easy Setting) (InitRow) |
 | `Modules/WBP_PartyCard` | 내 파티: 만들기, 찾기, 준비, 나가기 | Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty) |
 | `Modules/WBP_PartyMemberList` | 파티 멤버. 빈 자리를 누르면 초대 오버레이, 멤버를 누르면 프로필이 열립니다 | Get Easy Party Members (RefreshMemberList); Show Easy Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
 | `Screens/WBP_LobbyScreen` | 로비: 준비, 매치 시작, 세션 설정, 나가기 | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
 | `Modules/WBP_SessionPlayerList` | 세션 플레이어. 빈 자리와 프로필 클릭은 파티 목록과 같습니다 | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
-| `Modules/WBP_SessionInfo` | 세션 설정을 한눈에 | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State (RefreshSessionInfo) |
+| `Modules/WBP_SessionInfo` | 세션 설정과 모든 커스텀 세팅을 한눈에 | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State, To String (Easy Setting) (RefreshSessionInfo) |
 | `Modules/WBP_SessionStatus` | 상태 줄 | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
 | `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | 매치와 Esc 메뉴: 나가기, 로비로 돌아가기, 세션 끝내기 | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (WBP_InGameMenu의 Event Graph) |
 | `Popups/WBP_UpdateSessionPopup` | 로비에서 세션 설정을 바꿉니다 | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
 | `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | 비밀번호 입력, 그리고 지난 세션이나 파티가 끝난 이유 | 플러그인 노드 없음. 받은 비밀번호로 메인 메뉴가 Join Easy Session을 부릅니다 (OnPasswordSubmitted) |
 
 `Common/`에는 플러그인 노드를 쓰지 않는 부품이 있습니다. 메뉴 버튼, 패널 헤더, 팝업 프레임, 정보 행,
-입력 위젯들입니다. 화면의 모양을 맞추려고 있는 것이라 읽을 내용은 없습니다. 파티를 쓰지 않는
+입력 위젯들입니다. 화면 모양을 맞추려고 둔 것이라 따로 볼 내용은 없습니다. 파티를 쓰지 않는
 게임은 메인 메뉴에서 `WBP_PartyCard`와 `WBP_CreatePartyScreen`만 빼면 되고, 나머지는 그대로 동작합니다.
 
 ## 3. 세션 만들기
@@ -77,7 +78,7 @@
 `Create Easy Session` 하나가 호스트에게 필요한 일을 전부 합니다.
 
 - 세션을 만들고 광고합니다
-- Initial Map Name으로 `?listen`을 붙여 Travel하며, 이것이 이 게임을 서버로 만듭니다
+- `?listen`을 붙여 Initial Map Name으로 이동합니다. 이 이동으로 이 게임이 서버가 됩니다
 - **Initial Map Name**은 필수입니다. 맵이 없으면 접속할 서버도 없으므로 생성이 `InvalidParams`로 실패합니다
 - 본인을 참가자로 등록하므로 세션의 인원 수가 정확하게 표시됩니다
 
@@ -99,11 +100,11 @@
 
 모든 실패 핀이 `Result` 열거형과 플레이어에게 그대로 보여줄 수 있는 메시지를 넘겨줍니다.
 
-각 행에는 표시할 이름만이 아니라 `SearchResult` 구조체를 통째로 들고 계세요.
+각 행에는 표시할 이름만이 아니라 `SearchResult` 구조체를 통째로 저장해 두세요.
 `Join Easy Session`이 그것을 다시 받습니다.
 
-비밀번호가 없거나 틀리거나, 세션이 꽉 찼거나, 매치가 참가를 마감했으면 노드가 바로 여기서 실패합니다. `Result`가
-어느 쪽인지 말해주고 `ErrorMessage`에 호스트가 쓴 이유가 담기며, 로딩 화면은 뜨지 않습니다.
+비밀번호가 없거나 틀리거나, 세션이 꽉 찼거나, 매치가 참가를 마감했으면 노드가 바로 여기서 실패합니다. `Result`로
+어떤 경우인지 알 수 있고 `ErrorMessage`에 호스트가 쓴 이유가 담기며, 로딩 화면은 뜨지 않습니다.
 [호스트에게 먼저 묻기](Guide-Sessions.ko.md#호스트에게-먼저-묻기)를 보세요.
 
 ## 5. 아니면 Matchmaking 하나로 끝내기
@@ -117,7 +118,7 @@
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Matchmaking는 검색하고, 가장 좋은 세션(핑이 좋고 더 찬 세션 우선)에 참가합니다.
+Matchmaking은 검색하고, 가장 좋은 세션(핑이 좋고 사람이 더 많은 세션 우선)에 참가합니다.
 **Allow Host Fallback**을 켜면 아무것도 없을 때 직접 세션을 만듭니다. 어느 쪽이 됐는지는
 `Is Easy Host`로 확인합니다.
 
@@ -144,5 +145,6 @@ Allow Host Fallback을 켜면 **Host > Initial Map Name**이 필요합니다. �
 - [Steam 설정](Setup-Steam.ko.md) - 인터넷 플레이에 필요한 플러그인 두 개와 ini 설정
 - [세션 가이드](Guide-Sessions.ko.md) - 커스텀 데이터, 필터, 비밀번호, 세션 정보 변경
 - [Matchmaking 가이드](Guide-Matchmaking.ko.md) - 세션을 고르는 기준과 커스텀 점수 계산
+- [파티 가이드](Guide-Party.ko.md) - 파티, 초대, 파티와 함께 세션에 들어가기
 - [API 레퍼런스](API.ko.md) - 모든 노드, 조회, 구조체, 설정
 - [FAQ](FAQ.ko.md) - 자주 겪는 문제

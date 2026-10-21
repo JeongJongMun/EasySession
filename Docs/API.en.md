@@ -42,13 +42,13 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | Node | Inputs | Notes |
 |---|---|---|
 | **Create Easy Session** | `HostParams` | Calls `CreateSession` with your params as the advertised `FOnlineSessionSettings`, then travels to Initial Map Name with `?listen` so this game becomes the server. Fails with `InvalidParams` while Initial Map Name is empty, because the session would be advertised with no server behind it |
-| **Find Easy Sessions** | `Type`, `SearchParams` | Calls `FindSessions` for the game sessions or the party sessions and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out. A party search lists the parties that are not hidden, or with a Join Code the one party that advertises it ([party guide](Guide-Party.en.md#find-and-join-a-party)) |
+| **Find Easy Sessions** | `Type`, `SearchParams` | Calls `FindSessions` for the game sessions or the party sessions and caches the results. `OnSuccess` carries the `Results` array; hidden sessions are filtered out unless the search names one session (Join Code, Owner Id or Friend Id). A party search lists the parties that are not hidden, or with a Join Code the one party that advertises it ([party guide](Guide-Party.en.md#find-and-join-a-party)) |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | Asks the host for a reservation first, then calls `JoinSession`, resolves the host address, and travels there. A missing or wrong password or a closed match fails the node with `PasswordRequired` / `WrongPassword` / `JoinRefused` before any map load; only when the host cannot be asked by a player outside a session does the refusal arrive later, as a `Rejected` disconnect ([guide](Guide-Sessions.en.md)). A party result joins the party instead: the host decides, a refusal fails with `JoinRefused` and the host's reason, and `Password` and `AdditionalTravelOptions` must stay empty |
 | **Start Easy Session** | - | Calls `StartSession`: Pending -> InProgress. With Allow Join In Progress off, this is the moment the session stops taking new players - except on Steam, which stopped at the first join ([FAQ](FAQ.en.md)). Host only |
 | **End Easy Session** | - | Calls `EndSession`: InProgress -> Ended, so Start can run another match on the same session. Host only |
 | **Update Easy Session** | `NewSettings` | Calls `UpdateSession`: rewrites the advertised `FOnlineSessionSettings` from a `FEasySessionSettings` and re-advertises. The struct holds exactly the fields a live session can change, so there is nothing here that gets ignored. Max Players below the players in the session or joining it fails with `InvalidParams`. Host only |
 | **Leave Easy Session** | `Type` | Calls `LeaveSession`: destroys this game's named session of that type, and for a game session returns to the menu map (Game Default Map). A host that leaves destroys the game session for everyone with "The host has left the game." A host who leaves the party ends it for every member |
-| **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
+| **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and, with Allow Host Fallback on, create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: in a lobby of this game, then playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
 | **Create Easy Party** | `Settings` | Creates a party with the local player as its host, advertising the given Easy Session Settings. Nothing travels ([guide](Guide-Party.en.md)) |
 
@@ -93,7 +93,7 @@ node name without spaces.
 | Node | C++ | Answers |
 |---|---|---|
 | Is In Easy Session | `IsInSession` | Is there a session of the given Type. For Party Session, whether the local player is a party member |
-| Is Easy Host | `IsHost` | Does this game host the session of the given Type: it created it, so it may Start, End, Update, travel or destroy a game session, and kick from a party. False outside a session of that type |
+| Is Easy Host | `IsHost` | Does this game host the session of the given Type: it created it, so it may Start, End, Update, travel, kick from or destroy a game session, and kick from a party. False outside a session of that type |
 | Get Easy Session State | `GetSessionState` | Where the session is in its lifecycle. Clients read the host's replicated value, so every player sees the same thing |
 | Is Easy Session Busy | `IsBusy` | A request or the level load after it is running. Bind a button's Is Enabled to this |
 | Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking or Traveling. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
@@ -217,7 +217,7 @@ The rule for the two names: Settings are what a session or a party advertises an
 A party starts no server, so `Create Easy Party` takes Settings alone.
 
 Field behavior is in the [session guide](Guide-Sessions.en.md). `bHidden` advertises the
-session but keeps it out of Find results, so it can only be reached through an invite.
+session but keeps it out of Find results, so it is reached only through an invite, a join code, or a search that names this host or a friend in it.
 `Password` and `bFriendsBypassPassword` are covered under
 [password protected sessions](Guide-Sessions.en.md#password-protected-sessions).
 `AdditionalTravelOptions` is appended
@@ -301,7 +301,7 @@ Every node's `Result` pin. The ones worth branching on are marked.
 | **`InParty`** | A party member called Create, Join or Matchmaking. The host decides where the party goes, so disable those buttons for members, or leave the party with Leave Easy Session to play alone |
 | `NoOnlineSubsystem` | No subsystem is configured. Check `DefaultEngine.ini` |
 | `NoEasySessionGameInstance` | The project's GameInstance does not use `EasySessionOnlineSession`. Set **Game Instance Class** to `EasySessionGameInstance` (Quick Start step 3) |
-| `InvalidParams` | A parameter cannot work, e.g. Matchmaking with no fallback Initial Map Name |
+| `InvalidParams` | A parameter cannot work, e.g. Matchmaking with Allow Host Fallback on and no Initial Map Name |
 | `MatchmakingAlreadyInProgress` | A Matchmaking is already running |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | The online service refused that specific call. `ErrorMessage` carries what it said |
 | `UnknownFailure` | Nothing more specific was available |
@@ -322,7 +322,7 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 | `ConnectionLost` | The link died - the host quit, crashed, or the network dropped. A host that died while you were joining lands here too |
 | `HostDestroyedSession` | The host deliberately sent everyone back, via `Destroy Easy Session For Everyone` |
 | `TravelFailure` | The session's map failed to load |
-| `Rejected` | The host refused the connection when it arrived, and said why: a wrong password, a match no longer taking players. `ReasonText` is the host's own sentence, safe to show |
+| `Rejected` | The host refused the connection when it arrived, and said why: a match no longer taking players, or a password session reached without the reservation beacon. `ReasonText` is the host's own sentence, safe to show |
 | `Kicked` | The host removed this player with `Kick Easy Session Player`, which keeps them out until the session is destroyed. `ReasonText` is the host's reason |
 
 ### 6.4 EEasyMatchmakingState

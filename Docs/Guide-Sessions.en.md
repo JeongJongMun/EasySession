@@ -14,17 +14,19 @@ Players who stay together between matches, such as friends in the main menu, are
 
 | Field | Default | Notes |
 |---|---|---|
-| Session Display Name | (empty) | Shown in search results. Empty names the session after the host |
 | Initial Map Name | (empty) | Required. The host travels there with `?listen` once the session is created, which makes this game the server. Empty fails the create with `InvalidParams`. The map loads from scratch, so players who were connected before the session existed are disconnected and have to join it. The session does not advertise its map |
-| Max Players | 4 | Public connections. The engine's own login cap ("Server full") follows this value |
 | Is LAN Match | false | Forced on automatically under the NULL subsystem |
+| Use Presence | true | Ignored on LAN |
+| Additional Travel Options | (empty) | Option string appended to the host's travel URL as written |
+| Session Display Name | (empty) | Shown in search results. Empty names the session after the host |
+| Max Players | 4 | Public connections. The engine's own login cap ("Server full") follows this value |
 | Should Advertise | true | Off does not advertise the session at all |
-| Hidden | false | Advertised, but left out of `Find Easy Sessions` results - reachable through invites only |
+| Hidden | false | Advertised, but left out of `Find Easy Sessions` results. Reachable through an invite, a join code, or a search that names this host or a friend in it |
 | Password | (empty) | See [password protected sessions](#password-protected-sessions) below |
 | Friends Bypass Password | true | The host's friends join without the password, invited or not - same section |
-| Additional Travel Options | (empty) | Option string appended to the host's travel URL as written |
 | Allow Join In Progress | true | Leave on for Steam, which closes the lobby at the first join when this is off ([FAQ](FAQ.en.md)) |
-| Allow Invites / Use Presence | true | Use Presence is ignored on LAN |
+| Allow Invites | true | Whether players can invite friends to the session |
+| Use Join Code | false | Advertise a generated code that finds the session, see [join codes](#join-codes) below |
 | Custom Settings | (empty) | Advertised key-value data, see below |
 
 ### Custom session data
@@ -228,8 +230,8 @@ Update:
 
 > On LAN (NULL), changing the advertise flag leaves the LAN beacon as it was: the engine's `FOnlineSessionNull::UpdateSession` swaps the settings without recomputing the beacon.
 
-Joined players receive the update automatically. The plugin replicates the member-visible
-settings - display name, max players, the flags, join code and custom settings -
+Joined players receive the update automatically. The plugin replicates the settings every
+player may see - display name, max players, the flags, join code and custom settings -
 to every client, patches their local session copy so the regular getters return the new
 values, and fires `OnSessionSettingsChanged` for the UI to refresh on. The host fires the
 same event for its own UI. Only the password and its friends exception stay on the host.

@@ -15,11 +15,11 @@
 `Get Easy Session Subsystem` 노드를 놓고 그 출력 핀에서 선을 끌어내 바인딩하면 됩니다.
 
 **C++에서는** `GetGameInstance()->GetSubsystem<UEasySessionSubsystem>()`으로 서브시스템을
-얻습니다. 같은 조회 기능을 아래 C++ 열의 더 짧은 이름으로 갖고 있습니다. 바로 쓰는 노드는
+얻습니다. 서브시스템에는 같은 조회 기능이 아래 C++ 열의 더 짧은 이름으로 있습니다. 바로 쓰는 노드는
 `UEasySessionStatics`의 함수로, 노드 이름에서 공백을 뺀 이름이며, 월드를 찾기 위해 액터나
 위젯 아무거나 첫 인자로 받습니다.
 
-1. [비동기 블루프린트 노드](#1-비동기-블루프린트-노드) - 만들기, 찾기, 참가, 퀵매치, 파티
+1. [비동기 블루프린트 노드](#1-비동기-블루프린트-노드) - 만들기, 찾기, 참가, 매치메이킹, 파티
 2. [조회 블루프린트 노드](#2-조회-블루프린트-노드) - 세션 상태, 참가자, 파티, 검색 결과
 3. [동작 블루프린트 노드](#3-동작-블루프린트-노드) - Travel, 취소, 준비, 추방, 초대
 4. [이벤트](#4-이벤트) | 5. [구조체](#5-구조체) | 6. [열거형](#6-열거형)
@@ -41,14 +41,14 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 | 노드 | 입력 | 비고 |
 |---|---|---|
 | **Create Easy Session** | `HostParams` | `CreateSession` 호출. 넘긴 파라미터가 광고되는 `FOnlineSessionSettings`가 됩니다. 이어서 Initial Map Name으로 `?listen`을 붙여 Travel하므로 이 게임이 서버가 됩니다. Initial Map Name이 비어 있으면 `InvalidParams`로 실패합니다. 접속할 서버 없이 세션만 광고되기 때문입니다 |
-| **Find Easy Sessions** | `Type`, `SearchParams` | 게임 세션 또는 파티 세션에 대해 `FindSessions`를 호출하고, 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 숨김 세션은 제외됩니다. 파티 검색은 숨기지 않은 파티를 나열하고, Join Code가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다 ([파티 가이드](Guide-Party.ko.md#파티-찾기와-참가)) |
+| **Find Easy Sessions** | `Type`, `SearchParams` | 게임 세션 또는 파티 세션에 대해 `FindSessions`를 호출하고, 돌아온 결과를 캐시합니다. `OnSuccess`가 `Results` 배열을 넘기며, 특정 세션 하나를 지목한 검색(Join Code, Owner Id, Friend Id)이 아니면 숨김 세션은 제외됩니다. 파티 검색은 숨기지 않은 파티를 나열하고, Join Code가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다 ([파티 가이드](Guide-Party.ko.md#파티-찾기와-참가)) |
 | **Join Easy Session** | `SearchResult`, `Password`, `AdditionalTravelOptions` | 호스트에게 예약을 먼저 요청한 뒤 `JoinSession`을 호출하고, 호스트 주소를 해석해 이동합니다. 비밀번호가 없거나 틀리거나 매치가 닫혀 있으면 맵 로드 없이 `PasswordRequired` / `WrongPassword` / `JoinRefused`로 실패합니다. 세션 밖의 플레이어가 호스트에게 물을 수 없었던 경우에만 거절이 늦게, `Rejected` 디스커넥트로 도착합니다 ([가이드](Guide-Sessions.ko.md)). 파티 결과를 넘기면 대신 파티에 참가합니다. 참가는 호스트가 정하고, 거절되면 `JoinRefused`와 호스트의 사유로 실패하며, `Password`와 `AdditionalTravelOptions`는 비워야 합니다 |
 | **Start Easy Session** | - | `StartSession` 호출. Pending -> InProgress. Allow Join In Progress가 꺼져 있다면 이 시점부터 새 플레이어를 받지 않습니다. 단 Steam은 첫 참가 시점부터 이미 받지 않습니다 ([FAQ](FAQ.ko.md)). 호스트 전용 |
 | **End Easy Session** | - | `EndSession` 호출. InProgress -> Ended가 되어, 같은 세션에서 Start로 다음 매치를 돌릴 수 있습니다. 호스트 전용 |
 | **Update Easy Session** | `NewSettings` | `UpdateSession` 호출. `FEasySessionSettings`로 광고 중인 `FOnlineSessionSettings`를 다시 씁니다. 이 구조체는 살아있는 세션이 바꿀 수 있는 필드만 들고 있어서, 무시되는 값이 없습니다. Max Players를 세션에 있거나 들어오는 중인 인원보다 낮추면 `InvalidParams`로 실패합니다. 호스트 전용 |
-| **Leave Easy Session** | `Type` | `LeaveSession` 호출. 이 게임의 그 타입 네임드 세션을 지우고, 게임 세션이면 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 게임 세션을 지웁니다. 호스트가 파티를 나가면 모든 멤버의 파티가 끝납니다 |
-| **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, 없으면 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
-| **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다: 이 게임의 로비에 있음, 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 `NotSupportedByService`로 실패합니다 |
+| **Leave Easy Session** | `Type` | `LeaveSession` 호출. 이 게임의 그 타입의 세션을 파괴하고, 게임 세션이면 메뉴 맵(Game Default Map)으로 돌아갑니다. 호스트가 부르면 모두에게 "The host has left the game."을 보내고 게임 세션을 지웁니다. 호스트가 파티를 나가면 모든 멤버의 파티가 끝납니다 |
+| **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass`(선택) | 검색하고, 가장 좋은 결과에 참가하고, Allow Host Fallback이 켜져 있으면 없을 때 직접 만듭니다. 위 세 노드를 대신 돌려주는 노드입니다 ([가이드](Guide-Matchmaking.ko.md)) |
+| **Read Easy Friends** | - | `ReadFriendsList` 호출. `OnSuccess`가 `FEasySessionFriend` 배열을 표시용 순서로 넘깁니다. 순서는 이 게임의 로비에 있음, 이 게임 플레이 중, 온라인, 오프라인 순이고 같은 그룹 안에서는 이름순. NULL/LAN에는 친구 개념이 없어 `NotSupportedByService`로 실패합니다 |
 | **Create Easy Party** | `Settings` | 로컬 플레이어를 호스트로 파티를 만들고, 넘긴 Easy Session Settings를 광고합니다. 아무도 이동하지 않습니다 ([가이드](Guide-Party.ko.md)) |
 
 > **호스트 전용**은 그 세션을 만든 게임, 즉 리슨 서버에서 호스트 플레이어의 게임을 뜻합니다.
@@ -92,23 +92,23 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 무엇을 답하는가 |
 |---|---|---|
 | Is In Easy Session | `IsInSession` | 넘긴 Type의 세션에 들어가 있는가. Party Session이면 로컬 플레이어가 파티 멤버인가 |
-| Is Easy Host | `IsHost` | 넘긴 Type의 세션을 이 게임이 호스트하는가. 만들었다면 게임 세션은 Start/End/Update/Travel/전체 종료를, 파티는 추방을 할 수 있습니다. 그 타입의 세션이 없으면 false |
+| Is Easy Host | `IsHost` | 넘긴 Type의 세션을 이 게임이 호스트하는가. 만들었다면 게임 세션은 Start/End/Update/Travel/추방/전체 종료를, 파티는 추방을 할 수 있습니다. 그 타입의 세션이 없으면 false |
 | Get Easy Session State | `GetSessionState` | 세션이 수명주기의 어디에 있는가. 클라이언트는 호스트가 복제한 값을 읽으므로 모든 플레이어가 같은 값을 봅니다 |
 | Is Easy Session Busy | `IsBusy` | 요청이나 그 뒤에 이어지는 레벨 로드가 진행 중인가. 버튼의 Is Enabled에 연결하세요 |
-| Get Easy Session Activity | `GetActivity` | 지금 무엇이 도는지: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling. Is Easy Session Busy가 false일 때만 None. 메뉴가 시작하지 않은 초대 참가나 복구도 이름을 붙입니다 |
+| Get Easy Session Activity | `GetActivity` | 지금 무엇이 도는지: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling. Is Easy Session Busy가 false일 때 None이고, 그 외에는 None이 아닙니다. 메뉴가 시작하지 않은 초대 참가나 복구도 이름을 붙입니다 |
 | Get Easy Display Name | `GetDisplayName` | 넘긴 Type의 세션이 광고되는 이름 |
 | Get Easy Password | `GetSessionSettings(Type).Password` | 이 게임이 호스팅 중인 게임 세션의 비밀번호. 호스트에게 보여주기 위한 것으로, **클라이언트에서는 빈 값**입니다. 비밀번호는 호스트를 떠나지 않습니다. 파티에는 비밀번호가 없어 항상 빈 값입니다 |
 | Get Easy Session Player Infos | `GetSessionPlayerInfos` | 세션의 모든 플레이어와 호스트/로컬 플레이어/준비 여부. 참가자 목록 UI용. 게임 세션 밖에서는 빈 목록 |
 | Get Easy Player Count | `GetPlayerCount` | 넘긴 Type의 세션에 지금 있는 플레이어 수. 게임의 플레이어 수, 또는 파티의 멤버 수. 그 세션이 없으면 0 |
 | Get Easy Max Players | `GetMaxPlayers` | 정원. 그 세션이 없으면 0 |
-| Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking가 돌고 있는가 |
+| Is Easy Matchmaking Running | `IsMatchmakingRunning` | Matchmaking이 돌고 있는가 |
 | Get Easy Matchmaking State | `GetMatchmakingState` | 어느 상태인가. Searching, Joining, Hosting, Complete |
 | Get Active Easy Matchmaking Policy | `GetActiveMatchmakingPolicy` | 실행 중인 Matchmaking의 점수 정책 객체. 아무것도 돌지 않으면 없음. 진행 상황은 정책이 아니라 서브시스템의 On Matchmaking 이벤트로 방송됩니다 |
 | Has Pending Easy Disconnect Info | `HasPendingDisconnectInfo` | 읽지 않은 디스커넥트 사유가 있는가. 메뉴의 Event Construct에서 확인하세요 |
 | Get Online Subsystem Name (EasySession) | - | 어느 서비스가 동작 중인가. LAN이면 `NULL`, 그 외 `STEAM` 등 |
 | Is Online Subsystem Available (EasySession) | - | 온라인 서브시스템이 올라와 있고 세션 인터페이스가 유효한가 |
 | Get Easy Session Queue Status | `GetQueueStatus` | 요청 큐가 무엇을 하고 있는지 문자열로. 상태 UI와 버그 리포트용. 돌고 있는 요청이 뒤에 붙습니다. 예: `Idle; Matchmaking (Searching, 12s)` |
-| Get Easy Session Settings | `GetSessionSettings` | 넘긴 Type의 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 멤버 누구나 읽을 수 있고, 비밀번호와 친구 예외만 게임 세션의 호스트에서만 채워집니다. 그 세션이 없으면 기본값 |
+| Get Easy Session Settings | `GetSessionSettings` | 넘긴 Type의 세션이 광고 중인 설정. 한 필드만 바꿔 Update에 넘길 때 씁니다. 세션의 누구나 읽을 수 있고, 비밀번호와 친구 예외는 게임 세션의 호스트에서만 채워집니다. 그 세션이 없으면 기본값 |
 | Get Easy Join Code | `GetJoinCode` | 넘긴 Type의 세션이 광고 중인 참가 코드. 없으면 빈 문자열입니다. 세션에 있는 누구나 읽고 공유할 수 있습니다 |
 | Make Easy Session Host Params From Settings | - | 주어진 설정에 Initial Map Name과 LAN 여부를 더한 호스트 파라미터. 블루프린트는 Settings 구조체를 Host Params에 복사하지 못하므로, 설정 폼의 값은 이 노드를 거쳐 Create Easy Session으로 갑니다 |
 | Get Easy Party Members | `GetPartyMembers` | 호스트를 포함한 모든 멤버와 호스트/로컬 플레이어/준비 여부 |
@@ -150,7 +150,7 @@ C++ 열은 static 함수의 이름이 아닙니다. 같은 답을 주는 서브�
 | 노드 | C++ | 하는 일 |
 |---|---|---|
 | Consume Pending Easy Disconnect Info | `ConsumePendingDisconnectInfo` | 디스커넥트 사유를 읽고 비웁니다. 맵 Travel을 넘어 보존되므로 메뉴에서 읽을 수 있습니다 |
-| Cancel Easy Matchmaking | `CancelMatchmaking` | `Searching` 상태인 Matchmaking를 `Canceled`로 끝냅니다. `Joining`이나 `Hosting` 상태에서는 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다 |
+| Cancel Easy Matchmaking | `CancelMatchmaking` | `Searching` 상태인 Matchmaking을 `Canceled`로 끝냅니다. `Joining`이나 `Hosting` 상태에서는 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다 |
 | Send Easy Invite To Friend | `SendInviteToFriend` | 넘긴 Type의 세션으로의 플랫폼 초대. 결과 값을 돌려줍니다. 파티 초대는 멤버 누구나 보낼 수 있습니다 |
 | Show Easy Invite UI | `ShowInviteUI` | 넘긴 Type의 세션용 플랫폼 초대 오버레이. 결과 값을 돌려줍니다. 파티용은 멤버 누구나 열 수 있습니다 |
 | Show Easy Profile UI | `ShowProfileUI` | 친구의 프로필 오버레이. 결과 값을 돌려줍니다 |
@@ -213,7 +213,7 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 파티는 서버를 띄우지 않으므로 `Create Easy Party`는 Settings만 받습니다.
 
 각 필드의 동작은 [세션 가이드](Guide-Sessions.ko.md)에 있습니다. `bHidden`은 세션을 광고하되
-Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Password`와 `bFriendsBypassPassword`는
+Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 있는 친구를 지목한 검색으로만 들어올 수 있습니다. `Password`와 `bFriendsBypassPassword`는
 [같은 가이드의 비밀번호 절](Guide-Sessions.ko.md#비밀번호로-잠근-세션)에서 다룹니다.
 `AdditionalTravelOptions`는 호스트의 Travel URL 뒤에
 붙으며(예: `GameMode=Deathmatch?MyOption=1`), 서버에서 `Parse Option`으로 읽습니다.
@@ -229,7 +229,7 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 `SessionDisplayName`, `HostName`, `PingInMs`, `MaxPlayers`, `OpenSlots`, `bIsDedicatedServer`, `bPasswordProtected`, `bMatchInProgress`, `SessionType`, `CustomSettings`
 
 두 노드를 잇는 구조체입니다. `Find Easy Sessions`가 돌려주고 `Join Easy Session`이 받습니다.
-구조체를 통째로 들고 계세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
+구조체를 통째로 저장해 두세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
 저장해야 합니다. 파티 검색도 `SessionType`이 Party Session인 같은 구조체를 돌려주고, `Join Easy Session`이 그것도 받습니다.
 
 `bPasswordProtected`는 `Join Easy Session` 전에 비밀번호를 물어볼지 판단하는 근거입니다.
@@ -290,13 +290,13 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | **`JoinRefused`** | 호스트가 다른 이유로 거절했습니다. 예: 더 이상 플레이어를 받지 않는 매치, 또는 비밀번호 세션의 예약 비콘에 닿지 못함. `ErrorMessage`는 그대로 보여줘도 됩니다 |
 | **`ResolveFailure`** | 참가는 됐지만 호스트 주소가 동작하지 않습니다. 대개 호스트가 리슨 서버가 되지 못한 경우입니다 ([FAQ](FAQ.ko.md)) |
 | **`RequiresHost`** | 그 세션의 호스트만 할 수 있는 일입니다. `Is Easy Host`가 true일 때만 버튼을 보여주세요 |
-| **`Canceled`** | `Cancel Easy Matchmaking`가 Matchmaking를 중단시켰습니다 |
+| **`Canceled`** | `Cancel Easy Matchmaking`이 Matchmaking을 중단시켰습니다 |
 | **`NotSupportedByService`** | 지금 쓰는 온라인 서비스에 그 기능이 없습니다. 친구와 초대는 스팀에만 있고 NULL/LAN에는 없습니다. 설정 문제가 아니므로 그 서비스에서는 버튼을 숨기세요 |
 | **`InParty`** | 파티 멤버가 Create, Join, Matchmaking을 불렀습니다. 행선지는 호스트가 정하므로 멤버에게는 그 버튼을 꺼 두거나, 혼자 플레이하려면 Leave Easy Session으로 파티를 나가세요 |
 | `NoOnlineSubsystem` | 온라인 서브시스템이 없습니다. `DefaultEngine.ini`를 확인하세요 |
 | `NoEasySessionGameInstance` | 프로젝트의 GameInstance가 `EasySessionOnlineSession`을 쓰지 않습니다. **Game Instance Class**를 `EasySessionGameInstance`로 지정하세요(Quick Start 3단계) |
-| `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: 폴백 Initial Map Name 없는 Matchmaking |
-| `MatchmakingAlreadyInProgress` | Matchmaking가 이미 돌고 있습니다 |
+| `InvalidParams` | 성립할 수 없는 파라미터입니다. 예: Allow Host Fallback을 켰는데 Initial Map Name이 없는 Matchmaking |
+| `MatchmakingAlreadyInProgress` | Matchmaking이 이미 돌고 있습니다 |
 | `CreateFailure`, `SearchFailure`, `JoinFailure`, `DestroyFailure`, `UpdateFailure`, `StateChangeFailure` | 온라인 서비스가 그 호출을 거절했습니다. 서비스가 한 말은 `ErrorMessage`에 담깁니다 |
 | `UnknownFailure` | 더 구체적인 사유가 없었습니다 |
 
@@ -313,15 +313,15 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 | 값 | 뜻 |
 |---|---|
 | `None` | 기록된 것이 없습니다 |
-| `ConnectionLost` | 연결이 죽었습니다. 호스트가 나갔거나, 튕겼거나, 네트워크가 끊겼습니다. 조인 도중 호스트가 죽은 경우도 여기입니다 |
+| `ConnectionLost` | 연결이 끊겼습니다. 호스트가 나갔거나, 비정상 종료됐거나, 네트워크가 끊겼습니다. 참가 도중 호스트가 종료된 경우도 여기에 해당합니다 |
 | `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 돌려보냈습니다 |
 | `TravelFailure` | 세션의 맵을 로드하지 못했습니다 |
-| `Rejected` | 호스트가 도착한 접속을 사유와 함께 거절했습니다. 비밀번호 불일치, 더 이상 받지 않는 매치 등이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
+| `Rejected` | 호스트가 도착한 접속을 사유와 함께 거절했습니다. 더 이상 받지 않는 매치이거나, 예약 비콘을 거치지 않고 비밀번호 세션에 도착한 경우이며 `ReasonText`가 호스트가 쓴 문장이라 그대로 보여줘도 됩니다 |
 | `Kicked` | 호스트가 `Kick Easy Session Player`로 이 플레이어를 내보냈습니다. 세션이 없어질 때까지 다시 들어올 수 없습니다. `ReasonText`는 호스트의 사유입니다 |
 
 ### 6.4 EEasyMatchmakingState
 
-`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnMatchmakingStateChanged`로 알려줍니다. `Cancel Easy Matchmaking`는 `Searching` 상태에서만 동작합니다.
+`Idle`, `Searching`, `Joining`, `Hosting`, `Complete` - Matchmaking 한 번의 진행 단계이며 `OnMatchmakingStateChanged`로 알려줍니다. `Cancel Easy Matchmaking`은 `Searching` 상태에서만 동작합니다.
 
 ### 6.5 EEasySessionSettingType
 
@@ -345,22 +345,22 @@ Find 결과에서는 빼므로, 초대로만 들어올 수 있게 됩니다. `Pa
 
 ## 7. UEasyMatchmakingPolicy
 
-Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 패스, 참가, 호스트 대체 같은 실행 자체는 서브시스템이 맡습니다.
+Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 패스, 참가, 호스트 폴백 같은 실행 자체는 서브시스템이 맡습니다.
 
 블루프린트나 C++로 서브클래스를 만들고, 매치메이킹 기준을 바꾸려면
 **`ScoreSession(Session) -> float`**(값이 클수록 먼저 참가)만 오버라이드하면 됩니다.
 편집 가능한 기본값은 `PingBucketsMs`(기본 `[50, 100, 150]`), `TopCandidatesToShuffle`(기본 3)입니다.
-서브시스템이 넘겨받은 클래스로 실행마다 정책 객체를 하나씩 만듭니다. 진행 상황은 서브시스템에 있습니다: `Get Easy Matchmaking State`와 On Matchmaking 이벤트.
+서브시스템이 넘겨받은 클래스로 실행마다 정책 객체를 하나씩 만듭니다. 진행 상황은 서브시스템의 `Get Easy Matchmaking State`와 On Matchmaking 이벤트로 확인합니다.
 
 ## 8. UEasySessionConfig (Project Settings -> Plugins -> EasySession)
 
 | 설정 | 기본값 | 효과 |
 |---|---|---|
 | `bAutoJoinAcceptedInvites` | true | 플랫폼 초대를 수락하면 그 세션에 바로 참가합니다. 끄면 `OnSessionInviteAccepted`만 받습니다 |
-| `bRestorePartyAfterMatch` | true | 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티를 되돌립니다. 호스트가 다시 만들고 모든 멤버가 찾습니다 ([가이드](Guide-Party.ko.md#매치가-끝난-뒤)) |
+| `bRestorePartyAfterMatch` | true | 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티를 복원합니다. 호스트가 다시 만들고 모든 멤버가 찾습니다 ([가이드](Guide-Party.ko.md#매치가-끝난-뒤)) |
 | `PartyRestoreWaitSeconds` | 120 | 매치가 끝난 뒤 멤버가 호스트의 파티를 찾는 시간 |
 | `PartyReconnectSeconds` | 15 | 사유 없이 연결이 닫힌 뒤 멤버가 호스트에게 계속 연결을 시도하는 시간. 예를 들어 호스트의 다음 맵이 로드되는 동안입니다 |
-| `JoinCodeLength` | 6 | 자동으로 만드는 참가 코드의 글자 수. 4~12 사이입니다. 세션은 만들 때 받은 코드를 계속 씁니다 |
+| `JoinCodeLength` | 6 | 자동으로 생성하는 참가 코드의 글자 수. 4~12 사이입니다. 세션은 만들 때 받은 코드를 계속 씁니다 |
 | `bAcceptInvitesWhileInSession` | false | 자동 참가가 지금 있는 세션을 파괴하고 초대받은 세션에 참가해도 되는지 정합니다. 오버레이의 클릭 한 번으로 진행 중인 매치가 끝나지 않도록 기본값은 꺼짐입니다. `OnSessionInviteAccepted`는 그대로 발생하므로, 먼저 물어본 뒤 `Join Easy Session`을 직접 부르면 됩니다. 이 호출은 새 호스트가 승인한 뒤에 지금 세션을 나갑니다 |
 
 ## 9. C++ 참고

@@ -38,7 +38,7 @@ EasySession creates two kinds of session.
 
 In this plugin, **session without a qualifier means the game session**. `Create Easy Session` creates a game session and `Create Easy Party` creates a party. A node that works on both kinds, such as `Find Easy Sessions` or `Is In Easy Session`, carries a `Type` pin whose default is `Game Session`; set it to `Party Session` to ask about the party. A node for one kind only names it, such as `Start Easy Session` or `Kick Easy Party Member`. The [API reference](API.en.md#2-query-blueprint-nodes) lists which nodes take the pin.
 
-Whoever created a session is its **host**: the player whose game runs the listen server, or the player who created the party. Only the host may Start, End, Update, travel or destroy a game session, or kick from a party. `Is Easy Host` with the matching Type tells you whether this game is the host.
+Whoever created a session is its **host**: the player whose game runs the listen server, or the player who created the party. Only the host may Start, End, Update, travel, kick from or destroy a game session, or kick from a party. `Is Easy Host` with the matching Type tells you whether this game is the host.
 
 ## What "traveling" means
 
@@ -92,7 +92,7 @@ Neither node starts or stops your gameplay - they move the session's state. If y
 
 ## Where players go when a session ends
 
-Leaving a session, losing the host, or being refused all end the same way: the
+Leaving a session, losing the host, or being refused by the host as you connect all end the same way: the
 engine loads the **Game Default Map** (Project Settings -> Maps & Modes). That
 map is your "after the session" screen, so point it at your menu map. EasySession
 preserves why the player came back - read it there with
@@ -100,4 +100,4 @@ preserves why the player came back - read it there with
 
 ## The one rule that prevents most bugs
 
-**One session at a time.** You must leave your current session before creating another one, and EasySession enforces this with a clear `SessionAlreadyExists` error instead of strange failures later. Joining another session leaves the current one for you once the host approved the join, and a join that fails after that returns the player to the menu. A host that leaves this way tells its players why first, and the host of a match in progress is refused instead, because its leaving would end the match for everyone. When the new host cannot be asked, the player keeps the current session. Its request queue makes sure two requests never overlap inside the online service. A party is not a second game session: it lives next to the game session, has no map, and closes when its players enter one ([Party guide](Guide-Party.en.md)).
+**One session at a time.** You must leave your current session before creating another one, and EasySession enforces this with a clear `SessionAlreadyExists` error instead of strange failures later. Joining another session leaves the current one for you once the host approved the join, and a join that fails after that returns the player to the menu. The host of a session whose match has not started brings its players along, and the host of a match in progress is refused instead, because its leaving would end the match for everyone. When the new host cannot be asked, the player keeps the current session. Its request queue makes sure two requests never overlap inside the online service. A party is not a second game session: it lives next to the game session, has no map, and closes when its players enter one ([Party guide](Guide-Party.en.md)).

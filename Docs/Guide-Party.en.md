@@ -42,9 +42,9 @@ On Steam a party is a Steam lobby, so it needs presence and works across the int
 
 | Hidden | Use Join Code | Party search | Players join through |
 |---|---|---|---|
-| true (default) | false (default) | Not listed | An invite |
+| false (default) | false (default) | Listed | A search, or an invite |
+| true | false | Not listed | An invite |
 | true | true | Not listed, found with the code | The code, or an invite |
-| false | false | Listed | A search, or an invite |
 | false | true | Listed, and found with the code | A search, the code, or an invite |
 
 `Hidden` does not lock the party: a player who finds it another way, for example by the host's id, is admitted. A party has no password.

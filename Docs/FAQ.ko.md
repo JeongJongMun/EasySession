@@ -12,11 +12,11 @@
 2. **한 대에서 PIE로 테스트 중** - Number of Players = 2, Net Mode = *Play Standalone*으로 설정하세요.
 3. **방화벽 / VPN** - LAN 검색은 UDP 브로드캐스트입니다. Windows 방화벽에서 게임을 허용하고, VPN을 끄거나, `-MultiHome=<LAN IP>`를 넘기세요.
 4. **스팀: 같은 계정이거나 같은 PC에서 테스트** - 서로 다른 스팀 계정 두 개와 PC 두 대가 필요합니다. AppId 480을 쓴다면 커스텀 세팅으로 남들의 테스트 세션을 걸러내세요 ([스팀 설정](Setup-Steam.ko.md) 참고).
-5. **다른 서브시스템이 돌고 있음** - 로그를 확인하세요: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM`. 패키지 빌드는 에디터 상태가 아니라 패키징된 ini를 읽습니다.
+5. **의도와 다른 서브시스템이 동작 중** - 로그를 확인하세요: `EasySessionSubsystem initialized. Online subsystem: NULL/STEAM`. 패키지 빌드는 에디터 상태가 아니라 패키징된 ini를 읽습니다.
 
 ## "세션은 찾았는데 참가가 타임아웃되거나 ResolveFailure로 실패합니다"
 
-세션은 광고되고 있지만 그 호스트가 **리슨 서버로 돌고 있지 않습니다** - 포트가 0인 주소가 광고된 상태입니다. EasySession은 접속 타임아웃을 기다리지 않고 즉시 `ResolveFailure`로 실패시키며, 참가하려던 쪽 로그에 사유가 남습니다.
+세션은 광고되고 있지만 그 호스트가 **리슨 서버로 동작하고 있지 않습니다** - 포트가 0인 주소가 광고된 상태입니다. EasySession은 접속 타임아웃을 기다리지 않고 즉시 `ResolveFailure`로 실패시키며, 참가하려던 쪽 로그에 사유가 남습니다.
 
 ```
 LogEasySession: Warning: Session request failed: ResolveFailure (The host address 'steam.0:0' is not connectable.
@@ -36,6 +36,18 @@ LogEasySession: Warning: Reservations: refusing '<player id>' - the session is f
 
 고칠 것은 없습니다. 그 플레이어가 도착하면 다음 검색부터 세션이 꽉 찬 것으로 보입니다. 끝내 도착하지 않으면 호스트가 45초 뒤에 예약을 지우며, 이 값은 엔진의 `TravelSessionTimeoutSecs`입니다([예약](Guide-Sessions.ko.md#예약)). Matchmaking은 알아서 다음 후보로 넘어갑니다.
 
+## "비밀번호 세션에 참가할 수 없고, 호스트가 비콘 포트 경고를 남깁니다"
+
+호스트 PC의 다른 프로그램이 비콘 포트(기본 UDP 15000)를 이미 쓰고 있습니다. 그러면 엔진은 예약 비콘을 다음 빈 포트에 열지만, 세션은 설정된 포트를 계속 광고하므로 참가하는 플레이어가 비콘에 닿지 못합니다. 호스트 로그에 다음 경고가 남습니다.
+
+```
+LogEasySession: Warning: The reservation beacon listens on port 15001 but this session advertises 15000, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
+```
+
+열린 세션에는 그래도 참가할 수 있지만, 진행 중인 매치 같은 거절이 트래블 뒤에 `Rejected` 연결 끊김으로 옵니다. 비밀번호 세션은 비밀번호를 전할 곳이 비콘뿐이라 아예 참가할 수 없고 `JoinRefused`로 실패합니다([호스트에게 물을 수 없을 때](Guide-Sessions.ko.md#호스트에게-물을-수-없을-때)).
+
+포트를 잡은 프로그램을 끄거나, 커맨드라인 `-BeaconPort=` 또는 `DefaultEngine.ini`의 `[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`로 비콘 포트를 옮기세요. Windows에서는 `netstat -ano -p UDP`가 포트마다 그 포트를 쓰는 프로세스 id를 보여 주고, 작업 관리자에서 그 id가 어떤 프로그램인지 확인할 수 있습니다.
+
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 
 Host Params의 **Allow Join In Progress가 꺼져 있습니다.** 스팀에서는 켜 두세요.
@@ -45,7 +57,7 @@ Host Params의 **Allow Join In Progress가 꺼져 있습니다.** 스팀에서�
 ```
 LogEasySession: Joining session 'My Session' hosted by 'HostPlayer'
 LogOnline: Warning: OSS: Async task 'FOnlineAsyncTaskSteamJoinLobby bWasSuccessful: 0 Session: GameSession LobbyId: Lobby[0x18600003DDB1FE9] Result: '3' k_EChatRoomEnterResponseNotAllowed (General Denied - You don't have the permissions needed to join the chat)' failed in 0.228409 seconds
-LogEasySession: Warning: Session request failed: JoinFailure (The online subsystem failed to join the session.)
+LogEasySession: Warning: Session request failed: JoinFailure (The online subsystem failed to join the GameSession.)
 ```
 
 스팀 세션은 로비이고, 엔진은 누가 로비에 들어오거나 나갈 때마다 그 로비가 플레이어를 받을지를 다시 계산합니다. 그 계산은 빈자리 검사에 `bAllowJoinInProgress`를 곱하는데, 매치가 시작됐는지는 보지 않습니다.
@@ -59,7 +71,7 @@ bool bLobbyJoinable = Session.SessionSettings.bAllowJoinInProgress && (LobbyMemb
 
 EasySession은 이걸 우회하지 않습니다. 설정을 받은 그대로 온라인 서비스에 넘기고, 난입 거부는 매치 상태를 실제로 확인하는 예약 비콘과 `PreLogin`이 직접 합니다. 스팀에서 "매치가 시작되면 참가 금지"가 필요하다면, Allow Join In Progress는 켜 두고 그 검사들에 맡기세요.
 
-이렇게 참가가 실패한 플레이어는, 참가하느라 원래 있던 세션을 먼저 나온 경우라면 메인 메뉴로 돌아갑니다. 세션 없는 맵에 남지 않습니다.
+참가하려고 원래 세션을 먼저 나온 플레이어는 이렇게 참가에 실패하면 메인 메뉴로 돌아가므로, 세션 없는 맵에 남지 않습니다.
 
 ## "초대를 수락했는데 아무 일도 일어나지 않습니다"
 
@@ -85,7 +97,7 @@ LogEasySession: Not joining the invited party during a game session. Call Leave 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 호스트를 따라가는 파티 멤버, 매치가 끝난 뒤 호스트의 파티를 찾는 파티 멤버에서 돕니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
+검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 호스트를 따라가는 파티 멤버, 매치가 끝난 뒤 호스트의 파티를 찾는 파티 멤버에서 진행됩니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
 
 ## "Travel 중에 Warning: Player ... is not part of session (GameSession)이 뜹니다"
 
@@ -97,13 +109,13 @@ LogOnlineSession: Warning: OSS: Invalid session or search already in progress wh
 
 ## "엔진 내장 Create Session / Find Sessions 노드와 뭐가 다른가요?"
 
-엔진에도 최소한의 세션 노드(`Create Session`, `Find Sessions` 등)가 있습니다. 빠른 프로토타입에는 쓸 만하지만, 옵션이 거의 없이 온라인 서비스를 직접 호출하고 **실패 사유를 주지 않습니다** (OnFailure 핀이 아무것도 싣지 않습니다). EasySession의 노드는 서브시스템을 거치며 다음을 더합니다. 요청 큐잉(EasySession 자신의 호출끼리는 절대 겹쳐서 서비스를 망가뜨리지 않음), 리슨 서버 자동 설정, 정확한 플레이어와 슬롯 집계, 타임아웃 대신 즉시 오는 상세한 에러, 커스텀 세션 데이터와 필터, 그리고 Matchmaking 매치메이킹.
+엔진에도 최소한의 세션 노드(`Create Session`, `Find Sessions` 등)가 있습니다. 빠른 프로토타입에는 쓸 만하지만, 옵션이 거의 없이 온라인 서비스를 직접 호출하고 **실패 사유를 주지 않습니다** (OnFailure 핀이 아무것도 싣지 않습니다). EasySession의 노드는 서브시스템을 거치며 다음을 더합니다. 요청 큐잉(EasySession을 거친 호출끼리는 겹치지 않아 서비스가 망가지지 않음), 리슨 서버 자동 설정, 정확한 플레이어와 슬롯 집계, 타임아웃 대신 즉시 오는 상세한 에러, 커스텀 세션 데이터와 필터, 그리고 매치메이킹.
 
-둘 중 하나를 골라서 계속 쓰세요. 큐잉은 EasySession을 거치는 호출만 덮으므로, 엔진 노드가 같은 시각에 돌면 그건 여전히 서비스에 따로 도달합니다. 바로 아래 항목을 참고하세요.
+둘 중 하나를 골라서 계속 쓰세요. 큐잉은 EasySession을 거치는 호출만 덮으므로, 엔진 노드가 같은 시각에 돌면 그 호출은 여전히 서비스에 따로 들어갑니다. 바로 아래 항목을 참고하세요.
 
 ## "Another session search is already running, so this one was dropped"
 
-EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스는 한 번에 하나만 처리합니다. 두 번째 요청은 버려지면서 성공으로 보고되므로 콜백이 영영 오지 않습니다. EasySession은 이걸 알아채고, 노드를 매달아두는 대신 즉시 실패시킵니다.
+EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스는 한 번에 하나만 처리합니다. 두 번째 요청은 버려지면서 성공으로 보고되므로 콜백이 영영 오지 않습니다. EasySession은 이걸 알아채고, 노드가 끝나지 않고 멈춰 있게 두는 대신 즉시 실패시킵니다.
 
 대개는 옛 위젯에 그대로 연결된 엔진 내장 `Find Sessions` 노드이거나, 다른 세션 플러그인이거나, EasySession을 넣기 전에 쓰던 세션 코드입니다. 프로젝트에서 `FindSessions`를 직접 부르는 곳을 찾아 `Find Easy Sessions`로 바꾸거나, 둘이 동시에 돌지 않게 하세요.
 
@@ -111,7 +123,7 @@ EasySession 밖의 무언가가 검색을 돌리고 있고, 온라인 서비스�
 
 ## "SessionAlreadyExists가 뜨는데, 저는 세션에 없는 것 같은데요?"
 
-들어가 있습니다. 대개 이전에 실패한 흐름이 남긴 것입니다. `Leave Easy Session`을 먼저 불러 세션을 지우고 메뉴로 돌아간 뒤 다시 시도하세요. EasySession은 네트워크 연결이 끊기면 죽은 세션을 자동으로 파괴하므로, 이 문제는 주로 네트워크와 무관한 로직 버그(예: 이중 호스팅) 뒤에 생깁니다.
+세션에 들어가 있는 상태입니다. 대개 이전에 실패한 흐름이 남긴 것입니다. `Leave Easy Session`을 먼저 불러 세션을 파괴하고 메뉴로 돌아간 뒤 다시 시도하세요. EasySession은 네트워크 연결이 끊기면 죽은 세션을 자동으로 파괴하므로, 이 문제는 주로 네트워크와 무관한 로직 버그(예: 이중 호스팅) 뒤에 생깁니다.
 
 ## "파티에 있을 때 Create(또는 Join, Matchmaking)를 눌러도 아무 반응이 없어요"
 
@@ -129,9 +141,9 @@ LogEasySession: Warning: The party host decides where the party goes. Leave it w
 
 매치 전 로비처럼 모두를 같은 맵에 모으려면, 파티 호스트가 `Create Easy Session`으로 게임 세션을 만드세요. 파티가 그 세션으로 따라옵니다([파티 가이드](Guide-Party.ko.md#매치-밖에서-맵-바꾸기)).
 
-## "진행 중인 Matchmaking를 취소할 수 있나요?"
+## "진행 중인 Matchmaking을 취소할 수 있나요?"
 
-`Searching` 상태일 때 가능합니다. `Cancel Easy Matchmaking`를 부르세요. Matchmaking 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 실행이 `Joining`이나 `Hosting` 상태가 되면 이 호출은 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다. 이 두 상태에서는 취소 버튼을 꺼 두세요.
+`Searching` 상태일 때 가능합니다. `Cancel Easy Matchmaking`을 부르세요. Matchmaking 노드가 `Canceled`와 함께 `OnFailure`를 발생시킵니다. 실행이 `Joining`이나 `Hosting` 상태가 되면 이 호출은 아무 일도 하지 않습니다. 참가와 생성은 그룹을 옮기기 때문에 되돌릴 수 없습니다. 이 두 상태에서는 취소 버튼을 꺼 두세요.
 
 ## "NoEasySessionGameInstance" 또는 "[FIX] The Game Instance does not use EasySessionOnlineSession"
 

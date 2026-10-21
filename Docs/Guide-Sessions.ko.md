@@ -2,11 +2,11 @@
 
 *[English](Guide-Sessions.en.md)*
 
-세션을 만들고, 찾고, 참가하고, 매치를 시작하고, 나가는 것에 관한 전부입니다. 여기 나오는 비동기 노드는 전부 같은 모양입니다. 왼쪽에 입력이 있고, `OnSuccess` / `OnFailure` 실행 핀에 `Result` 열거형과 `ErrorMessage` 문자열이 따라 나옵니다.
+세션을 만들고, 찾고, 참가하고, 매치를 시작하고, 나가는 방법을 모두 다룹니다. 여기 나오는 비동기 노드는 전부 같은 모양입니다. 왼쪽에 입력이 있고, `OnSuccess` / `OnFailure` 실행 핀에 `Result` 열거형과 `ErrorMessage` 문자열이 따라 나옵니다.
 
 모든 요청은 **큐에 들어가 하나씩 실행됩니다.** 어떤 순서로 불러도, 심지어 같은 프레임에 불러도 온라인 서비스가 망가지지 않습니다.
 
-메인 메뉴의 친구들처럼 매치와 매치 사이를 함께 다니는 플레이어 묶음은 파티입니다. 파티 호스트가 파티를 데리고 세션에 들어가는 방법까지 [파티 가이드](Guide-Party.ko.md)에 있습니다.
+메인 메뉴의 친구들처럼 매치와 매치 사이를 함께 다니는 플레이어 그룹은 파티입니다. 파티 호스트가 파티를 데리고 세션에 들어가는 방법까지 [파티 가이드](Guide-Party.ko.md)에 있습니다.
 
 ## Create Session
 
@@ -14,17 +14,19 @@
 
 | 필드 | 기본값 | 설명 |
 |---|---|---|
-| Session Display Name | (비어 있음) | 검색 결과에 보이는 이름. 비어 있으면 호스트 이름이 됩니다 |
-| Initial Map Name | (비어 있음) | 필수. 세션을 만든 뒤 호스트가 `?listen`을 붙여 그 맵으로 이동하고, 이것이 이 게임을 서버로 만듭니다. 비어 있으면 생성이 `InvalidParams`로 실패합니다. 맵을 새로 로드하므로, 세션이 생기기 전에 접속해 있던 플레이어는 연결이 끊기고 세션에 참가해서 다시 들어와야 합니다. 세션은 자기 맵을 광고하지 않습니다 |
-| Max Players | 4 | 공개 커넥션 수. 엔진의 접속 정원(Server full)도 이 값을 따릅니다 |
+| Initial Map Name | (비어 있음) | 필수. 세션을 만든 뒤 호스트가 `?listen`을 붙여 그 맵으로 이동하고, 이 이동으로 이 게임이 서버가 됩니다. 비어 있으면 생성이 `InvalidParams`로 실패합니다. 맵을 새로 로드하므로, 세션이 생기기 전에 접속해 있던 플레이어는 연결이 끊기고 세션에 참가해서 다시 들어와야 합니다. 세션은 자기 맵을 광고하지 않습니다 |
 | Is LAN Match | false | NULL 서브시스템에서는 자동으로 켜집니다 |
+| Use Presence | true | LAN에서는 무시됩니다 |
+| Additional Travel Options | (비어 있음) | 호스트의 Travel URL에 그대로 붙는 옵션 문자열 |
+| Session Display Name | (비어 있음) | 검색 결과에 보이는 이름. 비어 있으면 호스트 이름이 됩니다 |
+| Max Players | 4 | 공개 커넥션 수. 엔진의 접속 정원(Server full)도 이 값을 따릅니다 |
 | Should Advertise | true | 끄면 세션을 아예 광고하지 않습니다 |
-| Hidden | false | 광고는 하되 `Find Easy Sessions` 결과에서 뺍니다. 초대로만 들어올 수 있습니다 |
+| Hidden | false | 광고는 하되 `Find Easy Sessions` 결과에서 뺍니다. 초대, 참가 코드, 이 호스트나 안에 있는 친구를 지목한 검색으로는 들어올 수 있습니다 |
 | Password | (비어 있음) | 아래 [비밀번호로 잠근 세션](#비밀번호로-잠근-세션) 참고 |
 | Friends Bypass Password | true | 호스트의 친구는 초대 여부와 관계없이 비밀번호 없이 참가합니다. 같은 절 참고 |
-| Additional Travel Options | (비어 있음) | 호스트의 Travel URL에 그대로 붙는 옵션 문자열 |
 | Allow Join In Progress | true | 스팀에서는 켜 두세요. 꺼두면 첫 참가에 로비가 닫힙니다([FAQ](FAQ.ko.md)) |
-| Allow Invites / Use Presence | true | Use Presence는 LAN에서 무시됩니다 |
+| Allow Invites | true | 플레이어가 친구를 세션에 초대할 수 있는지 |
+| Use Join Code | false | 세션을 찾을 수 있는 코드를 광고합니다. 아래 [참가 코드](#참가-코드) 참고 |
 | Custom Settings | (비어 있음) | 세션과 함께 광고되는 키-값 데이터, 아래 참고 |
 
 ### 커스텀 세션 데이터
@@ -70,8 +72,8 @@ UI에 값을 띄울 때는 String 핀에 연결하면 `To String (Easy Setting)`
 온라인 서비스는 세션을 최대 `Max Results`개까지만 돌려줍니다.
 돌려받은 세션만 거르는 필터는 서비스가 돌려주지 않은 세션 중 조건에 맞는 것을 놓치므로, EasySession은 다음 필터를 검색과 함께 서비스에 보냅니다.
 
-- `Required Custom Settings`의 모든 쌍. 텍스트가 빈 쌍은 빼고
-- 꺼 둔 `Include In Progress Sessions`, 그리고 숨긴 세션 제외
+- `Required Custom Settings`의 모든 쌍 (텍스트가 빈 쌍은 제외)
+- `Include In Progress Sessions`를 끈 경우의 조건, 그리고 숨긴 세션 제외
 - `Join Code`와 `Owner Id`
 
 `Min Open Slots`, `Max Ping Ms`, 텍스트가 빈 쌍은 스팀이 거르지 않으므로 돌려받은 세션에서만 확인합니다.
@@ -90,7 +92,7 @@ LAN(NULL)에서는 서비스가 보낸 필터를 무시하고, EasySession이 �
 
 ## Join Session
 
-`Join Easy Session`은 검색 결과를 받습니다. 성공하면 호스트 주소를 해석해 그리로 클라이언트 Travel을 합니다. 참가는 언제나 호스트에 접속하는 것이므로, 참가하는 플레이어는 있던 맵을 떠납니다. 호스트와 이름이 같은 맵에 있었더라도 마찬가지입니다.
+`Join Easy Session`은 검색 결과를 받습니다. 성공하면 호스트 주소를 해석해 그 주소로 클라이언트 Travel합니다. 참가는 언제나 호스트에 접속하는 것이므로, 참가하는 플레이어는 있던 맵을 떠납니다. 호스트와 이름이 같은 맵에 있었더라도 마찬가지입니다.
 
 EasySession은 성공을 알리기 **전에** 호스트 주소를 검증합니다. 호스트에 실제로 닿을 수 없으면([FAQ: 포트 0](FAQ.ko.md)) 20초짜리 접속 타임아웃 대신 곧바로 `ResolveFailure`와 설명이 돌아오고, 반쯤 참가된 세션도 정리되므로 바로 다시 시도할 수 있습니다.
 
@@ -98,7 +100,7 @@ EasySession은 성공을 알리기 **전에** 호스트 주소를 검증합니�
 
 참가하는 플레이어는 Travel 전에 호스트에게 예약을 요청합니다. 호스트는 매치가 아직 플레이어를 받는지, 세션이 꽉 차지 않았는지, 비밀번호가 맞는지를 확인합니다.
 
-매치가 더 이상 플레이어를 받지 않으면 노드가 `JoinRefused`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 비밀번호가 걸린 세션에 비밀번호 없이 참가하면 `PasswordRequired`로, 비밀번호가 틀리면 `WrongPassword`로 실패합니다. 어느 경우든 맵 로드가 시작되지 않았고, `ErrorMessage`에 호스트가 쓴 문장이 담기며, 플레이어는 곧바로 다시 시도할 수 있습니다.
+매치가 더 이상 플레이어를 받지 않으면 노드가 `JoinRefused`로, 세션이 꽉 찼으면 `JoinSessionFull`로, 비밀번호가 걸린 세션에 비밀번호 없이 참가하면 `PasswordRequired`로, 비밀번호가 틀리면 `WrongPassword`로 실패합니다. 어느 경우든 맵 로드는 시작되지 않으며, `ErrorMessage`에 호스트가 쓴 문장이 담기며, 플레이어는 곧바로 다시 시도할 수 있습니다.
 
 ```
 Join Easy Session (비밀번호 없이)
@@ -131,11 +133,11 @@ TravelSessionTimeoutSecs=90
 
 ### 호스트에게 물을 수 없을 때
 
-예약 요청은 비콘을 타고 갑니다. 비콘은 호스트로 향하는 두 번째의 가벼운 연결입니다. 프로젝트가 이미 자기 비콘 호스트를 쓰고 있다면 예약 비콘은 새 포트를 열지 않고 그 호스트에 얹혀 동작합니다. 그 비콘에 닿지 못하면(포트가 막혔거나, 같은 PC의 다른 인스턴스가 같은 포트를 먼저 쓰고 있거나, 프로젝트가 엔진의 `BeaconNetDriver` 정의를 지웠거나 - 그 줄을 되살리는 방법은 [Steam 설정](Setup-Steam.ko.md)에 있고 `EasySession.Diagnose`도 검사합니다) 열린 세션은 참가가 그대로 진행되고 대신 호스트가 도착한 플레이어를 검사합니다. 비밀번호 세션은 비밀번호를 전할 곳이 비콘뿐이므로 노드가 `JoinRefused`로 실패합니다.
+예약 요청은 비콘으로 전달됩니다. 비콘은 호스트로 향하는 또 하나의 가벼운 연결입니다. 프로젝트가 이미 자기 비콘 호스트를 쓰고 있다면 예약 비콘은 새 포트를 열지 않고 그 호스트에 등록되어 동작합니다. 그 비콘에 닿지 못하면(포트가 막혔거나, 같은 PC의 다른 인스턴스가 같은 포트를 먼저 쓰고 있거나, 프로젝트가 엔진의 `BeaconNetDriver` 정의를 지웠거나 - 그 줄을 되살리는 방법은 [Steam 설정](Setup-Steam.ko.md)에 있고 `EasySession.Diagnose`도 검사합니다) 열린 세션은 참가가 그대로 진행되고 대신 호스트가 도착한 플레이어를 검사합니다. 비밀번호 세션은 비밀번호를 전할 곳이 비콘뿐이므로 노드가 `JoinRefused`로 실패합니다.
 
 비콘은 엔진의 포트를 씁니다. 기본값은 15000이고, `DefaultEngine.ini`의 `[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`나 커맨드라인 `-BeaconPort=`로 옮길 수 있습니다. 그 포트를 잡는 쪽은 호스트뿐이고 참가자는 운영체제가 주는 임의 포트에서 접속하므로, 한 PC의 두 인스턴스는 둘 다 호스트일 때만 충돌합니다. 그때는 호스트마다 `-BeaconPort=`를 다르게 주세요. 포트가 이미 사용 중이면 엔진이 다음 빈 포트에 바인딩하는데 세션은 설정된 포트를 계속 광고하므로, 호스트가 두 포트를 모두 적은 경고를 남깁니다.
 
-이렇게 늦게 오는 거절은 디스커넥트이므로 세션이 파괴되고 플레이어는 메뉴 레벨로 돌아갑니다. 사유는 거기서 읽으세요.
+이렇게 접속 후에 오는 거절은 연결 끊김이므로 세션이 파괴되고 플레이어는 메뉴 레벨로 돌아갑니다. 사유는 거기서 읽으세요.
 
 ```
 Event Construct
@@ -149,7 +151,7 @@ Event Construct
 
 | Reason | 언제 |
 |---|---|
-| `ConnectionLost` | 호스트가 나갔거나, 죽었거나, 네트워크가 끊김. 조인 도중 호스트가 죽은 경우도 여기 |
+| `ConnectionLost` | 호스트가 나갔거나, 비정상 종료됐거나, 네트워크가 끊김. 참가 도중 호스트가 종료된 경우도 여기에 해당 |
 | `HostDestroyedSession` | 호스트가 `Destroy Easy Session For Everyone`으로 모두를 내보냄 |
 | `TravelFailure` | 세션의 맵으로 이동하지 못함 |
 | `Rejected` | 호스트가 도착한 연결을 거절함. 매치가 닫혀 있거나, 예약 비콘을 거치지 않고 비밀번호 세션에 도착함. 사유는 `Reason Text`에 |
@@ -166,7 +168,7 @@ Event Construct
 | `Join Easy Session` | 호스트가 새 호스트에게 자기 세션의 모든 플레이어가 들어갈 자리를 요청합니다. 자리가 없으면 `JoinSessionFull`로 실패하고 모두 그대로 남습니다 |
 | `Start Easy Matchmaking` | 모두가 들어갈 자리가 있는 세션만 고릅니다. 호스트는 아직 자기 세션에 있으므로 호스트 폴백은 건너뜁니다. 그래서 아무것도 찾지 못하면 `NoSessionsFound`로 끝나고 모두 그대로 남습니다 |
 
-다른 플레이어는 따라오라는 알림을 받으면 바로 로비를 떠나 Game Default Map으로 돌아가고, 거기서 새 세션을 최대 30초 동안 찾습니다. 그래서 새 세션의 맵이 로드되기 전에 메뉴가 잠깐 보입니다. 호스트의 예약이 이미 그들을 담고 있으므로 비밀번호는 필요 없습니다. 호스트는 그들이 떠나기를 최대 10초 기다린 뒤에 자기도 떠납니다.
+다른 플레이어는 따라오라는 알림을 받으면 바로 로비를 떠나 Game Default Map으로 돌아가고, 거기서 새 세션을 최대 30초 동안 찾습니다. 그래서 새 세션의 맵이 로드되기 전에 메뉴가 잠깐 보입니다. 호스트가 받은 예약에 이미 그들이 포함되어 있으므로 비밀번호는 필요 없습니다. 호스트는 그들이 떠나기를 최대 10초 기다린 뒤에 자기도 떠납니다.
 
 플레이어를 데려가는 것은 호스트뿐입니다. 클라이언트가 다른 세션에 참가하면 새 호스트가 승인한 뒤 혼자 떠납니다. 진행 중인 매치의 호스트는 떠나면 모두의 매치가 끝나므로 `SessionAlreadyExists`로 거절됩니다.
 
@@ -176,7 +178,7 @@ Event Construct
 
 ### 세션 잠그기
 
-호스트 파라미터의 `Password`를 설정하세요. 이게 전부입니다.
+호스트 파라미터의 `Password`를 설정하세요. 설정은 이것뿐입니다.
 
 ```
 Create Easy Session
@@ -193,7 +195,7 @@ Create Easy Session
 
 `Friends Bypass Password`의 기본값은 **true**입니다. 초대를 받았든 목록에서 찾았든, 호스트의 플랫폼 친구는 모두 비밀번호 없이 참가합니다. 플랫폼 초대에는 비밀번호가 실리지 않아서, 이게 없으면 초대받은 친구도 비밀번호를 입력해야 합니다([잠긴 세션에 참가하기](#잠긴-세션에-참가하기)). 호스트가 플랫폼 친구 목록으로 친구인지 확인하므로 참가하는 쪽이 속일 수 없습니다. 친구라는 개념이 없는 NULL/LAN에서는 아무 영향이 없습니다.
 
-통과하는 것은 호스트의 친구뿐입니다. 다른 멤버가 초대한 사람이 호스트의 친구가 아니면 다른 사람처럼 비밀번호를 물으므로, 초대한 멤버가 알려 주면 됩니다. 호스트의 친구도 비밀번호를 입력하게 하려면 `Friends Bypass Password`를 끄세요.
+통과하는 것은 호스트의 친구뿐입니다. 다른 멤버가 초대한 사람이 호스트의 친구가 아니면 다른 플레이어처럼 비밀번호를 입력해야 하므로, 초대한 멤버가 알려 주면 됩니다. 호스트의 친구도 비밀번호를 입력하게 하려면 `Friends Bypass Password`를 끄세요.
 
 ## Start Session / End Session
 
@@ -201,22 +203,22 @@ Create Easy Session
 
 `End Easy Session`은 매치를 끝내고 세션을 다시 참가할 수 있는 상태로 되돌립니다.
 
-둘 다 광고되는 매치 진행 중 키를 갱신합니다. 검색의 `Include In Progress Sessions` 필터와
+둘 다 광고되는 매치 진행 중 여부 값을 갱신합니다. 검색의 `Include In Progress Sessions` 필터와
 결과의 `bMatchInProgress`가 읽는 값이 바로 이것입니다.
 
 둘 다 호스트 전용입니다. 클라이언트가 부르면 `RequiresHost`로 실패하므로, 버튼은 `Is Easy Host`가 true일 때만 보여주세요.
 
 ## Update Session
 
-`Update Easy Session`에 호스트 파라미터를 다시 넘기면 세션이 새 값으로 광고됩니다. 호스트 전용입니다.
+`Update Easy Session`에 새 `FEasySessionSettings`를 넘기면 세션이 새 값으로 광고됩니다. 호스트 전용입니다.
 Max Players는 세션에 있거나 들어오는 중인 인원(호스트 포함)보다 낮출 수 없고, 그러면 `InvalidParams`로 실패합니다.
 
 무엇을 바꿀 수 있는지는 `FEasySessionSettings`가 답합니다. 표시 이름, 최대 인원, 광고 여부,
 숨김 여부, 난입 허용 여부, 초대 허용 여부, 참가 코드, 비밀번호(와 친구 예외), 커스텀
 세팅이 전부입니다. `Get Easy Session Settings`로 현재 값을 받아 고치면 됩니다.
 
-호스팅 전용 필드는 한 단계 위인 `FEasySessionHostParams`에 있고, Update에는 아예 닿지
-않습니다.
+호스팅 전용 필드는 한 단계 위인 `FEasySessionHostParams`에 있고, Update로는 바꿀 수
+없습니다.
 
 | 필드 | 왜 |
 |---|---|
@@ -227,7 +229,7 @@ Max Players는 세션에 있거나 들어오는 중인 인원(호스트 포함)�
 
 > LAN(NULL)에서는 광고 여부를 바꿔도 LAN 비콘이 그대로입니다. 엔진의 `FOnlineSessionNull::UpdateSession`이 설정만 갈아끼우고 비콘을 다시 계산하지 않기 때문입니다.
 
-참가 중인 플레이어는 업데이트를 자동으로 전달받습니다. 플러그인이 멤버에게 보여도 되는
+참가 중인 플레이어는 업데이트를 자동으로 전달받습니다. 플러그인이 플레이어에게 보여도 되는
 설정(표시 이름, 최대 인원, 플래그들, 참가 코드, 커스텀 설정)을 모든 클라이언트에
 복제하고, 로컬 세션 사본을 고쳐서 일반 게터가 새 값을 돌려주게 만든 뒤
 `OnSessionSettingsChanged`를 발화합니다. 호스트도 자기 UI를 위해 같은 이벤트를 발화합니다.
@@ -238,12 +240,12 @@ UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친�
 
 ## Leave Session
 
-`Leave Easy Session`은 이 게임의 네임드 세션을 지운 뒤 플레이어를 메뉴 맵(Game Default Map)으로 돌려보냅니다.
+`Leave Easy Session`은 이 게임의 세션을 파괴한 뒤 플레이어를 메뉴 맵(Game Default Map)으로 돌려보냅니다.
 호스트가 Leave를 누르면 세션이 모두에게 닫히고, 클라이언트들은 "The host has left the game."을 사유로 읽습니다.
 다른 사유를 보내고 싶다면 `Destroy Easy Session For Everyone`을 부르세요. 세션을 내리기 전에 모두에게 그 문구를 먼저 보내고, 받는 쪽은 `HostDestroyedSession`으로 읽습니다.
 어느 쪽이든 플레이어는 메뉴에서 곧바로 다시 세션을 만들거나 참가할 수 있습니다.
 
-세션만 지우고 맵에 남는 Blueprint 노드는 없습니다. 나가는 플레이어가 원하는 것은 메뉴이기 때문입니다. 필요한 C++ 코드는 서브시스템의 `DestroySession`을 부릅니다.
+세션만 지우고 맵에 남는 Blueprint 노드는 없습니다. 나가는 플레이어가 원하는 것은 메뉴이기 때문입니다. 그런 동작이 필요하면 C++에서 서브시스템의 `DestroySession`을 부릅니다.
 
 ## 매치 도중 맵 옮기기
 
@@ -264,17 +266,14 @@ EasySession에는 따로 지역 설정이 없습니다. 스팀은 검색할 때 
 ## 참가 코드
 
 호스팅할 때 `Use Join Code`를 켜면 생성된 코드(**Join Code Length** 설정의 길이, 기본 6자리)가 세션에 광고되고, 세션에 있는 누구나
-`Get Easy Join Code`로 읽을 수 있습니다. 참가는 검색 한 번 거리입니다.
+`Get Easy Join Code`로 읽을 수 있습니다. 참가는 검색 한 번이면 됩니다.
 `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도 그 세션 하나가 결과로 오니, 보여준
 뒤 `Join Easy Session`에 넘기면 됩니다. 같은 `Join Code`로 매치메이킹을 돌리면 찾기와
-참가를 한 번에, 세션이 생길 때까지 재시도까지 해줍니다. `Hidden`에 코드를 더하면 친구 전용
+참가를 한 번에 하고, 세션이 생길 때까지 재시도합니다. `Hidden`에 코드를 더하면 친구 전용
 세션이 됩니다. 어떤 브라우저에도 안 보이지만 코드를 아는 사람은 들어옵니다.
 
 코드는 세션을 가리키는 이름이지 지키는 장치가 아닙니다. 지키는 것은 `Password`이고 둘은
 조합됩니다. 코드가 세션을 찾고, 비밀번호가 여전히 문을 지킵니다.
-
-코드는 검색 필터로도 동작합니다. `Find Easy Sessions`에 `Join Code`를 넣으면 숨긴 세션이라도
-그 세션 하나가 결과로 오므로, 참가하기 전에 세션 정보를 보여주는 UI를 만들 수 있습니다.
 
 ## 플레이어: 준비와 추방
 
@@ -291,7 +290,7 @@ EasySession에는 따로 지역 설정이 없습니다. 스팀은 검색할 때 
 아래 이벤트를 Assign 노드로 바인딩합니다.
 
 - `OnSessionPlayersChanged` - 플레이어가 들어오거나, 나가거나, 준비 상태를 바꿨습니다
-- `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 무엇인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
+- `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 어떤 작업인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
 - `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 비밀번호 요구 외의 이유로 실패한 경우입니다. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다
 - `OnInvitePasswordRequired` - 수락한 초대의 자동 참가에 이 플레이어의 비밀번호가 필요합니다. 비밀번호를 물은 뒤 이벤트의 `Session`과 그 비밀번호로 `Join Easy Session`을 부르세요
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다

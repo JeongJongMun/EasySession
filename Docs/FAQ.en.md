@@ -36,6 +36,18 @@ LogEasySession: Warning: Reservations: refusing '<player id>' - the session is f
 
 Nothing needs fixing. Once that player arrives, the next search shows the session as full. If they never arrive, the host removes the reservation after 45 seconds, the engine's `TravelSessionTimeoutSecs` ([Reservations](Guide-Sessions.en.md#reservations)). Matchmaking moves on to its next candidate by itself.
 
+## "Password sessions cannot be joined, and the host warns about the beacon port"
+
+Another program on the host's machine already uses the beacon port, UDP 15000 by default. The engine then opens the reservation beacon on the next free port, but the session keeps advertising the configured one, so joining players never reach the beacon. The host's log says so:
+
+```
+LogEasySession: Warning: The reservation beacon listens on port 15001 but this session advertises 15000, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
+```
+
+An open session can still be joined, but a refusal such as a match in progress arrives after the travel, as a `Rejected` disconnect. A password-protected session cannot be joined at all and fails with `JoinRefused`, because only the beacon carries the password ([When the host cannot be asked](Guide-Sessions.en.md#when-the-host-cannot-be-asked)).
+
+Close the program that holds the port, or move the beacon with `-BeaconPort=` on the command line or `ListenPort` under `[/Script/OnlineSubsystemUtils.OnlineBeaconHost]` in `DefaultEngine.ini`. On Windows, `netstat -ano -p UDP` lists the process id that holds each port, and Task Manager shows which program that is.
+
 ## "Steam: only the first player can join, everyone after that fails"
 
 Your Host Params have **Allow Join In Progress off**. On Steam, leave it on.
@@ -45,7 +57,7 @@ The log can look like this:
 ```
 LogEasySession: Joining session 'My Session' hosted by 'HostPlayer'
 LogOnline: Warning: OSS: Async task 'FOnlineAsyncTaskSteamJoinLobby bWasSuccessful: 0 Session: GameSession LobbyId: Lobby[0x18600003DDB1FE9] Result: '3' k_EChatRoomEnterResponseNotAllowed (General Denied - You don't have the permissions needed to join the chat)' failed in 0.228409 seconds
-LogEasySession: Warning: Session request failed: JoinFailure (The online subsystem failed to join the session.)
+LogEasySession: Warning: Session request failed: JoinFailure (The online subsystem failed to join the GameSession.)
 ```
 
 Steam sessions are lobbies, and the engine recomputes whether the lobby accepts players every time someone joins or leaves it. That check multiplies the free-slot test by `bAllowJoinInProgress`, without looking at whether the match has started:

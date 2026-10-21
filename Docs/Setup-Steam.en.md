@@ -85,4 +85,4 @@ A party is a Steam lobby next to the game session, and the host runs the party b
 | Everything works in PIE but not packaged | PIE was silently using NULL - check the log line `EasySessionSubsystem initialized. Online subsystem: STEAM` |
 | An accepted invite does nothing, and the log says `search already in progress when accepting invite` | The engine ignores an invite accepted while a session search runs. Accept again once the search has finished ([FAQ](FAQ.en.md)) |
 
-When in doubt: check the startup log for the `===== EasySession diagnostics =====` block, or run `EasySession.Diagnose` at any time. It verifies the active subsystem, every ini key above, that the configured net driver class actually loads, and the Steam login state.
+When in doubt: check the startup log for the `===== EasySession diagnostics` block, or run `EasySession.Diagnose` at any time. It verifies the active subsystem, every ini key above, that the configured net driver class actually loads, and the Steam login state.
