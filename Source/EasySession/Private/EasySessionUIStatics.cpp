@@ -68,6 +68,7 @@ FText UEasySessionUIStatics::GetActivityMessage(EEasySessionActivity Activity)
 		case EEasySessionActivity::Ending: return LOCTEXT("Activity_Ending", "Ending the match...");
 		case EEasySessionActivity::Matchmaking: return LOCTEXT("Activity_Matchmaking", "Looking for a match...");
 		case EEasySessionActivity::Traveling: return LOCTEXT("Activity_Traveling", "Loading the map...");
+		case EEasySessionActivity::RestoringParty: return LOCTEXT("Activity_RestoringParty", "Returning to the party...");
 		case EEasySessionActivity::None:
 		default:
 			return FText::GetEmpty();

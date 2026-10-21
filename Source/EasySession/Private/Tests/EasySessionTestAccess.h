@@ -385,12 +385,6 @@ public:
 		Subsystem.Party->HandlePostLoadMap(Subsystem.GetGameInstance()->GetWorld());
 	}
 
-	/** @return Whether the party from before the last game session is kept for the next map without a game session to restore. */
-	static bool HasLastParty(const UEasySessionSubsystem& Subsystem)
-	{
-		return Subsystem.Party->LastParty.IsSet();
-	}
-
 	/** Pretend the local player was a member of this host's party before the last match. */
 	static void SetLastPartyHost(UEasySessionSubsystem& Subsystem, const FUniqueNetIdRepl& HostId)
 	{

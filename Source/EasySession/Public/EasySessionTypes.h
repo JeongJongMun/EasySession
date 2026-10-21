@@ -169,7 +169,10 @@ enum class EEasySessionActivity : uint8
 	Matchmaking,
 
 	/** A travel this plugin started has not loaded its map yet. */
-	Traveling
+	Traveling,
+
+	/** The party of the last match is coming back: created again on its host, or searched for and joined on a member. */
+	RestoringParty
 };
 
 /** The two kinds of session this plugin creates. A function that works on both takes one of these as its Type. */
@@ -895,7 +898,6 @@ enum class EEasyPartyLeaveReason : uint8
 	/**
 	 * The party could not continue, and Reason Text says why.
 	 * A member gets it when the connection to the host is lost, and the host when the party beacon cannot start again after a map change.
-	 * Either gets it when the restore after a match still fails once Party Restore Wait Seconds runs out.
 	 */
 	ConnectionLost UMETA(DisplayName = "Connection Lost"),
 

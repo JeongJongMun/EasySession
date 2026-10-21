@@ -15,7 +15,7 @@ class FOnlineSessionSettings;
  *
  * The subsystem creates it for CreateSession and CreateParty.
  * Matchmaking runs it as a sub-request to host a session when no session could be joined.
- * FEasySessionParty runs it to restore the party after a match.
+ * FEasySessionPartyRestoreRequest runs it as a sub-request to create the party of the last match again on its host.
  */
 class FEasySessionCreateRequest final : public FEasySessionRequest
 {

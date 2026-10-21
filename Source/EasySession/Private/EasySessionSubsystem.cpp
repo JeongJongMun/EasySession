@@ -17,6 +17,7 @@
 #include "EasySessionMatchStateRequest.h"
 #include "EasySessionOnlineSession.h"
 #include "EasySessionParty.h"
+#include "EasySessionPartyRestoreRequest.h"
 #include "EasySessionPlayerComponent.h"
 #include "EasySessionRequest.h"
 #include "EasySessionUpdateRequest.h"
@@ -144,8 +145,6 @@ void UEasySessionSubsystem::Deinitialize()
 
 void UEasySessionSubsystem::CreateSession(const FEasySessionHostParams& HostParams, FEasySessionCompleteDelegate OnComplete)
 {
-	Party->CancelRestore();
-
 	if (IsPartyMember())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::InPartyMessage);
@@ -163,8 +162,6 @@ void UEasySessionSubsystem::FindSessions(EEasySessionType Type, const FEasySessi
 
 void UEasySessionSubsystem::JoinSession(const FEasySessionSearchResult& SearchResult, const FString& Password, const FString& AdditionalTravelOptions, FEasySessionCompleteDelegate OnComplete)
 {
-	Party->CancelRestore();
-
 	// The search result advertises its type. A party result joins the party, and every other result is checked as a game session.
 	if (EasySession::GetAdvertisedSessionType(SearchResult.NativeResult.Session.SessionSettings) == NAME_PartySession)
 	{
@@ -209,7 +206,6 @@ void UEasySessionSubsystem::LeaveSession(EEasySessionType Type, FEasySessionComp
 {
 	if (Type == EEasySessionType::PartySession)
 	{
-		Party->CancelRestore();
 		EnqueueRequest(MakeShared<FEasySessionLeaveRequest>(EEasyPartyLeaveReason::Left, FText::GetEmpty(), MoveTemp(OnComplete)));
 		return;
 	}
@@ -297,8 +293,6 @@ void UEasySessionSubsystem::StartMatchmaking(const FEasyMatchmakingParams& Match
 		return;
 	}
 
-	Party->CancelRestore();
-
 	if (IsPartyMember())
 	{
 		UE_LOG(LogEasySession, Warning, TEXT("%s"), EasySession::InPartyMessage);
@@ -332,8 +326,20 @@ void UEasySessionSubsystem::CancelMatchmaking()
 
 void UEasySessionSubsystem::CreateParty(const FEasySessionSettings& Settings, FEasySessionCompleteDelegate OnComplete)
 {
-	Party->CancelRestore();
 	EnqueueRequest(MakeShared<FEasySessionCreateRequest>(Settings, MoveTemp(OnComplete)));
+}
+
+void UEasySessionSubsystem::RestoreParty(int32 MaxSearchPasses, FEasySessionCompleteDelegate OnComplete)
+{
+	if (MaxSearchPasses < 1)
+	{
+		static const TCHAR* Message = TEXT("Max Search Passes must be at least 1.");
+		UE_LOG(LogEasySession, Warning, TEXT("%s"), Message);
+		OnComplete.ExecuteIfBound(EEasySessionResult::InvalidParams, Message);
+		return;
+	}
+
+	EnqueueRequest(MakeShared<FEasySessionPartyRestoreRequest>(MaxSearchPasses, MoveTemp(OnComplete)));
 }
 
 EEasySessionResult UEasySessionSubsystem::KickPartyMember(const FEasyPartyMemberInfo& Member, const FText& Reason)
@@ -351,9 +357,9 @@ TArray<FEasyPartyMemberInfo> UEasySessionSubsystem::GetPartyMembers() const
 	return Party->GetMembers();
 }
 
-bool UEasySessionSubsystem::IsRestoringParty() const
+bool UEasySessionSubsystem::HasLastParty() const
 {
-	return Party->IsRestoring();
+	return Party->GetLastParty().IsSet();
 }
 
 bool UEasySessionSubsystem::IsMatchmakingRunning() const

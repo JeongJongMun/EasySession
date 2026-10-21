@@ -786,10 +786,7 @@ bool FEasySessionPartyRestoreStep::Update()
 			}
 
 			CurrentTest->TestFalse(TEXT("The game session closes the party"), Subsystem->IsInSession(EEasySessionType::PartySession));
-			CurrentTest->TestTrue(TEXT("The party of the last match is kept"), FEasySessionTestAccess::HasLastParty(*Subsystem));
-
-			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
-			CurrentTest->TestFalse(TEXT("A map with a game session gets no party back"), Subsystem->IsRestoringParty());
+			CurrentTest->TestTrue(TEXT("The party of the last match is kept"), Subsystem->HasLastParty());
 
 			Subsystem->DestroySession(MakeCallback(State));
 			NextPhase(State);
@@ -803,24 +800,36 @@ bool FEasySessionPartyRestoreStep::Update()
 				return TimedOut(State, TEXT("the end of the match"));
 			}
 
+			// Nothing comes back on its own, so the menu decides when to call Restore Easy Party.
 			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
-			CurrentTest->TestTrue(TEXT("Back in a map without a game session the party comes back"), Subsystem->IsRestoringParty());
+			CurrentTest->TestFalse(TEXT("A map without a game session starts no restore"), Subsystem->IsBusy());
+			CurrentTest->TestFalse(TEXT("The party does not come back by itself"), Subsystem->IsInSession(EEasySessionType::PartySession));
+			CurrentTest->TestTrue(TEXT("The party of the last match waits for Restore Easy Party"), Subsystem->HasLastParty());
+
+			State->PendingResult.Reset();
+			Subsystem->RestoreParty(0, MakeCallback(State));
+			CurrentTest->TestEqual(TEXT("No search pass is refused"), State->PendingResult.Get(EEasySessionResult::Success), EEasySessionResult::InvalidParams);
+
 			NextPhase(State);
+			Subsystem->RestoreParty(5, MakeCallback(State));
+			CurrentTest->TestTrue(TEXT("A restore counts as busy"), Subsystem->IsBusy());
+			CurrentTest->TestEqual(TEXT("A restore names its own activity"), Subsystem->GetActivity(), EEasySessionActivity::RestoringParty);
 			return false;
 		}
 
 		case 4:
 		{
-			if (Subsystem->IsRestoringParty() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
 			{
-				return TimedOut(State, TEXT("the party to come back"));
+				return TimedOut(State, TEXT("the host's restore"));
 			}
 
+			CurrentTest->TestEqual(TEXT("The host's restore succeeds"), State->PendingResult.GetValue(), EEasySessionResult::Success);
 			CurrentTest->TestTrue(TEXT("The host runs the party again"), Subsystem->IsInSession(EEasySessionType::PartySession) && Subsystem->IsHost(EEasySessionType::PartySession));
 			CurrentTest->TestTrue(TEXT("The party of the last match admits its member again"), FEasySessionTestAccess::AskApproveMember(*Subsystem, Member, Reason));
-			CurrentTest->TestFalse(TEXT("Nothing is left to get back"), FEasySessionTestAccess::HasLastParty(*Subsystem));
+			CurrentTest->TestTrue(TEXT("The party of the last match is kept inside the party"), Subsystem->HasLastParty());
 
-			Subsystem->LeaveSession(EEasySessionType::PartySession, MakeCallback(State));
+			Subsystem->RestoreParty(5, MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
@@ -829,40 +838,55 @@ bool FEasySessionPartyRestoreStep::Update()
 		{
 			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
 			{
-				return TimedOut(State, TEXT("the restored party leave"));
+				return TimedOut(State, TEXT("a restore inside a party"));
 			}
 
-			// The local player was a member of a host who is still in the match, so no party of that host exists in this world.
-			FEasySessionTestAccess::SetLastPartyHost(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyAbsentHost")));
-			FEasySessionTestAccess::FinishMapLoad(*Subsystem);
-			CurrentTest->TestTrue(TEXT("A member looks for the host's party"), Subsystem->IsRestoringParty());
-
-			Subsystem->CreateParty(MakePartySettings(false, false), MakeCallback(State));
-			CurrentTest->TestFalse(TEXT("A party the player creates stops the restore"), Subsystem->IsRestoringParty());
-			NextPhase(State);
-			return false;
-		}
-
-		case 6:
-		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
-			{
-				return TimedOut(State, TEXT("the player's own party"));
-			}
-
-			CurrentTest->TestEqual(TEXT("The player's own party is created"), State->PendingResult.GetValue(), EEasySessionResult::Success);
+			CurrentTest->TestEqual(TEXT("A restore inside a party fails"), State->PendingResult.GetValue(), EEasySessionResult::SessionAlreadyExists);
 
 			Subsystem->LeaveSession(EEasySessionType::PartySession, MakeCallback(State));
 			NextPhase(State);
 			return false;
 		}
 
-		default:
+		case 6:
 		{
 			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession(EEasySessionType::PartySession))
 			{
-				return TimedOut(State, TEXT("the last party leave"));
+				return TimedOut(State, TEXT("the restored party leave"));
 			}
+
+			CurrentTest->TestFalse(TEXT("Leaving the party forgets the party of the last match"), Subsystem->HasLastParty());
+
+			Subsystem->RestoreParty(5, MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 7:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("a restore with nothing to bring back"));
+			}
+
+			CurrentTest->TestEqual(TEXT("A restore with no party of the last match fails"), State->PendingResult.GetValue(), EEasySessionResult::NoSessionExists);
+
+			// The local player was a member of a host who is still in the match, so no party of that host exists in this world.
+			FEasySessionTestAccess::SetLastPartyHost(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyAbsentHost")));
+			Subsystem->RestoreParty(1, MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		default:
+		{
+			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			{
+				return TimedOut(State, TEXT("the member's restore"));
+			}
+
+			CurrentTest->TestEqual(TEXT("A member whose host is not back finds no party"), State->PendingResult.GetValue(), EEasySessionResult::NoSessionsFound);
+			CurrentTest->TestTrue(TEXT("The party of the last match is kept for another try"), Subsystem->HasLastParty());
 
 			End(State);
 			return true;
@@ -872,10 +896,11 @@ bool FEasySessionPartyRestoreStep::Update()
 
 /**
  * A map change destroys the party beacon, and the host starts it again for the members to log in again.
- * The party that entered a game session comes back in the next map without one, and admits its members again.
- * A party the player creates while searching for the host's party stops that restore.
+ * The party that entered a game session waits for Restore Easy Party, which creates it again on its host and admits its members again.
+ * The party is kept inside the restored party and forgotten when the player leaves it.
+ * A member whose host is not back fails with No Sessions Found and keeps the party for another try.
  */
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyRestoreTest, "EasySession.Party.ThePartyComesBackAfterAMatch", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyRestoreTest, "EasySession.Party.RestoreBringsThePartyBack", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
 bool FEasySessionPartyRestoreTest::RunTest(const FString& Parameters)
 {
 	using namespace EasySessionPartyTest;

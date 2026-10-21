@@ -46,22 +46,6 @@ public:
 	int32 JoinCodeLength = 6;
 
 	/**
-	 * Restore the party in the first map without a game session that this player reaches after the match the party entered.
-	 * The host creates the party again when that map loads, and every member searches for it until Party Restore Wait Seconds runs out.
-	 * Calling Create Easy Party, Create, Join or Leave Easy Session, or Start Easy Matchmaking stops it, because the player chose something else.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Party")
-	bool bRestorePartyAfterMatch = true;
-
-	/**
-	 * Seconds the restore after a match keeps trying before On Party Left fires with Connection Lost.
-	 * A member searches for the host's party this long, because the host may stay in the match longer.
-	 * A host whose create failed retries for the same time.
-	 */
-	UPROPERTY(config, EditAnywhere, Category = "Party", meta = (ClampMin = "0", EditCondition = "bRestorePartyAfterMatch"))
-	float PartyRestoreWaitSeconds = 120.0f;
-
-	/**
 	 * Seconds a member keeps connecting to the host after the connection closed without a reason.
 	 * A host that changes maps closes every connection while its next map loads.
 	 */

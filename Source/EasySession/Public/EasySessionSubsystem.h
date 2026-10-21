@@ -382,6 +382,16 @@ public:
 	void CreateParty(const FEasySessionSettings& Settings, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
 
 	/**
+	 * Bring back the party this player was in before its last game session.
+	 * The host of that party creates it again with the same settings, and a member searches for it and joins it.
+	 * A member who did not find it completes with NoSessionsFound, and the party stays remembered so this can be called again once the host is back.
+	 *
+	 * @param MaxSearchPasses How many times a member searches for the host's party, two seconds apart. The host creates it once.
+	 * @param OnComplete Called when the request completes.
+	 */
+	void RestoreParty(int32 MaxSearchPasses, FEasySessionCompleteDelegate OnComplete = FEasySessionCompleteDelegate());
+
+	/**
 	 * Remove a member from the party, and keep them out of this party.
 	 * The member receives OnPartyLeft with Kicked and this reason.
 	 * Only the host can do this.
@@ -402,10 +412,11 @@ public:
 	TArray<FEasyPartyMemberInfo> GetPartyMembers() const;
 
 	/**
-	 * @return Whether the party of the last match is being restored: created again on the host, or searched for and joined on a member.
-	 *         A member searches until the party is back or Party Restore Wait Seconds ends, and IsInParty stays false meanwhile.
+	 * @return Whether a party of the last match waits to be brought back with RestoreParty.
+	 *         It is kept until a party of this player ends without entering a game session.
+	 *         Inside a party it can be true too, and RestoreParty then fails with SessionAlreadyExists.
 	 */
-	bool IsRestoringParty() const;
+	bool HasLastParty() const;
 
 
 public:
@@ -609,7 +620,6 @@ public:
 	/**
 	 * Internal, add a request to the queue and start processing if idle.
 	 * A request that named no session passes the game session to the session interface.
-	 * The party queues the requests that restore the party of the last match here, because the public calls such as CreateParty and JoinSession cancel the restore first.
 	 */
 	void EnqueueRequest(TSharedRef<FEasySessionRequest> Request);
 

@@ -65,7 +65,10 @@ enum class EEasySessionRequestType : uint8
 	End,
 
 	/** One matchmaking run: searches and joins, then a host fallback. */
-	Matchmaking
+	Matchmaking,
+
+	/** Bring the party of the last match back: create it again on its host, or search for it and join it on a member. */
+	PartyRestore
 };
 
 /**

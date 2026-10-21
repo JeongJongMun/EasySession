@@ -30,7 +30,7 @@ DECLARE_DELEGATE_TwoParams(FEasyPartyConnectComplete, bool /** bSuccess */, cons
  *
  * A map change destroys the beacons but keeps the party session.
  * In the new map the host starts the party beacon again, and each member connects to it again.
- * Entering a game session closes the party, and with bRestorePartyAfterMatch on, the next map without a game session creates or joins it again.
+ * Entering a game session closes the party and keeps it as the party of the last match, which UEasySessionSubsystem::RestoreParty brings back.
  *
  * Owned by the subsystem and destroyed with it.
  */
@@ -100,17 +100,6 @@ public:
 	/** @return Every member of the party, the host included. Empty outside a party. */
 	TArray<FEasyPartyMemberInfo> GetMembers() const;
 
-	/** @return Whether the party of the last match is being restored: created again on the host, or searched for on a member. */
-	bool IsRestoring() const { return bRestoring; }
-
-	/**
-	 * Stop restoring the party of the last match, because the player chose something else.
-	 * It also forgets a party that waits for its restore, so the next map without a game session does not restore it.
-	 */
-	void CancelRestore();
-
-private:
-
 	/** The party this player was in before it entered a game session. */
 	struct FLastParty
 	{
@@ -124,7 +113,15 @@ private:
 		bool bIsLANMatch = false;
 	};
 
-	/** A map finished loading. Starts the party beacon again, connects to the host again, or restores the party of the last match. */
+	/** @return The party this player was in before its last game session, which RestoreParty brings back. Unset when there is none. */
+	const TOptional<FLastParty>& GetLastParty() const { return LastParty; }
+
+	/** @return The id of the local player, or an invalid id while nobody is logged in. */
+	FUniqueNetIdRepl GetLocalPlayerId() const;
+
+private:
+
+	/** A map finished loading. Starts the party beacon again, or connects to the host again. */
 	void HandlePostLoadMap(UWorld* LoadedWorld);
 
 	/** Keep connecting to the host, whose party beacon a map change destroyed, until the reconnect time runs out. */
@@ -135,27 +132,6 @@ private:
 
 	/** A reconnect finished. Tries again after a second, until the reconnect time runs out. */
 	void HandleReconnectComplete(bool bSuccess, const FText& Reason);
-
-	/** Create the party of the last match again on the host, or search for it and join it on a member. */
-	void StartRestore();
-
-	/** Create the party of the last match once, on the host. */
-	void TryRestoreCreate();
-
-	/** Look for the host's party once, and join it when it is found. */
-	void TryRestoreJoin();
-
-	/**
-	 * A create, search or join of the restore failed.
-	 * Tries again after a pause, until PartyRestoreWaitSeconds runs out, then broadcasts OnPartyLeft with ConnectionLost.
-	 */
-	void RetryRestore(const FText& Reason);
-
-	/** The restore ended, with the party back or without it. */
-	void FinishRestore();
-
-	/** Run a request of the restore in the queue, and remember it so a cancel can stop it. */
-	void RunRestoreRequest(TSharedRef<FEasySessionRequest> Request);
 
 	/**
 	 * Decide whether a player may join the party this process hosts.
@@ -194,9 +170,6 @@ private:
 	/** @return The party beacon state this game reads the members from, or null outside a party. */
 	AEasySessionPartyBeaconState* GetPartyState() const;
 
-	/** @return The id of the local player, or an invalid id while nobody is logged in. */
-	FUniqueNetIdRepl GetLocalPlayerId() const;
-
 	/** The world of the subsystem's game instance, or null before one exists. */
 	UWorld* GetWorld() const;
 
@@ -224,17 +197,8 @@ private:
 	/** Is the party this player is in a LAN session. */
 	bool bIsLANParty = false;
 
-	/** The party before the last game session, which the next map without a game session restores. */
+	/** The party before the last game session, which RestoreParty brings back. */
 	TOptional<FLastParty> LastParty;
-
-	/** Is the party of the last match being restored. */
-	bool bRestoring = false;
-
-	/** When the restore started, in FPlatformTime seconds. */
-	double RestoreStartSeconds = 0.0;
-
-	/** The request of the restore that runs or waits in the queue. */
-	TWeakPtr<FEasySessionRequest> RestoreRequest;
 
 	/** When the reconnect started, in FPlatformTime seconds. Zero while no reconnect runs. */
 	double ReconnectStartSeconds = 0.0;
@@ -257,12 +221,9 @@ private:
 	/** Ticker that broadcasts OnPartyMembersChanged once per frame however many changes arrived. */
 	FTSTicker::FDelegateHandle MembersChangedHandle;
 
-	/** Ticker that starts the next reconnect or restore attempt. */
+	/** Ticker that starts the next reconnect attempt. */
 	FTSTicker::FDelegateHandle RetryHandle;
 
 	/** Handle for the map load notification. */
 	FDelegateHandle PostLoadMapHandle;
-
-	/** Reset when this object is destroyed, so a completion of a restore request that arrives later reaches nothing. */
-	TSharedRef<bool> Lifetime = MakeShared<bool>(true);
 };

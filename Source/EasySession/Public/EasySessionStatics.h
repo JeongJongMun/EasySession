@@ -124,12 +124,12 @@ public:
 	static TArray<FEasyPartyMemberInfo> GetEasyPartyMembers(const UObject* WorldContextObject);
 
 	/**
-	 * Whether the party of the last match is being restored: created again on the host, or searched for and joined on a member.
-	 * True while a member waits for a host who stays in the match longer, when Is In Easy Party is still false.
-	 * A menu can show a waiting message then, instead of the buttons that would stop the restore.
+	 * Whether a party of the last match waits to be brought back with Restore Easy Party.
+	 * True after the party entered a game session, until a party of this player ends without entering one.
+	 * Inside a party it can be true too, and Restore Easy Party then fails with Session Already Exists.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Party", meta = (WorldContext = "WorldContextObject"))
-	static bool IsEasyPartyRestoring(const UObject* WorldContextObject);
+	static bool HasEasyLastParty(const UObject* WorldContextObject);
 
 	/**
 	 * Remove a member from the party, and keep them out of this party.

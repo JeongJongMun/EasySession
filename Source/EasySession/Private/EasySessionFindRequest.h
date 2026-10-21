@@ -13,7 +13,7 @@ class FOnlineSessionSearchResult;
  * A search with a Friend Id asks for the one session that friend is in, which the online subsystem completes through its own delegate.
  *
  * The subsystem creates it for FindSessions of either type.
- * FEasySessionParty creates it to search for the host's party when it restores the party.
+ * FEasySessionPartyRestoreRequest runs it as a sub-request to search for the host's party of the last match.
  * Matchmaking runs it as a sub-request for each search pass.
  *
  * The request owns the native search object while it runs.

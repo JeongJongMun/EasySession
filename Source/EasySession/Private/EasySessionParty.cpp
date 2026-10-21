@@ -5,9 +5,6 @@
 #include "EasySession.h"
 #include "EasySessionBeaconPort.h"
 #include "EasySessionConfig.h"
-#include "EasySessionCreateRequest.h"
-#include "EasySessionFindRequest.h"
-#include "EasySessionJoinRequest.h"
 #include "EasySessionMessages.h"
 #include "EasySessionPartyBeacon.h"
 #include "EasySessionSubsystem.h"
@@ -26,9 +23,6 @@ namespace
 
 	// Seconds between two attempts to connect to the host again.
 	constexpr float ReconnectIntervalSeconds = 1.0f;
-
-	// Seconds between two attempts to restore the party of the last match.
-	constexpr float RestoreIntervalSeconds = 2.0f;
 
 	// The OnPartyLeft text when the connection to the host was lost.
 	FText GetLostConnectionReason()
@@ -332,24 +326,6 @@ TArray<FEasyPartyMemberInfo> FEasySessionParty::GetMembers() const
 	return Members;
 }
 
-void FEasySessionParty::CancelRestore()
-{
-	if (!bRestoring && !LastParty.IsSet())
-	{
-		return;
-	}
-
-	UE_LOG(LogEasySession, Log, TEXT("The party of the last match is not restored, because the player chose something else."));
-
-	// Finished first, so the canceled request's completion finds no restore to continue.
-	const TSharedPtr<FEasySessionRequest> Running = RestoreRequest.Pin();
-	FinishRestore();
-	if (Running.IsValid())
-	{
-		Running->Cancel();
-	}
-}
-
 void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 {
 	if (LoadedWorld == nullptr || LoadedWorld->GetGameInstance() != Owner.GetGameInstance())
@@ -378,13 +354,6 @@ void FEasySessionParty::HandlePostLoadMap(UWorld* LoadedWorld)
 		{
 			StartReconnect();
 		}
-		return;
-	}
-
-	// A map without a game session is where a match ended, so the party of that match is restored here.
-	if (LastParty.IsSet() && !bRestoring && !Owner.IsInSession() && GetDefault<UEasySessionConfig>()->bRestorePartyAfterMatch)
-	{
-		StartRestore();
 	}
 }
 
@@ -454,125 +423,6 @@ void FEasySessionParty::HandleReconnectComplete(bool bSuccess, const FText& Reas
 		Owner.HandlePartyEnded(EEasyPartyLeaveReason::ConnectionLost, EndReason);
 		return false;
 	}), bRefused || bOutOfTime ? 0.0f : ReconnectIntervalSeconds);
-}
-
-void FEasySessionParty::StartRestore()
-{
-	bRestoring = true;
-	RestoreStartSeconds = FPlatformTime::Seconds();
-
-	if (LastParty->HostId == GetLocalPlayerId())
-	{
-		UE_LOG(LogEasySession, Log, TEXT("Creating the party of the last match again."));
-		TryRestoreCreate();
-		return;
-	}
-
-	UE_LOG(LogEasySession, Log, TEXT("Looking for the party of the last match, hosted by '%s'."), *LastParty->HostId.ToString());
-	TryRestoreJoin();
-}
-
-void FEasySessionParty::TryRestoreCreate()
-{
-	const FLastParty& Last = LastParty.GetValue();
-
-	const TWeakPtr<bool> WeakLifetime = Lifetime;
-	RunRestoreRequest(MakeShared<FEasySessionCreateRequest>(Last.Settings, FEasySessionCompleteDelegate::CreateLambda(
-		[this, WeakLifetime](EEasySessionResult Result, const FString& ErrorMessage)
-		{
-			if (!WeakLifetime.IsValid() || !bRestoring)
-			{
-				return;
-			}
-
-			if (Result == EEasySessionResult::Success)
-			{
-				FinishRestore();
-				return;
-			}
-			RetryRestore(FText::FromString(ErrorMessage));
-		})));
-}
-
-void FEasySessionParty::TryRestoreJoin()
-{
-	FEasySessionSearchParams Search;
-	Search.OwnerId = LastParty->HostId;
-	Search.bLANQuery = LastParty->bIsLANMatch;
-
-	const TWeakPtr<bool> WeakLifetime = Lifetime;
-	RunRestoreRequest(MakeShared<FEasySessionFindRequest>(Search, FEasySessionFindCompleteDelegate::CreateLambda(
-		[this, WeakLifetime](EEasySessionResult Result, const FString& ErrorMessage, const TArray<FEasySessionSearchResult>& Results)
-		{
-			if (!WeakLifetime.IsValid() || !bRestoring)
-			{
-				return;
-			}
-
-			// The host may still be in the match, so not finding the party is no failure yet.
-			if (Result != EEasySessionResult::Success || Results.IsEmpty())
-			{
-				RetryRestore(NSLOCTEXT("EasySession", "PartyHostNotBack", "The party host did not come back."));
-				return;
-			}
-
-			RunRestoreRequest(MakeShared<FEasySessionJoinRequest>(Results[0], FEasySessionCompleteDelegate::CreateLambda(
-				[this, WeakLifetime](EEasySessionResult JoinResult, const FString& JoinError)
-				{
-					if (!WeakLifetime.IsValid() || !bRestoring)
-					{
-						return;
-					}
-
-					if (JoinResult == EEasySessionResult::Success)
-					{
-						FinishRestore();
-						return;
-					}
-					RetryRestore(FText::FromString(JoinError));
-				})));
-		}), NAME_PartySession));
-}
-
-void FEasySessionParty::RetryRestore(const FText& Reason)
-{
-	if (FPlatformTime::Seconds() - RestoreStartSeconds >= GetDefault<UEasySessionConfig>()->PartyRestoreWaitSeconds)
-	{
-		UE_LOG(LogEasySession, Warning, TEXT("The party of the last match did not come back: %s"), *Reason.ToString());
-		FinishRestore();
-		Owner.OnPartyLeft.Broadcast(EEasyPartyLeaveReason::ConnectionLost, Reason);
-		return;
-	}
-
-	FTSTicker::GetCoreTicker().RemoveTicker(RetryHandle);
-	RetryHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([this](float)
-	{
-		RetryHandle.Reset();
-		if (bRestoring && LastParty->HostId == GetLocalPlayerId())
-		{
-			TryRestoreCreate();
-		}
-		else if (bRestoring)
-		{
-			TryRestoreJoin();
-		}
-		return false;
-	}), RestoreIntervalSeconds);
-}
-
-void FEasySessionParty::FinishRestore()
-{
-	bRestoring = false;
-	LastParty.Reset();
-	RestoreRequest.Reset();
-	FTSTicker::GetCoreTicker().RemoveTicker(RetryHandle);
-	RetryHandle.Reset();
-}
-
-void FEasySessionParty::RunRestoreRequest(TSharedRef<FEasySessionRequest> Request)
-{
-	RestoreRequest = Request;
-	Owner.EnqueueRequest(Request);
 }
 
 bool FEasySessionParty::ApproveMember(const FUniqueNetIdRepl& PlayerId, FText& OutReason) const

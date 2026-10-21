@@ -18,7 +18,7 @@ struct FEasyReservationResponse;
  * A game session adds a step before the join, where the host's reservation beacon decides and the group is told to follow.
  *
  * The subsystem creates it for JoinSession with a result of either type, which an accepted invite also calls.
- * Matchmaking runs it as a sub-request to join each search result, and FEasySessionParty runs it to restore the party after a match.
+ * Matchmaking runs it as a sub-request to join each search result, and FEasySessionPartyRestoreRequest runs it to join the party of the last match.
  *
  * A game session first asks the host for a reservation over the reservation beacon, when the session advertises one.
  * A refusal then adds no reservation, starts no travel and keeps the session this player is in.
