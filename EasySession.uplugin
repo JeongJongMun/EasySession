@@ -9,6 +9,7 @@
 	"CreatedByURL": "https://github.com/JeongJongMun",
 	"DocsURL": "https://github.com/JeongJongMun/EasySession/blob/main/README.md",
 	"MarketplaceURL": "",
+	"FabURL": "com.epicgames.launcher://ue/Fab/product/6fca05c8-5a36-4f5b-9f7d-596c0024866a",
 	"SupportURL": "https://github.com/JeongJongMun/EasySession/issues",
 	"EngineVersion": "5.8.0",
 	"CanContainContent": true,
@@ -17,7 +18,10 @@
 		{
 			"Name": "EasySession",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"PlatformAllowList": [
+				"Win64"
+			]
 		}
 	],
 	"Plugins": [
