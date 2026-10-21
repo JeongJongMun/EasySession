@@ -68,7 +68,7 @@ bInitServerOnClient=true
 2. **목록에 보이는 파티.** A: `EasySession.CreateParty 4`. B: `EasySession.FindParties`, 이어서 `EasySession.JoinParty`.
 3. **참가 코드.** A: `EasySession.CreateParty 4 code`, 이어서 `EasySession.Party`가 코드를 출력합니다. B: `EasySession.FindParties <코드>`, 이어서 `EasySession.JoinParty`.
 4. **따라가기.** A: `EasySession.Host <맵>`. B가 A의 세션으로 따라오고, 둘 다 `MovedToGameSession`이 담긴 `OnPartyLeft`를 받습니다.
-5. **복원.** 둘 다 매치를 나갑니다. 메뉴에서 파티가 돌아오고 B가 다시 멤버가 됩니다.
+5. **복원.** 매치를 끝냅니다. 예를 들어 A가 매치를 나갑니다. 메뉴에서 A가 먼저 파티 카드의 REJOIN PARTY를 누르고, 이어서 B가 누릅니다. B가 다시 멤버가 됩니다.
 6. **매치 중 초대.** B가 게임 세션 안에서 파티 초대를 수락합니다. B는 참가하지 않고, 로그에 `Not joining the invited party during a game session.`이 남습니다.
 
 ## 자주 겪는 함정

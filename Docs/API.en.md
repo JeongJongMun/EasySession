@@ -51,6 +51,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Start Easy Matchmaking** | `MatchmakingParams`, `PolicyClass` (optional) | Find, join the best result, and, with Allow Host Fallback on, create one when nothing is found. This node runs Find, Join and Create for you ([guide](Guide-Matchmaking.en.md)) |
 | **Read Easy Friends** | - | Calls `ReadFriendsList`. `OnSuccess` carries a `FEasySessionFriend` array, ordered for display: in a lobby of this game, then playing this game, then online, then offline, each by name. NULL/LAN has no friends, so it fails there with `NotSupportedByService` |
 | **Create Easy Party** | `Settings` | Creates a party with the local player as its host, advertising the given Easy Session Settings. Nothing travels ([guide](Guide-Party.en.md)) |
+| **Restore Easy Party** | `MaxSearchPasses` (5) | Brings back the party this player was in before its last game session: its host creates it again, and a member searches for it and joins it. A member whose host is not back fails with `NoSessionsFound`, and fewer than one pass fails with `InvalidParams` ([guide](Guide-Party.en.md#after-the-match)) |
 
 > **Host only** means the game that created the session, which is the host player's game
 > on a listen server. Anyone else gets a `RequiresHost` failure. `Server Travel Easy Session`
@@ -64,7 +65,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Create Easy Session** | Fails with `SessionAlreadyExists`. Leave the session first. A host changes maps with `Server Travel Easy Session` instead |
 | **Start Easy Matchmaking** | Fails with `SessionAlreadyExists`. Leave the session first, or pick a session yourself and join it. The host of a session whose match has not started is the exception: the run brings every player along ([guide](Guide-Sessions.en.md#bringing-the-other-players)) |
 | **Join Easy Session** | Switches sessions. The current session is left only after the new host approved the join, so a refused join keeps the player where they were. A host whose match has not started brings every player along. Fails with `SessionAlreadyExists` for the session already held, and for the host of a match in progress, whose leaving would end the match for everyone. Fails with `JoinRefused`, keeping the current session, when the new host cannot be asked |
-| **Create Easy Party**, **Join Easy Session** with a party result | Fail with `SessionAlreadyExists`, because a party exists only outside game sessions |
+| **Create Easy Party**, **Join Easy Session** with a party result, **Restore Easy Party** | Fail with `SessionAlreadyExists`, because a party exists only outside game sessions |
 
 **Calling a request in a party.** The host decides where the party goes, so the same requests behave differently for the host and for a member:
 
@@ -73,7 +74,7 @@ own session nodes still reach the service on their own ([FAQ](FAQ.en.md)).
 | **Create Easy Session** | Brings the party. Max Players must fit the party, or `InvalidParams` | `InParty` |
 | **Join Easy Session** | Asks for room for the whole party and brings it. No room is `JoinSessionFull` | `InParty` |
 | **Start Easy Matchmaking** | Only considers sessions with room for the whole party, and brings it | `InParty` |
-| **Create Easy Party**, **Join Easy Session** with a party result | `SessionAlreadyExists`. Leave the party first | `SessionAlreadyExists`. Leave the party first |
+| **Create Easy Party**, **Join Easy Session** with a party result, **Restore Easy Party** | `SessionAlreadyExists`. Leave the party first | `SessionAlreadyExists`. Leave the party first |
 | **Kick Easy Party Member** | Allowed | `RequiresHost` |
 | The party invite nodes | Allowed | Allowed |
 
@@ -96,7 +97,7 @@ node name without spaces.
 | Is Easy Host | `IsHost` | Does this game host the session of the given Type: it created it, so it may Start, End, Update, travel, kick from or destroy a game session, and kick from a party. False outside a session of that type |
 | Get Easy Session State | `GetSessionState` | Where the session is in its lifecycle. Clients read the host's replicated value, so every player sees the same thing |
 | Is Easy Session Busy | `IsBusy` | A request or the level load after it is running. Bind a button's Is Enabled to this |
-| Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking or Traveling. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
+| Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling or Restoring Party. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
 | Get Easy Display Name | `GetDisplayName` | The name the session of the given Type is advertised under |
 | Get Easy Password | `GetSessionSettings(Type).Password` | The password this game is hosting the game session with, to show the host. **Empty on clients** - it never leaves the host. Always empty for a party, which has none |
 | Get Easy Session Player Infos | `GetSessionPlayerInfos` | Everyone in the session with host, local-player and ready flags, for a player list UI. Empty outside a game session |
@@ -113,7 +114,7 @@ node name without spaces.
 | Get Easy Join Code | `GetJoinCode` | The join code the session of the given Type advertises, or empty. Every player in the session can read and share it |
 | Make Easy Session Host Params From Settings | - | Host params that advertise the given settings, plus Initial Map Name and the LAN choice. Blueprint cannot copy a Settings struct into Host Params, so a settings form goes through this to reach Create Easy Session |
 | Get Easy Party Members | `GetPartyMembers` | Every member, the host included, with host, local-player and ready flags |
-| Is Easy Party Restoring | `IsRestoringParty` | Is the party of the last match being created again or looked for. Show a waiting message while it is true |
+| Has Easy Last Party | `HasLastParty` | Is there a party of the last match for Restore Easy Party to bring back. It stays true after a failed restore, until a party of this player ends without entering a game session ([guide](Guide-Party.en.md#after-the-match)) |
 
 > **Which session are these about?** A node with a `Type` input answers about the game session or the party session,
 > whichever you pick; the default is Game Session. The game session is the one players find, join and play in,
@@ -335,7 +336,7 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 ### 6.6 EEasySessionActivity
 
-`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
+`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling`, `RestoringParty` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
 
 ### 6.7 EEasyPartyLeaveReason
 
@@ -346,7 +347,7 @@ The `Reason` of `OnPartyLeft`.
 | `Left` | The local player left the party with Leave Easy Session |
 | `Kicked` | The host removed the local player. `ReasonText` is the host's reason |
 | `HostLeft` | The host left, which ends the party |
-| `ConnectionLost` | The connection to the host was lost, or the host did not come back after a match |
+| `ConnectionLost` | The connection to the host was lost |
 | `MovedToGameSession` | The party entered a game session, which closes it. The normal end of a party that plays a match, not an error |
 
 ## 7. UEasyMatchmakingPolicy
@@ -360,8 +361,6 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 | Setting | Default | Effect |
 |---|---|---|
 | `bAutoJoinAcceptedInvites` | true | Accepting a platform invite joins that session immediately. Off gives you only `OnSessionInviteAccepted` |
-| `bRestorePartyAfterMatch` | true | Gets the party back in the first map without a game session after a match. The host creates it again and every member looks for it ([guide](Guide-Party.en.md#after-the-match)) |
-| `PartyRestoreWaitSeconds` | 120 | How long a member looks for the host's party after a match |
 | `PartyReconnectSeconds` | 15 | How long a member keeps connecting to the host after the connection closed without a reason, for example while the host's next map loads |
 | `JoinCodeLength` | 6 | Characters in a generated join code, from 4 to 12. A session keeps the code it was created with |
 | `bAcceptInvitesWhileInSession` | false | An automatically accepted invite may destroy the session this player is in and join the invited one. Off by default so one click in the overlay cannot end a running match; `OnSessionInviteAccepted` still fires, so you can ask first and call `Join Easy Session` yourself, which leaves the current session once the new host approved |
@@ -370,7 +369,7 @@ Make a subclass in Blueprint or C++ and override **`ScoreSession(Session) -> flo
 
 The same requests are callable natively with delegate callbacks: `CreateSession`,
 `FindSessions`, `JoinSession`, `DestroySession`, `UpdateSession`,
-`StartMatchmaking`, `CreateParty`. `FindSessions` and `LeaveSession` take an `EEasySessionType` to work on the game session or the party,
+`StartMatchmaking`, `CreateParty`, `RestoreParty`. `FindSessions` and `LeaveSession` take an `EEasySessionType` to work on the game session or the party,
 and `JoinSession` reads the type off the search result. Blueprint and C++ take the same code path.
 
 Every session call is one request on a queue that runs them one at a time. Matchmaking

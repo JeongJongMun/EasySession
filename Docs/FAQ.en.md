@@ -97,7 +97,7 @@ On Steam there is one more cause: the engine ignores an invite accepted while a 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-A search runs during Find Easy Sessions for sessions or parties, Matchmaking, a party member following the host, and a party member looking for the host's party after a match. Accept the invite again once the search has finished.
+A search runs during Find Easy Sessions for sessions or parties, Matchmaking, a party member following the host, and a party member looking for the host's party with Restore Easy Party. Accept the invite again once the search has finished.
 
 ## "Warning: Player ... is not part of session (GameSession)" during travel
 

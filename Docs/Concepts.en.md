@@ -34,7 +34,7 @@ Which one is active is decided by `DefaultEngine.ini` (`[OnlineSubsystem] Defaul
 EasySession creates two kinds of session.
 
 - A **game session** is the match: the host opens a listen server on a map, and the players connect to it. There is one per process.
-- A **party** is a group of players that stays together outside game sessions, such as friends in the main menu. Its host opens a party beacon instead of a map, and the members log in to it. A party exists until it enters a game session, and comes back after the match ([Party guide](Guide-Party.en.md)).
+- A **party** is a group of players that stays together outside game sessions, such as friends in the main menu. Its host opens a party beacon instead of a map, and the members log in to it. A party exists until it enters a game session, and `Restore Easy Party` brings it back after the match ([Party guide](Guide-Party.en.md)).
 
 In this plugin, **session without a qualifier means the game session**. `Create Easy Session` creates a game session and `Create Easy Party` creates a party. A node that works on both kinds, such as `Find Easy Sessions` or `Is In Easy Session`, carries a `Type` pin whose default is `Game Session`; set it to `Party Session` to ask about the party. A node for one kind only names it, such as `Start Easy Session` or `Kick Easy Party Member`. The [API reference](API.en.md#2-query-blueprint-nodes) lists which nodes take the pin.
 

@@ -10,7 +10,7 @@
 |---|---|---|
 | 무엇인가 | 플레이어가 찾고, 참가하고, 플레이하는 매치 | 매치와 매치 사이를 함께 이동하는 그룹 |
 | 맵 | 있습니다. 호스트가 서버입니다 | 없습니다. 파티를 만들거나 참가해도 아무도 이동하지 않습니다 |
-| 수명 | 호스트가 나가거나 없앨 때까지 | 게임 세션 밖에서만 존재합니다. 게임 세션에 들어가면 닫히고, 매치가 끝나면 돌아옵니다 |
+| 수명 | 호스트가 나가거나 없앨 때까지 | 게임 세션 밖에서만 존재합니다. 게임 세션에 들어가면 닫히고, 매치가 끝난 뒤 `Restore Easy Party`로 돌아옵니다 |
 | 개수 | 플레이어당 하나 | 플레이어당 하나, 게임 세션과 따로 |
 
 ## 파티 만들기
@@ -116,7 +116,7 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
 | `Left` | 로컬 플레이어가 `Leave Easy Session`으로 파티를 나갔습니다 |
 | `Kicked` | 호스트가 로컬 플레이어를 내보냈습니다. `Reason Text`는 호스트의 사유입니다 |
 | `HostLeft` | 호스트가 나가서 파티가 끝났습니다 |
-| `ConnectionLost` | 호스트와의 연결이 끊겼거나, 매치가 끝난 뒤 호스트가 돌아오지 않았습니다 |
+| `ConnectionLost` | 호스트와의 연결이 끊겼습니다 |
 | `MovedToGameSession` | 파티가 게임 세션에 들어가 닫혔습니다. 매치를 하는 모든 파티가 정상적으로 이렇게 끝나므로 오류로 띄우지 마세요 |
 
 ## 행선지는 호스트가 정합니다
@@ -141,12 +141,16 @@ Is Enabled = NOT (Is In Easy Session (Party Session) AND NOT Is Easy Host (Party
 
 ## 매치가 끝난 뒤
 
-**Restore Party After Match**가 켜져 있으면(기본값), 매치가 끝난 뒤 게임 세션이 없는 첫 맵에서 파티가 돌아옵니다.
+파티가 게임 세션에 들어가면 EasySession이 그 파티를 기억해 둡니다. 저절로 돌아오지는 않습니다. 매치가 끝난 뒤 게임이 `Restore Easy Party`를 부르세요. 예를 들어 REJOIN PARTY 버튼에서 부르면 됩니다.
 
-- 호스트는 같은 설정으로 즉시 파티를 다시 만듭니다. 멤버는 호스트의 ID로 파티를 찾으므로 숨긴 파티도 돌아옵니다.
-- 호스트가 매치에 더 오래 남아 있을 수 있으므로, 멤버는 호스트의 파티를 2초마다 최대 **Party Restore Wait Seconds**(기본 120초) 동안 찾습니다. 그 안에 호스트가 돌아오지 않으면 멤버에게 `ConnectionLost`가 담긴 `OnPartyLeft`가 옵니다.
+- 호스트는 같은 설정으로 즉시 파티를 다시 만듭니다.
+- 멤버는 호스트의 ID로 파티를 찾으므로 숨긴 파티도 찾습니다. 2초마다 최대 **Max Search Passes**번(기본 5번) 찾습니다. 호스트가 아직 매치 중이면 `NoSessionsFound`로 실패합니다. 그러니 호스트가 먼저 부르고, 멤버는 나중에 다시 부르면 됩니다.
 
-이 동안 `Is Easy Party Restoring`은 true이고, 멤버에서 Party Session으로 부른 `Is In Easy Session`은 파티를 찾을 때까지 false입니다. 이때 대기 메시지를 띄우세요. `Create Easy Party`, `Create Easy Session`, `Join Easy Session`, `Leave Easy Session`, `Start Easy Matchmaking`을 부르면 복원이 멈춥니다. 플레이어가 다른 것을 골랐기 때문입니다.
+`Has Easy Last Party`는 돌아갈 파티가 있는지 알려 줍니다. 복원에 실패해도, 파티 없이 게임 세션을 하는 동안에도 true로 남습니다. 이 플레이어의 파티가 게임 세션 이동이 아닌 이유로 끝나면 기억을 지웁니다. 직접 나가거나, 추방되거나, 호스트가 나가거나, 연결이 끊긴 경우입니다. 파티 안에서 노드를 부르면 `SessionAlreadyExists`로 실패합니다.
+
+복원이 도는 동안 `Is Easy Session Busy`는 true이고, `Get Easy Session Activity`는 Restoring Party입니다. `Get Activity Message`는 이를 "Returning to the party..."로 보여 줍니다.
+
+예제 메뉴는 `Has Easy Last Party`가 true인 동안 REJOIN PARTY 버튼을 보여 주고, 버튼을 누르면 노드를 부릅니다. 메뉴가 열릴 때 저절로 부르지는 않습니다. 매치에서 혼자 나온 플레이어가 아직 플레이 중인 호스트를 찾게 되기 때문입니다.
 
 ## 매치 밖에서 맵 바꾸기
 
@@ -160,11 +164,9 @@ Project Settings -> Plugins -> EasySession의 Party 항목입니다.
 
 | 설정 | 기본값 | 효과 |
 |---|---|---|
-| Restore Party After Match | true | 위에서 설명한 대로 매치가 끝난 뒤 파티를 복원합니다 |
-| Party Restore Wait Seconds | 120 | 매치가 끝난 뒤 멤버가 호스트의 파티를 찾는 시간 |
 | Party Reconnect Seconds | 15 | 사유 없이 연결이 닫힌 뒤 멤버가 호스트에게 계속 연결을 시도하는 시간. 예를 들어 호스트의 다음 맵이 로드되는 동안입니다 |
 
 ## C++ API
 
-같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `KickPartyMember`, `SetPartyReady`, `GetPartyMembers`, `IsRestoringParty`, `ShowProfileUIForPartyMember`입니다.
+같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `KickPartyMember`, `SetPartyReady`, `GetPartyMembers`, `RestoreParty`, `HasLastParty`, `ShowProfileUIForPartyMember`입니다.
 `FindSessions`, `LeaveSession`, `IsInSession`, `IsHost`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend`, `ShowInviteUI`는 파티에 대해 `EEasySessionType::PartySession`을 받고, `JoinSession`은 검색 결과에서 타입을 읽습니다.

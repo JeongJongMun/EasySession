@@ -10,7 +10,7 @@ A party is optional. A game that never creates one works exactly as before, and 
 |---|---|---|
 | What it is | The match players find, join and play in | A group that moves between matches together |
 | Map | Has one. The host is the server | None. Nothing travels when a party is created or joined |
-| Lives | Until the host leaves or destroys it | Outside game sessions. Entering one closes the party, and it comes back after the match |
+| Lives | Until the host leaves or destroys it | Outside game sessions. Entering one closes the party, and `Restore Easy Party` brings it back after the match |
 | How many | One per player | One per player, next to the game session |
 
 ## Create a party
@@ -116,7 +116,7 @@ A failed join arrives on `OnSessionFailure`, because no node waits for it. With 
 | `Left` | The local player left the party with `Leave Easy Session` |
 | `Kicked` | The host removed the local player. `Reason Text` is the host's reason |
 | `HostLeft` | The host left, which ends the party |
-| `ConnectionLost` | The connection to the host was lost, or the host did not come back after a match |
+| `ConnectionLost` | The connection to the host was lost |
 | `MovedToGameSession` | The party entered a game session, which closes it. This is the normal end of every party that plays a match, so do not show it as an error |
 
 ## The host decides where the party goes
@@ -141,12 +141,16 @@ Entering the game session closes the party. Every member, and the host, receives
 
 ## After the match
 
-With **Restore Party After Match** on, the default, the party comes back in the first map without a game session after the match:
+When a party enters a game session, EasySession remembers it. Nothing brings it back by itself: after the match, the game calls `Restore Easy Party`, for example from a REJOIN PARTY button.
 
-- The host creates the party again at once, with the same settings. The members find it by the host's id, so a hidden party comes back too.
-- Every member looks for the host's party every two seconds, for up to **Party Restore Wait Seconds** (120 by default), because the host may stay in the match longer. A member whose host does not come back in time receives `OnPartyLeft` with `ConnectionLost`.
+- The host creates the party again at once, with the same settings.
+- A member looks for the party by the host's id, so a hidden party is found too. It searches every two seconds, up to **Max Search Passes** times (5 by default). A member whose host is still in the match fails with `NoSessionsFound`, so the host calls it first, and a member can call it again later.
 
-While this runs, `Is Easy Party Restoring` is true, and `Is In Easy Session` with Party Session stays false on a member until the party is found. Show a waiting message then. Calling `Create Easy Party`, `Create Easy Session`, `Join Easy Session`, `Leave Easy Session` or `Start Easy Matchmaking` stops the restore, because the player chose something else.
+`Has Easy Last Party` says whether there is a party to go back to. It stays true after a failed restore, and while the player plays game sessions without a party. The party is forgotten when a party of this player ends without entering a game session: the player leaves it, is kicked, the host leaves, or the connection is lost. Inside a party the node fails with `SessionAlreadyExists`.
+
+While the restore runs, `Is Easy Session Busy` is true and `Get Easy Session Activity` is Restoring Party, which `Get Activity Message` shows as "Returning to the party...".
+
+The example menu shows REJOIN PARTY while `Has Easy Last Party` is true, and calls the node on a click. It does not call it when the menu opens, because a player who left the match alone would search for a host who is still playing.
 
 ## Changing maps outside a match
 
@@ -160,11 +164,9 @@ In Project Settings -> Plugins -> EasySession, under Party:
 
 | Setting | Default | Effect |
 |---|---|---|
-| Restore Party After Match | true | Gets the party back after a match, as described above |
-| Party Restore Wait Seconds | 120 | How long a member looks for the host's party after a match |
 | Party Reconnect Seconds | 15 | How long a member keeps connecting to the host after the connection closed without a reason, for example while the host's next map loads |
 
 ## C++ API
 
-The same functions are on `UEasySessionSubsystem`: `CreateParty`, `KickPartyMember`, `SetPartyReady`, `GetPartyMembers`, `IsRestoringParty` and `ShowProfileUIForPartyMember`.
+The same functions are on `UEasySessionSubsystem`: `CreateParty`, `KickPartyMember`, `SetPartyReady`, `GetPartyMembers`, `RestoreParty`, `HasLastParty` and `ShowProfileUIForPartyMember`.
 `FindSessions`, `LeaveSession`, `IsInSession`, `IsHost`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend` and `ShowInviteUI` take `EEasySessionType::PartySession` for the party, and `JoinSession` reads the type off the search result.

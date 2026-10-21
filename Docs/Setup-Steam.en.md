@@ -72,7 +72,7 @@ A party is a Steam lobby next to the game session, and the host runs the party b
 2. **Listed party.** A: `EasySession.CreateParty 4`. B: `EasySession.FindParties`, then `EasySession.JoinParty`.
 3. **Join code.** A: `EasySession.CreateParty 4 code`, then `EasySession.Party` prints the code. B: `EasySession.FindParties <code>`, then `EasySession.JoinParty`.
 4. **Follow.** A: `EasySession.Host <Map>`. B follows into A's session, and both see `OnPartyLeft` with `MovedToGameSession`.
-5. **Restore.** Both leave the match. The party comes back in the menu, with B as a member again.
+5. **Restore.** End the match, for example by leaving it on A. In the menu, A presses REJOIN PARTY on the party card first, then B does. B is a member again.
 6. **Invite during a match.** B accepts a party invite while in a game session. B does not join, and the log says `Not joining the invited party during a game session.`
 
 ## Common pitfalls

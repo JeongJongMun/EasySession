@@ -97,7 +97,7 @@ LogEasySession: Not joining the invited party during a game session. Call Leave 
 LogOnlineSession: Warning: OSS: Invalid session or search already in progress when accepting invite.  Ignoring invite request.
 ```
 
-검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 호스트를 따라가는 파티 멤버, 매치가 끝난 뒤 호스트의 파티를 찾는 파티 멤버에서 진행됩니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
+검색은 세션이나 파티를 찾는 Find Easy Sessions, Matchmaking, 호스트를 따라가는 파티 멤버, Restore Easy Party로 호스트의 파티를 찾는 파티 멤버에서 진행됩니다. 검색이 끝난 뒤 초대를 다시 수락하세요.
 
 ## "Travel 중에 Warning: Player ... is not part of session (GameSession)이 뜹니다"
 
