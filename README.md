@@ -23,7 +23,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 
 ## Features
 
-- **Drops into an existing project** - enabling the plugin creates the subsystem for you, and LAN play works without touching a config file. Apart from the GameInstance setting in step 3, keep the game mode and widgets you already have and add the nodes.
+- **Drops into an existing project** - enabling the plugin creates the subsystem for you. Apart from the GameInstance setting in step 3, keep the game mode and widgets you already have and add the nodes.
 - **Matchmaking in one node** - `Start Easy Matchmaking` searches, joins the best session it finds, and with Allow Host Fallback on hosts one when it finds none.
 - **Parties** - friends gather in a party before they play: hidden or listed, with an optional join code, invites, ready state and kick. When the host creates a session, joins or matchmakes, the whole party follows, and after the match `Restore Easy Party` brings the party back.
 - **Moving together** - the host of a lobby session that joins or matchmakes into another session brings every player along, with room reserved for all of them.
