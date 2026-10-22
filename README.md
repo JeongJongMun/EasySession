@@ -116,4 +116,4 @@ the session state and the request queue, which answers most of the first questio
 
 ## License
 
-[MIT](LICENSE) - free to use in commercial and non-commercial projects.
+A copy from Fab is covered by the Fab license.
