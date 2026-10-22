@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Langerak. Licensed under the MIT License.
+// Copyright (c) 2026 Langerak.
 
 #pragma once
 
@@ -81,7 +81,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FEasyFriendsEvent, EEasySessionRe
 
 /**
  * The EasySession subsystem is responsible for every session request of the plugin.
- * It is created automatically for each game instance, so no custom GameInstance class is needed.
+ * It is created automatically for each game instance.
+ * Keep in mind that the game instance must use UEasySessionOnlineSession, as UEasySessionGameInstance does.
+ * Without it every session and party request fails with NoEasySessionGameInstance.
  *
  * All requests are queued and run one at a time, so a call made while another request runs waits in the queue instead of failing in the online subsystem.
  * Each request reports its result through its completion delegate, or the output pins of its async node.

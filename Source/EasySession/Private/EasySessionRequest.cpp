@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Langerak. Licensed under the MIT License.
+// Copyright (c) 2026 Langerak.
 
 #include "EasySessionRequest.h"
 

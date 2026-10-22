@@ -1,4 +1,4 @@
-// Copyright (c) 2026 Langerak. Licensed under the MIT License.
+// Copyright (c) 2026 Langerak.
 
 // Debug console commands for testing EasySession without any UI.
 // Available in PIE and development builds, stripped from shipping builds.
