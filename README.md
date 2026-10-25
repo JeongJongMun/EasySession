@@ -4,14 +4,14 @@ Beginner-friendly sessions, parties and matchmaking for Unreal Engine, built on 
 
 Host, find, join and quick-play with a few Blueprint nodes - no C++ and no config files to start.
 
-*[한국어 README](README.ko.md)*
+*[Get it on Fab](https://www.fab.com/listings/58a489be-2b74-406c-b4ba-5548968f6520) | [한국어 README](README.ko.md)*
 
 <br/>
 
 ## Install
 
 1. Get the plugin:
-   - **From Fab** - install it to your engine from your Fab library in the Epic Games Launcher.
+   - **From [Fab](https://www.fab.com/listings/58a489be-2b74-406c-b4ba-5548968f6520)** - install it to your engine from your Fab library in the Epic Games Launcher.
    - **From GitHub** - copy this folder into your project's `Plugins/` directory, so you have `YourProject/Plugins/EasySession/`.
 2. Open the project, go to **Edit -> Plugins**, search for **EasySession**, enable it and restart.
 3. In **Project Settings -> Maps & Modes**, set **Game Instance Class** to `EasySessionGameInstance`. If the project already has a GameInstance Blueprint, set its **Parent Class** to `EasySessionGameInstance` instead.

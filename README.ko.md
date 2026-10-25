@@ -4,14 +4,14 @@
 
 세션 만들기, 찾기, 참가, 매치메이킹을 블루프린트 노드 몇 개로 - C++도, 설정 파일도 없이 시작할 수 있습니다.
 
-*[English README](README.md)*
+*[Fab에서 받기](https://www.fab.com/listings/58a489be-2b74-406c-b4ba-5548968f6520) | [English README](README.md)*
 
 <br/>
 
 ## 설치
 
 1. 플러그인을 받습니다.
-   - **Fab에서 받았다면** - Epic Games 런처의 Fab 라이브러리에서 엔진에 설치합니다.
+   - **[Fab](https://www.fab.com/listings/58a489be-2b74-406c-b4ba-5548968f6520)에서 받았다면** - Epic Games 런처의 Fab 라이브러리에서 엔진에 설치합니다.
    - **GitHub에서 받았다면** - 이 폴더를 프로젝트의 `Plugins/` 아래에 복사합니다 (`내프로젝트/Plugins/EasySession/`).
 2. 프로젝트를 열고 **Edit -> Plugins**에서 **EasySession**을 찾아 활성화한 뒤 재시작합니다.
 3. **Project Settings -> Maps & Modes**에서 **Game Instance Class**를 `EasySessionGameInstance`로 지정합니다. 이미 GameInstance 블루프린트가 있다면 그 **Parent Class**를 `EasySessionGameInstance`로 바꾸세요.
