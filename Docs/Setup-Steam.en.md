@@ -62,7 +62,7 @@ So the block lists every driver the game needs, not only the Steam one:
 ## 3. Test checklist
 
 - Editor PIE cannot represent two Steam users. Test **on two machines with two different Steam accounts**, running a packaged build or `-game`.
-- AppId 480 shares its lobby space with everyone testing on Spacewar. The engine keeps only sessions with your build id, but that id comes from the engine version, so other projects on the same engine version still show up in searches and matchmaking. Joining one fails with `OutdatedClient`. To see only your own sessions, put a custom setting (e.g. `GameName = MyGameDev`) in Host Params and the same value in Search Params `Required Custom Settings`.
+- AppId 480 shares its lobby space with everyone testing on Spacewar. The engine keeps only sessions with your build id, but that id comes from the engine version, so other projects on the same engine version still show up in searches and matchmaking. Joining one does not work, because the game versions differ. To see only your own sessions, put a custom setting (e.g. `GameName = MyGameDev`) in Host Params and the same value in Search Params `Required Custom Settings`.
 
 ### Parties on Steam
 
