@@ -38,19 +38,26 @@ void FEasySessionRequestQueue::ClearActive()
 
 bool FEasySessionRequestQueue::IsBusy() const
 {
-	return GetBusyRequest().IsValid();
+	if (ActiveRequest.IsValid() && ActiveRequest->CountsAsBusy())
+	{
+		return true;
+	}
+
+	// Every waiting request is checked, not only the first one.
+	// A join queued behind a running search makes IsBusy true inside the call that queued it.
+	return Pending.ContainsByPredicate([](const TSharedRef<FEasySessionRequest>& Request) { return Request->CountsAsBusy(); });
 }
 
-TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::GetBusyRequest() const
+TSharedPtr<FEasySessionRequest> FEasySessionRequestQueue::GetCurrentRequest() const
 {
-	if (ActiveRequest.IsValid() && ActiveRequest->CountsAsBusy())
+	if (ActiveRequest.IsValid() && !ActiveRequest->HasNotified())
 	{
 		return ActiveRequest;
 	}
 
 	for (const TSharedRef<FEasySessionRequest>& Request : Pending)
 	{
-		if (Request->CountsAsBusy())
+		if (!Request->HasNotified())
 		{
 			return Request;
 		}

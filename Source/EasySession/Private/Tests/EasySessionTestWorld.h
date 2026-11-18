@@ -108,6 +108,15 @@ namespace EasySessionTest
 		World->DestroyWorld(/*bInformEngineOfWorld=*/ true);
 		GEngine->DestroyWorldContext(World);
 	}
+
+	/**
+	 * @return Whether GetActivity reports anything: a request runs or waits, or a travel this plugin started is loading its map.
+	 *         Latent steps wait on this rather than on IsBusy, which does not count Find, Update, Start and End requests.
+	 */
+	inline bool HasActivity(const UEasySessionSubsystem* Subsystem)
+	{
+		return Subsystem->GetActivity() != EEasySessionActivity::None;
+	}
 }
 
 #endif // WITH_DEV_AUTOMATION_TESTS

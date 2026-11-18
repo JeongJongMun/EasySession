@@ -118,7 +118,7 @@ bool FEasySessionHostMatchmakingStep::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the create"));
 			}
@@ -158,7 +158,7 @@ bool FEasySessionHostMatchmakingStep::Update()
 
 		case 2:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the host's run"));
 			}
@@ -173,7 +173,7 @@ bool FEasySessionHostMatchmakingStep::Update()
 
 		case 3:
 		{
-			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || Subsystem->IsBusy())
+			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the match start"));
 			}
@@ -199,7 +199,7 @@ bool FEasySessionHostMatchmakingStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the cleanup destroy"));
 			}
@@ -258,7 +258,7 @@ bool FEasySessionKickedPlayerStep::Update()
 
 		case 1:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the create"));
 			}
@@ -279,7 +279,7 @@ bool FEasySessionKickedPlayerStep::Update()
 
 		case 2:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the destroy"));
 			}
@@ -291,7 +291,7 @@ bool FEasySessionKickedPlayerStep::Update()
 
 		case 3:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the second create"));
 			}
@@ -306,7 +306,7 @@ bool FEasySessionKickedPlayerStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the cleanup destroy"));
 			}
@@ -368,7 +368,7 @@ bool FEasySessionPlayerComponentStep::Update()
 	{
 		case 0:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the create"));
 			}
@@ -398,7 +398,7 @@ bool FEasySessionPlayerComponentStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the destroy"));
 			}

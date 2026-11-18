@@ -70,7 +70,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -86,7 +86,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 
 		case 1:
 		{
-			if (Subsystem->IsBusy())
+			if (EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -139,7 +139,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 
 		case 4:
 		{
-			if (Subsystem->IsBusy())
+			if (EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -172,7 +172,7 @@ bool FEasySessionWaitForInProgressRun::Update()
 
 		default:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}

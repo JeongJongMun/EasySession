@@ -45,7 +45,7 @@ bool FEasySessionJoinRetryStep::Update()
 	{
 		case FTestState::EStep::AwaitingSetupCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 				{
@@ -71,7 +71,7 @@ bool FEasySessionJoinRetryStep::Update()
 
 		case FTestState::EStep::AwaitingSetupDestroy:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 				{
@@ -104,7 +104,7 @@ bool FEasySessionJoinRetryStep::Update()
 
 		case FTestState::EStep::AwaitingJoins:
 		{
-			if (!State->RetryResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->RetryResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 				{

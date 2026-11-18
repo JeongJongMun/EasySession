@@ -37,9 +37,19 @@ protected:
 	virtual void NativeDestruct() override;
 	//~ End UUserWidget Interface
 
-	/** Is Easy Session Busy changed, with the new value. */
+	/**
+	 * Is Easy Session Busy changed, with the new value.
+	 * It fires only on a change, so read Is Easy Session Busy in Construct for the value the widget starts with.
+	 */
 	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")
 	void OnBusyChanged(bool bBusy);
+
+	/**
+	 * Get Easy Session Activity changed, with the new value, which Get Activity Message turns into a status line.
+	 * It fires only on a change, so read Get Easy Session Activity in Construct for the value the widget starts with.
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")
+	void OnActivityChanged(EEasySessionActivity Activity);
 
 	/** The session's lifecycle state changed, on the host and on every client. */
 	UFUNCTION(BlueprintImplementableEvent, Category = "EasySession|Events")

@@ -71,7 +71,7 @@ bool FEasySessionCheckBusyWindow::Update()
 		return false;
 	}
 
-	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{

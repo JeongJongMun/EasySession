@@ -71,7 +71,9 @@ public:
 	static UEasyMatchmakingPolicy* GetActiveEasyMatchmakingPolicy(const UObject* WorldContextObject);
 
 	/**
-	 * Whether a request is running or queued, a matchmaking run is running, or a travel this plugin started has not loaded its map yet.
+	 * Whether the session or the map the local player is in is changing.
+	 * A create, join, leave, matchmaking run or party restore runs or waits, or a travel this plugin started has not loaded its map yet.
+	 * A search, a settings update and a match start or end do not count, so a widget that waits for one of them waits on the output pins of the node it called.
 	 * Session buttons read this to disable themselves.
 	 * Is Easy Matchmaking Running asks about matchmaking alone.
 	 */
@@ -79,9 +81,10 @@ public:
 	static bool IsEasySessionBusy(const UObject* WorldContextObject);
 
 	/**
-	 * What keeps Is Easy Session Busy true: Creating, Joining, Traveling and so on.
-	 * None exactly when it is false.
+	 * What the plugin is doing: Creating, Searching, Joining, Traveling and so on.
+	 * None when no request runs or waits and no travel this plugin started is loading its map.
 	 * It covers requests the game did not start too, such as the destroy after a lost connection.
+	 * It also reports the Find Easy Sessions, Update Easy Session, Start Easy Session and End Easy Session calls that Is Easy Session Busy does not count.
 	 * Get Activity Message turns it into a status line.
 	 */
 	UFUNCTION(BlueprintPure, Category = "EasySession|Session", meta = (WorldContext = "WorldContextObject"))

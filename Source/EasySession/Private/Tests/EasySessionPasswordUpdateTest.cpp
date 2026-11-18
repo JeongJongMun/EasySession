@@ -239,7 +239,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -256,7 +256,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 
 		case 1:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}
@@ -276,7 +276,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 
 		case 2:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -295,7 +295,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 
 		case 3:
 		{
-			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || Subsystem->IsBusy())
+			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -311,7 +311,7 @@ bool FEasySessionWaitForApprovalTable::Update()
 
 		default:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}

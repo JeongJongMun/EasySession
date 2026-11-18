@@ -71,7 +71,7 @@ bool FEasySessionHostStep::Update()
 	{
 		case EStep::AwaitingCreate:
 		{
-			if (!State->CreateResult.IsSet() || Subsystem->IsBusy())
+			if (!State->CreateResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -125,7 +125,7 @@ bool FEasySessionHostStep::Update()
 
 		case EStep::AwaitingDestroy:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}

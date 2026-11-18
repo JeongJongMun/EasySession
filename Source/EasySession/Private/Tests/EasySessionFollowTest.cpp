@@ -73,7 +73,7 @@ bool FEasySessionFollowStep::Update()
 	{
 		case FTestState::EStep::AwaitingHostCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the host's create"));
 			}
@@ -89,7 +89,7 @@ bool FEasySessionFollowStep::Update()
 
 		case FTestState::EStep::AwaitingHostDestroy:
 		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the host's destroy"));
 			}
@@ -102,7 +102,7 @@ bool FEasySessionFollowStep::Update()
 
 		case FTestState::EStep::AwaitingCurrentCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the current create"));
 			}

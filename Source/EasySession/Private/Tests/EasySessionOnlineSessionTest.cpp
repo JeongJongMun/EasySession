@@ -89,7 +89,7 @@ bool FEasySessionWaitForEngineDisconnect::Update()
 	{
 		case 0:
 		{
-			if (!State->CreateResult.IsSet() || Subsystem->IsBusy())
+			if (!State->CreateResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}

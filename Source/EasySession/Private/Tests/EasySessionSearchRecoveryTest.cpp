@@ -285,7 +285,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 		Subsystem->CancelMatchmaking();
 		CurrentTest->TestEqual(TEXT("The requester hears Canceled inside the call"), State->MatchmakingResult.Get(EEasySessionResult::Success), EEasySessionResult::Canceled);
 		CurrentTest->TestFalse(TEXT("Matchmaking no longer runs"), Subsystem->IsMatchmakingRunning());
-		CurrentTest->TestFalse(TEXT("Nothing is busy any more"), Subsystem->IsBusy());
+		CurrentTest->TestFalse(TEXT("No activity is reported any more"), EasySessionTest::HasActivity(Subsystem));
 		CurrentTest->TestTrue(TEXT("While the online subsystem still runs the search"), FEasySessionTestAccess::IsActiveRequestCanceled(*Subsystem));
 
 		State->bCanceled = true;
@@ -302,12 +302,12 @@ bool FEasySessionWaitForCanceledSearch::Update()
 		return false;
 	}
 
-	// A few ticks in, the next search is waiting: the queue is busy for it, but the canceled run is still the active request.
+	// A few ticks in, the next search is waiting: the activity names it, but the canceled run is still the active request.
 	++State->TicksSinceSearch;
 	if (!State->bQueueingSeen && State->TicksSinceSearch >= 3 && !State->SearchResult.IsSet())
 	{
 		State->bQueueingSeen = true;
-		CurrentTest->TestTrue(TEXT("The next search makes the queue busy"), Subsystem->IsBusy());
+		CurrentTest->TestEqual(TEXT("The next search is the current activity"), Subsystem->GetActivity(), EEasySessionActivity::Searching);
 		CurrentTest->TestTrue(TEXT("And waits behind the canceled run"), FEasySessionTestAccess::IsActiveRequestCanceled(*Subsystem));
 	}
 	if (!State->SearchResult.IsSet())
@@ -317,7 +317,7 @@ bool FEasySessionWaitForCanceledSearch::Update()
 
 	// Success specifically: the online subsystem refuses a search while it holds another, so this one only got through after the canceled one ended.
 	CurrentTest->TestEqual(TEXT("The next search ran once the canceled one ended in the online subsystem"), State->SearchResult.GetValue(), EEasySessionResult::Success);
-	CurrentTest->TestFalse(TEXT("And nothing is left running"), Subsystem->IsBusy());
+	CurrentTest->TestFalse(TEXT("And nothing is left running"), EasySessionTest::HasActivity(Subsystem));
 	EasySessionTest::DestroyGameInstance(State->GameInstance.Get());
 	return true;
 }

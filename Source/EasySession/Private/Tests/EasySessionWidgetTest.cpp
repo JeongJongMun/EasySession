@@ -41,12 +41,14 @@ bool FEasySessionWidgetBindsEventsTest::RunTest(const FString& Parameters)
 	// Building the Slate widget constructs the user widget, and releasing it destructs the user widget.
 	TSharedPtr<SWidget> SlateWidget = Widget->TakeWidget();
 	TestTrue(TEXT("On Busy Changed is bound while constructed"), Subsystem->OnBusyChanged.Contains(Widget.Get(), FName(TEXT("OnBusyChanged"))));
+	TestTrue(TEXT("On Activity Changed is bound while constructed"), Subsystem->OnActivityChanged.Contains(Widget.Get(), FName(TEXT("OnActivityChanged"))));
 	TestTrue(TEXT("On Party Left is bound while constructed"), Subsystem->OnPartyLeft.Contains(Widget.Get(), FName(TEXT("OnPartyLeft"))));
 	TestTrue(TEXT("On Matchmaking Updated is bound while constructed"), Subsystem->OnMatchmakingUpdated.Contains(Widget.Get(), FName(TEXT("OnMatchmakingUpdated"))));
 	TestTrue(TEXT("On Invite Password Required is bound while constructed"), Subsystem->OnInvitePasswordRequired.Contains(Widget.Get(), FName(TEXT("OnInvitePasswordRequired"))));
 
 	SlateWidget.Reset();
 	TestFalse(TEXT("On Busy Changed is unbound after destruct"), Subsystem->OnBusyChanged.Contains(Widget.Get(), FName(TEXT("OnBusyChanged"))));
+	TestFalse(TEXT("On Activity Changed is unbound after destruct"), Subsystem->OnActivityChanged.Contains(Widget.Get(), FName(TEXT("OnActivityChanged"))));
 	TestFalse(TEXT("On Party Left is unbound after destruct"), Subsystem->OnPartyLeft.Contains(Widget.Get(), FName(TEXT("OnPartyLeft"))));
 
 	Widget.Reset();

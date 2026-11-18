@@ -56,7 +56,7 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -124,7 +124,7 @@ bool FEasySessionWaitForOwnerFilterRun::Update()
 
 		default:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}

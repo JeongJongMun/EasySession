@@ -58,6 +58,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEasySessionStateEvent, EEasySessio
 /** Multicast event fired when Is Busy changes, so a UI can enable and disable its buttons without polling. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionBusyChangedEvent, bool, bBusy);
 
+/** Multicast event fired when Get Easy Session Activity changes, so a status line can name what runs without polling. */
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FEasySessionActivityChangedEvent, EEasySessionActivity, Activity);
+
 /** Multicast event fired when a matchmaking run is accepted and its policy is registered. */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FEasyMatchmakingStartedEvent);
 
@@ -138,9 +141,19 @@ public:
 	/**
 	 * Fired whenever Is Busy changes, with the new value.
 	 * Bind once and enable or disable session buttons from the flag instead of reading Is Busy every tick.
+	 * A search, a settings update and a match start or end do not fire it, because they do not change the session or the map the local player is in.
 	 */
 	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
 	FEasySessionBusyChangedEvent OnBusyChanged;
+
+	/**
+	 * Fired whenever Get Easy Session Activity changes, with the new value.
+	 * Get Activity Message turns it into a status line, so a status widget binds this and sets its text.
+	 * It fires for every activity.
+	 * That includes the Find Easy Sessions, Update Easy Session, Start Easy Session and End Easy Session calls, which leave Is Easy Session Busy false.
+	 */
+	UPROPERTY(BlueprintAssignable, Category = "EasySession|Events")
+	FEasySessionActivityChangedEvent OnActivityChanged;
 
 	/**
 	 * Fired when a matchmaking run is accepted.
@@ -487,17 +500,19 @@ public:
 	 * Session buttons read this to disable themselves.
 	 * IsMatchmakingRunning asks about matchmaking alone.
 	 *
-	 * @return Whether a request is running or queued, matchmaking included,
-	 *         or a travel this plugin started has not loaded its map yet.
+	 * @return Whether the session or the map the local player is in is changing.
+	 *         That is while a Create, Join, Leave, Destroy, Matchmaking or PartyRestore request runs or waits,
+	 *         or while a travel this plugin started has not loaded its map yet. Find, Update, Start and End requests do not count.
 	 */
 	bool IsBusy() const;
 
 	/**
-	 * What keeps IsBusy true: the running or waiting request, or a travel this plugin started.
+	 * What the plugin is doing: the running request, otherwise the first waiting one, otherwise a travel this plugin started.
 	 * It covers requests the game did not start too, such as the destroy after a lost connection.
+	 * It also reports the Find, Update, Start and End requests that IsBusy does not count.
 	 * Get Activity Message turns it into a status line such as "Joining the session...".
 	 *
-	 * @return None exactly when IsBusy is false.
+	 * @return None when no request runs or waits and no travel this plugin started is loading its map.
 	 */
 	EEasySessionActivity GetActivity() const;
 
@@ -655,8 +670,8 @@ private:
 	/** Session state as derived from the local online subsystem session copy. */
 	EEasySessionState GetLocalSessionState() const;
 
-	/** Broadcast OnBusyChanged when IsBusy differs from the last value reported. */
-	void RefreshBusyState();
+	/** Broadcast OnActivityChanged and OnBusyChanged for each value that differs from the last one reported, the activity first. */
+	void RefreshActivityAndBusy();
 
 	/** Engine delegate handlers. */
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString);
@@ -700,7 +715,7 @@ private:
 	/** Ticker that broadcasts OnSessionPlayersChanged on the next tick, once per frame however many changes arrived. */
 	FTSTicker::FDelegateHandle SessionPlayersChangedHandle;
 
-	/** Ticker that watches Is Busy for the transitions no single call site sees, such as a travel ending. */
+	/** Ticker that watches GetActivity and IsBusy for the transitions no single call site sees, such as a travel ending. */
 	FTSTicker::FDelegateHandle BusyTickerHandle;
 
 	/** Ticker that waits for the lost session's destroy before HandleDisconnect travels to the menu. */
@@ -717,6 +732,9 @@ private:
 
 	/** The session state OnSessionStateChanged last reported. */
 	EEasySessionState LastReportedSessionState = EEasySessionState::NoSession;
+
+	/** The activity OnActivityChanged last reported. */
+	EEasySessionActivity LastReportedActivity = EEasySessionActivity::None;
 
 	/** The IsBusy value OnBusyChanged last reported. */
 	bool bLastReportedBusy = false;

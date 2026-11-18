@@ -93,7 +93,7 @@ bool FEasySessionWaitForFriendLookup::Update()
 		return true;
 	}
 
-	if (!State->LookupResult.IsSet() || Subsystem->IsBusy())
+	if (!State->LookupResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 	{
 		return false;
 	}
@@ -145,7 +145,8 @@ bool FEasySessionFriendLookupTest::RunTest(const FString& Parameters)
 			Shared->DeliveredCount = Results.Num();
 		}));
 
-	TestTrue(TEXT("The lookup occupies the queue"), Subsystem->IsBusy());
+	TestEqual(TEXT("The lookup is the current activity"), Subsystem->GetActivity(), EEasySessionActivity::Searching);
+	TestFalse(TEXT("A lookup keeps the session and the map, so it does not make the subsystem busy"), Subsystem->IsBusy());
 
 	State->StartTime = FPlatformTime::Seconds();
 	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionWaitForFriendLookup(State));

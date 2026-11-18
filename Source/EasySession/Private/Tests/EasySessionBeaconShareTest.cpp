@@ -58,7 +58,7 @@ bool FEasySessionBeaconShareStep::Update()
 	{
 		case FTestState::EStep::AwaitingCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 				{
@@ -87,7 +87,7 @@ bool FEasySessionBeaconShareStep::Update()
 
 		case FTestState::EStep::AwaitingDestroy:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 				{

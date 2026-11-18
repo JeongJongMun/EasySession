@@ -46,6 +46,39 @@ public:
 		SessionStates.Add(NewState);
 	}
 
+	/** The values seen on OnBusyChanged, in order. */
+	UPROPERTY()
+	TArray<bool> BusyValues;
+
+	/** Bind to OnBusyChanged. */
+	UFUNCTION()
+	void HandleBusyChanged(bool bBusy)
+	{
+		BusyValues.Add(bBusy);
+	}
+
+	/** The activities seen on OnActivityChanged, in order. */
+	UPROPERTY()
+	TArray<EEasySessionActivity> Activities;
+
+	/** When set, the first None on OnActivityChanged calls DestroySession on this subsystem from inside the event, once. */
+	UPROPERTY()
+	TObjectPtr<UEasySessionSubsystem> DestroyOnFirstNone;
+
+	/** Bind to OnActivityChanged. */
+	UFUNCTION()
+	void HandleActivityChanged(EEasySessionActivity Activity)
+	{
+		Activities.Add(Activity);
+
+		if (Activity == EEasySessionActivity::None && DestroyOnFirstNone)
+		{
+			UEasySessionSubsystem* Subsystem = DestroyOnFirstNone;
+			DestroyOnFirstNone = nullptr;
+			Subsystem->DestroySession();
+		}
+	}
+
 	/** Reasons seen on OnSessionFailure, in order. */
 	UPROPERTY()
 	TArray<FString> FailureReasons;

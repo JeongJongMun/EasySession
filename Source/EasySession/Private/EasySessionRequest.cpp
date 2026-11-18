@@ -14,6 +14,35 @@
 #include "OnlineSubsystemNames.h"
 #include "OnlineSubsystemUtils.h"
 
+namespace
+{
+	// Whether UEasySessionSubsystem::IsBusy counts this activity.
+	// It counts the activities that change the session or the map the local player is in.
+	bool IsBusyActivity(EEasySessionActivity Activity)
+	{
+		switch (Activity)
+		{
+			case EEasySessionActivity::Creating:
+			case EEasySessionActivity::Joining:
+			case EEasySessionActivity::Leaving:
+			case EEasySessionActivity::Matchmaking:
+			case EEasySessionActivity::RestoringParty:
+			case EEasySessionActivity::Traveling:
+				return true;
+
+			// Nothing running, a search, a settings update and a match start or end leave the local player in the same session and map.
+			case EEasySessionActivity::None:
+			case EEasySessionActivity::Searching:
+			case EEasySessionActivity::Updating:
+			case EEasySessionActivity::Starting:
+			case EEasySessionActivity::Ending:
+				return false;
+		}
+
+		return false;
+	}
+}
+
 FEasySessionRequest::~FEasySessionRequest()
 {
 	if (SubRequestStartHandle.IsValid())
@@ -126,6 +155,11 @@ bool FEasySessionRequest::IsRunning() const
 	}
 
 	return Context->Queue.GetActiveRequest().Get() == this;
+}
+
+bool FEasySessionRequest::CountsAsBusy() const
+{
+	return !bNotified && IsBusyActivity(GetActivity());
 }
 
 EEasySessionActivity FEasySessionRequest::GetActivity() const

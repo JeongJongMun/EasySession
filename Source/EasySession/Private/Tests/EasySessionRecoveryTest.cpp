@@ -237,7 +237,7 @@ bool FEasySessionWaitForTravelFailure::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -371,7 +371,7 @@ bool FEasySessionWaitForNetworkFilter::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}

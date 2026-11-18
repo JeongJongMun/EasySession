@@ -49,8 +49,11 @@ public:
 	/** @return Whether a running or waiting request counts as busy. See FEasySessionRequest::CountsAsBusy. */
 	bool IsBusy() const;
 
-	/** @return The request that makes the queue busy: the running request, or the first waiting one that counts as busy. Null when the queue is not busy. */
-	TSharedPtr<FEasySessionRequest> GetBusyRequest() const;
+	/**
+	 * @return The request UEasySessionSubsystem::GetActivity reports: the running request, or else the first waiting one.
+	 *         A request that already notified its requester is skipped. Null when there is none.
+	 */
+	TSharedPtr<FEasySessionRequest> GetCurrentRequest() const;
 
 	/**
 	 * @return The running or waiting request of this type whose requester was not notified yet, running first. Null when there is none.

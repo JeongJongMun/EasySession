@@ -66,7 +66,7 @@ bool FEasySessionSearchFilterStep::Update()
 	{
 		case FTestState::EStep::AwaitingCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the create"));
 			}
@@ -100,7 +100,7 @@ bool FEasySessionSearchFilterStep::Update()
 
 		case FTestState::EStep::AwaitingDestroy:
 		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the destroy"));
 			}
@@ -147,7 +147,7 @@ bool FEasySessionSearchFilterStep::Update()
 
 		case FTestState::EStep::AwaitingFind:
 		{
-			if (!State->FindResult.IsSet() || Subsystem->IsBusy())
+			if (!State->FindResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the search to complete"));
 			}

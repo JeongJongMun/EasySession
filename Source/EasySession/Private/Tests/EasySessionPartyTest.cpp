@@ -180,7 +180,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 
 		case 1:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the party create"));
 			}
@@ -246,7 +246,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 
 		case 4:
 		{
-			if (!State->FoundCount.IsSet() || Subsystem->IsBusy())
+			if (!State->FoundCount.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the game session search result"));
 			}
@@ -260,7 +260,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 
 		case 5:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the party leave"));
 			}
@@ -340,7 +340,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 
 		case 10:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the game session create"));
 			}
@@ -367,7 +367,7 @@ bool FEasySessionPartyLifecycleStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the cleanup destroy"));
 			}
@@ -430,7 +430,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 		case 1:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the public party create"));
 			}
@@ -509,7 +509,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 		case 3:
 		{
-			if (!State->FoundCount.IsSet() || Subsystem->IsBusy())
+			if (!State->FoundCount.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the party search result"));
 			}
@@ -523,7 +523,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 		case 4:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the public party leave"));
 			}
@@ -535,7 +535,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 		case 5:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the hidden party create"));
 			}
@@ -550,7 +550,7 @@ bool FEasySessionPartyAdmissionStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession(EEasySessionType::PartySession))
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession(EEasySessionType::PartySession))
 			{
 				return TimedOut(State, TEXT("the hidden party leave"));
 			}
@@ -603,7 +603,7 @@ bool FEasySessionPartyMoveStep::Update()
 
 		case 1:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the party create"));
 			}
@@ -638,7 +638,7 @@ bool FEasySessionPartyMoveStep::Update()
 
 		case 2:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the create that is too small"));
 			}
@@ -675,7 +675,7 @@ bool FEasySessionPartyMoveStep::Update()
 
 		case 4:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the canceled run"));
 			}
@@ -687,7 +687,7 @@ bool FEasySessionPartyMoveStep::Update()
 
 		case 5:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the host's create"));
 			}
@@ -707,7 +707,7 @@ bool FEasySessionPartyMoveStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the cleanup destroy"));
 			}
@@ -759,7 +759,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 1:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the hidden party create"));
 			}
@@ -780,7 +780,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 2:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the host's create"));
 			}
@@ -795,7 +795,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 3:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the end of the match"));
 			}
@@ -819,7 +819,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 4:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the host's restore"));
 			}
@@ -836,7 +836,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 5:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("a restore inside a party"));
 			}
@@ -850,7 +850,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 6:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession(EEasySessionType::PartySession))
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession(EEasySessionType::PartySession))
 			{
 				return TimedOut(State, TEXT("the restored party leave"));
 			}
@@ -864,7 +864,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		case 7:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("a restore with nothing to bring back"));
 			}
@@ -880,7 +880,7 @@ bool FEasySessionPartyRestoreStep::Update()
 
 		default:
 		{
-			if (!State->PendingResult.IsSet() || Subsystem->IsBusy())
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the member's restore"));
 			}

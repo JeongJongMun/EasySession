@@ -149,8 +149,12 @@ public:
 	 */
 	bool HasNotified() const { return bNotified; }
 
-	/** @return Whether UEasySessionSubsystem::IsBusy counts this request. A request that already notified its requester does not count. */
-	bool CountsAsBusy() const { return !bNotified; }
+	/**
+	 * @return Whether UEasySessionSubsystem::IsBusy counts this request.
+	 *         A request that already notified its requester does not count.
+	 *         Neither does one that does not change the session or the map the local player is in.
+	 */
+	bool CountsAsBusy() const;
 
 	/** @return The sub-request this request runs, or null. */
 	const TSharedPtr<FEasySessionRequest>& GetRunningSubRequest() const { return RunningSubRequest; }

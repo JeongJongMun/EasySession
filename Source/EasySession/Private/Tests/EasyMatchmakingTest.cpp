@@ -176,7 +176,7 @@ bool FEasyMatchmakingWaitFallbackFilters::Update()
 		return false;
 	}
 
-	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
@@ -287,7 +287,7 @@ bool FEasyMatchmakingWaitCancelIgnored::Update()
 		return false;
 	}
 
-	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
@@ -359,7 +359,7 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
 	if (!State->bRunStarted)
 	{
 		// Still creating the session the matchmaking is supposed to run into.
-		if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+		if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 		{
 			if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 			{
@@ -414,7 +414,7 @@ bool FEasyMatchmakingWaitAlreadyInSession::Update()
 		return false;
 	}
 
-	if (Subsystem->IsBusy() || Subsystem->IsInSession())
+	if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 	{
 		if (FPlatformTime::Seconds() - State->StartTime > TimeoutSeconds)
 		{
@@ -508,7 +508,7 @@ bool FEasySessionWaitForCandidateRun::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -528,7 +528,7 @@ bool FEasySessionWaitForCandidateRun::Update()
 
 		case 1:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}
@@ -626,7 +626,7 @@ bool FEasySessionWaitForCandidateRun::Update()
 
 		default:
 		{
-			if (!State->MatchmakingResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->MatchmakingResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}
@@ -723,7 +723,7 @@ bool FEasyMatchmakingWaitEvents::Update()
 	{
 		case 0:
 		{
-			if (!State->FirstResult.IsSet() || Subsystem->IsBusy())
+			if (!State->FirstResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -767,7 +767,7 @@ bool FEasyMatchmakingWaitEvents::Update()
 
 		case 1:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -818,7 +818,7 @@ bool FEasyMatchmakingWaitEvents::Update()
 
 		default:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}
@@ -941,7 +941,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -964,7 +964,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 
 		case 1:
 		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -983,7 +983,7 @@ bool FEasyMatchmakingWaitTargeted::Update()
 				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
 				return false;
 			}
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}
@@ -1064,7 +1064,7 @@ bool FEasyMatchmakingCancelSearching::Update()
 	CurrentTest->TestTrue(TEXT("The run completed inside the cancel call"), State->MatchmakingResult.IsSet());
 	CurrentTest->TestEqual(TEXT("With Canceled"), State->MatchmakingResult.Get(EEasySessionResult::Success), EEasySessionResult::Canceled);
 	CurrentTest->TestFalse(TEXT("Matchmaking no longer running"), Subsystem->IsMatchmakingRunning());
-	CurrentTest->TestFalse(TEXT("The queue is idle"), Subsystem->IsBusy());
+	CurrentTest->TestFalse(TEXT("The queue is idle"), EasySessionTest::HasActivity(Subsystem));
 	CurrentTest->TestFalse(TEXT("The search object is released"), FEasySessionTestAccess::HasActiveSearch(*Subsystem));
 	CurrentTest->TestTrue(TEXT("The run went from Searching to Complete"), State->Listener->MatchmakingJournal.Contains(TEXT("State=Searching>Complete")));
 	CurrentTest->TestEqual(TEXT("Completed is the last entry"),

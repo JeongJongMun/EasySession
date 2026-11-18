@@ -23,6 +23,7 @@ void UEasySessionWidget::NativeConstruct()
 
 	// The implementable events are UFunctions, so the dynamic delegates call them by name and the Blueprint override runs.
 	Subsystem->OnBusyChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnBusyChanged);
+	Subsystem->OnActivityChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnActivityChanged);
 	Subsystem->OnSessionStateChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnSessionStateChanged);
 	Subsystem->OnSessionSettingsChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnSessionSettingsChanged);
 	Subsystem->OnSessionPlayersChanged.AddUniqueDynamic(this, &UEasySessionWidget::OnSessionPlayersChanged);
@@ -42,6 +43,7 @@ void UEasySessionWidget::NativeDestruct()
 	if (UEasySessionSubsystem* Subsystem = GetEasySessionSubsystem())
 	{
 		Subsystem->OnBusyChanged.RemoveAll(this);
+		Subsystem->OnActivityChanged.RemoveAll(this);
 		Subsystem->OnSessionStateChanged.RemoveAll(this);
 		Subsystem->OnSessionSettingsChanged.RemoveAll(this);
 		Subsystem->OnSessionPlayersChanged.RemoveAll(this);

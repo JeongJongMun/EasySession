@@ -134,9 +134,9 @@ enum class EEasySessionState : uint8
 };
 
 /**
- * What keeps Is Easy Session Busy true, including requests the game did not start itself.
- * Is Easy Session Busy only says whether something runs.
- * This says what runs, so a status line can name a join from an invite or a session destroyed without the game asking.
+ * What the plugin is doing, including requests the game did not start itself.
+ * Is Easy Session Busy only says whether the session or the map the local player is in is changing.
+ * This says what runs, so a status line can name a search, a join from an invite or a session destroyed without the game asking.
  */
 UENUM(BlueprintType)
 enum class EEasySessionActivity : uint8

@@ -126,7 +126,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 	{
 		case FTestState::EStep::AwaitingTargetCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the target create"));
 			}
@@ -152,7 +152,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 
 		case FTestState::EStep::AwaitingTargetDestroy:
 		{
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return TimedOut(State, TEXT("the target destroy"));
 			}
@@ -166,7 +166,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 
 		case FTestState::EStep::AwaitingCurrentCreate:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the current create"));
 			}
@@ -188,7 +188,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 
 		case FTestState::EStep::AwaitingStart:
 		{
-			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || Subsystem->IsBusy())
+			if (Subsystem->GetSessionState() != EEasySessionState::InProgress || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the match start"));
 			}
@@ -247,7 +247,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 
 		case FTestState::EStep::AwaitingCleanup:
 		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return TimedOut(State, TEXT("the cleanup destroy"));
 			}

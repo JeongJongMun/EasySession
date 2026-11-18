@@ -94,7 +94,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 	{
 		case 0:
 		{
-			if (!Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (!Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -200,7 +200,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 
 		case 4:
 		{
-			if (Subsystem->IsInSession() || Subsystem->IsBusy())
+			if (Subsystem->IsInSession() || EasySessionTest::HasActivity(Subsystem))
 			{
 				return false;
 			}
@@ -219,7 +219,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 
 		case 5:
 		{
-			if (!State->JoinResult.IsSet() || Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (!State->JoinResult.IsSet() || EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}
@@ -249,7 +249,7 @@ bool FEasySessionWaitForJoinCodeRun::Update()
 				FEasySessionTestAccess::DriveFindCompletion(*Subsystem, { State->BaseResult });
 				return false;
 			}
-			if (Subsystem->IsBusy() || Subsystem->IsInSession())
+			if (EasySessionTest::HasActivity(Subsystem) || Subsystem->IsInSession())
 			{
 				return false;
 			}

@@ -57,7 +57,7 @@ bool FEasySessionWaitForQueueDrain::Update()
 
 		if (UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>())
 		{
-			CurrentTest->TestFalse(TEXT("The queue is idle once every request finished"), Subsystem->IsBusy());
+			CurrentTest->TestFalse(TEXT("The queue is idle once every request finished"), EasySessionTest::HasActivity(Subsystem));
 		}
 	}
 

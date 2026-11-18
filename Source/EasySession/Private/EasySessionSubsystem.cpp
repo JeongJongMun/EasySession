@@ -90,10 +90,10 @@ void UEasySessionSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 		return false;
 	}), 0.5f);
 
-	// Requests finish on a later tick and travels end inside the engine, so the busy flag is watched here rather than at every call site.
+	// Requests finish on a later tick and travels end inside the engine, so the activity and the busy flag are watched here rather than at every call site.
 	BusyTickerHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateWeakLambda(this, [this](float /*DeltaTime*/)
 	{
-		RefreshBusyState();
+		RefreshActivityAndBusy();
 		return true;
 	}));
 }
@@ -543,9 +543,9 @@ bool UEasySessionSubsystem::IsBusy() const
 
 EEasySessionActivity UEasySessionSubsystem::GetActivity() const
 {
-	if (const TSharedPtr<FEasySessionRequest> BusyRequest = RequestQueue->GetBusyRequest())
+	if (const TSharedPtr<FEasySessionRequest> CurrentRequest = RequestQueue->GetCurrentRequest())
 	{
-		return BusyRequest->GetActivity();
+		return CurrentRequest->GetActivity();
 	}
 
 	return Travel->IsTraveling() ? EEasySessionActivity::Traveling : EEasySessionActivity::None;
@@ -721,7 +721,7 @@ void UEasySessionSubsystem::EnqueueRequest(TSharedRef<FEasySessionRequest> Reque
 	RequestQueue->Enqueue(Request);
 
 	// Reported inside this call, so the UI disables its buttons on the same frame as the click.
-	RefreshBusyState();
+	RefreshActivityAndBusy();
 }
 
 void UEasySessionSubsystem::HandleSessionPlayersChanged()
@@ -819,16 +819,23 @@ EEasySessionState UEasySessionSubsystem::GetLocalSessionState() const
 	}
 }
 
-void UEasySessionSubsystem::RefreshBusyState()
+void UEasySessionSubsystem::RefreshActivityAndBusy()
 {
-	const bool bBusy = IsBusy();
-	if (bBusy == bLastReportedBusy)
+	const EEasySessionActivity Activity = GetActivity();
+	if (Activity != LastReportedActivity)
 	{
-		return;
+		LastReportedActivity = Activity;
+		OnActivityChanged.Broadcast(Activity);
 	}
 
-	bLastReportedBusy = bBusy;
-	OnBusyChanged.Broadcast(bBusy);
+	// We read IsBusy after the broadcast above, because a handler of OnActivityChanged can queue a request, which calls this function again.
+	// A value read before that broadcast would then be broadcast after the newer one.
+	const bool bBusy = IsBusy();
+	if (bBusy != bLastReportedBusy)
+	{
+		bLastReportedBusy = bBusy;
+		OnBusyChanged.Broadcast(bBusy);
+	}
 }
 
 void UEasySessionSubsystem::RefreshSessionState()
