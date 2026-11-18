@@ -78,6 +78,14 @@ bool FEasySessionParty::StartHosting(const FEasySessionSettings& InPartySettings
 		return false;
 	}
 
+	// A member joins through this beacon only, so a party it does not listen for could never take a member.
+	if (!BeaconPort.ListensOnAdvertisedPort(TEXT("No member can reach the party beacon.")))
+	{
+		BeaconPort.Unregister(*Beacon);
+		Beacon->Destroy();
+		return false;
+	}
+
 	const IOnlineIdentityPtr Identity = Online::GetIdentityInterface(World);
 	if (!Beacon->StartParty(InPartySettings.MaxPlayers, LocalId, Identity.IsValid() ? Identity->GetPlayerNickname(0) : FString()))
 	{

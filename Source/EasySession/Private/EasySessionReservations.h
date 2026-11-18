@@ -133,9 +133,6 @@ private:
 	/** Follow a Max Players change. Refused while more players hold reservations than the new Max Players allows. */
 	void SetMaxReservations(int32 MaxPlayers);
 
-	/** Check the port the session advertises against the one the listener bound, and warn when joining players would reach no beacon. */
-	void CheckAdvertisedPort(const FOnlineSessionSettings& Settings) const;
-
 	/** Log that the reservation beacon is not running, and broadcast OnSessionFailure when that leaves a password-protected session no player can join. */
 	void ReportBeaconNotRunning(const FString& Cause) const;
 

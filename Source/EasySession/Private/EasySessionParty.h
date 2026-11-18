@@ -50,7 +50,8 @@ public:
 	 * Start the party beacon of the party this process hosts, after the party session is created and again after a map change.
 	 * Spawns the party beacon in the current world and adds the host to it.
 	 *
-	 * @return Whether the party beacon runs. False when no player is logged in or the beacon could not start.
+	 * @return Whether the party beacon runs. False when no player is logged in, the beacon could not start,
+	 *         or it listens on another port than the party session advertises.
 	 */
 	bool StartHosting(const FEasySessionSettings& InPartySettings);
 

@@ -3,6 +3,7 @@
 #include "EasySessionBeaconPort.h"
 
 #include "EasySession.h"
+#include "EasySessionTypes.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "OnlineBeaconHost.h"
@@ -64,6 +65,21 @@ int32 FEasySessionBeaconPort::GetListenPort() const
 	// GetListenPort is not const on the engine class, so the pointer cannot be either.
 	AOnlineBeaconHost* Host = Listener.Get();
 	return Host != nullptr ? Host->GetListenPort() : 0;
+}
+
+bool FEasySessionBeaconPort::ListensOnAdvertisedPort(const TCHAR* Consequence) const
+{
+	const int32 BoundPort = GetListenPort();
+	const int32 AdvertisedPort = EasySession::GetReservationBeaconPort();
+	if (BoundPort == AdvertisedPort)
+	{
+		return true;
+	}
+
+	UE_LOG(LogEasySession, Warning,
+		TEXT("The beacon listener is on port %d but this session advertises %d. %s Free port %d, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
+		BoundPort, AdvertisedPort, Consequence, AdvertisedPort);
+	return false;
 }
 
 AOnlineBeaconHost* FEasySessionBeaconPort::GetListener() const

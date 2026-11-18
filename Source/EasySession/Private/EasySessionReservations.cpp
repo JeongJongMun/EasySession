@@ -13,7 +13,6 @@
 #include "GameFramework/GameSession.h"
 #include "GameFramework/PlayerState.h"
 #include "Interfaces/OnlineFriendsInterface.h"
-#include "Online/OnlineSessionNames.h"
 #include "OnlineSessionSettings.h"
 #include "OnlineSubsystem.h"
 #include "OnlineSubsystemUtils.h"
@@ -147,7 +146,9 @@ void FEasySessionReservations::StartBeacon()
 	}
 
 	BeaconHost = Beacon;
-	CheckAdvertisedPort(NamedSession->SessionSettings);
+
+	// The beacon keeps running, because the host still reads its reservations when players connect and after a server travel.
+	BeaconPort.ListensOnAdvertisedPort(TEXT("Joining players reach no reservation beacon, so a refusal arrives after the travel instead of before it."));
 }
 
 void FEasySessionReservations::StopBeacon()
@@ -353,21 +354,6 @@ void FEasySessionReservations::SetMaxReservations(int32 MaxPlayers)
 		UE_LOG(LogEasySession, Warning, TEXT("The reservation beacon still holds %d of %d reservations, which is more than the new Max Players of %d, so it keeps the previous one."),
 			Beacon->GetNumConsumedReservations(), Beacon->GetMaxReservations(), MaxPlayers);
 	}
-}
-
-void FEasySessionReservations::CheckAdvertisedPort(const FOnlineSessionSettings& Settings) const
-{
-	const int32 BoundPort = BeaconPort.GetListenPort();
-	int32 AdvertisedPort = 0;
-	Settings.Get(SETTING_BEACONPORT, AdvertisedPort);
-	if (BoundPort == AdvertisedPort)
-	{
-		return;
-	}
-
-	UE_LOG(LogEasySession, Warning,
-		TEXT("The reservation beacon listens on port %d but this session advertises %d, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port %d, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost]."),
-		BoundPort, AdvertisedPort, AdvertisedPort);
 }
 
 void FEasySessionReservations::ReportBeaconNotRunning(const FString& Cause) const

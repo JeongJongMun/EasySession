@@ -240,6 +240,7 @@ namespace EasySession
 	 * Advertised on the session, because the beacon does not exist yet when the session is created.
 	 * A listener that ends up on another port is logged as a warning, and the advertised port is not changed.
 	 * Joining players then reach no beacon, so PreLogin checks them on arrival and a password-protected session cannot be joined.
+	 * A party fails to start instead, because its members join through the beacon only.
 	 */
 	EASYSESSION_API int32 GetReservationBeaconPort();
 

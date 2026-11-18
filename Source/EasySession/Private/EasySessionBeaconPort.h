@@ -52,6 +52,14 @@ public:
 	/** @return The port the listener bound, or 0 while no host object is registered. */
 	int32 GetListenPort() const;
 
+	/**
+	 * Compare the port the listener bound with the beacon port every session of this process advertises, and log a warning when they differ.
+	 *
+	 * @param Consequence What happens to the players who connect to the advertised port, in one sentence.
+	 * @return Whether the listener bound the advertised port.
+	 */
+	bool ListensOnAdvertisedPort(const TCHAR* Consequence) const;
+
 	/** @return The listener the host objects are registered on, this object's own or the project's. Null while no host object is registered. */
 	AOnlineBeaconHost* GetListener() const;
 
