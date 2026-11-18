@@ -23,6 +23,7 @@
 
 ### Fixed
 
+- Create Easy Party now fails with `CreateFailure` when another program holds the beacon port. The party beacon used to open on the next free port while the party advertised the configured one, so the party was created but every member's Join Easy Session ended with `JoinRefused` ("The party host did not answer."). The host's log names both ports.
 - `WBP_PartyCard` now reads Is Easy Session Busy in Event Construct. Before, a card created while Is Easy Session Busy was true kept its buttons enabled until On Busy Changed fired.
 - The Steam setup guide no longer says that joining another project's session fails with `OutdatedClient`. No value of EEasySessionResult or EEasyDisconnectReason has that name. The guide now says that such a join does not work, because the game versions differ.
 

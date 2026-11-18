@@ -41,12 +41,27 @@ LogEasySession: Warning: Reservations: refusing '<player id>' - the session is f
 호스트 PC의 다른 프로그램이 비콘 포트(기본 UDP 15000)를 이미 쓰고 있습니다. 그러면 엔진은 예약 비콘을 다음 빈 포트에 열지만, 세션은 설정된 포트를 계속 광고하므로 참가하는 플레이어가 비콘에 닿지 못합니다. 호스트 로그에 다음 경고가 남습니다.
 
 ```
-LogEasySession: Warning: The reservation beacon listens on port 15001 but this session advertises 15000, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
+LogEasySession: Warning: The beacon listener is on port 15001 but this session advertises 15000. Joining players reach no reservation beacon, so a refusal arrives after the travel instead of before it. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
 ```
 
 열린 세션에는 그래도 참가할 수 있지만, 진행 중인 매치 같은 거절이 트래블 뒤에 `Rejected` 연결 끊김으로 옵니다. 비밀번호 세션은 비밀번호를 전할 곳이 비콘뿐이라 아예 참가할 수 없고 `JoinRefused`로 실패합니다([호스트에게 물을 수 없을 때](Guide-Sessions.ko.md#호스트에게-물을-수-없을-때)).
 
 포트를 잡은 프로그램을 끄거나, 커맨드라인 `-BeaconPort=` 또는 `DefaultEngine.ini`의 `[/Script/OnlineSubsystemUtils.OnlineBeaconHost] ListenPort=`로 비콘 포트를 옮기세요. Windows에서는 `netstat -ano -p UDP`가 포트마다 그 포트를 쓰는 프로세스 id를 보여 주고, 작업 관리자에서 그 id가 어떤 프로그램인지 확인할 수 있습니다.
+
+## "Create Easy Party가 실패하고, 호스트가 비콘 포트 경고를 남깁니다"
+
+파티 비콘이 비콘 포트(기본 UDP 15000)에 열리지 못해서, Create Easy Party가 파티를 다시 지우고 `CreateFailure`로 실패한 것입니다. 멤버는 그 비콘으로만 파티에 참가하므로, 다른 포트에 열린 파티에는 아무도 들어올 수 없습니다. 호스트 로그에 두 포트가 남습니다.
+
+```
+LogEasySession: Warning: The beacon listener is on port 15001 but this session advertises 15000. No member can reach the party beacon. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
+```
+
+포트를 잡는 쪽은 둘 중 하나입니다.
+
+- **호스트 PC의 다른 프로그램.** 위 절처럼 포트를 비우거나 비콘 포트를 옮기세요.
+- **Run Under One Process를 켠 다른 PIE 창.** 같은 프로세스의 창은 PC의 포트를 함께 쓰므로, 다른 창이 세션이나 파티를 호스트하는 동안에는 포트가 잡혀 있습니다. 다른 창에서 그 세션이나 파티를 먼저 나가거나, Run Under One Process를 꺼서 창마다 `-BeaconPort=`를 따로 줄 수 있게 하세요.
+
+파티 호스트가 맵을 옮기면 새 맵에서 비콘을 다시 엽니다. 그때 포트가 잡혀 있으면 호스트의 파티가 `ConnectionLost`로 끝납니다.
 
 ## "스팀에서 첫 번째 플레이어만 들어오고, 그다음부터 참가가 실패합니다"
 

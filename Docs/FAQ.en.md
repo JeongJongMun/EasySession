@@ -41,12 +41,27 @@ Nothing needs fixing. Once that player arrives, the next search shows the sessio
 Another program on the host's machine already uses the beacon port, UDP 15000 by default. The engine then opens the reservation beacon on the next free port, but the session keeps advertising the configured one, so joining players never reach the beacon. The host's log says so:
 
 ```
-LogEasySession: Warning: The reservation beacon listens on port 15001 but this session advertises 15000, so joining players reach no beacon and a refusal arrives after the travel instead of before it. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
+LogEasySession: Warning: The beacon listener is on port 15001 but this session advertises 15000. Joining players reach no reservation beacon, so a refusal arrives after the travel instead of before it. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
 ```
 
 An open session can still be joined, but a refusal such as a match in progress arrives after the travel, as a `Rejected` disconnect. A password-protected session cannot be joined at all and fails with `JoinRefused`, because only the beacon carries the password ([When the host cannot be asked](Guide-Sessions.en.md#when-the-host-cannot-be-asked)).
 
 Close the program that holds the port, or move the beacon with `-BeaconPort=` on the command line or `ListenPort` under `[/Script/OnlineSubsystemUtils.OnlineBeaconHost]` in `DefaultEngine.ini`. On Windows, `netstat -ano -p UDP` lists the process id that holds each port, and Task Manager shows which program that is.
+
+## "Create Easy Party fails, and the host warns about the beacon port"
+
+The party beacon could not open on the beacon port, UDP 15000 by default, so Create Easy Party removes the party again and fails with `CreateFailure`. Members join a party through that beacon only, so a party on another port could never take a member. The host's log names both ports:
+
+```
+LogEasySession: Warning: The beacon listener is on port 15001 but this session advertises 15000. No member can reach the party beacon. Free port 15000, or move the beacon with -BeaconPort= or ListenPort under [/Script/OnlineSubsystemUtils.OnlineBeaconHost].
+```
+
+Two things take the port:
+
+- **Another program on the host's machine.** Free the port or move the beacon, as in the section above.
+- **Another PIE window, with Run Under One Process on.** Every window of that process shares the machine's ports, so the port is taken while another window hosts a session or a party. Leave that session or party in the other window first, or turn Run Under One Process off so each window can get its own `-BeaconPort=`.
+
+A party host that changes maps opens the beacon again in the new map. When the port is taken then, the party ends for the host with `ConnectionLost`.
 
 ## "Steam: only the first player can join, everyone after that fails"
 
