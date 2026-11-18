@@ -96,8 +96,8 @@ node name without spaces.
 | Is In Easy Session | `IsInSession` | Is there a session of the given Type. For Party Session, whether the local player is a party member |
 | Is Easy Host | `IsHost` | Does this game host the session of the given Type: it created it, so it may Start, End, Update, travel, kick from or destroy a game session, and kick from a party. False outside a session of that type |
 | Get Easy Session State | `GetSessionState` | Where the session is in its lifecycle. Clients read the host's replicated value, so every player sees the same thing |
-| Is Easy Session Busy | `IsBusy` | A request or the level load after it is running. Bind a button's Is Enabled to this |
-| Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling or Restoring Party. None exactly when Is Easy Session Busy is false. Names invite joins and recoveries too, which no menu started |
+| Is Easy Session Busy | `IsBusy` | The session or the map the local player is in is changing: Create Easy Session, Create Easy Party, Join Easy Session, Leave Easy Session, Start Easy Matchmaking or Restore Easy Party runs or waits, or the map load after it is running. Find Easy Sessions, Update Easy Session, Start Easy Session and End Easy Session do not count, so a widget that waits for one of them waits on the output pins of the node it called. Bind a button's Is Enabled to this |
+| Get Easy Session Activity | `GetActivity` | Which activity is running: Creating, Searching, Joining, Leaving, Updating, Starting, Ending, Matchmaking, Traveling or Restoring Party. None when no request runs or waits and no map is loading. It also reports the Find Easy Sessions, Update Easy Session, Start Easy Session and End Easy Session calls that Is Easy Session Busy does not count, and the invite joins and recoveries that no menu started |
 | Get Easy Display Name | `GetDisplayName` | The name the session of the given Type is advertised under |
 | Get Easy Password | `GetSessionSettings(Type).Password` | The password this game is hosting the game session with, to show the host. **Empty on clients** - it never leaves the host. Always empty for a party, which has none |
 | Get Easy Session Player Infos | `GetSessionPlayerInfos` | Everyone in the session with host, local-player and ready flags, for a player list UI. Empty outside a game session |
@@ -191,7 +191,8 @@ A widget whose parent class is taken binds them with Assign nodes on `Get Easy S
 | `OnMatchmakingUpdated` | `State`, `ElapsedSeconds` | Every Matchmaking state change plus once a second while it runs - drives elapsed-time labels |
 | `OnMatchmakingComplete` | `Result`, `ErrorMessage` | A Matchmaking run finished, whether it joined, ended up hosting, or was canceled (`Result` = `Canceled`). Ask `Is Easy Host` which |
 | `OnSessionFailure` | `Reason` (String) | Something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), the join of an accepted invite failed for a reason other than a missing password, or the reservation beacon of the host's password-protected session could not start, so nobody can join it. Use `Reason` for a status line or the log. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player |
-| `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. On the true edge, Get Easy Session Activity says which activity began |
+| `OnBusyChanged` | `bBusy` | Is Easy Session Busy flipped. Bind once and enable or disable session buttons from the flag instead of polling every tick. Find Easy Sessions, Update Easy Session, Start Easy Session and End Easy Session do not fire it. It fires only on a change, so read Is Easy Session Busy when the widget is constructed |
+| `OnActivityChanged` | `Activity` (`EEasySessionActivity`) | Get Easy Session Activity changed. Bind a status text to it and set the text with Get Activity Message. It fires for every activity, Find Easy Sessions and Update Easy Session included, and only on a change, so read Get Easy Session Activity when the widget is constructed |
 | `OnSessionInviteAccepted` | `Session` (`FEasySessionSearchResult`) | The player accepted an invite in the platform overlay. With Auto Join Accepted Invites on, the join follows on its own and cancels a running Matchmaking - unless this player is already in a session, which needs `bAcceptInvitesWhileInSession`. A Matchmaking that is already `Joining` or `Hosting` is not canceled, and the invite is not joined. `Session.SessionType` is Party Session for a party invite, which Join Easy Session joins as well, and never during a game session ([guide](Guide-Party.en.md#invites)) |
 | `OnInvitePasswordRequired` | `Session` (`FEasySessionSearchResult`) | The automatic join of an accepted invite was refused because the host needs a password from this player - an invite carries none. Ask the player, then call `Join Easy Session` with `Session` and the password ([guide](Guide-Sessions.en.md#joining-a-locked-session)). `OnSessionFailure` does not fire for this refusal |
 | `OnSessionPlayersChanged` | - | A player joined or left the session, or changed whether they are ready, on the host and on every client. Get Easy Session Player Infos already returns the new list |
@@ -336,7 +337,7 @@ Read with `Consume Pending Easy Disconnect Info`. Branch on `Reason`, show `Reas
 
 ### 6.6 EEasySessionActivity
 
-`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling`, `RestoringParty` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence.
+`None`, `Creating`, `Searching`, `Joining`, `Leaving`, `Updating`, `Starting`, `Ending`, `Matchmaking`, `Traveling`, `RestoringParty` - what the plugin is doing right now, from `Get Easy Session Activity`. It names the activity whoever started it, so a status widget can narrate an invite join or a disconnect recovery the menu never asked for. `Get Activity Message` turns it into a sentence. `Is Easy Session Busy` counts only `Creating`, `Joining`, `Leaving`, `Matchmaking`, `RestoringParty` and `Traveling`.
 
 ### 6.7 EEasyPartyLeaveReason
 
@@ -376,8 +377,10 @@ Every session call is one request on a queue that runs them one at a time. Match
 runs its searches, joins and host as sub-requests inside its own request, so a request
 from the game waits until the whole run ends instead of slipping in between two of its
 sub-requests. `ReadFriends` does not use the session interface, so it runs outside the
-queue: it does not wait for a running request and does not turn `IsBusy` on. Every running
-or waiting request counts toward `IsBusy`, `GetActivity` and `GetQueueStatus`.
+queue: it does not wait for a running request and does not turn `IsBusy` on. `GetActivity`
+reports every running or waiting request, and `GetQueueStatus` lists them. `IsBusy` counts
+only the ones that change the session or the map: Create, Join, Leave, Destroy, Matchmaking
+and RestoreParty.
 
 `UEasySessionGameInstance` returns `UEasySessionOnlineSession` from `GetOnlineSessionClass()`.
 The engine reports a lost connection, a failed travel and `ReturnToMainMenu` to that online

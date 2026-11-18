@@ -232,7 +232,7 @@ Max Players는 세션에 있거나 들어오는 중인 인원(호스트 포함)�
 참가 중인 플레이어는 업데이트를 자동으로 전달받습니다. 플러그인이 플레이어에게 보여도 되는
 설정(표시 이름, 최대 인원, 플래그들, 참가 코드, 커스텀 설정)을 모든 클라이언트에
 복제하고, 로컬 세션 사본을 고쳐서 일반 게터가 새 값을 돌려주게 만든 뒤
-`OnSessionSettingsChanged`를 발화합니다. 호스트도 자기 UI를 위해 같은 이벤트를 발화합니다.
+`OnSessionSettingsChanged`를 호출합니다. 호스트도 자기 UI를 위해 같은 이벤트를 호출합니다.
 UI는 이 이벤트에서 게터로 갱신하면 됩니다. 비밀번호와 친구 예외만 호스트에 남습니다.
 
 나머지 절반은 `OnSessionStateChanged`가 맡습니다. 세션 상태가 바뀔 때 호스트와 모든
@@ -290,7 +290,8 @@ EasySession에는 따로 지역 설정이 없습니다. 스팀은 검색할 때 
 아래 이벤트를 Assign 노드로 바인딩합니다.
 
 - `OnSessionPlayersChanged` - 플레이어가 들어오거나, 나가거나, 준비 상태를 바꿨습니다
-- `OnBusyChanged` - 요청이 시작됐거나 모두 끝났습니다. `Get Easy Session Activity`가 어떤 작업인지 알려 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
+- `OnBusyChanged` - 로컬 플레이어가 있는 세션이나 맵이 바뀌기 시작했거나 다 바뀌었습니다. Create Easy Session, Join Easy Session, Leave Easy Session, Start Easy Matchmaking, Restore Easy Party와 그 뒤의 맵 로드가 해당합니다. Find Easy Sessions, Update Easy Session, Start Easy Session, End Easy Session은 이 이벤트를 호출하지 않으므로, 이 노드를 부른 위젯은 그 노드의 출력 핀을 기다립니다
+- `OnActivityChanged` - 플러그인이 하고 있는 일이 바뀌었습니다. `Get Activity Message`가 새 값을 상태 텍스트로 바꿔 주므로, 로딩 표시에 무엇을 기다리는지 적을 수 있습니다
 - `OnSessionFailure` - 노드 결과로는 알릴 수 없는 실패가 났습니다. 연결이 끊겼거나, EasySession이 시작한 맵 이동이나 리슨 서버 열기가 실패했거나(예: 잘못된 Initial Map Name), 수락한 초대의 참가가 비밀번호 요구 외의 이유로 실패한 경우입니다. 세션을 잃은 클라이언트는 메뉴로 돌아가며, 플레이어에게 보여줄 이유는 `Consume Pending Easy Disconnect Info`에 있습니다
 - `OnInvitePasswordRequired` - 수락한 초대의 자동 참가에 이 플레이어의 비밀번호가 필요합니다. 비밀번호를 물은 뒤 이벤트의 `Session`과 그 비밀번호로 `Join Easy Session`을 부르세요
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - Matchmaking 한 번의 진행 전체. 자세한 내용은 [Matchmaking 가이드](Guide-Matchmaking.ko.md)에 있습니다

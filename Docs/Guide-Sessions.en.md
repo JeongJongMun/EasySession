@@ -293,7 +293,8 @@ reparent the widget to `EasySessionWidget` and override the events it needs, or 
 subsystem (`Get Easy Session Subsystem`) with Assign nodes when the parent class is taken:
 
 - `OnSessionPlayersChanged` - a player joined, left or changed whether they are ready
-- `OnBusyChanged` - a request started or everything finished. `Get Easy Session Activity` names the activity, so a spinner can say what it waits for
+- `OnBusyChanged` - the session or the map the local player is in started or stopped changing: Create Easy Session, Join Easy Session, Leave Easy Session, Start Easy Matchmaking, Restore Easy Party or the map load after them. Find Easy Sessions, Update Easy Session, Start Easy Session and End Easy Session do not fire it, so the widget that called one of them waits on that node's output pins
+- `OnActivityChanged` - what the plugin is doing changed. `Get Activity Message` turns the new value into a status text, so a spinner can say what it waits for
 - `OnSessionFailure` - something failed outside any node's result: the connection dropped, a travel or listen server EasySession started failed (e.g. a wrong Initial Map Name), or the join of an accepted invite failed for a reason other than a missing password. A client that lost its session is sent back to the menu, where `Consume Pending Easy Disconnect Info` has the reason to show the player
 - `OnInvitePasswordRequired` - the automatic join of an accepted invite needs a password from this player. Ask for it, then call `Join Easy Session` with the event's `Session` and the password
 - `OnMatchmakingStarted`, `OnMatchmakingStateChanged`, `OnMatchmakingUpdated`, `OnMatchmakingComplete` - a Matchmaking run's progress, from acceptance to the end. Details in the [Matchmaking guide](Guide-Matchmaking.en.md)

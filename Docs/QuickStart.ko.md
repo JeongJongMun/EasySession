@@ -48,15 +48,20 @@
 | `Modules/WBP_SessionSettingsForm` | 세션 설정 입력. Create Session과 설정 변경 팝업이 함께 씁니다. 게임 모드가 커스텀 세팅 예시입니다 | Make Easy Session Settings, Make Easy Setting (String) (GetSettings); Break Easy Session Settings, Get Easy Setting String (SetSettings) |
 | `Modules/WBP_SessionBrowser` | Public, Friends, Code 탭으로 세션이나 파티를 찾습니다. 모드가 모든 검색의 Type 핀을 정합니다 | 게임 모드 필터용 Make Easy Setting (String) (BuildSearchParams); Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); 친구를 Friend Id로 넣은 Find Easy Sessions (OnFriendJoinRequested ResultList); 참가 코드로 Find Easy Sessions (OnClicked CodeSearchButton) |
 | `Modules/WBP_SessionRow` | 검색 결과 한 줄: 이름, 호스트, 인원, 게임 모드 배지, JOIN | Format Session Slots, To String (Easy Setting) (InitRow) |
-| `Modules/WBP_PartyCard` | 내 파티: 만들기, 찾기, 준비, 나가기 | Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty) |
+| `Modules/WBP_PartyCard` | 내 파티: 만들기, 찾기, 준비, 나가기 | Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty); Is Easy Session Busy (RefreshInteractable) |
 | `Modules/WBP_PartyMemberList` | 파티 멤버. 빈 자리를 누르면 초대 오버레이, 멤버를 누르면 프로필이 열립니다 | Get Easy Party Members (RefreshMemberList); Show Easy Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
 | `Screens/WBP_LobbyScreen` | 로비: 준비, 매치 시작, 세션 설정, 나가기 | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
 | `Modules/WBP_SessionPlayerList` | 세션 플레이어. 빈 자리와 프로필 클릭은 파티 목록과 같습니다 | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
 | `Modules/WBP_SessionInfo` | 세션 설정과 모든 커스텀 세팅을 한눈에 | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State, To String (Easy Setting) (RefreshSessionInfo) |
-| `Modules/WBP_SessionStatus` | 상태 줄 | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
+| `Modules/WBP_SessionStatus` | 상태 줄 | Get Easy Session Activity, Get Activity Message (ShowActivity); On Activity Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
 | `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | 매치와 Esc 메뉴: 나가기, 로비로 돌아가기, 세션 끝내기 | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (WBP_InGameMenu의 Event Graph) |
-| `Popups/WBP_UpdateSessionPopup` | 로비에서 세션 설정을 바꿉니다 | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
+| `Popups/WBP_UpdateSessionPopup` | 로비에서 세션 설정을 바꿉니다 | Get Easy Session Settings (Open); Update Easy Session, Is Easy Session Busy (OnClicked ApplyButton) |
 | `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | 비밀번호 입력, 그리고 지난 세션이나 파티가 끝난 이유 | 플러그인 노드 없음. 받은 비밀번호로 메인 메뉴가 Join Easy Session을 부릅니다 (OnPasswordSubmitted) |
+
+버튼은 두 가지 방법으로 끕니다. 플레이어의 세션이나 맵이 바뀌는 동안에는 RefreshInteractable처럼
+`Is Easy Session Busy`로 끕니다. 검색, 설정 변경, 매치 시작은 이 값을 true로 만들지 않으므로, 그 노드를 부르는
+위젯이 직접 자기 버튼을 끄고 그 노드의 On Success나 On Failure 핀에서 다시 켭니다. `WBP_SessionBrowser`의
+SetSearching이 그 예입니다.
 
 `Common/`에는 플러그인 노드를 쓰지 않는 부품이 있습니다. 메뉴 버튼, 패널 헤더, 팝업 프레임, 정보 행,
 입력 위젯들입니다. 화면 모양을 맞추려고 둔 것이라 따로 볼 내용은 없습니다. 파티를 쓰지 않는

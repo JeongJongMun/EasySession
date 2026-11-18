@@ -4,7 +4,7 @@ Beginner-friendly sessions, parties and matchmaking for Unreal Engine, built on 
 
 Host, find, join and quick-play with a few Blueprint nodes - no C++ and no config files to start.
 
-*[Get it on Fab](https://www.fab.com/listings/58a489be-2b74-406c-b4ba-5548968f6520) | [한국어 README](README.ko.md)*
+*[Get it on Fab](https://www.fab.com/listings/58a489be-2b74-406c-b4ba-5548968f6520) | [Changelog](CHANGELOG.md) | [한국어 README](README.ko.md)*
 
 <br/>
 
@@ -30,7 +30,7 @@ That is the whole setup for LAN play. The NULL online subsystem needs no account
 - **The whole session lifecycle in Blueprint** - create, find, join, start the match, end it, leave and update settings, all as async nodes. Session state, the player list and open slots are one node away, and the same API is available from C++.
 - **Custom settings and search filters** - advertise typed settings such as a game mode, and search on them. The filters go to the online service, so matching sessions are found however many others exist. A session can also be hidden from searches or carry a join code.
 - **Ready and kick** - every player and party member shares whether they are ready, and the host of the session or the party can remove a player with a reason they see.
-- **Every request reports its progress and result** - `Is Busy` covers the request running or queued and the level load that follows hosting or joining, so binding it to a button's Is Enabled keeps that button locked for as long as the player is actually waiting. When the request finishes you get a result enum and a message you can show a player.
+- **Every request reports its progress and result** - `Is Busy` covers a create, join, leave or matchmaking running or queued and the map load that follows, so binding it to a button's Is Enabled keeps that button disabled while the player's session or map is changing. A search or a settings update leaves it false, and `On Activity Changed` reports what runs for a status text. When the request finishes you get a result enum and a message you can show a player.
 - **Overlapping calls are handled in order** - every request goes through a queue and runs one at a time. A call made while another is still running waits its turn instead of failing, and a repeat of the same call ends with a clear result such as `SessionAlreadyExists`.
 - **Passwords and join-in-progress enforced by the host** - checked by the host before the player travels and again as they connect, so a stale search result or a direct connect cannot walk into a running match.
 - **Reservations** - an approved player holds a reservation until they arrive, so two players are never approved for the last free slot, and a player who leaves loses theirs so the next one can join.

@@ -49,15 +49,20 @@ create screens and on the in-game menu, `MatchMap` on the lobby. Point them at y
 | `Modules/WBP_SessionSettingsForm` | The session settings inputs, shared by Create Session and the update popup. The game mode is the custom setting example | Make Easy Session Settings, Make Easy Setting (String) (GetSettings); Break Easy Session Settings, Get Easy Setting String (SetSettings) |
 | `Modules/WBP_SessionBrowser` | Finds sessions or parties with the Public, Friends and Code tabs. The mode picks the Type pin of every search | Make Easy Setting (String) for the game mode filter (BuildSearchParams); Find Easy Sessions (OnClicked PublicSearchButton); Read Easy Friends (OnClicked FriendsSearchButton); Find Easy Sessions with the friend as Friend Id (OnFriendJoinRequested ResultList); Find Easy Sessions by join code (OnClicked CodeSearchButton) |
 | `Modules/WBP_SessionRow` | One search result: name, host, players, game mode badge and JOIN | Format Session Slots, To String (Easy Setting) (InitRow) |
-| `Modules/WBP_PartyCard` | The local party: create, find, ready and leave | Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty) |
+| `Modules/WBP_PartyCard` | The local party: create, find, ready and leave | Set Easy Party Ready (OnClicked ReadyButton); Leave Easy Session; Get Easy Session Settings, Get Easy Join Code (RefreshParty); Is Easy Session Busy (RefreshInteractable) |
 | `Modules/WBP_PartyMemberList` | The party members. An open slot opens the invite overlay, a member opens their profile | Get Easy Party Members (RefreshMemberList); Show Easy Invite UI, Show Easy Profile UI For Party Member (HandleRowClicked); Kick Easy Party Member (HandleKickClicked) |
 | `Screens/WBP_LobbyScreen` | The lobby: ready, start the match, session settings, leave | Set Easy Session Ready (ToggleReady); Start Easy Session, Server Travel Easy Session (OnClicked StartMatchButton); Leave Easy Session; Get Easy Session Player Infos (AreAllPlayersReady, IsLocalPlayerReady) |
 | `Modules/WBP_SessionPlayerList` | The session players, with the same open slot and profile clicks | Get Easy Session Player Infos (RefreshPlayerList); Show Easy Invite UI, Show Easy Profile UI For Player (HandleRowClicked); Kick Easy Session Player (HandleKickClicked) |
 | `Modules/WBP_SessionInfo` | The session settings at a glance, with every custom setting | Get Easy Session Settings, Get Easy Join Code, Get Easy Session State, To String (Easy Setting) (RefreshSessionInfo) |
-| `Modules/WBP_SessionStatus` | The status line | Get Easy Session Activity, Get Activity Message (ShowActivity); On Busy Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
+| `Modules/WBP_SessionStatus` | The status line | Get Easy Session Activity, Get Activity Message (ShowActivity); On Activity Changed, On Matchmaking Updated, On Session Failure (Event Graph) |
 | `Screens/WBP_InGameMenu`, `Popups/WBP_EscPopup` | The match and its Esc menu: leave, return to the lobby, end the session | Leave Easy Session, End Easy Session, Server Travel Easy Session, Destroy Easy Session For Everyone (Event Graph of WBP_InGameMenu) |
-| `Popups/WBP_UpdateSessionPopup` | Changes the session settings from the lobby | Get Easy Session Settings (Open); Update Easy Session (OnClicked ApplyButton) |
+| `Popups/WBP_UpdateSessionPopup` | Changes the session settings from the lobby | Get Easy Session Settings (Open); Update Easy Session, Is Easy Session Busy (OnClicked ApplyButton) |
 | `Popups/WBP_JoinPasswordPopup`, `Popups/WBP_DisconnectPopup` | The password prompt, and why the last session or party ended | No plugin nodes: the main menu calls Join Easy Session with the password it collects (OnPasswordSubmitted) |
+
+The buttons are disabled in two ways. While the player's session or map is changing, `Is Easy Session Busy`
+disables them, as in RefreshInteractable. A search, a settings update or the match start does not make it
+true, so the widget that calls one disables its own button and enables it again from that node's On Success
+or On Failure pin, as SetSearching of `WBP_SessionBrowser` does.
 
 `Common/` holds the parts with no plugin nodes: the menu button, the panel header, the popup frame,
 the info row and the input widgets. They only exist so the screens look alike, so there is nothing
