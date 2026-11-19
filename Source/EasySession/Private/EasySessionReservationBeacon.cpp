@@ -170,6 +170,21 @@ void AEasySessionReservationBeaconClient::DestroyBeacon()
 	Super::DestroyBeacon();
 }
 
+void AEasySessionReservationBeaconClient::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	// A map change removes this actor without an answer and without firing the world timer, so the request would never complete.
+	// DestroyBeacon unbinds CompleteDelegate first, so a request that was canceled stays silent here.
+	if (CompleteDelegate.IsBound())
+	{
+		UE_LOG(LogEasySession, Log, TEXT("The map changed before the host answered the reservation request."));
+		FEasyReservationResponse Response;
+		Response.Result = EEasyReservationResult::MapChanged;
+		Signal(Response);
+	}
+
+	Super::EndPlay(EndPlayReason);
+}
+
 void AEasySessionReservationBeaconClient::HandleRequestTimeout()
 {
 	SignalUnreachable(TEXT("the host's beacon did not answer in time"));

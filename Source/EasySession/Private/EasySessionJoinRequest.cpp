@@ -248,6 +248,13 @@ void FEasySessionJoinRequest::HandleReservationResponse(const FEasyReservationRe
 			JoinWithoutReservation();
 			break;
 
+		// The player left the map that asked, so the join stops here instead of continuing without the host's answer.
+		case EEasyReservationResult::MapChanged:
+			// The world is removing the beacon client already, so Cleanup has nothing left to destroy.
+			ReservationClient.Reset();
+			Complete(EEasySessionResult::Canceled, TEXT("The map changed before the host answered the join."));
+			break;
+
 		default:
 			Complete(GetRefusalResult(Response.Result), Response.ReasonText);
 			break;

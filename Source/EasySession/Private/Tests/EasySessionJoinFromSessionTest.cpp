@@ -27,7 +27,10 @@ namespace EasySessionJoinFromSessionTest
 		HostCannotBeAsked,
 
 		/** The joining player hosts a match in progress. */
-		HostOfMatchInProgress
+		HostOfMatchInProgress,
+
+		/** The joining player's map changes while the join waits for the reservation beacon. */
+		MapChanged
 	};
 
 	struct FTestState
@@ -44,7 +47,7 @@ namespace EasySessionJoinFromSessionTest
 
 		ECase Case = ECase::Approved;
 
-		enum class EStep { AwaitingTargetCreate, AwaitingTargetDestroy, AwaitingCurrentCreate, AwaitingStart, AwaitingApproval, AwaitingJoin, AwaitingCleanup };
+		enum class EStep { AwaitingTargetCreate, AwaitingTargetDestroy, AwaitingCurrentCreate, AwaitingStart, AwaitingBeacon, AwaitingJoin, AwaitingCleanup };
 		EStep Step = EStep::AwaitingTargetCreate;
 		double StartTime = 0.0;
 	};
@@ -72,8 +75,14 @@ namespace EasySessionJoinFromSessionTest
 		Subsystem.CreateSession(HostParams);
 	}
 
+	// Whether the case's join asks a reservation beacon, which it does only for a session that advertises the reservations key.
+	bool AsksBeacon(ECase Case)
+	{
+		return Case == ECase::Approved || Case == ECase::MapChanged;
+	}
+
 	// Start the join of the target session.
-	// The approved case then waits to approve it.
+	// The approved and map changed cases then wait for the join to ask the reservation beacon.
 	void StartJoin(TSharedPtr<FTestState> State, UEasySessionSubsystem& Subsystem)
 	{
 		State->CurrentSessionId = FEasySessionTestAccess::GetCurrentSessionIdString(Subsystem);
@@ -85,7 +94,7 @@ namespace EasySessionJoinFromSessionTest
 				Shared->JoinResult = Result;
 			}));
 
-		State->Step = State->Case == ECase::Approved ? FTestState::EStep::AwaitingApproval : FTestState::EStep::AwaitingJoin;
+		State->Step = AsksBeacon(State->Case) ? FTestState::EStep::AwaitingBeacon : FTestState::EStep::AwaitingJoin;
 		State->StartTime = FPlatformTime::Seconds();
 	}
 
@@ -105,8 +114,16 @@ namespace EasySessionJoinFromSessionTest
 			return;
 		}
 
-		const EEasySessionResult Expected = State.Case == ECase::HostCannotBeAsked ? EEasySessionResult::JoinRefused : EEasySessionResult::SessionAlreadyExists;
-		CurrentTest->TestEqual(TEXT("The join is refused before leaving"), Result, Expected);
+		if (State.Case == ECase::MapChanged)
+		{
+			CurrentTest->TestEqual(TEXT("A map change cancels the join"), Result, EEasySessionResult::Canceled);
+			CurrentTest->TestFalse(TEXT("And frees the queue"), Subsystem.IsBusy());
+		}
+		else
+		{
+			const EEasySessionResult Expected = State.Case == ECase::HostCannotBeAsked ? EEasySessionResult::JoinRefused : EEasySessionResult::SessionAlreadyExists;
+			CurrentTest->TestEqual(TEXT("The join is refused before leaving"), Result, Expected);
+		}
 		CurrentTest->TestEqual(TEXT("The player still holds the session it was in"),
 			FEasySessionTestAccess::GetCurrentSessionIdString(Subsystem), State.CurrentSessionId);
 	}
@@ -138,8 +155,7 @@ bool FEasySessionJoinFromSessionStep::Update()
 				return true;
 			}
 
-			// The approved case asks a reservation beacon first, and a join asks one only for a session that advertises the reservations key.
-			if (State->Case == ECase::Approved)
+			if (AsksBeacon(State->Case))
 			{
 				State->TargetResult.NativeResult.Session.SessionSettings.Set(EasySession::SettingKey_Reservations, 1, EOnlineDataAdvertisementType::ViaOnlineService);
 			}
@@ -197,10 +213,13 @@ bool FEasySessionJoinFromSessionStep::Update()
 			return false;
 		}
 
-		case FTestState::EStep::AwaitingApproval:
+		case FTestState::EStep::AwaitingBeacon:
 		{
 			// The queue starts the join on its next tick, and only then does the join wait for the reservation beacon.
-			if (!FEasySessionTestAccess::ApproveRunningJoin(*Subsystem))
+			const bool bWaiting = State->Case == ECase::MapChanged
+				? FEasySessionTestAccess::EndRunningJoinBeaconClientPlay(*Subsystem)
+				: FEasySessionTestAccess::ApproveRunningJoin(*Subsystem);
+			if (!bWaiting)
 			{
 				if (State->JoinResult.IsSet())
 				{
@@ -313,6 +332,17 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinFromMatchTest, "EasySession.Joi
 bool FEasySessionJoinFromMatchTest::RunTest(const FString& Parameters)
 {
 	return EasySessionJoinFromSessionTest::Begin(*this, EasySessionJoinFromSessionTest::ECase::HostOfMatchInProgress);
+}
+
+/**
+ * A map change removes the reservation beacon client before the host answers, and fires neither its answer nor its world timer.
+ * The join must still complete, as Canceled, or it stays the running request and every later request waits behind it.
+ * The player keeps the session they were in, because nothing was destroyed before the host answered.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionJoinMapChangedTest, "EasySession.Join.CanceledWhenTheMapChanges", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionJoinMapChangedTest::RunTest(const FString& Parameters)
+{
+	return EasySessionJoinFromSessionTest::Begin(*this, EasySessionJoinFromSessionTest::ECase::MapChanged);
 }
 
 #endif // WITH_DEV_AUTOMATION_TESTS

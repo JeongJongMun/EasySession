@@ -475,6 +475,32 @@ public:
 		return true;
 	}
 
+	/**
+	 * End play for the running join's beacon client, as a map change does.
+	 * Unlike DestroyBeacon, nothing cancels the request first.
+	 *
+	 * @return Whether a join was waiting for the beacon.
+	 */
+	static bool EndRunningJoinBeaconClientPlay(UEasySessionSubsystem& Subsystem)
+	{
+		const TSharedPtr<FEasySessionRequest> Active = Subsystem.RequestQueue->GetActiveRequest();
+		if (!Active.IsValid() || Active->Type != FEasySessionRequest::EType::Join)
+		{
+			return false;
+		}
+
+		AEasySessionReservationBeaconClient* Client = static_cast<FEasySessionJoinRequest&>(*Active).ReservationClient.Get();
+		if (Client == nullptr)
+		{
+			return false;
+		}
+
+		// A map change calls EndPlay on every actor that began play.
+		// This headless world never initializes its actors, so its own routing would skip this one, and the test calls EndPlay instead.
+		Client->EndPlay(EEndPlayReason::LevelTransition);
+		return true;
+	}
+
 	/** The running matchmaking request. Null while no matchmaking runs. */
 	static TSharedPtr<FEasySessionMatchmakingRequest> GetMatchmakingRequest(const UEasySessionSubsystem& Subsystem)
 	{

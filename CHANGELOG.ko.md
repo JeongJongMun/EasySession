@@ -23,6 +23,7 @@
 
 ### 고친 점
 
+- 호스트가 예약 요청에 답하기 전에 맵이 바뀌어도 Join Easy Session이 더 이상 영원히 기다리지 않습니다. `Canceled`로 끝나고, 뒤에 대기하던 요청이 시작됩니다. 전에는 게임을 다시 시작할 때까지 이후의 모든 노드가 그 뒤에서 기다렸습니다.
 - 다른 프로그램이 비콘 포트를 잡고 있으면 Create Easy Party가 이제 `CreateFailure`로 실패합니다. 전에는 파티 비콘이 다음 빈 포트에 열리는데 파티는 설정된 포트를 광고해서, 파티는 만들어지지만 멤버의 Join Easy Session은 모두 `JoinRefused`("The party host did not answer.")로 끝났습니다. 호스트 로그에 두 포트가 남습니다.
 - `WBP_PartyCard`가 이제 Event Construct에서 Is Easy Session Busy를 읽습니다. 전에는 Is Easy Session Busy가 true일 때 만들어진 카드가 On Busy Changed가 호출될 때까지 버튼을 켜 둔 채로 있었습니다.
 - Steam 설정 가이드에서 "다른 프로젝트의 세션에 참가하면 `OutdatedClient`로 실패한다"는 문장을 고쳤습니다. EEasySessionResult와 EEasyDisconnectReason에는 그런 이름의 값이 없습니다. 이제 가이드는 "게임 버전이 달라 그런 세션에는 참가할 수 없다"고 안내합니다.

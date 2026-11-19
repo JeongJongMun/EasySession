@@ -57,7 +57,7 @@ public:
 	/** Destroys the beacon client actor if the request is destroyed while it waits for the response. */
 	virtual ~FEasySessionJoinRequest() override;
 
-	/** @return The result a refused reservation completes the join with. Approved and Unreachable continue the join instead, so they have none. */
+	/** @return The result a refused reservation completes the join with. Approved and Unreachable continue the join, and MapChanged cancels it, so they have none. */
 	static EEasySessionResult GetRefusalResult(EEasyReservationResult Refusal);
 
 protected:

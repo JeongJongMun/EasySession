@@ -29,7 +29,10 @@ enum class EEasyReservationResult : uint8
 	Refused,
 
 	/** The joining player could not reach the host. The host never sends this, and the beacon client sets it itself. */
-	Unreachable
+	Unreachable,
+
+	/** The joining player's map changed before the host answered, which removed the beacon client. The beacon client sets it itself. */
+	MapChanged
 };
 
 /** The host's response to a reservation request, sent before any travel starts. */
@@ -54,7 +57,7 @@ struct FEasyReservationResponse
 };
 
 /**
- * Delegate fired once per RequestJoin, with Unreachable when the host never responded.
+ * Delegate fired once per RequestJoin, with Unreachable when the host never responded, and with MapChanged when a map change removed the beacon client first.
  * It never fires after DestroyBeacon, which cancels the request.
  */
 DECLARE_DELEGATE_OneParam(FEasyReservationRequestComplete, const FEasyReservationResponse&);
@@ -99,6 +102,7 @@ public:
 	/**
 	 * Resolve Target's beacon address, connect, and ask to join.
 	 * OnComplete fires once, with Unreachable when the address does not resolve, the connection fails, or the host never responds.
+	 * It fires with MapChanged when a map change removes this actor before any of those.
 	 * It never fires after DestroyBeacon, which cancels the request.
 	 * A failure inside this call is reported the same way, so the caller only has one path to handle.
 	 *
@@ -132,6 +136,10 @@ public:
 	virtual void OnFailure() override;
 	virtual void DestroyBeacon() override;
 	//~ End APartyBeaconClient Interface
+
+	//~ Begin AActor Interface
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	//~ End AActor Interface
 
 private:
 
