@@ -324,17 +324,18 @@ namespace EasySessionConsole
 			if (UEasySessionSubsystem* Subsystem = GetSubsystem(World))
 			{
 				FEasySessionSettings PartySettings;
-				if (Args.Num() > 0)
+				// Max players is optional, so a word in the first argument is a flag and the default stays.
+				for (const FString& Arg : Args)
 				{
-					PartySettings.MaxPlayers = FCString::Atoi(*Args[0]);
-				}
-				for (int32 Index = 1; Index < Args.Num(); ++Index)
-				{
-					if (Args[Index] == TEXT("hidden"))
+					if (Arg.IsNumeric())
+					{
+						PartySettings.MaxPlayers = FCString::Atoi(*Arg);
+					}
+					else if (Arg == TEXT("hidden"))
 					{
 						PartySettings.bHidden = true;
 					}
-					else if (Args[Index] == TEXT("code"))
+					else if (Arg == TEXT("code"))
 					{
 						PartySettings.bUseJoinCode = true;
 					}

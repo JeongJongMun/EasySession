@@ -23,6 +23,7 @@
 
 ### Fixed
 
+- `EasySession.CreateParty hidden` and `EasySession.CreateParty code` now create a party with the default Max Players. The command used to read the first word as Max Players, failed with "Max Players must be above 0.", and ignored the word.
 - A party host's Create Easy Session with Should Advertise off now fails with `InvalidParams`, and the party stays. Before, the session was created, the members left the party to follow, and their search could never find an unadvertised session. Set Hidden to keep the session out of other searches instead.
 - Leaving a party right after its host changed maps no longer breaks the next party join. A reconnect to the old host that was still waiting took over the new connection, and the join failed after 10 seconds with "The party host did not answer."
 - Join Easy Session no longer waits forever when the map changes before the host answered the reservation request. It ends with `Canceled`, and the requests queued behind it start. Before, every later node waited behind it until the game restarted.
