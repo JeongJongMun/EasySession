@@ -65,6 +65,7 @@ The plugin ships example maps and widgets with the full main menu -> lobby -> ma
 - **Change maps with `Server Travel Easy Session`.** It moves the reservations to the new map, so the players a hard travel reconnects are let back in. A plain `ServerTravel` keeps the beacon port busy, and the new map runs no reservation beacon.
 - **Password sessions are joined through the plugin only.** The password goes to the host over the reservation beacon and never into the travel URL, so a direct connect or your own `ClientTravel` into a password session is refused.
 - **Dedicated servers** are not supported yet - sessions are hosted on listen servers.
+- **The example character borrows the engine's tutorial mannequin.** `BP_ExampleCharacter`, `BP_LobbyCharacter` and `ABP_ExampleCharacter` use the mesh, skeleton and blend space under `/Engine/Tutorial`. If you build your game on the example, replace the character and make a new animation Blueprint for your own skeleton.
 
 <br/>
 
