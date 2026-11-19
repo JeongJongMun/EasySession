@@ -125,7 +125,7 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
 
 | 호스트가 부르는 노드 | 일어나는 일 |
 |---|---|
-| `Create Easy Session` | 호스트의 예약에 모든 멤버가 포함됩니다. Max Players가 파티 인원보다 작으면 `InvalidParams`로 실패합니다 |
+| `Create Easy Session` | 호스트의 예약에 모든 멤버가 포함됩니다. Max Players가 파티 인원보다 작으면 `InvalidParams`로 실패합니다. 멤버는 호스트를 검색해서 세션을 찾으므로 Should Advertise를 꺼도 `InvalidParams`로 실패합니다. 다른 검색에서 숨기려면 Hidden을 쓰세요 |
 | `Join Easy Session` | 파티 호스트가 게임 호스트에게 파티 전체가 들어갈 자리를 요청합니다. 자리가 없으면 `JoinSessionFull`로 실패하고 아무도 이동하지 않습니다 |
 | `Start Easy Matchmaking` | 파티 전체가 들어갈 자리가 있는 세션만 고릅니다 |
 

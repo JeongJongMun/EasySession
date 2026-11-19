@@ -125,7 +125,7 @@ The host uses the normal session nodes, and the party comes along:
 
 | Host calls | What happens |
 |---|---|
-| `Create Easy Session` | The host's reservation holds every member. Max Players must fit the party, or the create fails with `InvalidParams` |
+| `Create Easy Session` | The host's reservation holds every member. Max Players must fit the party, or the create fails with `InvalidParams`. The members find the session by searching for the host, so Should Advertise must stay on, or the create fails with `InvalidParams` too. Use Hidden to keep the session out of other searches |
 | `Join Easy Session` | The party host asks the game host for room for the whole party. A session without room fails with `JoinSessionFull`, and nobody moves |
 | `Start Easy Matchmaking` | The search only considers sessions with room for the whole party |
 

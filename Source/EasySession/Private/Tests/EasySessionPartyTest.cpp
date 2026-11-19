@@ -915,6 +915,87 @@ bool FEasySessionPartyRestoreTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+DEFINE_LATENT_AUTOMATION_COMMAND_ONE_PARAMETER(FEasySessionPartyUnadvertisedStep, TSharedPtr<EasySessionPartyTest::FTestState>, State);
+bool FEasySessionPartyUnadvertisedStep::Update()
+{
+	using namespace EasySessionPartyTest;
+
+	FAutomationTestBase* CurrentTest = FAutomationTestFramework::Get().GetCurrentTest();
+	UEasySessionSubsystem* Subsystem = State->GameInstance->GetSubsystem<UEasySessionSubsystem>();
+
+	switch (State->Phase)
+	{
+		case 0:
+		{
+			Subsystem->CreateParty(MakePartySettings(false, false), MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 1:
+		{
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
+			{
+				return TimedOut(State, TEXT("the party create"));
+			}
+
+			FEasySessionTestAccess::AddPartyMember(*Subsystem, MakePlayerId(State, TEXT("EasySessionPartyFollower")));
+
+			FEasySessionHostParams HostParams = MakeHostParams();
+			HostParams.bShouldAdvertise = false;
+			Subsystem->CreateSession(HostParams, MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		case 2:
+		{
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
+			{
+				return TimedOut(State, TEXT("the unadvertised create"));
+			}
+
+			CurrentTest->TestEqual(TEXT("A session the party cannot find is refused"), State->PendingResult.GetValue(), EEasySessionResult::InvalidParams);
+			CurrentTest->TestFalse(TEXT("No game session was created"), Subsystem->IsInSession());
+			CurrentTest->TestTrue(TEXT("The party stays"), Subsystem->IsInSession(EEasySessionType::PartySession));
+
+			Subsystem->LeaveSession(EEasySessionType::PartySession, MakeCallback(State));
+			NextPhase(State);
+			return false;
+		}
+
+		default:
+		{
+			if (!State->PendingResult.IsSet() || EasySessionTest::HasActivity(Subsystem))
+			{
+				return TimedOut(State, TEXT("the party leave"));
+			}
+
+			End(State);
+			return true;
+		}
+	}
+}
+
+/**
+ * The party members follow their host by searching for the host's session, and a search returns only advertised sessions.
+ * A party host that creates an unadvertised session is refused before anyone is told to follow, so the party stays together.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyUnadvertisedTest, "EasySession.Party.TheHostCannotHideTheSessionFromTheParty", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionPartyUnadvertisedTest::RunTest(const FString& Parameters)
+{
+	using namespace EasySessionPartyTest;
+
+	TSharedPtr<FTestState> State = MakeShared<FTestState>();
+	if (Begin(State, *this) == nullptr)
+	{
+		return false;
+	}
+
+	ADD_LATENT_AUTOMATION_COMMAND(FEasySessionPartyUnadvertisedStep(State));
+	return true;
+}
+
 /**
  * A reconnect to the party host keeps a ticker waiting between attempts.
  * Closing the party connection must remove it, or it wakes up after the player left and takes over the next party connection.

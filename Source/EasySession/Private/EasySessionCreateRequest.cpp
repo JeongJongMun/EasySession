@@ -121,6 +121,13 @@ bool FEasySessionCreateRequest::CheckCanCreateGameSession()
 		return false;
 	}
 
+	// The party members find this session by searching for its host, and a search returns only advertised sessions.
+	if (!GroupMembers.IsEmpty() && !HostParams.bShouldAdvertise)
+	{
+		Complete(EEasySessionResult::InvalidParams, TEXT("The party finds this session by searching for its host, so it must be advertised. Set Hidden to keep it out of a session search."));
+		return false;
+	}
+
 	return true;
 }
 
