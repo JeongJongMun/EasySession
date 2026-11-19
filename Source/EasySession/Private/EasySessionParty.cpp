@@ -160,6 +160,10 @@ void FEasySessionParty::Close()
 {
 	FTSTicker::GetCoreTicker().RemoveTicker(ConnectTickHandle);
 	ConnectTickHandle.Reset();
+
+	// A reconnect left waiting would otherwise wake up and take over the next party connection.
+	FTSTicker::GetCoreTicker().RemoveTicker(RetryHandle);
+	RetryHandle.Reset();
 	ConnectComplete.Unbind();
 
 	if (AEasySessionPartyBeaconState* State = BoundState.Get())

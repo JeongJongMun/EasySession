@@ -23,6 +23,7 @@
 
 ### Fixed
 
+- Leaving a party right after its host changed maps no longer breaks the next party join. A reconnect to the old host that was still waiting took over the new connection, and the join failed after 10 seconds with "The party host did not answer."
 - Join Easy Session no longer waits forever when the map changes before the host answered the reservation request. It ends with `Canceled`, and the requests queued behind it start. Before, every later node waited behind it until the game restarted.
 - A join refused because the game versions differ now keeps the engine's upgrade message in Consume Pending Easy Disconnect Info, instead of "Lost connection to the host."
 - Create Easy Party now fails with `CreateFailure` when another program holds the beacon port. The party beacon used to open on the next free port while the party advertised the configured one, so the party was created but every member's Join Easy Session ended with `JoinRefused` ("The party host did not answer."). The host's log names both ports.

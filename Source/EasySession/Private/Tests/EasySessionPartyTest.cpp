@@ -915,4 +915,28 @@ bool FEasySessionPartyRestoreTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+/**
+ * A reconnect to the party host keeps a ticker waiting between attempts.
+ * Closing the party connection must remove it, or it wakes up after the player left and takes over the next party connection.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionPartyCloseStopsReconnectTest, "EasySession.Party.CloseStopsAWaitingReconnect", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionPartyCloseStopsReconnectTest::RunTest(const FString& Parameters)
+{
+	TStrongObjectPtr<UGameInstance> GameInstance(EasySessionTest::NewGameInstance());
+	EasySessionTest::InitializeGameInstance(GameInstance);
+
+	UEasySessionSubsystem* Subsystem = GameInstance->GetSubsystem<UEasySessionSubsystem>();
+	if (TestNotNull(TEXT("EasySessionSubsystem is available"), Subsystem))
+	{
+		FEasySessionTestAccess::StartPartyReconnect(*Subsystem);
+		TestTrue(TEXT("The reconnect waits on its ticker"), FEasySessionTestAccess::IsPartyReconnectWaiting(*Subsystem));
+
+		FEasySessionTestAccess::CloseParty(*Subsystem);
+		TestFalse(TEXT("Closing the party connection removes the waiting reconnect"), FEasySessionTestAccess::IsPartyReconnectWaiting(*Subsystem));
+	}
+
+	EasySessionTest::DestroyGameInstance(GameInstance.Get());
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

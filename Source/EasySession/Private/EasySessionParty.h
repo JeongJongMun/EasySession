@@ -68,7 +68,7 @@ public:
 
 	/**
 	 * Close the party beacon, before the party session is destroyed.
-	 * A host tells every member first that the party ends.
+	 * A host tells every member first that the party ends, and a member stops a reconnect that is still waiting.
 	 */
 	void Close();
 

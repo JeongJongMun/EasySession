@@ -379,6 +379,24 @@ public:
 		}
 	}
 
+	/** Start the member's reconnect to the party host, as a lost connection does. */
+	static void StartPartyReconnect(UEasySessionSubsystem& Subsystem)
+	{
+		Subsystem.Party->StartReconnect();
+	}
+
+	/** @return Whether a reconnect attempt is waiting on its ticker. */
+	static bool IsPartyReconnectWaiting(const UEasySessionSubsystem& Subsystem)
+	{
+		return Subsystem.Party->RetryHandle.IsValid();
+	}
+
+	/** Close the party connection, as Leave Easy Session and Join Easy Session do. */
+	static void CloseParty(UEasySessionSubsystem& Subsystem)
+	{
+		Subsystem.Party->Close();
+	}
+
 	/** Tell the party a map finished loading, as the engine does after every travel. */
 	static void FinishMapLoad(UEasySessionSubsystem& Subsystem)
 	{

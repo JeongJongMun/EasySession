@@ -23,6 +23,7 @@
 
 ### 고친 점
 
+- 호스트가 맵을 바꾼 직후 파티를 떠나도 다음 파티 참가가 더 이상 망가지지 않습니다. 이전 호스트에 다시 접속하려고 대기하던 시도가 새 연결을 가로채, 참가가 10초 뒤 "The party host did not answer."로 실패했습니다.
 - 호스트가 예약 요청에 답하기 전에 맵이 바뀌어도 Join Easy Session이 더 이상 영원히 기다리지 않습니다. `Canceled`로 끝나고, 뒤에 대기하던 요청이 시작됩니다. 전에는 게임을 다시 시작할 때까지 이후의 모든 노드가 그 뒤에서 기다렸습니다.
 - 게임 버전이 달라 참가가 거절되면, 이제 Consume Pending Easy Disconnect Info에 "Lost connection to the host." 대신 엔진의 업그레이드 안내 문장이 남습니다.
 - 다른 프로그램이 비콘 포트를 잡고 있으면 Create Easy Party가 이제 `CreateFailure`로 실패합니다. 전에는 파티 비콘이 다음 빈 포트에 열리는데 파티는 설정된 포트를 광고해서, 파티는 만들어지지만 멤버의 Join Easy Session은 모두 `JoinRefused`("The party host did not answer.")로 끝났습니다. 호스트 로그에 두 포트가 남습니다.
