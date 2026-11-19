@@ -168,9 +168,14 @@ EasySessionDiagnostics::FReport EasySessionDiagnostics::RunDiagnostics(UWorld* W
 	if (GEngine != nullptr && !GEngine->NetDriverDefinitions.ContainsByPredicate(
 		[](const FNetDriverDefinition& Definition) { return Definition.DefName == FName(TEXT("BeaconNetDriver")); }))
 	{
+		// The beacon connects to the same host address as the game, so it needs the game's driver class: a Steam one on Steam, the IP driver elsewhere.
+		const FNetDriverDefinition* GameDriver = GEngine->NetDriverDefinitions.FindByPredicate(
+			[](const FNetDriverDefinition& Definition) { return Definition.DefName == FName(TEXT("GameNetDriver")); });
+		const FString DriverClass = GameDriver ? GameDriver->DriverClassName.ToString() : FString(TEXT("/Script/OnlineSubsystemUtils.IpNetDriver"));
+
 		AddFix(Report, TEXT("No BeaconNetDriver definition - the reservation beacon cannot start, so hosts refuse players only after they have traveled, and nobody can join a password-protected session."),
 			{ TEXT("[/Script/Engine.GameEngine]"),
-			  TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"/Script/OnlineSubsystemUtils.IpNetDriver\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")") });
+			  FString::Printf(TEXT("+NetDriverDefinitions=(DefName=\"BeaconNetDriver\",DriverClassName=\"%s\",DriverClassNameFallback=\"/Script/OnlineSubsystemUtils.IpNetDriver\")"), *DriverClass) });
 	}
 
 	// Every request is refused without the EasySession online session, because the engine would travel to the menu before a lost session is destroyed.

@@ -6,6 +6,7 @@
 
 #include "EasySessionDiagnostics.h"
 #include "EasySessionTestWorld.h"
+#include "Engine/Engine.h"
 #include "Engine/GameInstance.h"
 #include "Misc/ConfigCacheIni.h"
 #include "OnlineSubsystemUtils.h"
@@ -88,6 +89,51 @@ bool FEasySessionDiagnosticsFindingsTest::RunTest(const FString& Parameters)
 	}
 
 	EasySessionTest::DestroyGameInstance(GameInstance.Get());
+	return true;
+}
+
+/**
+ * The fix for a missing BeaconNetDriver names the class of the GameNetDriver definition.
+ * A Steam project that cleared the driver list needs the Steam driver for its beacon, and the IP driver line would only silence the finding.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FEasySessionDiagnosticsBeaconDriverTest, "EasySession.Diagnostics.BeaconDriverFixUsesTheGameDriverClass", EAutomationTestFlags::EditorContext | EAutomationTestFlags::ClientContext | EAutomationTestFlags::ProductFilter)
+bool FEasySessionDiagnosticsBeaconDriverTest::RunTest(const FString& Parameters)
+{
+	if (!TestNotNull(TEXT("The engine exists"), GEngine))
+	{
+		return false;
+	}
+
+	// The engine's own driver list comes back at the end, whatever the assertions did.
+	const TArray<FNetDriverDefinition> SavedDefinitions = GEngine->NetDriverDefinitions;
+
+	const FName GameDriverClass(TEXT("/Script/SteamSockets.SteamSocketsNetDriver"));
+	GEngine->NetDriverDefinitions.RemoveAll([](const FNetDriverDefinition& Definition)
+	{
+		return Definition.DefName == FName(TEXT("BeaconNetDriver"));
+	});
+	for (FNetDriverDefinition& Definition : GEngine->NetDriverDefinitions)
+	{
+		if (Definition.DefName == FName(TEXT("GameNetDriver")))
+		{
+			Definition.DriverClassName = GameDriverClass;
+		}
+	}
+
+	const EasySessionDiagnostics::FReport Report = EasySessionDiagnostics::RunDiagnostics(nullptr);
+	const EasySessionDiagnostics::FFinding* BeaconFix = Report.Findings.FindByPredicate([](const EasySessionDiagnostics::FFinding& Finding)
+	{
+		return Finding.Message.Contains(TEXT("BeaconNetDriver"));
+	});
+	if (TestNotNull(TEXT("A missing BeaconNetDriver is reported"), BeaconFix))
+	{
+		TestTrue(TEXT("The fix line names the game driver class"), BeaconFix->IniLines.ContainsByPredicate([&GameDriverClass](const FString& Line)
+		{
+			return Line.Contains(TEXT("BeaconNetDriver")) && Line.Contains(GameDriverClass.ToString());
+		}));
+	}
+
+	GEngine->NetDriverDefinitions = SavedDefinitions;
 	return true;
 }
 

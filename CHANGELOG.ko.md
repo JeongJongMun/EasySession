@@ -23,6 +23,7 @@
 
 ### 고친 점
 
+- `EasySession.Diagnose`가 이제 프로젝트의 GameNetDriver와 같은 클래스로 BeaconNetDriver 줄을 알려 줍니다. 전에는 Steam에서도 IP 드라이버 줄을 알려 줘서, 그 줄을 넣으면 경고만 사라지고 비콘은 여전히 호스트에 닿지 못해 비밀번호 세션에 참가할 수 없었습니다.
 - `EasySession.CreateParty hidden`과 `EasySession.CreateParty code`가 이제 기본 Max Players로 파티를 만듭니다. 전에는 첫 단어를 Max Players로 읽어 "Max Players must be above 0."로 실패했고, 그 단어는 무시했습니다.
 - 파티 호스트가 Should Advertise를 끈 Create Easy Session을 부르면 이제 `InvalidParams`로 실패하고 파티는 그대로 남습니다. 전에는 세션이 만들어지고 멤버들이 따라가려고 파티를 떠났지만, 광고하지 않는 세션은 검색으로 찾을 수 없었습니다. 다른 검색에서 숨기려면 대신 Hidden을 쓰세요.
 - 호스트가 맵을 바꾼 직후 파티를 떠나도 다음 파티 참가가 더 이상 망가지지 않습니다. 이전 호스트에 다시 접속하려고 대기하던 시도가 새 연결을 가로채, 참가가 10초 뒤 "The party host did not answer."로 실패했습니다.

@@ -23,6 +23,7 @@
 
 ### Fixed
 
+- `EasySession.Diagnose` now suggests a BeaconNetDriver line with the class of the project's GameNetDriver. It used to suggest the IP driver even on Steam, where that line silenced the finding but the beacon still could not reach the host, so password-protected sessions stayed impossible to join.
 - `EasySession.CreateParty hidden` and `EasySession.CreateParty code` now create a party with the default Max Players. The command used to read the first word as Max Players, failed with "Max Players must be above 0.", and ignored the word.
 - A party host's Create Easy Session with Should Advertise off now fails with `InvalidParams`, and the party stays. Before, the session was created, the members left the party to follow, and their search could never find an unadvertised session. Set Hidden to keep the session out of other searches instead.
 - Leaving a party right after its host changed maps no longer breaks the next party join. A reconnect to the old host that was still waiting took over the new connection, and the join failed after 10 seconds with "The party host did not answer."
