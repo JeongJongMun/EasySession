@@ -4,7 +4,7 @@
 
 파티는 게임 세션 밖에서 함께 움직이는 소규모 플레이어 그룹입니다. 예를 들어 친구들이 플레이하기 전에 메인 메뉴에서 모이는 경우입니다. 행선지는 호스트가 정합니다. 호스트가 게임 세션을 만들거나, 참가하거나, 매치메이킹으로 들어가면 모든 멤버가 따라갑니다.
 
-파티는 선택 사항입니다. 파티를 한 번도 만들지 않는 게임은 지금과 똑같이 동작하고, 모든 Session 노드는 기본값으로 게임 세션에 대해 답합니다. 파티는 `Create Easy Party`로 만들고, 찾기, 참가, 나가기, 조회는 Session 노드의 `Type` 입력에 Party Session을 넘겨서 합니다. 멤버와 준비처럼 파티에만 있는 노드는 **EasySession | Party** 아래에 있습니다.
+파티는 선택 사항입니다. 파티를 한 번도 만들지 않는 게임은 지금과 똑같이 동작하고 모든 Session 노드는 기본값으로 게임 세션에 대해 답합니다. 파티는 `Create Easy Party`로 만들고, 찾기, 참가, 나가기, 조회는 Session 노드의 `Type` 입력에 Party Session을 넘겨서 합니다. 멤버와 준비처럼 파티에만 있는 노드는 **EasySession | Party** 아래에 있습니다.
 
 | | 게임 세션 | 파티 |
 |---|---|---|
@@ -30,11 +30,11 @@
 
 Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 아무것도 바꾸지 않습니다.
 
-로컬 플레이어가 호스트가 됩니다. 멤버를 id로 구분하기 때문에, 온라인 서브시스템에 로그인한 플레이어가 있어야 만들 수 있습니다. NULL은 알아서 로그인하고, 스팀은 스팀 사용자로 로그인합니다.
+로컬 플레이어가 호스트가 됩니다. 멤버를 id로 구분하기 때문에, 온라인 서브시스템에 로그인한 플레이어가 있어야 만들 수 있습니다. NULL은 알아서 로그인하고 스팀은 스팀 사용자로 로그인합니다.
 
 이미 파티에 있거나 게임 세션 안에 있으면 `SessionAlreadyExists`로 실패합니다. 파티는 게임 세션 밖에서만 존재하기 때문입니다.
 
-스팀에서 파티는 스팀 로비이므로 Presence가 필요하고, 게임 세션처럼 인터넷으로도 동작합니다. NULL에서는 LAN 세션입니다.
+스팀에서 파티는 스팀 로비이므로 Presence가 필요하고 게임 세션처럼 인터넷으로도 동작합니다. NULL에서는 LAN 세션입니다.
 
 ## 누가 들어올 수 있나
 
@@ -55,14 +55,14 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
 
 ## 파티 찾기와 참가
 
-`Type`을 Party Session으로 둔 `Find Easy Sessions`는 게임 세션 검색과 같은 `FEasySessionSearchParams`를 받고, 파티만 돌려줍니다.
+`Type`을 Party Session으로 둔 `Find Easy Sessions`는 게임 세션 검색과 같은 `FEasySessionSearchParams`를 받고 파티만 돌려줍니다.
 
 - `Join Code`가 비어 있으면 숨기지 않은 파티를 나열합니다.
 - `Join Code`가 있으면 그 코드를 광고하는 파티 하나를 돌려줍니다. 숨긴 파티도 찾습니다.
-- 결과의 `Host Name`은 호스트 이름이고, `Session Display Name`은 파티 이름입니다. 호스트가 이름을 정하지 않았으면 호스트 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
+- 결과의 `Host Name`은 호스트 이름이고 `Session Display Name`은 파티 이름입니다. 호스트가 이름을 정하지 않았으면 호스트 이름입니다. `Max Players`와 `Open Slots`는 멤버 수를 셉니다.
 - 파티에는 매치 상태가 없고 커스텀 세팅은 검색용이 아니므로 `Required Custom Settings`와 `Include In Progress Sessions`는 무시됩니다. 게임 세션 검색에 쓰던 SearchParams를 그대로 넘겨도 됩니다.
 
-`Join Easy Session`에 그 결과 하나를 넘깁니다. 결과가 파티라고 알려 주므로 파티에 참가합니다. `Password`와 `Additional Travel Options`는 비워 두세요. 값이 있으면 `InvalidParams`로 실패합니다. 참가는 호스트가 정하고, 거절되면 노드가 `JoinRefused`와 호스트의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party host removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
+`Join Easy Session`에 그 결과 하나를 넘깁니다. 결과가 파티라고 알려 주므로 파티에 참가합니다. `Password`와 `Additional Travel Options`는 비워 두세요. 값이 있으면 `InvalidParams`로 실패합니다. 참가는 호스트가 정하고 거절되면 노드가 `JoinRefused`와 호스트의 사유로 실패합니다. 예를 들어 "The party is full."이나 "The party host removed you from this party."입니다. 성공하면 `Get Easy Party Members`에 이미 로컬 플레이어가 들어 있습니다.
 
 이미 파티에 있거나 게임 세션 안에 있는 플레이어는 `SessionAlreadyExists`로 실패합니다. 먼저 그쪽 Type으로 `Leave Easy Session`을 부르세요.
 
@@ -78,7 +78,7 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
     없음 -> [Create Easy Party]  (Hidden 끔. 다음 플레이어가 찾을 수 있게)
 ```
 
-파티 검색은 커스텀 세팅으로 거르지 않으므로, 목록에 보이는 파티는 모두 후보입니다. 게임 세션 매치메이킹은 별도 노드인 `Start Easy Matchmaking`이 맡고, 파티가 모이면 호스트가 부르면 됩니다.
+파티 검색은 커스텀 세팅으로 거르지 않으므로, 목록에 보이는 파티는 모두 후보입니다. 게임 세션 매치메이킹은 별도 노드인 `Start Easy Matchmaking`이 맡고 파티가 모이면 호스트가 부르면 됩니다.
 
 ## 초대
 
@@ -91,9 +91,9 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
 
 플레이어가 파티 초대를 수락하면 `OnSessionInviteAccepted`가 `Session Type`이 Party Session인 결과와 함께 옵니다. **Auto Join Accepted Invites**가 켜져 있으면(기본값) 이벤트 직후 플러그인이 파티에 참가합니다.
 
-- 진행 중인 매치메이킹은 먼저 취소됩니다. 이미 `Joining`이나 `Hosting` 상태면 취소되지 않고, 초대에도 참가하지 않습니다.
+- 진행 중인 매치메이킹은 먼저 취소됩니다. 이미 `Joining`이나 `Hosting` 상태면 취소되지 않고 초대에도 참가하지 않습니다.
 - 이미 파티에 있는 플레이어는 먼저 그 파티를 나갑니다.
-- 게임 세션 안에 있는 플레이어는 참가하지 않습니다. 오버레이 클릭 한 번으로 매치가 끝나면 안 되기 때문입니다. 로그에 그 사실이 남고, 게임은 `Leave Easy Session`을 부른 뒤 이벤트의 결과로 `Join Easy Session`을 부를 수 있습니다.
+- 게임 세션 안에 있는 플레이어는 참가하지 않습니다. 오버레이 클릭 한 번으로 매치가 끝나면 안 되기 때문입니다. 로그에 그 사실이 남고 게임은 `Leave Easy Session`을 부른 뒤 이벤트의 결과로 `Join Easy Session`을 부를 수 있습니다.
 
 이 참가를 기다리는 노드가 없으므로, 실패는 `OnSessionFailure`로 옵니다. Auto Join Accepted Invites를 끄면 이벤트만 옵니다. 결과를 넘겨 `Join Easy Session`을 직접 부르세요. `Session Type`에 따라 파티나 게임 세션에 참가합니다.
 
@@ -121,7 +121,7 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
 
 ## 행선지는 호스트가 정합니다
 
-호스트는 평소의 세션 노드를 그대로 쓰고, 파티가 따라옵니다.
+호스트는 평소의 세션 노드를 그대로 쓰고 파티가 따라옵니다.
 
 | 호스트가 부르는 노드 | 일어나는 일 |
 |---|---|
@@ -129,9 +129,9 @@ Allow Join In Progress는 넘긴 값 그대로 광고되지만 파티에서는 �
 | `Join Easy Session` | 파티 호스트가 게임 호스트에게 파티 전체가 들어갈 자리를 요청합니다. 자리가 없으면 `JoinSessionFull`로 실패하고 아무도 이동하지 않습니다 |
 | `Start Easy Matchmaking` | 파티 전체가 들어갈 자리가 있는 세션만 고릅니다 |
 
-멤버는 따라오라는 알림을 받고 같은 세션에 스스로 참가합니다. 멤버는 알림을 받자마자 파티를 떠나므로 `MovedToGameSession`이 담긴 `OnPartyLeft`를 받고, 호스트는 이것으로 알림이 도착했음을 확인합니다. 새 세션은 호스트의 맵이 로드된 뒤에야 검색되므로, 멤버는 호스트의 세션을 최대 30초 동안 찾습니다. 호스트의 예약에 이미 멤버가 포함되어 있으므로 비밀번호도 필요 없습니다.
+멤버는 따라오라는 알림을 받고 같은 세션에 스스로 참가합니다. 멤버는 알림을 받자마자 파티를 떠나므로 `MovedToGameSession`이 담긴 `OnPartyLeft`를 받고 호스트는 이것으로 알림이 도착했음을 확인합니다. 새 세션은 호스트의 맵이 로드된 뒤에야 검색되므로, 멤버는 호스트의 세션을 최대 30초 동안 찾습니다. 호스트의 예약에 이미 멤버가 포함되어 있으므로 비밀번호도 필요 없습니다.
 
-멤버가 이 세 노드 중 하나를 부르면 `InParty`로 거절되고, 로그에 이유가 남습니다. 멤버에게는 그 버튼들을 꺼 두세요.
+멤버가 이 세 노드 중 하나를 부르면 `InParty`로 거절되고 로그에 이유가 남습니다. 멤버에게는 그 버튼들을 꺼 두세요.
 
 ```
 Is Enabled = NOT (Is In Easy Session (Party Session) AND NOT Is Easy Host (Party Session))
@@ -144,17 +144,17 @@ Is Enabled = NOT (Is In Easy Session (Party Session) AND NOT Is Easy Host (Party
 파티가 게임 세션에 들어가면 EasySession이 그 파티를 기억해 둡니다. 저절로 돌아오지는 않습니다. 매치가 끝난 뒤 게임이 `Restore Easy Party`를 부르세요. 예를 들어 REJOIN PARTY 버튼에서 부르면 됩니다.
 
 - 호스트는 같은 설정으로 즉시 파티를 다시 만듭니다.
-- 멤버는 호스트의 ID로 파티를 찾으므로 숨긴 파티도 찾습니다. 2초마다 최대 **Max Search Passes**번(기본 5번) 찾습니다. 호스트가 아직 매치 중이면 `NoSessionsFound`로 실패합니다. 그러니 호스트가 먼저 부르고, 멤버는 나중에 다시 부르면 됩니다.
+- 멤버는 호스트의 ID로 파티를 찾으므로 숨긴 파티도 찾습니다. 2초마다 최대 **Max Search Passes**번(기본 5번) 찾습니다. 호스트가 아직 매치 중이면 `NoSessionsFound`로 실패합니다. 그러니 호스트가 먼저 부르고 멤버는 나중에 다시 부르면 됩니다.
 
 `Has Easy Last Party`는 돌아갈 파티가 있는지 알려 줍니다. 복원에 실패해도, 파티 없이 게임 세션을 하는 동안에도 true로 남습니다. 이 플레이어의 파티가 게임 세션 이동이 아닌 이유로 끝나면 기억을 지웁니다. 직접 나가거나, 추방되거나, 호스트가 나가거나, 연결이 끊긴 경우입니다. 파티 안에서 노드를 부르면 `SessionAlreadyExists`로 실패합니다.
 
-복원이 도는 동안 `Is Easy Session Busy`는 true이고, `Get Easy Session Activity`는 Restoring Party입니다. `Get Activity Message`는 이를 "Returning to the party..."로 보여 줍니다.
+복원이 도는 동안 `Is Easy Session Busy`는 true이고 `Get Easy Session Activity`는 Restoring Party입니다. `Get Activity Message`는 이를 "Returning to the party..."로 보여 줍니다.
 
-예제 메뉴는 `Has Easy Last Party`가 true인 동안 REJOIN PARTY 버튼을 보여 주고, 버튼을 누르면 노드를 부릅니다. 메뉴가 열릴 때 저절로 부르지는 않습니다. 매치에서 혼자 나온 플레이어가 아직 플레이 중인 호스트를 찾게 되기 때문입니다.
+예제 메뉴는 `Has Easy Last Party`가 true인 동안 REJOIN PARTY 버튼을 보여 주고 버튼을 누르면 노드를 부릅니다. 메뉴가 열릴 때 저절로 부르지는 않습니다. 매치에서 혼자 나온 플레이어가 아직 플레이 중인 호스트를 찾게 되기 때문입니다.
 
 ## 매치 밖에서 맵 바꾸기
 
-파티는 맵이 필요 없으므로 각 플레이어는 자기 맵에 그대로 있습니다. 호스트가 다른 맵을 열면 파티는 그 맵에서 이어지고, 멤버는 자기 맵에 그대로 있으면서 **Party Reconnect Seconds**(기본 15초) 안에 호스트에게 다시 연결합니다.
+파티는 맵이 필요 없으므로 각 플레이어는 자기 맵에 그대로 있습니다. 호스트가 다른 맵을 열면 파티는 그 맵에서 이어지고 멤버는 자기 맵에 그대로 있으면서 **Party Reconnect Seconds**(기본 15초) 안에 호스트에게 다시 연결합니다.
 
 파티는 멤버를 다른 맵으로 옮기지 않습니다. 매치 전 로비 맵처럼 모두를 같은 맵으로 데려가려면, 파티 호스트가 `Create Easy Session`으로 게임 세션을 만드세요. 그러면 매치에 들어갈 때처럼 파티가 따라옵니다.
 
@@ -169,4 +169,4 @@ Project Settings -> Plugins -> EasySession의 Party 항목입니다.
 ## C++ API
 
 같은 함수가 `UEasySessionSubsystem`에 있습니다. `CreateParty`, `KickPartyMember`, `SetPartyReady`, `GetPartyMembers`, `RestoreParty`, `HasLastParty`, `ShowProfileUIForPartyMember`입니다.
-`FindSessions`, `LeaveSession`, `IsInSession`, `IsHost`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend`, `ShowInviteUI`는 파티에 대해 `EEasySessionType::PartySession`을 받고, `JoinSession`은 검색 결과에서 타입을 읽습니다.
+`FindSessions`, `LeaveSession`, `IsInSession`, `IsHost`, `GetSessionSettings`, `GetJoinCode`, `GetDisplayName`, `GetPlayerCount`, `GetMaxPlayers`, `SendInviteToFriend`, `ShowInviteUI`는 파티에 대해 `EEasySessionType::PartySession`을 받고 `JoinSession`은 검색 결과에서 타입을 읽습니다.

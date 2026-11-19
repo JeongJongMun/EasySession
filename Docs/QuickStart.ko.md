@@ -10,9 +10,9 @@
 2. 재시작하라는 안내가 뜨면 재시작합니다.
 3. **Project Settings -> Maps & Modes -> Game Instance Class**를 `EasySessionGameInstance`로 지정합니다.
    프로젝트에 이미 GameInstance 블루프린트가 있다면, 그것을 열고 **Class Settings -> Parent Class**를 `EasySessionGameInstance`로 바꾸세요.
-   EasySession은 이 GameInstance를 통해 메뉴를 로드하기 전에 끊긴 세션을 파괴합니다. 없으면 모든 EasySession 노드가 `NoEasySessionGameInstance`로 실패하고, 시작 로그가 무엇이 빠졌는지 알려 줍니다.
+   EasySession은 이 GameInstance를 통해 메뉴를 로드하기 전에 끊긴 세션을 파괴합니다. 없으면 모든 EasySession 노드가 `NoEasySessionGameInstance`로 실패하고 시작 로그가 무엇이 빠졌는지 알려 줍니다.
 
-설정은 이걸로 끝입니다. EasySession은 별도 설정 없이 NULL(LAN) 온라인 서브시스템에서 동작하며, 계정도 키도 필요 없습니다.
+설정은 이걸로 끝입니다. EasySession은 별도 설정 없이 NULL(LAN) 온라인 서브시스템에서 동작하며 계정도 키도 필요 없습니다.
 
 ## 2. 먼저 예제를 실행해보기
 
@@ -23,7 +23,7 @@
 2. **Project Settings -> Maps & Modes -> Game Default Map**을 `L_Example_MainMenu`로
    설정합니다. 세션을 나가거나 연결이 끊기면 플레이어는 Game Default Map으로
    돌아옵니다. 예제 메뉴로 지정해 두어야 세션을 나왔을 때 메뉴로 돌아옵니다. 직접 만든
-   게임에서도 같아서, 여기에는 메뉴 맵을 지정합니다.
+   게임에서도 같아서 여기에는 메뉴 맵을 지정합니다.
 3. `/EasySession/Examples/Maps/L_Example_MainMenu`를 엽니다.
 4. [6단계](#6-pie로-테스트하기)대로 플레이어를 2명으로 맞추고 Play를 누릅니다.
 5. 한쪽 창에서 **CREATE SESSION**을 눌러 세션을 만듭니다. 다른 창에서 **FIND SESSIONS**, **SEARCH**, **JOIN** 순서로 누릅니다.
@@ -65,7 +65,7 @@ SetSearching이 그 예입니다.
 
 `Common/`에는 플러그인 노드를 쓰지 않는 부품이 있습니다. 메뉴 버튼, 패널 헤더, 팝업 프레임, 정보 행,
 입력 위젯들입니다. 화면 모양을 맞추려고 둔 것이라 따로 볼 내용은 없습니다. 파티를 쓰지 않는
-게임은 메인 메뉴에서 `WBP_PartyCard`와 `WBP_CreatePartyScreen`만 빼면 되고, 나머지는 그대로 동작합니다.
+게임은 메인 메뉴에서 `WBP_PartyCard`와 `WBP_CreatePartyScreen`만 빼면 되고 나머지는 그대로 동작합니다.
 
 ## 3. 세션 만들기
 
@@ -109,7 +109,7 @@ SetSearching이 그 예입니다.
 `Join Easy Session`이 그것을 다시 받습니다.
 
 비밀번호가 없거나 틀리거나, 세션이 꽉 찼거나, 매치가 참가를 마감했으면 노드가 바로 여기서 실패합니다. `Result`로
-어떤 경우인지 알 수 있고 `ErrorMessage`에 호스트가 쓴 이유가 담기며, 로딩 화면은 뜨지 않습니다.
+어떤 경우인지 알 수 있고 `ErrorMessage`에 호스트가 쓴 이유가 담기며 로딩 화면은 뜨지 않습니다.
 [호스트에게 먼저 묻기](Guide-Sessions.ko.md#호스트에게-먼저-묻기)를 보세요.
 
 ## 5. 아니면 Matchmaking 하나로 끝내기
@@ -123,7 +123,7 @@ SetSearching이 그 예입니다.
                       OnFailure -> [Print String: ErrorMessage]
 ```
 
-Matchmaking은 검색하고, 가장 좋은 세션(핑이 좋고 사람이 더 많은 세션 우선)에 참가합니다.
+Matchmaking은 검색하고 가장 좋은 세션(핑이 좋고 사람이 더 많은 세션 우선)에 참가합니다.
 **Allow Host Fallback**을 켜면 아무것도 없을 때 직접 세션을 만듭니다. 어느 쪽이 됐는지는
 `Is Easy Host`로 확인합니다.
 
@@ -136,7 +136,7 @@ Allow Host Fallback을 켜면 **Host > Initial Map Name**이 필요합니다. �
 1. **Edit -> Editor Preferences -> Level Editor -> Play**에서 **Number of Players = 2**,
    **Net Mode = Play Standalone**으로 설정합니다.
 2. Play를 누르면 창이 두 개 뜹니다.
-3. 1번 창에서 세션을 만들고, 2번 창에서 찾아 참가합니다.
+3. 1번 창에서 세션을 만들고 2번 창에서 찾아 참가합니다.
 
 > 팁: UI 없이 콘솔 명령(`~` 키)만으로도 전부 테스트할 수 있습니다.
 > `EasySession.Host /Game/Maps/Lobby`, `EasySession.Find`, `EasySession.Join 0`, `EasySession.Matchmaking`,

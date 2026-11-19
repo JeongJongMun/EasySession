@@ -27,15 +27,15 @@
 
 ## 1. 비동기 블루프린트 노드
 
-이 노드들은 요청을 [온라인 서브시스템](Concepts.ko.md)에 넘기고, 답은 나중에 돌아옵니다.
+이 노드들은 요청을 [온라인 서브시스템](Concepts.ko.md)에 넘기고 답은 나중에 돌아옵니다.
 스팀처럼 인터넷 너머에 있는 서비스라면 수 초가 걸릴 수도 있습니다. 답이 늦게 오기 때문에 값을
-바로 돌려주는 노드가 하나도 없습니다. 각 노드는 `OnSuccess` 또는 `OnFailure` 실행 핀으로 끝나며, 두
+바로 돌려주는 노드가 하나도 없습니다. 각 노드는 `OnSuccess` 또는 `OnFailure` 실행 핀으로 끝나며 두
 핀 모두 `Result`(`EEasySessionResult`)와 `ErrorMessage`(String)를 넘겨줍니다. 다만 서비스에
 닿기도 전에 걸러지는 요청(온라인 서브시스템 없음, 성립할 수 없는 파라미터)은 그 자리에서
 `OnFailure`로 끝납니다.
 
 EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나기 전에 부른 호출은 오류 대신 차례를 기다립니다.
-큐가 덮는 것은 EasySession을 거치는 호출까지이며, 엔진 자체 세션 노드는 따로 서비스에
+큐가 덮는 것은 EasySession을 거치는 호출까지이며 엔진 자체 세션 노드는 따로 서비스에
 도달합니다 ([FAQ](FAQ.ko.md)).
 
 | 노드 | 입력 | 비고 |
@@ -78,7 +78,7 @@ EasySession은 자기 요청을 하나씩 실행하므로, 앞 요청이 끝나�
 | **Kick Easy Party Member** | 가능 | `RequiresHost` |
 | 파티 초대 노드 | 가능 | 가능 |
 
-게임 세션에 들어가면 모두의 파티가 닫히고, `MovedToGameSession`이 담긴 `OnPartyLeft`가 옵니다. 자세한 내용은 [파티 가이드](Guide-Party.ko.md#행선지는-호스트가-정합니다)에 있습니다.
+게임 세션에 들어가면 모두의 파티가 닫히고 `MovedToGameSession`이 담긴 `OnPartyLeft`가 옵니다. 자세한 내용은 [파티 가이드](Guide-Party.ko.md#행선지는-호스트가-정합니다)에 있습니다.
 
 ## 2. 조회 블루프린트 노드
 
@@ -175,7 +175,7 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 전달됩니다.
 
 위젯은 부모 클래스를 `EasySessionWidget`으로 바꾸면(**Class Settings -> Parent Class**) Assign 노드 없이 이 이벤트를 받습니다.
-아래 이벤트가 전부 My Blueprint 패널의 **Override**에 나타나고, 위젯이 만들어질 때 바인딩되고 사라질 때 풀립니다.
+아래 이벤트가 전부 My Blueprint 패널의 **Override**에 나타나고 위젯이 만들어질 때 바인딩되고 사라질 때 풀립니다.
 부모 클래스를 바꿀 수 없는 위젯은 지금처럼 `Get Easy Session Subsystem`에 Assign 노드로 바인딩합니다.
 
 | 이벤트 | 넘기는 값 | 언제 호출되는가 |
@@ -210,8 +210,8 @@ Create, Find, Join, Update, Start, End, Destroy의 결과는 노드의 출력 �
 `InitialMapName`(String, 필수), `bIsLANMatch`, `bUsePresence`, `AdditionalTravelOptions`(String)
 
 호스팅은 위 설정에 서버를 띄우는 방법을 더한 것입니다. 여기 더해진 필드들은 세션을 만들 때
-한 번만 읽히고, 그래서 Update가 바꿀 수 없습니다.
-두 이름의 규칙은 이렇습니다. Settings는 세션이나 파티가 광고하고 다시 읽을 수 있는 값이고, HostParams는 거기에 서버를 띄우는 데 필요한 값을 더한 것입니다.
+한 번만 읽히고 그래서 Update가 바꿀 수 없습니다.
+두 이름의 규칙은 이렇습니다. Settings는 세션이나 파티가 광고하고 다시 읽을 수 있는 값이고 HostParams는 거기에 서버를 띄우는 데 필요한 값을 더한 것입니다.
 파티는 서버를 띄우지 않으므로 `Create Easy Party`는 Settings만 받습니다.
 
 각 필드의 동작은 [세션 가이드](Guide-Sessions.ko.md)에 있습니다. `bHidden`은 세션을 광고하되
@@ -224,7 +224,7 @@ Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 �
 ### 5.3 FEasySessionSearchParams
 `MaxResults`(int), `bLANQuery`, `MinOpenSlots`(int), `MaxPingMs`(int), `RequiredCustomSettings`(Map String->`FEasySessionSettingValue`), `bIncludeInProgressSessions`, `JoinCode`(String), `FriendId`(Unique Net Id), `OwnerId`(Unique Net Id)
 
-이 중 셋은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `FriendId`는 서비스에 다른 호출을 해서 그 친구가 있는 세션을 묻습니다. 이때 Max Results와 LAN Query는 무시되고, 필터는 그대로 적용됩니다. 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 봅니다.
+이 중 셋은 무엇을 찾을지 묘사하는 대신 특정 세션 하나를 지목합니다. `JoinCode`와 `OwnerId`는 일반 검색 위의 필터라 위의 모든 값과 조합됩니다. `FriendId`는 서비스에 다른 호출을 해서 그 친구가 있는 세션을 묻습니다. 이때 Max Results와 LAN Query는 무시되고 필터는 그대로 적용됩니다. 스팀처럼 친구가 있는 서비스에서만 동작하며 NULL/LAN에서는 `NotSupportedByService`로 실패합니다. 특정 세션을 지목한 검색은 숨긴 세션도 봅니다.
 어떤 필터를 온라인 서비스가 거르고 어떤 필터를 돌려받은 세션에서 확인하는지는 [세션 가이드](Guide-Sessions.ko.md#온라인-서비스가-거르는-필터)에 있습니다.
 
 ### 5.4 FEasySessionSearchResult *(읽기 전용)*
@@ -232,7 +232,7 @@ Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 �
 
 두 노드를 잇는 구조체입니다. `Find Easy Sessions`가 돌려주고 `Join Easy Session`이 받습니다.
 구조체를 통째로 저장해 두세요. 서버 브라우저의 각 행은 표시할 이름만이 아니라 이 구조체를
-저장해야 합니다. 파티 검색도 `SessionType`이 Party Session인 같은 구조체를 돌려주고, `Join Easy Session`이 그것도 받습니다.
+저장해야 합니다. 파티 검색도 `SessionType`이 Party Session인 같은 구조체를 돌려주고 `Join Easy Session`이 그것도 받습니다.
 
 `bPasswordProtected`는 `Join Easy Session` 전에 비밀번호를 물어볼지 판단하는 근거입니다.
 
@@ -245,10 +245,10 @@ Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 �
 ### 5.7 FEasySessionFriend *(읽기 전용)*
 `DisplayName`, `bIsOnline`, `bIsPlayingThisGame`, `bIsInLobby`, `NativeId`(Unique Net Id)
 
-`Read Easy Friends`가 돌려주며, 초대와 프로필 함수에 그대로 넘기면 됩니다.
+`Read Easy Friends`가 돌려주며 초대와 프로필 함수에 그대로 넘기면 됩니다.
 `NativeId`를 검색의 `FriendId`에 넣으면 그 친구가 있는 세션을 찾습니다.
 `bIsInLobby`는 요청 없이 친구의 접속 상태에서 읽으므로, 친구 목록의 모든 친구에게 바로 보여줄 수 있습니다.
-파티에만 있는 친구도 켜지며, 그 친구를 검색하면 게임 세션이 나오지 않습니다.
+파티에만 있는 친구도 켜지며 그 친구를 검색하면 게임 세션이 나오지 않습니다.
 
 ### 5.8 FEasyDisconnectInfo *(읽기 전용)*
 `Reason`(`EEasyDisconnectReason`), `ReasonText`(Text)
@@ -256,7 +256,7 @@ Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 �
 ### 5.9 FEasyPartyMemberInfo *(읽기 전용)*
 `PlayerName`, `bIsLocalPlayer`, `bIsHost`, `bIsReady`, `PlayerId`
 
-`Get Easy Party Members`가 돌려주며, `Kick Easy Party Member`에 그대로 넘깁니다.
+`Get Easy Party Members`가 돌려주며 `Kick Easy Party Member`에 그대로 넘깁니다.
 
 ### 5.10 FEasySessionSettingValue
 
@@ -306,7 +306,7 @@ Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 �
 
 `NoSession`, `Creating`, `Pending`, `Starting`, `InProgress`, `Ending`, `Ended`, `Destroying`
 
-`Pending`은 아직 시작하지 않은 세션이고, `Ended`는 끝난 매치로 `Start Easy Session`으로 다시 플레이할 수 있습니다. `-ing`으로 끝나는 값들은 해당 요청이 진행 중인 순간입니다.
+`Pending`은 아직 시작하지 않은 세션이고 `Ended`는 끝난 매치로 `Start Easy Session`으로 다시 플레이할 수 있습니다. `-ing`으로 끝나는 값들은 해당 요청이 진행 중인 순간입니다.
 
 ### 6.3 EEasyDisconnectReason
 
@@ -349,7 +349,7 @@ Find 결과에서는 빼므로, 초대, 참가 코드, 이 호스트나 안에 �
 
 Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 패스, 참가, 호스트 폴백 같은 실행 자체는 서브시스템이 맡습니다.
 
-블루프린트나 C++로 서브클래스를 만들고, 매치메이킹 기준을 바꾸려면
+블루프린트나 C++로 서브클래스를 만들고 매치메이킹 기준을 바꾸려면
 **`ScoreSession(Session) -> float`**(값이 클수록 먼저 참가)만 오버라이드하면 됩니다.
 편집 가능한 기본값은 `PingBucketsMs`(기본 `[50, 100, 150]`), `TopCandidatesToShuffle`(기본 3)입니다.
 서브시스템이 넘겨받은 클래스로 실행마다 정책 객체를 하나씩 만듭니다. 진행 상황은 서브시스템의 `Get Easy Matchmaking State`와 On Matchmaking 이벤트로 확인합니다.
@@ -370,7 +370,7 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 `StartMatchmaking`, `CreateParty`, `RestoreParty`. `FindSessions`와 `LeaveSession`은 `EEasySessionType`을 받아 게임 세션과 파티 중 하나를 다루고,
 `JoinSession`은 검색 결과에서 타입을 읽습니다. 블루프린트와 C++은 같은 코드 경로를 지납니다.
 
-세션 호출은 전부 큐에 요청 하나로 들어가고, 큐는 한 번에 하나씩 실행합니다. Matchmaking은
+세션 호출은 전부 큐에 요청 하나로 들어가고 큐는 한 번에 하나씩 실행합니다. Matchmaking은
 검색, 참가, 호스트를 자기 요청 안의 하위 요청으로 실행하므로, 게임의
 요청은 두 하위 요청 사이에 끼어들지 않고 실행 전체가 끝날 때까지 기다립니다.
 `ReadFriends`는 세션 인터페이스를 쓰지 않으므로 큐 밖에서 실행됩니다. 실행 중인 요청을 기다리지 않고 `IsBusy`도 켜지 않습니다.
@@ -381,7 +381,7 @@ Matchmaking 실행이 어느 세션에 먼저 참가할지 정합니다. 검색 
 엔진은 연결 끊김, Travel 실패, `ReturnToMainMenu` 호출을 이 온라인 세션에 알립니다. EasySession은 여기서
 끊긴 세션을 먼저 파괴한 뒤 Game Default Map으로 이동합니다. GameInstance를 직접 만든 C++ 프로젝트는
 그 클래스의 `GetOnlineSessionClass()`에서 `UEasySessionOnlineSession::StaticClass()`를 돌려주면 됩니다.
-둘 다 없으면 모든 요청이 `NoEasySessionGameInstance`로 실패하고, 시작할 때 진단이 이를 알려 줍니다.
+둘 다 없으면 모든 요청이 `NoEasySessionGameInstance`로 실패하고 시작할 때 진단이 이를 알려 줍니다.
 
 `OnModifyServerTravelURL`과 `OnModifyClientTravelURL`은 서브시스템의 C++ 전용 델리게이트입니다.
 Travel 직전에 URL을 넘겨주므로 원하는 옵션을 덧붙일 수 있습니다. 시작할 때 한 번 바인딩하세요.
