@@ -435,6 +435,14 @@ bool FEasySessionWaitForNetworkFilter::Update()
 			CurrentTest->TestEqual(TEXT("A marked pending failure is a rejection"), Marked.Reason, EEasyDisconnectReason::Rejected);
 			CurrentTest->TestEqual(TEXT("With the mark removed"), Marked.ReasonText.ToString(), FString(TEXT("Wrong session password.")));
 
+			// A version mismatch reports OutdatedClient first and the same message again as a pending failure, and the first reason is kept.
+			const FString Outdated = TEXT("The match you are trying to join is running an incompatible version of the game.  Please try upgrading your game version.");
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::OutdatedClient, Outdated);
+			GEngine->BroadcastNetworkFailure(World, nullptr, ENetworkFailure::PendingConnectionFailure, Outdated);
+			const FEasyDisconnectInfo Mismatch = Subsystem->ConsumePendingDisconnectInfo();
+			CurrentTest->TestEqual(TEXT("A version mismatch is a lost connection"), Mismatch.Reason, EEasyDisconnectReason::ConnectionLost);
+			CurrentTest->TestEqual(TEXT("With the engine's upgrade message"), Mismatch.ReasonText.ToString(), Outdated);
+
 			Finish(*State);
 			return true;
 		}

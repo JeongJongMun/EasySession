@@ -896,11 +896,13 @@ void UEasySessionSubsystem::HandleNetworkFailure(UWorld* World, UNetDriver* NetD
 	EEasyDisconnectReason DisconnectReason = EEasyDisconnectReason::ConnectionLost;
 	FText ReasonText = NSLOCTEXT("EasySession", "LostConnectionToHost", "Lost connection to the host.");
 
-	// Only these two types carry a message written for the player.
+	// Only these three types carry a message written for the player.
 	// Every other type carries debug text, which belongs in the log.
+	// A version mismatch sends OutdatedClient before PendingConnectionFailure, and only the first reason is kept.
 	const bool bHasMessage =
 		(FailureType == ENetworkFailure::PendingConnectionFailure ||
-			FailureType == ENetworkFailure::FailureReceived) &&
+			FailureType == ENetworkFailure::FailureReceived ||
+			FailureType == ENetworkFailure::OutdatedClient) &&
 		!ErrorString.IsEmpty();
 
 	if (bHasMessage)
