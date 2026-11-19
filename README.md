@@ -82,6 +82,7 @@ The plugin ships example maps and widgets with the full main menu -> lobby -> ma
 ## Engine support
 
 - **UE 5.8** only. This is the version the plugin is built and tested against.
+- **Windows (Win64)** only. On other platforms the plugin's module is not built, so its nodes are missing.
 - Support for earlier versions is planned.
 
 <br/>

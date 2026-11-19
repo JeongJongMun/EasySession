@@ -14,6 +14,9 @@
 	"EngineVersion": "5.8.0",
 	"CanContainContent": true,
 	"IsBetaVersion": false,
+	"SupportedTargetPlatforms": [
+		"Win64"
+	],
 	"Modules": [
 		{
 			"Name": "EasySession",
